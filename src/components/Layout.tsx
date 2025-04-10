@@ -14,7 +14,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className={`flex-1 ${isMobile ? 'py-4' : 'py-8'}`}>
-        <div className="mobile-container">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           {children}
         </div>
       </main>

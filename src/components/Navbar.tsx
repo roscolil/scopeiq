@@ -4,9 +4,13 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FilePlus, FolderOpen, Home, Menu, User, Folders, LogIn } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 
 export const Navbar = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const isSmallScreen = isMobile || isTablet;
   
   const menuItems = [
     { name: "Home", path: "/", icon: <Home className="w-5 h-5 mr-2" /> },
@@ -23,7 +27,7 @@ export const Navbar = () => {
   
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mobile-container h-14 flex items-center justify-between">
+      <div className="container-2xl h-14 flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/" className="font-semibold text-lg flex items-center gap-2 text-primary">
             <FilePlus className="h-5 w-5" />

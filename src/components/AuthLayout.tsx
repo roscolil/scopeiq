@@ -12,7 +12,7 @@ interface AuthLayoutProps {
 export const AuthLayout = ({ children, title, description }: AuthLayoutProps) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-secondary/20">
-      <div className="max-w-md w-full space-y-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-flex items-center gap-2 text-primary">
             <FilePlus className="h-6 w-6" />

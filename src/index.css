@@ -95,7 +95,31 @@
 }
 
 @layer utilities {
-  .mobile-container {
+  .container-xs {
+    @apply max-w-sm mx-auto px-4 w-full;
+  }
+  
+  .container-sm {
     @apply max-w-md mx-auto px-4 w-full;
+  }
+  
+  .container-md {
+    @apply max-w-xl mx-auto px-4 sm:px-6 w-full;
+  }
+  
+  .container-lg {
+    @apply max-w-4xl mx-auto px-4 sm:px-6 w-full;
+  }
+  
+  .container-xl {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full;
+  }
+  
+  .container-2xl {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full;
+  }
+  
+  .mobile-container {
+    @apply max-w-md mx-auto px-4 w-full sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl;
   }
 }
