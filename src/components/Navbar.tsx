@@ -2,7 +2,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FilePlus, FolderOpen, Home, Menu, User } from "lucide-react";
+import { FilePlus, FolderOpen, Home, Menu, User, Folders } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export const Navbar = () => {
@@ -10,6 +10,7 @@ export const Navbar = () => {
   
   const menuItems = [
     { name: "Home", path: "/", icon: <Home className="w-5 h-5 mr-2" /> },
+    { name: "Projects", path: "/projects", icon: <Folders className="w-5 h-5 mr-2" /> },
     { name: "Documents", path: "/documents", icon: <FolderOpen className="w-5 h-5 mr-2" /> },
   ];
   

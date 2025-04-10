@@ -5,7 +5,7 @@ import { Layout } from "@/components/Layout";
 import { FileUploader } from "@/components/FileUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, BrainCircuit, Search, Database } from "lucide-react";
+import { FileText, BrainCircuit, Search, Database, FolderPlus, Folders } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -18,21 +18,49 @@ const Index = () => {
             Document Intelligence Platform
           </h1>
           <p className="text-muted-foreground mt-2">
-              Upload, analyze, and extract insights from your construction documents by asking site-relevant questions.
+            Upload, analyze, and extract insights from your construction documents by asking site-relevant questions.
           </p>
         </div>
         
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle>Upload Document</CardTitle>
-            <CardDescription>
-              Supported formats: PDF, DOCX, TXT, JPG, PNG
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FileUploader />
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <Folders className="h-5 w-5 text-primary" />
+                <CardTitle>Projects</CardTitle>
+              </div>
+              <CardDescription>
+                Organize your documents in projects
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create projects to organize your documents and collaborate with your team.
+              </p>
+              <div className="flex justify-center">
+                <Button onClick={() => navigate("/projects")} className="w-full">
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Manage Projects
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <CardTitle>Upload Document</CardTitle>
+              </div>
+              <CardDescription>
+                Supported formats: PDF, DOCX, TXT, JPG, PNG
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FileUploader />
+            </CardContent>
+          </Card>
+        </div>
         
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
