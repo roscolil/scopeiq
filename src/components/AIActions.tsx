@@ -149,7 +149,7 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
             <span className="text-sm font-medium text-muted-foreground">Query Scope:</span>
             <Select
               value={queryScope}
-              onValueChange={(value: "document" | "project") => setQueryScope(value)}
+              onValueChange={(value: "project" | "document") => setQueryScope(value)}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select scope" />
