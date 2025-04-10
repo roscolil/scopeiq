@@ -3,18 +3,26 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BrainCircuit, Search, FileSearch, ScrollText, Copy, MessageSquare } from "lucide-react";
+import { BrainCircuit, Search, FileSearch, ScrollText, Copy, MessageSquare, FileStack } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { VoiceInput } from "./VoiceInput";
 import { answerQuestionWithBedrock } from "@/utils/aws";
 import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AIActionsProps {
   documentId: string;
+  projectId?: string;
 }
 
-export const AIActions = ({ documentId }: AIActionsProps) => {
+export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
@@ -24,6 +32,7 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
   const [answer, setAnswer] = useState<string | null>(null);
   const [isAnswering, setIsAnswering] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [queryScope, setQueryScope] = useState<"document" | "project">("document");
   const { toast } = useToast();
   
   const handleSearch = () => {
@@ -32,11 +41,20 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
     setIsSearching(true);
     
     // Simulate AI-powered search with AWS Bedrock and Pinecone
+    // In a real app, we would use different search parameters based on queryScope
     setTimeout(() => {
-      setSearchResults([
-        "The results found in paragraph 2 match your query about document processing.",
-        "Additional information about AWS services can be found in section 3.2."
-      ]);
+      const results = queryScope === "document" 
+        ? [
+            "The results found in paragraph 2 match your query about document processing.",
+            "Additional information about AWS services can be found in section 3.2."
+          ]
+        : [
+            "Results found in document 'Business Proposal.pdf' match your query.",
+            "Additional information found in 'Financial Report.docx', section 2.1.",
+            "Related content in 'Contract Agreement.pdf', paragraphs 5-7."
+          ];
+      
+      setSearchResults(results);
       setIsSearching(false);
     }, 1500);
   };
@@ -46,8 +64,13 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
     setSummary(null);
     
     // Simulate LLM summary generation using AWS SageMaker
+    // In a real app, we would generate different summaries based on queryScope
     setTimeout(() => {
-      setSummary("This document describes a cloud-based document processing system that utilizes AWS services for storage and AI capabilities. It outlines the architecture using S3 for storage, Textract for text extraction, and integration with vector databases for semantic search functionality.");
+      const summaryText = queryScope === "document"
+        ? "This document describes a cloud-based document processing system that utilizes AWS services for storage and AI capabilities. It outlines the architecture using S3 for storage, Textract for text extraction, and integration with vector databases for semantic search functionality."
+        : "This project contains multiple documents related to a cloud-based document processing system. The Business Proposal outlines the system architecture, the Financial Report details cost implications, and the Contract Agreement provides legal frameworks for implementation. All documents together form a comprehensive implementation plan for an AWS-powered document management solution.";
+      
+      setSummary(summaryText);
       setIsSummarizing(false);
     }, 2000);
   };
@@ -60,10 +83,13 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
     
     try {
       // Get the document text - in a real app, this would be fetched from the database
-      const documentText = "This is the document text that would be retrieved from the database. It contains information about our document processing system.";
+      // We would use different content based on queryScope
+      const content = queryScope === "document"
+        ? "This is the document text that would be retrieved from the database. It contains information about our document processing system."
+        : "This is combined text from all documents in the project. It includes information from the Business Proposal, Financial Report, and Contract Agreement documents, providing a comprehensive view of the project.";
       
       // Use AWS Bedrock to answer the question
-      const response = await answerQuestionWithBedrock(question, documentText);
+      const response = await answerQuestionWithBedrock(question, content);
       setAnswer(response);
     } catch (error) {
       console.error("Error answering question:", error);
@@ -113,12 +139,38 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
           <CardTitle className="text-lg">AI Tools</CardTitle>
         </div>
         <CardDescription>
-          Leverage AI to analyze and extract insights from your document
+          Leverage AI to analyze and extract insights from your {queryScope === "document" ? "document" : "project"}
         </CardDescription>
       </CardHeader>
       
       <CardContent>
         <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-muted-foreground">Query Scope:</span>
+            <Select
+              value={queryScope}
+              onValueChange={(value: "document" | "project") => setQueryScope(value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select scope" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="document">
+                  <div className="flex items-center">
+                    <FileSearch className="mr-2 h-4 w-4" />
+                    <span>Current Document</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="project">
+                  <div className="flex items-center">
+                    <FileStack className="mr-2 h-4 w-4" />
+                    <span>Entire Project</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <div className="flex items-center mb-2">
               <FileSearch className="h-4 w-4 mr-2 text-primary" />
@@ -127,7 +179,7 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
             
             <div className="flex gap-2 mb-3">
               <Input
-                placeholder="Search within document..."
+                placeholder={`Search within ${queryScope === "document" ? "document" : "project"}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -217,7 +269,7 @@ export const AIActions = ({ documentId }: AIActionsProps) => {
             
             <div className="flex gap-2 mb-3">
               <Textarea
-                placeholder="Ask a question about the document..."
+                placeholder={`Ask a question about the ${queryScope === "document" ? "document" : "project"}...`}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 className="resize-none min-h-[60px]"

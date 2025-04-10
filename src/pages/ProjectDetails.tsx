@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
@@ -23,8 +22,8 @@ import {
 import { ProjectForm } from "@/components/ProjectForm";
 import { Project, Document } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { AIActions } from "@/components/AIActions";
 
-// Mock data to simulate a database
 const mockProjects: Project[] = [
   {
     id: "project-1",
@@ -98,14 +97,13 @@ const ProjectDetails = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [showAITools, setShowAITools] = useState(false);
   
   useEffect(() => {
-    // Simulate fetching project from a database
     const foundProject = mockProjects.find(p => p.id === id) || null;
     setProject(foundProject);
     
     if (foundProject) {
-      // Get all documents for this project
       const projectDocs = mockDocuments.filter(doc => doc.projectId === id);
       setProjectDocuments(projectDocs);
     }
@@ -119,7 +117,6 @@ const ProjectDetails = () => {
       ...projectData
     };
     
-    // In a real app, this would update the project in the database
     setProject(updatedProject);
     setIsEditDialogOpen(false);
     
@@ -130,7 +127,6 @@ const ProjectDetails = () => {
   };
   
   const handleDeleteProject = () => {
-    // In a real app, this would delete the project from the database
     toast({
       title: "Project deleted",
       description: "Your project has been deleted successfully."
@@ -140,7 +136,6 @@ const ProjectDetails = () => {
   };
   
   const handleUploadDocument = () => {
-    // In a real app, this would upload the document to the project
     setIsUploadDialogOpen(false);
     
     toast({
@@ -184,6 +179,14 @@ const ProjectDetails = () => {
           </div>
           
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowAITools(!showAITools)}
+            >
+              {showAITools ? "Hide AI Tools" : "Show AI Tools"}
+            </Button>
+            
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -231,6 +234,12 @@ const ProjectDetails = () => {
             </Dialog>
           </div>
         </div>
+        
+        {showAITools && (
+          <div className="mb-4">
+            <AIActions documentId="" projectId={project.id} />
+          </div>
+        )}
         
         <div className="flex justify-between items-center border-b pb-4">
           <h2 className="text-xl font-semibold">Documents</h2>

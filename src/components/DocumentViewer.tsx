@@ -14,7 +14,8 @@ export const DocumentViewer = ({ documentId }: DocumentViewerProps) => {
     id: documentId,
     name: "Sample Document.pdf",
     content: "This is a sample document content that would be extracted from the PDF using AWS Textract. In a real application, this would contain the actual text content from the document that was processed through AWS services.\n\nThe content would be much longer and would be formatted properly. It might include paragraphs, bullet points, and other formatting from the original document.\n\nWhen a user uploads a document, it would be stored in S3, processed by Textract, and then the extracted text would be displayed here. The text would also be processed and stored in a vector database like Pinecone for semantic search capabilities.",
-    thumbnailUrl: null
+    thumbnailUrl: null,
+    projectId: "project-1" // Mock project ID for the current document
   });
   
   // In a real app, we'd fetch the document from AWS S3 and Textract
@@ -57,7 +58,7 @@ export const DocumentViewer = ({ documentId }: DocumentViewerProps) => {
         </div>
       </div>
       
-      <AIActions documentId={documentId} />
+      <AIActions documentId={documentId} projectId={document.projectId} />
     </div>
   );
 };
