@@ -155,16 +155,16 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
                 <SelectValue placeholder="Select scope" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="document">
-                  <div className="flex items-center">
-                    <FileSearch className="mr-2 h-4 w-4" />
-                    <span>Current Document</span>
-                  </div>
-                </SelectItem>
                 <SelectItem value="project">
                   <div className="flex items-center">
                     <FileStack className="mr-2 h-4 w-4" />
                     <span>Entire Project</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="document">
+                  <div className="flex items-center">
+                    <FileSearch className="mr-2 h-4 w-4" />
+                    <span>Current Document</span>
                   </div>
                 </SelectItem>
               </SelectContent>
