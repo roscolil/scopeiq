@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
@@ -26,6 +25,7 @@ import { Project, Document } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { AIActions } from "@/components/AIActions";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ProjectSelector } from "@/components/ProjectSelector";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -275,7 +275,6 @@ const ProjectDetails = () => {
           </div>
         )}
         
-        {/* Edit/Delete Dialogs for mobile - separate from dropdown */}
         {isMobile && (
           <>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

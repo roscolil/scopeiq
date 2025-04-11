@@ -11,7 +11,7 @@ interface VoiceInputProps {
 
 export const VoiceInput = ({ onTranscript, isListening, toggleListening }: VoiceInputProps) => {
   const [transcript, setTranscript] = useState<string>("");
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<typeof SpeechRecognition | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
