@@ -6,7 +6,11 @@ import { Upload, X, FileText, FileImage, File } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-export const FileUploader = () => {
+interface FileUploaderProps {
+  projectId?: string;
+}
+
+export const FileUploader = ({ projectId }: FileUploaderProps = {}) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -96,7 +100,7 @@ export const FileUploader = () => {
     // Simulate upload to AWS S3
     toast({
       title: "Upload started",
-      description: "Your file is being processed...",
+      description: `Your file is being processed for project ID: ${projectId || "Unknown"}...`,
     });
     
     // Simulate processing delay
@@ -113,7 +117,7 @@ export const FileUploader = () => {
     <div className="w-full">
       <div
         className={cn(
-          "border-2 border-dashed rounded-lg p-6 transition-colors",
+          "border-2 border-dashed rounded-lg p-4 md:p-6 transition-colors",
           isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30",
           selectedFile ? "bg-secondary/50" : "bg-transparent"
         )}
