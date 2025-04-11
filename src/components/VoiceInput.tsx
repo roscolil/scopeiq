@@ -89,8 +89,9 @@ export const VoiceInput = ({ onTranscript, isListening, toggleListening }: Voice
       variant="outline"
       size="icon"
       onClick={toggleListening}
-      className={`relative ${isListening ? "bg-red-100 hover:bg-red-200" : ""}`}
+      className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${isListening ? "bg-red-100 hover:bg-red-200" : ""}`}
       title={isListening ? "Stop listening" : "Start voice input"}
+      type="button"
     >
       {isListening ? (
         <MicOff className="h-4 w-4 text-red-500" />

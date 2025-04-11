@@ -6,6 +6,7 @@ import { FileUploader } from "@/components/FileUploader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, BrainCircuit, Search, Database, FolderPlus, Folders } from "lucide-react";
+import { SearchProducts } from "@/components/SearchProducts";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -61,6 +62,9 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Product and Supplier Search */}
+        <SearchProducts />
         
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
