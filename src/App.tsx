@@ -15,7 +15,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
 import { AuthProvider } from "./hooks/use-auth";
 import { Amplify } from "aws-amplify";
-import outputs from "@/amplify_outputs.json";
+import outputs from '../amplify_outputs.json'
 Amplify.configure(outputs);
 
 const queryClient = new QueryClient();
