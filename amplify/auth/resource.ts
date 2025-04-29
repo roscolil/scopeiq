@@ -8,4 +8,12 @@ export const auth = defineAuth({
   loginWith: {
     email: true,
   },
+    
+  userAttributes: {
+    // specify a "birthdate" attribute
+    fullname: {
+      mutable: true,
+      required: false,
+    }
+  },
 });

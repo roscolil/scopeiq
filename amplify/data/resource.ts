@@ -1,13 +1,13 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
 /*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
+The section below creates a Project database table with a "content" field. Try
 adding a new "isDone" field as a boolean. The authorization rule below
 specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
+and "delete" any "Project" records.
 =========================================================================*/
 const schema = a.schema({
-  Todo: a
+  Project: a
     .model({
       content: a.string(),
     })
@@ -48,6 +48,6 @@ Fetch records from the database and use them in your frontend component.
 
 /* For example, in a React component, you can use this snippet in your
   function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
+// const { data: Projects} = await client.models.Projects.list()
 
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>
+// return <ul>{projects.map(projecct => <li key={project.id}>{project.content}</li>)}</ul>
