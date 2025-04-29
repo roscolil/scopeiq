@@ -9,8 +9,8 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 
 const session = await fetchAuthSession();
 
-console.log("id token", session.tokens.idToken)
-console.log("access token", session.tokens.accessToken)
+// console.log("id token", session.tokens.idToken)
+// console.log("access token", session.tokens.accessToken)
 
 export const Navbar = () => {
   const location = useLocation();
