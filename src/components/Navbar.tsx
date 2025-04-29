@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { FilePlus, FolderOpen, Home, Menu, User, Folders, LogIn } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
+import { fetchAuthSession } from 'aws-amplify/auth';
+
+const session = await fetchAuthSession();
+
+console.log("id token", session.tokens.idToken)
+console.log("access token", session.tokens.accessToken)
 
 export const Navbar = () => {
   const location = useLocation();
