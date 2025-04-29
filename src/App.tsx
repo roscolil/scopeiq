@@ -17,6 +17,7 @@ import { AuthProvider } from "./hooks/use-auth";
 import { Amplify } from "aws-amplify";
 import outputs from "../amplify_outputs.json";
 Amplify.configure(outputs);
+console.log('outputs', outputs)
 
 const queryClient = new QueryClient();
 
