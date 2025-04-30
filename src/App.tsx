@@ -14,7 +14,7 @@ import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
 import Profile from "./pages/Profile";
-import { AuthProvider } from "./hooks/use-auth";
+import { AuthProvider } from "./hooks/use-auth"; 
 
 const queryClient = new QueryClient();
 
