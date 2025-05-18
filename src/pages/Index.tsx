@@ -23,7 +23,7 @@ const Index = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
@@ -61,19 +61,19 @@ const Index = () => {
               <FileUploader />
             </CardContent>
           </Card>
-        </div>
+        </div> */}
         
         {/* Product and Supplier Search */}
-        <SearchProducts />
+        {/* <SearchProducts /> */}
         
-        <div className="text-center">
+        {/* <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
             Or browse your existing documents
           </p>
           <Button onClick={() => navigate("/documents")}>
             View My Documents
           </Button>
-        </div>
+        </div> */}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           <Card>
