@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 // import { Project } from "@/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Form,
   FormControl,
@@ -13,73 +13,89 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { AutocompleteInput } from "@/components/AutocompleteInput";
+} from '@/components/ui/form'
+import { useToast } from '@/hooks/use-toast'
+import { AutocompleteInput } from '@/components/AutocompleteInput'
 
-const formSchema = z.object({
-  address: z.string().optional(),
-  streetNumber: z.string().optional(),
-  streetName: z.string().optional(),
-  suburb: z.string().optional(),
-  postcode: z.string().optional(),
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-}).refine(data => {
-  return !!data.address || (!!data.streetNumber && !!data.streetName && !!data.suburb && !!data.postcode);
-}, {
-  message: "Please enter a valid address or fill out all address fields",
-  path: ["address"]
-});
+const formSchema = z
+  .object({
+    address: z.string().optional(),
+    streetNumber: z.string().optional(),
+    streetName: z.string().optional(),
+    suburb: z.string().optional(),
+    postcode: z.string().optional(),
+    name: z.string().min(1, 'Name is required'),
+    description: z.string().optional(),
+  })
+  .refine(
+    data => {
+      return (
+        !!data.address ||
+        (!!data.streetNumber &&
+          !!data.streetName &&
+          !!data.suburb &&
+          !!data.postcode)
+      )
+    },
+    {
+      message: 'Please enter a valid address or fill out all address fields',
+      path: ['address'],
+    },
+  )
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof formSchema>
 
 interface ProjectFormProps {
-  onSubmit: (data: { address: string; name: string; description: string }) => void;
+  onSubmit: (data: {
+    address: string
+    name: string
+    description: string
+  }) => void
   defaultValues?: {
-    address: string;
-    streetNumber: string;
-    streetName: string;
-    suburb: string;
-    postcode: string;
-    name: string;
-    description: string;
-  };
+    address: string
+    streetNumber: string
+    streetName: string
+    suburb: string
+    postcode: string
+    name: string
+    description: string
+  }
 }
 
 export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
-  const { toast } = useToast();
-  const [showManualFields, setShowManualFields] = useState(false);
-  
+  const { toast } = useToast()
+  const [showManualFields, setShowManualFields] = useState(false)
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues || {
-      address: "",
-      streetNumber: "",
-      streetName: "",
-      suburb: "",
-      postcode: "",
-      name: "",
-      description: "",
+      address: '',
+      streetNumber: '',
+      streetName: '',
+      suburb: '',
+      postcode: '',
+      name: '',
+      description: '',
     },
-  });
+  })
 
   const handleSubmit = (data: FormData) => {
-    console.log('data', data);
-    const formattedAddress = data.address || 
-      `${data.streetNumber} ${data.streetName}, ${data.suburb} ${data.postcode}`;
-    
+    console.log('data', data)
+    const formattedAddress =
+      data.address ||
+      `${data.streetNumber} ${data.streetName}, ${data.suburb} ${data.postcode}`
+
     onSubmit({
       address: formattedAddress,
       name: data.name,
-      description: data.description || "",
-    });
-    
+      description: data.description || '',
+    })
+
     toast({
-      title: "Project saved",
-      description: "Your project has been saved successfully.",
-    });
-  };
+      title: 'Project saved',
+      description: 'Your project has been saved successfully.',
+    })
+  }
 
   return (
     <Form {...form}>
@@ -97,7 +113,7 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
             </FormItem>
           )}
         />
-        
+
         {!showManualFields ? (
           <>
             <FormField
@@ -119,13 +135,13 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
                 </FormItem>
               )}
             />
-            <Button 
-              type="button" 
-              variant="link" 
-              className="px-0" 
+            <Button
+              type="button"
+              variant="link"
+              className="px-0"
               onClick={() => {
-                setShowManualFields(true);
-                form.setValue("address", "");
+                setShowManualFields(true)
+                form.setValue('address', '')
               }}
             >
               Can't find your address? Enter manually
@@ -189,17 +205,17 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
                 )}
               />
             </div>
-            <Button 
-              type="button" 
-              variant="link" 
-              className="px-0" 
+            <Button
+              type="button"
+              variant="link"
+              className="px-0"
               onClick={() => setShowManualFields(false)}
             >
               Use address search instead
             </Button>
           </>
         )}
-        
+
         <FormField
           control={form.control}
           name="description"
@@ -207,20 +223,20 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Enter project description (optional)" 
-                  {...field} 
+                <Textarea
+                  placeholder="Enter project description (optional)"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        
+
         <Button type="submit" className="w-full">
           Save Project
         </Button>
       </form>
     </Form>
-  );
-};
+  )
+}

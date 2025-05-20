@@ -1,15 +1,15 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
-import { FileUploader } from "@/components/FileUploader";
-import { Button } from "@/components/ui/button";
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Layout } from '@/components/Layout'
+import { FileUploader } from '@/components/FileUploader'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card'
 import {
   FileText,
   BrainCircuit,
@@ -17,11 +17,11 @@ import {
   Database,
   FolderPlus,
   Folders,
-} from "lucide-react";
-import { SearchProducts } from "@/components/SearchProducts";
+} from 'lucide-react'
+import { SearchProducts } from '@/components/SearchProducts'
 
 const Index = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   return (
     <Layout>
@@ -34,12 +34,12 @@ const Index = () => {
             Upload, analyze, and extract insights from your construction
             documents by asking site-relevant questions.
           </p>
-            <Button
+          <Button
             className="my-14 text-lg font-semibold"
-            onClick={() => navigate("/signin")}
-            >
+            onClick={() => navigate('/signin')}
+          >
             Sign Up or Sign In to get started
-            </Button>
+          </Button>
         </div>
 
         {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,7 +162,7 @@ const Index = () => {
         </div>
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index
