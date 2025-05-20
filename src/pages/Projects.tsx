@@ -42,7 +42,7 @@ const Projects = () => {
     }
   ]);
   
-  const handleCreateProject = (projectData: Omit<Project, "id" | "createdAt" | "documentIds">) => {
+  const handleCreateProject = (projectData: { address: string; name: string; description: string }) => {
     const newProject: Project = {
       ...projectData,
       id: `project-${projects.length + 1}`,
@@ -61,10 +61,10 @@ const Projects = () => {
           <h1 className="text-2xl font-bold tracking-tight">My Projects</h1>
           
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
               Filter
-            </Button>
+            </Button> */}
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>

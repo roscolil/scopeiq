@@ -35,7 +35,7 @@ const Index = () => {
             documents by asking site-relevant questions.
           </p>
             <Button
-            className="mt-6 text-lg font-semibold"
+            className="my-14 text-lg font-semibold"
             onClick={() => navigate("/signin")}
             >
             Sign Up or Sign In to get started

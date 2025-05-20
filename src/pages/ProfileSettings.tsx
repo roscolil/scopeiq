@@ -31,16 +31,11 @@ const passwordFormSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
-const Profile = () => {
+const ProfileSettings = () => {
   const { user, isAuthenticated, updateProfile, signOut } = useAuth();
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  
-  // Redirect to sign in if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" />;
-  }
-  
+
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -48,7 +43,7 @@ const Profile = () => {
       email: user?.email || "",
     },
   });
-  
+
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordFormSchema),
     defaultValues: {
@@ -57,6 +52,11 @@ const Profile = () => {
       confirmPassword: "",
     },
   });
+
+  // Redirect to sign in if not authenticated
+  if (isAuthenticated) {
+    return <Navigate to="/signin" />;
+  }
   
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
@@ -244,4 +244,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default ProfileSettings;

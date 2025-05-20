@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,8 +15,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { AutocompleteInput } from "@/components/AutocompleteInput";
 
 const formSchema = z.object({
+  address: z.string().min(1, "Address is required"),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
 });
@@ -25,8 +26,9 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface ProjectFormProps {
-  onSubmit: (data: Omit<Project, "id" | "createdAt" | "documentIds">) => void;
+  onSubmit: (data: { address: string; name: string; description: string }) => void;
   defaultValues?: {
+    address: string;
     name: string;
     description: string;
   };
@@ -38,13 +40,16 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues || {
+      address: "",
       name: "",
       description: "",
     },
   });
 
   const handleSubmit = (data: FormData) => {
+    console.log('data', data)
     onSubmit({
+      address: data.address,
       name: data.name,
       description: data.description || "",
     });
@@ -66,6 +71,25 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
               <FormLabel>Project Name</FormLabel>
               <FormControl>
                 <Input placeholder="Enter project name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project Address</FormLabel>
+              <FormControl>
+                <AutocompleteInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

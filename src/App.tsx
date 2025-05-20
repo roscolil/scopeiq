@@ -13,8 +13,9 @@ import NotFound from "./pages/NotFound";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import ForgotPassword from "./pages/ForgotPassword";
-import Profile from "./pages/Profile";
+import ProfileSettings from "./pages/ProfileSettings";
 import { AuthProvider } from "./hooks/use-auth";
+import ProfileHome from "./pages/ProfileHome";
 
 const queryClient = new QueryClient();
 
@@ -26,15 +27,16 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/:id" element={<ProjectDetails />} />
-            <Route path="/viewer/:id" element={<Viewer />} />
+            <Route path="/" element={<Index />} /> 
+            <Route path="/:companyName" element={<ProfileHome />} />  {/* List projects on profile landing page */}
+            <Route path="/:companyName/projects" element={<Projects />} />
+            <Route path="/:companyName/projects/:projectId" element={<ProjectDetails />} />
+            <Route path="/:companyName/projects/:projectId/documents" element={<Documents />} />
+            <Route path="/:companyName/projects/:projectId/:documentId" element={<Viewer />} />
+            <Route path="/:companyName/settings" element={<ProfileSettings />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -26,7 +26,7 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
         <Folder className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium mb-2">No projects yet</h3>
         <p className="text-muted-foreground mb-4">Create your first project to get started</p>
-        <Button onClick={() => navigate("/projects/new")}>Create Project</Button>
+        <Button onClick={() => navigate("/:companyId/projects/new")}>Create Project</Button>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
               variant="outline"
               size="sm" 
               className="w-full"
-              onClick={() => navigate(`/projects/${project.id}`)}
+              onClick={() => navigate(`/:companyId/projects/${project.id}`)}
             >
               View Project
             </Button>

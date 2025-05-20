@@ -57,10 +57,10 @@ const Documents = () => {
           <h1 className="text-2xl font-bold tracking-tight">My Documents</h1>
           
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
               Filter
-            </Button>
+            </Button> */}
             
             <Dialog>
               <DialogTrigger asChild>

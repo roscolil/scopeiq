@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -37,19 +36,20 @@ export const Navbar = () => {
         
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center gap-6">
-            {menuItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center text-sm font-medium transition-colors ${
-                  isActive(item.path)
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+            {isAuthenticated &&
+              menuItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center text-sm font-medium transition-colors ${
+                    isActive(item.path)
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
           </div>
           
           <Sheet>
@@ -61,20 +61,21 @@ export const Navbar = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-[240px] sm:w-[300px]">
               <nav className="flex flex-col gap-4 mt-6">
-                {menuItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
-                      isActive(item.path)
-                        ? "bg-secondary text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    }`}
-                  >
-                    {item.icon}
-                    {item.name}
-                  </Link>
-                ))}
+                {isAuthenticated &&
+                  menuItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
+                        isActive(item.path)
+                          ? "bg-secondary text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      }`}
+                    >
+                      {item.icon}
+                      {item.name}
+                    </Link>
+                  ))}
                 
                 {isAuthenticated ? (
                   <Link
