@@ -1,5 +1,6 @@
 import React from 'react'
-import { Navbar } from './Navbar'
+import { Navbar } from '@/components/Navbar'
+import { Footer } from '@/components/Footer'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LayoutProps {
@@ -17,6 +18,7 @@ export const Layout = ({ children }: LayoutProps) => {
           {children}
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

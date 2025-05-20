@@ -19,13 +19,14 @@ import {
   Folders,
 } from 'lucide-react'
 import { SearchProducts } from '@/components/SearchProducts'
+import { FaqAccordion } from '@/components/FaqAccordion'
 
 const Index = () => {
   const navigate = useNavigate()
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-16">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">
             Document Intelligence Platform
@@ -159,6 +160,10 @@ const Index = () => {
               strict access controls to ensure your data remains protected.
             </CardContent>
           </Card>
+        </div>
+
+        <div className="py-8 border-t">
+          <FaqAccordion />
         </div>
       </div>
     </Layout>
