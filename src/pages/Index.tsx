@@ -1,29 +1,49 @@
-
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
-import { FileUploader } from "@/components/FileUploader";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, BrainCircuit, Search, Database, FolderPlus, Folders } from "lucide-react";
-import { SearchProducts } from "@/components/SearchProducts";
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Layout } from '@/components/Layout'
+import { FileUploader } from '@/components/FileUploader'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  FileText,
+  BrainCircuit,
+  Search,
+  Database,
+  FolderPlus,
+  Folders,
+} from 'lucide-react'
+import { SearchProducts } from '@/components/SearchProducts'
+import { FaqAccordion } from '@/components/FaqAccordion'
 
 const Index = () => {
-  const navigate = useNavigate();
-  
+  const navigate = useNavigate()
+
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-16">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">
             Document Intelligence Platform
           </h1>
           <p className="text-muted-foreground mt-2">
-            Upload, analyze, and extract insights from your construction documents by asking site-relevant questions.
+            Upload, analyze, and extract insights from your construction
+            documents by asking site-relevant questions.
           </p>
+          <Button
+            className="my-14 text-lg font-semibold"
+            onClick={() => navigate('/signin')}
+          >
+            Sign Up or Sign In to get started
+          </Button>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
@@ -61,20 +81,20 @@ const Index = () => {
               <FileUploader />
             </CardContent>
           </Card>
-        </div>
-        
+        </div> */}
+
         {/* Product and Supplier Search */}
-        <SearchProducts />
-        
-        <div className="text-center">
+        {/* <SearchProducts /> */}
+
+        {/* <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
             Or browse your existing documents
           </p>
           <Button onClick={() => navigate("/documents")}>
             View My Documents
           </Button>
-        </div>
-        
+        </div> */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           <Card>
             <CardHeader className="space-y-1">
@@ -87,11 +107,12 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              Our platform uses AWS Textract to extract text, forms, and tables from documents,
-              preserving their original structure for easy analysis.
+              Our platform uses AWS Textract to extract text, forms, and tables
+              from documents, preserving their original structure for easy
+              analysis.
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="space-y-1">
               <div className="flex items-center gap-2">
@@ -107,7 +128,7 @@ const Index = () => {
               extract key entities, and generate insights from your content.
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="space-y-1">
               <div className="flex items-center gap-2">
@@ -123,7 +144,7 @@ const Index = () => {
               semantic search capabilities across your document library.
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="space-y-1">
               <div className="flex items-center gap-2">
@@ -135,14 +156,18 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              All documents are securely stored in AWS S3 with encryption
-              and strict access controls to ensure your data remains protected.
+              All documents are securely stored in AWS S3 with encryption and
+              strict access controls to ensure your data remains protected.
             </CardContent>
           </Card>
         </div>
+
+        <div className="py-8 border-t">
+          <FaqAccordion />
+        </div>
       </div>
     </Layout>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index

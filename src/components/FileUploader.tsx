@@ -1,125 +1,127 @@
-
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Upload, X, FileText, FileImage, File } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Upload, X, FileText, FileImage, File } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
 
 interface FileUploaderProps {
-  projectId?: string;
+  projectId?: string
 }
 
 export const FileUploader = ({ projectId }: FileUploaderProps = {}) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { toast } = useToast();
-  
+  const [isDragging, setIsDragging] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const { toast } = useToast()
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
   const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  
+    setIsDragging(false)
+  }
+
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
+    e.preventDefault()
+    setIsDragging(false)
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
+      handleFile(e.dataTransfer.files[0])
     }
-  };
-  
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      handleFile(e.target.files[0])
     }
-  };
-  
+  }
+
   const handleFile = (file: File) => {
     // Check file type - allow PDF, DOCX, TXT, etc.
     const allowedTypes = [
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
-      "application/msword",
-      "image/jpeg",
-      "image/png"
-    ];
-    
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'application/msword',
+      'image/jpeg',
+      'image/png',
+    ]
+
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: "Unsupported file type",
-        description: "Please upload a PDF, DOCX, TXT, JPG, or PNG file.",
-        variant: "destructive"
-      });
-      return;
+        title: 'Unsupported file type',
+        description: 'Please upload a PDF, DOCX, TXT, JPG, or PNG file.',
+        variant: 'destructive',
+      })
+      return
     }
-    
+
     // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
-        title: "File too large",
-        description: "Maximum file size is 10MB.",
-        variant: "destructive"
-      });
-      return;
+        title: 'File too large',
+        description: 'Maximum file size is 10MB.',
+        variant: 'destructive',
+      })
+      return
     }
-    
-    setSelectedFile(file);
-    
+
+    setSelectedFile(file)
+
     // In a real app, this is where you would upload to AWS S3
     toast({
-      title: "File selected",
+      title: 'File selected',
       description: `${file.name} is ready to upload.`,
-    });
-  };
-  
+    })
+  }
+
   const removeFile = () => {
-    setSelectedFile(null);
-  };
-  
+    setSelectedFile(null)
+  }
+
   const getFileIcon = () => {
-    if (!selectedFile) return <Upload className="h-10 w-10 text-muted-foreground" />;
-    
-    if (selectedFile.type.includes("pdf")) {
-      return <FileText className="h-10 w-10 text-red-500" />;
-    } else if (selectedFile.type.includes("image")) {
-      return <FileImage className="h-10 w-10 text-blue-500" />;
+    if (!selectedFile)
+      return <Upload className="h-10 w-10 text-muted-foreground" />
+
+    if (selectedFile.type.includes('pdf')) {
+      return <FileText className="h-10 w-10 text-red-500" />
+    } else if (selectedFile.type.includes('image')) {
+      return <FileImage className="h-10 w-10 text-blue-500" />
     } else {
-      return <File className="h-10 w-10 text-green-500" />;
+      return <File className="h-10 w-10 text-green-500" />
     }
-  };
-  
+  }
+
   const uploadFile = () => {
-    if (!selectedFile) return;
-    
+    if (!selectedFile) return
+
     // Simulate upload to AWS S3
     toast({
-      title: "Upload started",
-      description: `Your file is being processed for project ID: ${projectId || "Unknown"}...`,
-    });
-    
+      title: 'Upload started',
+      description: `Your file is being processed for project ID: ${projectId || 'Unknown'}...`,
+    })
+
     // Simulate processing delay
     setTimeout(() => {
       toast({
-        title: "Upload complete",
-        description: "Your document has been processed successfully!",
-      });
-      setSelectedFile(null);
-    }, 2000);
-  };
-  
+        title: 'Upload complete',
+        description: 'Your document has been processed successfully!',
+      })
+      setSelectedFile(null)
+    }, 2000)
+  }
+
   return (
     <div className="w-full">
       <div
         className={cn(
-          "border-2 border-dashed rounded-lg p-4 md:p-6 transition-colors",
-          isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30",
-          selectedFile ? "bg-secondary/50" : "bg-transparent"
+          'border-2 border-dashed rounded-lg p-4 md:p-6 transition-colors',
+          isDragging
+            ? 'border-primary bg-primary/5'
+            : 'border-muted-foreground/30',
+          selectedFile ? 'bg-secondary/50' : 'bg-transparent',
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -127,7 +129,7 @@ export const FileUploader = ({ projectId }: FileUploaderProps = {}) => {
       >
         <div className="flex flex-col items-center justify-center gap-4">
           {getFileIcon()}
-          
+
           {selectedFile ? (
             <div className="flex flex-col items-center text-center">
               <p className="text-sm font-medium">{selectedFile.name}</p>
@@ -148,12 +150,14 @@ export const FileUploader = ({ projectId }: FileUploaderProps = {}) => {
           ) : (
             <>
               <div className="text-center">
-                <p className="text-sm font-medium">Drag & drop your document here</p>
+                <p className="text-sm font-medium">
+                  Drag & drop your document here
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Support for PDF, DOCX, TXT, JPG, PNG (max 10MB)
                 </p>
               </div>
-              
+
               <label htmlFor="file-upload">
                 <Input
                   id="file-upload"
@@ -171,5 +175,5 @@ export const FileUploader = ({ projectId }: FileUploaderProps = {}) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

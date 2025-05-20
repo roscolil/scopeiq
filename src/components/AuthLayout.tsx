@@ -1,15 +1,18 @@
-
-import React from "react";
-import { FilePlus } from "lucide-react";
-import { Link } from "react-router-dom";
+import React from 'react'
+import { FilePlus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface AuthLayoutProps {
-  children: React.ReactNode;
-  title: string;
-  description?: string;
+  children: React.ReactNode
+  title: string
+  description?: string
 }
 
-export const AuthLayout = ({ children, title, description }: AuthLayoutProps) => {
+export const AuthLayout = ({
+  children,
+  title,
+  description,
+}: AuthLayoutProps) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-secondary/20">
       <div className="w-full max-w-md space-y-8">
@@ -19,12 +22,14 @@ export const AuthLayout = ({ children, title, description }: AuthLayoutProps) =>
             <span className="text-xl font-bold">ScopeIQ</span>
           </Link>
           <h2 className="mt-6 text-2xl font-bold text-foreground">{title}</h2>
-          {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+          )}
         </div>
         <div className="bg-card p-6 sm:p-8 rounded-lg shadow-sm border">
           {children}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

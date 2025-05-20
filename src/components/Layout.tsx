@@ -1,15 +1,15 @@
-
-import React from "react";
-import { Navbar } from "./Navbar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import React from 'react'
+import { Navbar } from '@/components/Navbar'
+import { Footer } from '@/components/Footer'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export const Layout = ({ children }: LayoutProps) => {
-  const isMobile = useIsMobile();
-  
+  const isMobile = useIsMobile()
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -18,6 +18,7 @@ export const Layout = ({ children }: LayoutProps) => {
           {children}
         </div>
       </main>
+      <Footer />
     </div>
-  );
-};
+  )
+}
