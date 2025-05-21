@@ -1,4 +1,3 @@
-import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -17,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
+import { useState } from 'react'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -30,7 +30,7 @@ type FormValues = z.infer<typeof formSchema>
 const SignIn = () => {
   const navigate = useNavigate()
   const { signIn } = useAuth()
-  const [error, setError] = React.useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

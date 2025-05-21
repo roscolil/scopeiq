@@ -1,11 +1,14 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
+  // "files": [],
+  // "references": [
+  //   { "path": "./tsconfig.app.json" },
+  //   { "path": "./tsconfig.node.json" }
+  // ],
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx", // or "react" for older versions
+    "lib": ["DOM", "ESNext"],
+    "types": ["react", "react-dom"],
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -15,5 +18,6 @@
     "allowJs": true,
     "noUnusedLocals": false,
     "strictNullChecks": false
-  }
+  },
+  "exclude": ["dist", "eslint.config.js", "postcss.config.js"]
 }
