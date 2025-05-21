@@ -31,9 +31,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const ProfileHome = () => {
   const navigate = useNavigate()
-  const companyName = decodeURIComponent(
+  let companyName = decodeURIComponent(
     window.location.pathname.split('/')[1] || 'Your Company',
   )
+  companyName = companyName.charAt(0).toUpperCase() + companyName.slice(1)
 
   // Mock data for dashboard
   const recentProjects = [
