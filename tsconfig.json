@@ -14,10 +14,13 @@
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowJs": true,
     "noUnusedLocals": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true
   },
   "exclude": ["dist", "eslint.config.js", "postcss.config.js"]
 }

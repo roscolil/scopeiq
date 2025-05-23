@@ -13,15 +13,23 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import ForgotPassword from './pages/ForgotPassword'
 import ProfileSettings from './pages/ProfileSettings'
-import { AuthProvider } from './hooks/use-auth'
+// import { AuthProvider } from './hooks/use-auth'
 import ProfileHome from './pages/ProfileHome'
+import { Authenticator } from '@aws-amplify/ui-react'
+import { Amplify } from 'aws-amplify'
+import * as outputs from '../amplify_outputs.json'
+import '@aws-amplify/ui-react/styles.css'
 
-const queryClient = new QueryClient()
+Amplify.configure(outputs)
+
+// const queryClient = new QueryClient()
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
+  <Authenticator>
+    {({ signOut, user }) => (
+      // <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        {/* <AuthProvider> */}
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -49,9 +57,11 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+        {/* </AuthProvider> */}
+      </TooltipProvider>
+      // </QueryClientProvider>
+    )}
+  </Authenticator>
 )
 
 export default App
