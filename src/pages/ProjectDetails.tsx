@@ -413,6 +413,5 @@ const ProjectDetails = () => {
       </div>
     </Layout>
   )
-
 }
 export default ProjectDetails

@@ -8,16 +8,16 @@ export interface Document {
   projectId?: string
 }
 
-export interface Project {
+export type Project = {
+  id: string
+  name: string
+  description: string
+  createdAt: string
+  documentIds: string[]
   address: string
   streetNumber: string
   streetName: string
   suburb: string
+  state: string
   postcode: string
-  id: string
-  name: string
-  description: string
-  documentIds: string[]
-  createdAt: string
-  companyId: string
 }

@@ -76,11 +76,16 @@ const ProfileHome = () => {
               Welcome back! Here's an overview of your projects and activities.
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            {/* <Button variant="outline" size="sm">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </Button> */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={() => navigate(`/${companyId}/settings`)}
+            >
+              <Settings className="h-5 w-5" />
+              <span className="sr-only">Settings</span>
+            </Button>
             <Avatar>
               <AvatarImage src="/placeholder-avatar.png" />
               <AvatarFallback>SC</AvatarFallback>
@@ -242,7 +247,7 @@ const ProfileHome = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Button
                 variant="outline"
                 className="h-24 flex flex-col"
@@ -259,11 +264,15 @@ const ProfileHome = () => {
                 <Users className="h-6 w-6 mb-2" />
                 Team Members
               </Button>
-              <Button variant="outline" className="h-24 flex flex-col">
+              <Button
+                variant="outline"
+                className="h-24 flex flex-col"
+                onClick={() => navigate(`/${companyId}/settings`)}
+              >
                 <Settings className="h-6 w-6 mb-2" />
                 Settings
               </Button>
-            </div>
+            </div> */}
           </TabsContent>
 
           <TabsContent value="projects">
@@ -283,7 +292,7 @@ const ProfileHome = () => {
                 <p className="text-muted-foreground">
                   Manage all your construction projects in one place.
                 </p>
-                <div className="mt-4 text-center py-8">
+                {/* <div className="mt-4 text-center py-8">
                   <Folders className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <Button
                     onClick={() => navigate(`/${companyId}/projects`)}
@@ -291,7 +300,7 @@ const ProfileHome = () => {
                   >
                     View All Projects
                   </Button>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
           </TabsContent>
@@ -301,20 +310,20 @@ const ProfileHome = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Documents</CardTitle>
-                  <Button>
+                  {/* <Button>
                     <FileUp className="h-4 w-4 mr-2" />
                     Upload Document
-                  </Button>
+                  </Button> */}
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
                   Access all your documents across projects.
                 </p>
-                <div className="mt-4 text-center py-8">
+                {/* <div className="mt-4 text-center py-8">
                   <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <Button className="mt-2">View All Documents</Button>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
           </TabsContent>

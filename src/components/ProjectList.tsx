@@ -35,7 +35,7 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {projects.map(project => 
+      {projects.map(project => (
         <Card key={project.id} className="overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">
@@ -59,13 +59,15 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
               variant="outline"
               size="sm"
               className="w-full"
-              onClick={() => navigate(`/${project.companyId}/projects/${project.id}`)}
+              onClick={() =>
+                navigate(`/${project.companyId}/projects/${project.id}`)
+              }
             >
               View Project
             </Button>
           </CardFooter>
         </Card>
-      )}
+      ))}
     </div>
   )
 }

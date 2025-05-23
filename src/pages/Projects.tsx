@@ -25,6 +25,12 @@ const Projects = () => {
         'Main construction project for Site A including all blueprints and specifications.',
       createdAt: new Date(2025, 3, 8).toISOString(),
       documentIds: ['doc-1', 'doc-3'],
+      address: '123 Main St, Springfield',
+      streetNumber: '123',
+      streetName: 'Main St',
+      suburb: 'Springfield',
+      state: 'VIC',
+      postcode: '3000',
     },
     {
       id: 'project-2',
@@ -32,6 +38,12 @@ const Projects = () => {
       description: 'Renovation project for existing building B.',
       createdAt: new Date(2025, 3, 5).toISOString(),
       documentIds: ['doc-2'],
+      address: '456 Side Rd, Shelbyville',
+      streetNumber: '456',
+      streetName: 'Side Rd',
+      suburb: 'Shelbyville',
+      state: 'NSW',
+      postcode: '2000',
     },
     {
       id: 'project-3',
@@ -40,6 +52,12 @@ const Projects = () => {
         'Regular maintenance schedule and documentation for all sites.',
       createdAt: new Date(2025, 3, 1).toISOString(),
       documentIds: ['doc-4'],
+      address: '789 High St, Capital City',
+      streetNumber: '789',
+      streetName: 'High St',
+      suburb: 'Capital City',
+      state: 'QLD',
+      postcode: '4000',
     },
   ])
 
@@ -47,12 +65,22 @@ const Projects = () => {
     address: string
     name: string
     description: string
+    streetNumber?: string
+    streetName?: string
+    suburb?: string
+    state?: string
+    postcode?: string
   }) => {
     const newProject: Project = {
       ...projectData,
       id: `project-${projects.length + 1}`,
       createdAt: new Date().toISOString(),
       documentIds: [],
+      streetNumber: projectData.streetNumber || '',
+      streetName: projectData.streetName || '',
+      suburb: projectData.suburb || '',
+      state: projectData.state || '',
+      postcode: projectData.postcode || '',
     }
 
     setProjects([...projects, newProject])
