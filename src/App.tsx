@@ -27,25 +27,22 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/:companyName" element={<ProfileHome />} />{' '}
+            <Route path="/:companyId" element={<ProfileHome />} />{' '}
             {/* List projects on profile landing page */}
-            <Route path="/:companyName/projects" element={<Projects />} />
+            <Route path="/:companyId/projects" element={<Projects />} />
             <Route
-              path="/:companyName/projects/:projectId"
+              path="/:companyId/projects/:projectId"
               element={<ProjectDetails />}
             />
             <Route
-              path="/:companyName/projects/:projectId/documents"
+              path="/:companyId/projects/:projectId/documents"
               element={<Documents />}
             />
             <Route
-              path="/:companyName/projects/:projectId/:documentId"
+              path="/:companyId/projects/:projectId/:documentId"
               element={<Viewer />}
             />
-            <Route
-              path="/:companyName/settings"
-              element={<ProfileSettings />}
-            />
+            <Route path="/:companyId/settings" element={<ProfileSettings />} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

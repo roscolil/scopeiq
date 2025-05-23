@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
@@ -31,10 +30,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const ProfileHome = () => {
   const navigate = useNavigate()
-  let companyName = decodeURIComponent(
+  let companyId = decodeURIComponent(
     window.location.pathname.split('/')[1] || 'Your Company',
   )
-  companyName = companyName.charAt(0).toUpperCase() + companyName.slice(1)
+  companyId = companyId.charAt(0).toUpperCase() + companyId.slice(1)
 
   // Mock data for dashboard
   const recentProjects = [
@@ -71,7 +70,7 @@ const ProfileHome = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              {companyName} Dashboard
+              {companyId} Dashboard
             </h1>
             <p className="text-muted-foreground">
               Welcome back! Here's an overview of your projects and activities.
@@ -164,7 +163,7 @@ const ProfileHome = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/${companyName}/projects`)}
+                      onClick={() => navigate(`/${companyId}/projects`)}
                     >
                       View all
                     </Button>
@@ -189,7 +188,7 @@ const ProfileHome = () => {
                 <CardFooter>
                   <Button
                     className="w-full"
-                    onClick={() => navigate(`/${companyName}/projects/new`)}
+                    onClick={() => navigate(`/${companyId}/projects/new`)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     New Project
@@ -247,7 +246,7 @@ const ProfileHome = () => {
               <Button
                 variant="outline"
                 className="h-24 flex flex-col"
-                onClick={() => navigate(`/${companyName}/projects/new`)}
+                onClick={() => navigate(`/${companyId}/projects/new`)}
               >
                 <FolderPlus className="h-6 w-6 mb-2" />
                 New Project
@@ -273,7 +272,7 @@ const ProfileHome = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle>All Projects</CardTitle>
                   <Button
-                    onClick={() => navigate(`/${companyName}/projects/new`)}
+                    onClick={() => navigate(`/${companyId}/projects/new`)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     New Project
@@ -287,7 +286,7 @@ const ProfileHome = () => {
                 <div className="mt-4 text-center py-8">
                   <Folders className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <Button
-                    onClick={() => navigate(`/${companyName}/projects`)}
+                    onClick={() => navigate(`/${companyId}/projects`)}
                     className="mt-2"
                   >
                     View All Projects

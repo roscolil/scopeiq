@@ -35,6 +35,12 @@ const mockProjects: Project[] = [
       'Main construction project for Site A including all blueprints and specifications.',
     createdAt: new Date(2025, 3, 8).toISOString(),
     documentIds: ['doc-1', 'doc-3'],
+    companyId: 'company-1',
+    address: '123 Main St',
+    streetNumber: '123',
+    streetName: 'Main St',
+    suburb: 'Central',
+    postcode: '2000',
   },
   {
     id: 'project-2',
@@ -42,6 +48,12 @@ const mockProjects: Project[] = [
     description: 'Renovation project for existing building B.',
     createdAt: new Date(2025, 3, 5).toISOString(),
     documentIds: ['doc-2'],
+    companyId: 'company-1',
+    address: '456 Side Rd',
+    streetNumber: '456',
+    streetName: 'Side Rd',
+    suburb: 'Westside',
+    postcode: '3000',
   },
   {
     id: 'project-3',
@@ -50,6 +62,12 @@ const mockProjects: Project[] = [
       'Regular maintenance schedule and documentation for all sites.',
     createdAt: new Date(2025, 3, 1).toISOString(),
     documentIds: ['doc-4'],
+    companyId: 'company-1',
+    address: '789 North Ave',
+    streetNumber: '789',
+    streetName: 'North Ave',
+    suburb: 'Northville',
+    postcode: '4000',
   },
 ]
 
@@ -116,7 +134,7 @@ const ProjectDetails = () => {
   }, [id])
 
   const handleUpdateProject = (
-    projectData: Omit<Project, 'id' | 'createdAt' | 'documentIds'>,
+    projectData: Omit<Project, 'projectId' | 'createdAt' | 'documentIds'>,
   ) => {
     if (!project) return
 
@@ -245,6 +263,11 @@ const ProjectDetails = () => {
                   <ProjectForm
                     onSubmit={handleUpdateProject}
                     defaultValues={{
+                      address: project.address || '',
+                      streetNumber: project.streetNumber || '',
+                      streetName: project.streetName || '',
+                      suburb: project.suburb || '',
+                      postcode: project.postcode || '',
                       name: project.name,
                       description: project.description,
                     }}
@@ -307,6 +330,11 @@ const ProjectDetails = () => {
                 <ProjectForm
                   onSubmit={handleUpdateProject}
                   defaultValues={{
+                    address: project.address || '',
+                    streetNumber: project.streetNumber || '',
+                    streetName: project.streetName || '',
+                    suburb: project.suburb || '',
+                    postcode: project.postcode || '',
                     name: project.name,
                     description: project.description,
                   }}
@@ -385,6 +413,6 @@ const ProjectDetails = () => {
       </div>
     </Layout>
   )
-}
 
+}
 export default ProjectDetails
