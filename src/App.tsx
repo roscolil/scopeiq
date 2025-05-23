@@ -17,7 +17,7 @@ import ProfileSettings from './pages/ProfileSettings'
 import ProfileHome from './pages/ProfileHome'
 import { Authenticator } from '@aws-amplify/ui-react'
 import { Amplify } from 'aws-amplify'
-import * as outputs from '../amplify_outputs.json'
+import outputs from '../amplify_outputs.json'
 import '@aws-amplify/ui-react/styles.css'
 
 Amplify.configure(outputs)
