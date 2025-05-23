@@ -78,10 +78,10 @@ const ProfileHome = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               <Bell className="h-4 w-4 mr-2" />
               Notifications
-            </Button>
+            </Button> */}
             <Avatar>
               <AvatarImage src="/placeholder-avatar.png" />
               <AvatarFallback>SC</AvatarFallback>
