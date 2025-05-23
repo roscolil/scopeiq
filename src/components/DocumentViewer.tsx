@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { FileText } from 'lucide-react'
 import { AIActions } from './AIActions'
@@ -19,7 +19,7 @@ export const DocumentViewer = ({ documentId }: DocumentViewerProps) => {
   })
 
   // In a real app, we'd fetch the document from AWS S3 and Textract
-  React.useEffect(() => {
+  useEffect(() => {
     setIsLoading(true)
 
     // Simulate API call
