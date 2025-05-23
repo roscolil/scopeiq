@@ -1,9 +1,9 @@
-import React from 'react'
 import { FilePlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ReactNode } from 'react'
 
 interface AuthLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
   title: string
   description?: string
 }

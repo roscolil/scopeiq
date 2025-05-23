@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Project } from '@/types'
 import {
@@ -60,7 +59,9 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
               variant="outline"
               size="sm"
               className="w-full"
-              onClick={() => navigate(`/:companyId/projects/${project.id}`)}
+              onClick={() =>
+                navigate(`/${project.companyId}/projects/${project.id}`)
+              }
             >
               View Project
             </Button>

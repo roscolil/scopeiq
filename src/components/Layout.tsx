@@ -1,10 +1,10 @@
-import React from 'react'
+import { ReactNode } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LayoutProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export const Layout = ({ children }: LayoutProps) => {
