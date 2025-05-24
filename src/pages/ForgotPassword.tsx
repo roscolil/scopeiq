@@ -13,49 +13,78 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useAuth } from '@/hooks/use-auth'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
-
-const formSchema = z.object({
+import { resetPassword, confirmResetPassword } from 'aws-amplify/auth'
+const emailSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
 })
 
-type FormValues = z.infer<typeof formSchema>
+const resetSchema = emailSchema.extend({
+  code: z.string().min(4, 'Enter the code sent to your email'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+type EmailFormValues = z.infer<typeof emailSchema>
+type ResetFormValues = z.infer<typeof resetSchema>
 
 const ForgotPassword = () => {
-  const { resetPassword } = useAuth()
+  const [step, setStep] = useState<'request' | 'reset' | 'done'>('request')
+  const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [isSubmitted, setIsSubmitted] = useState(false)
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-    },
+  const emailForm = useForm<EmailFormValues>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: '' },
   })
 
-  const onSubmit = async (data: FormValues) => {
+  const resetForm = useForm<ResetFormValues>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: { email: email, code: '', password: '' },
+  })
+
+  // Step 1: Request reset code
+  const onRequest = async (data: EmailFormValues) => {
     try {
       setError(null)
-      await resetPassword(data.email)
-      setIsSubmitted(true)
+      await resetPassword({ username: data.email })
+      setEmail(data.email)
+      setStep('reset')
       toast({
-        title: 'Password reset email sent',
-        description: 'Check your email for password reset instructions.',
+        title: 'Password reset code sent',
+        description: 'Check your email for the verification code.',
       })
     } catch (err) {
       setError(
-        'An error occurred while sending the password reset email. Please try again.',
+        'Could not send reset code. Please check your email and try again.',
       )
+    }
+  }
+
+  // Step 2: Submit new password with code
+  const onReset = async (data: ResetFormValues) => {
+    try {
+      setError(null)
+      await confirmResetPassword({
+        username: data.email,
+        confirmationCode: data.code,
+        newPassword: data.password,
+      })
+      setStep('done')
+      toast({
+        title: 'Password reset successful',
+        description: 'You can now sign in with your new password.',
+      })
+    } catch (err) {
+      setError('Invalid code or password. Please try again.')
     }
   }
 
   return (
     <AuthLayout
       title="Reset your password"
-      description="Enter your email address and we'll send you a link to reset your password"
+      description="Enter your email address and we'll send you a code to reset your password"
     >
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -63,23 +92,14 @@ const ForgotPassword = () => {
         </Alert>
       )}
 
-      {isSubmitted ? (
-        <div className="text-center space-y-4">
-          <Alert className="mb-4">
-            <AlertDescription>
-              If an account exists with the email you provided, you will receive
-              a password reset link shortly.
-            </AlertDescription>
-          </Alert>
-          <Button asChild className="w-full">
-            <Link to="/signin">Return to sign in</Link>
-          </Button>
-        </div>
-      ) : (
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      {step === 'request' && (
+        <Form {...emailForm}>
+          <form
+            onSubmit={emailForm.handleSubmit(onRequest)}
+            className="space-y-4"
+          >
             <FormField
-              control={form.control}
+              control={emailForm.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
@@ -91,17 +111,15 @@ const ForgotPassword = () => {
                 </FormItem>
               )}
             />
-
             <Button
               type="submit"
               className="w-full"
-              disabled={form.formState.isSubmitting}
+              disabled={emailForm.formState.isSubmitting}
             >
-              {form.formState.isSubmitting
-                ? 'Sending email...'
-                : 'Send reset link'}
+              {emailForm.formState.isSubmitting
+                ? 'Sending code...'
+                : 'Send reset code'}
             </Button>
-
             <div className="text-center">
               <Link
                 to="/signin"
@@ -112,6 +130,92 @@ const ForgotPassword = () => {
             </div>
           </form>
         </Form>
+      )}
+
+      {step === 'reset' && (
+        <Form {...resetForm}>
+          <form
+            onSubmit={resetForm.handleSubmit(onReset)}
+            className="space-y-4"
+          >
+            <FormField
+              control={resetForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input {...field} disabled value={email} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={resetForm.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Verification Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter code" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={resetForm.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="New password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={resetForm.formState.isSubmitting}
+            >
+              {resetForm.formState.isSubmitting
+                ? 'Resetting...'
+                : 'Reset Password'}
+            </Button>
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="link"
+                className="text-sm px-0"
+                onClick={() => setStep('request')}
+              >
+                Back to email entry
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
+
+      {step === 'done' && (
+        <div className="text-center space-y-4">
+          <Alert className="mb-4">
+            <AlertDescription>
+              Your password has been reset. You can now sign in with your new
+              password.
+            </AlertDescription>
+          </Alert>
+          <Button asChild className="w-full">
+            <Link to="/signin">Return to sign in</Link>
+          </Button>
+        </div>
       )}
     </AuthLayout>
   )

@@ -12,11 +12,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useAuth } from '@/hooks/use-auth'
+// import { useAuth } from '@/hooks/use-auth'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
+import { signIn } from 'aws-amplify/auth'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -29,7 +30,7 @@ type FormValues = z.infer<typeof formSchema>
 
 const SignIn = () => {
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  // const { signIn } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   const form = useForm<FormValues>({
@@ -43,7 +44,7 @@ const SignIn = () => {
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
-      await signIn(data.email, data.password)
+      await signIn({ username: data.email, password: data.password })
       toast({
         title: 'Success',
         description: 'You have successfully signed in.',
