@@ -45,10 +45,10 @@ const SignIn = () => {
     try {
       setError(null)
       await signIn({ username: data.email, password: data.password })
-      toast({
-        title: 'Success',
-        description: 'You have successfully signed in.',
-      })
+      // toast({
+      //   title: 'Success',
+      //   description: 'You have successfully signed in.',
+      // })
       navigate('/')
     } catch (err) {
       setError('Invalid email or password. Please try again.')
