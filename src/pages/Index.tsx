@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { getCurrentUser } from 'aws-amplify/auth'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
-// import { FileUploader } from '@/components/FileUploader'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -16,28 +15,37 @@ import {
   BrainCircuit,
   Search,
   Database,
-  // FolderPlus,
-  // Folders,
   ArrowRight,
 } from 'lucide-react'
-// import { SearchProducts } from '@/components/SearchProducts'
 import { FaqAccordion } from '@/components/FaqAccordion'
 import { AddToHomeScreen } from '@/components/AddToHomeScreen'
+import { toast } from '@/hooks/use-toast' // <-- Make sure this is imported
 
 const Index = () => {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [hasWelcomed, setHasWelcomed] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        await getCurrentUser()
+        const { userId } = await getCurrentUser()
+        console.log('user :>> ', userId)
         setIsAuthenticated(true)
+        if (!hasWelcomed) {
+          toast({
+            // title: `Welcome, ${userId || 'user'}!`,
+            title: `Welcome <insert username here>!`,
+            description: 'You have successfully signed in.',
+          })
+          setHasWelcomed(true)
+        }
       } catch {
         setIsAuthenticated(false)
       }
     }
     checkAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -69,58 +77,6 @@ const Index = () => {
             </div>
           )}
         </div>
-
-        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <Folders className="h-5 w-5 text-primary" />
-                <CardTitle>Projects</CardTitle>
-              </div>
-              <CardDescription>
-                Organize your documents in projects
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Create projects to organize your documents and collaborate with your team.
-              </p>
-              <div className="flex justify-center">
-                <Button onClick={() => navigate("/projects")} className="w-full">
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Manage Projects
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                <CardTitle>Upload Document</CardTitle>
-              </div>
-              <CardDescription>
-                Supported formats: PDF, DOCX, TXT, JPG, PNG
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FileUploader />
-            </CardContent>
-          </Card>
-        </div> */}
-
-        {/* Product and Supplier Search */}
-        {/* <SearchProducts /> */}
-
-        {/* <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-2">
-            Or browse your existing documents
-          </p>
-          <Button onClick={() => navigate("/documents")}>
-            View My Documents
-          </Button>
-        </div> */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
           <Card>
