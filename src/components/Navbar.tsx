@@ -10,6 +10,7 @@ import {
   Folders,
   LogIn,
   LogOut,
+  Settings,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { signOut, getCurrentUser } from 'aws-amplify/auth'
@@ -64,7 +65,8 @@ export const Navbar = () => {
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container-2xl h-14 flex items-center justify-between">
-        <div className="flex items-center">
+        {/* Left side: Logo and menu items */}
+        <div className="flex items-center gap-8">
           <Link
             to="/"
             className="font-semibold text-lg flex items-center gap-2 text-primary"
@@ -72,9 +74,7 @@ export const Navbar = () => {
             <FilePlus className="h-5 w-5" />
             <span>ScopeIQ</span>
           </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
+          {/* Show menu items on desktop if authenticated */}
           <div className="hidden md:flex items-center gap-6">
             {isAuthenticated &&
               menuItems.map(item => (
@@ -91,7 +91,10 @@ export const Navbar = () => {
                 </Link>
               ))}
           </div>
+        </div>
 
+        {/* Right side: Sheet menu and user actions */}
+        <div className="flex items-center gap-2">
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -122,13 +125,13 @@ export const Navbar = () => {
                     <Link
                       to="/profile"
                       className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
-                        isActive('/profile')
+                        isActive('/settings')
                           ? 'bg-secondary text-foreground'
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                       }`}
                     >
-                      <User className="w-5 h-5 mr-2" />
-                      Profile
+                      <Settings className="w-5 h-5 mr-2" />
+                      Settings
                     </Link>
                     <Button
                       variant="ghost"
@@ -167,14 +170,14 @@ export const Navbar = () => {
                       className="rounded-full"
                       asChild
                     >
-                      <Link to="/profile">
-                        <User className="h-5 w-5" />
-                        <span className="sr-only">Profile</span>
+                      <Link to="/settings">
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Settings</span>
                       </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <span>Profile</span>
+                    <span>Settings</span>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
