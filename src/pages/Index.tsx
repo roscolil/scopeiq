@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCurrentUser } from 'aws-amplify/auth'
+// import { getCurrentUser } from 'aws-amplify/auth'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
@@ -20,22 +20,29 @@ import {
 import { FaqAccordion } from '@/components/FaqAccordion'
 import { AddToHomeScreen } from '@/components/AddToHomeScreen'
 import { toast } from '@/hooks/use-toast' // <-- Make sure this is imported
+import { fetchUserAttributes } from 'aws-amplify/auth'
 
 const Index = () => {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [hasWelcomed, setHasWelcomed] = useState(false)
+  const [name, setName] = useState<string>('user')
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { userId } = await getCurrentUser()
-        console.log('user :>> ', userId)
+        const { name } = await fetchUserAttributes()
         setIsAuthenticated(true)
+        // Fetch user attributes and set name
+        // try {
+        //   const attrs = await fetchUserAttributes()
+        //   setName(attrs.name || 'user')
+        // } catch {
+        //   setName('user')
+        // }
         if (!hasWelcomed) {
           toast({
-            // title: `Welcome, ${userId || 'user'}!`,
-            title: `Welcome <insert username here>!`,
+            title: `Hello there ${name?.split(' ')[0] || 'friend'}!`,
             description: 'You have successfully signed in.',
           })
           setHasWelcomed(true)
@@ -46,8 +53,7 @@ const Index = () => {
     }
     checkAuth()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
+  }, [hasWelcomed, name])
   return (
     <Layout>
       <div className="space-y-16">
