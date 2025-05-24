@@ -44,28 +44,26 @@ const App = () => (
             path="/*"
             element={
               <Authenticator>
-                {({ signOut, user }) => (
-                  <Routes>
-                    <Route path=":companyId" element={<ProfileHome />} />
-                    <Route path=":companyId/projects" element={<Projects />} />
-                    <Route
-                      path=":companyId/projects/:projectId"
-                      element={<ProjectDetails />}
-                    />
-                    <Route
-                      path=":companyId/projects/:projectId/documents"
-                      element={<Documents />}
-                    />
-                    <Route
-                      path=":companyId/projects/:projectId/:documentId"
-                      element={<Viewer />}
-                    />
-                    <Route
-                      path=":companyId/settings"
-                      element={<ProfileSettings />}
-                    />
-                  </Routes>
-                )}
+                <Routes>
+                  <Route path=":companyId" element={<ProfileHome />} />
+                  <Route path=":companyId/projects" element={<Projects />} />
+                  <Route
+                    path=":companyId/projects/:projectId"
+                    element={<ProjectDetails />}
+                  />
+                  <Route
+                    path=":companyId/projects/:projectId/documents"
+                    element={<Documents />}
+                  />
+                  <Route
+                    path=":companyId/projects/:projectId/:documentId"
+                    element={<Viewer />}
+                  />
+                  <Route
+                    path=":companyId/settings"
+                    element={<ProfileSettings />}
+                  />
+                </Routes>
               </Authenticator>
             }
           />
