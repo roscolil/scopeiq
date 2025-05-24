@@ -13,10 +13,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { useAuth } from '@/hooks/use-auth'
+// import { useAuth } from '@/hooks/use-auth'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
+import { signUp } from 'aws-amplify/auth'
 
 const formSchema = z
   .object({
@@ -39,7 +40,7 @@ type FormValues = z.infer<typeof formSchema>
 
 const SignUp = () => {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  // const { signUp } = useAuth()
   const [error, setError] = React.useState<string | null>(null)
 
   const form = useForm<FormValues>({
@@ -56,20 +57,30 @@ const SignUp = () => {
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
-      await signUp(data.email, data.password, data.name)
+      await signUp({
+        username: data.email,
+        password: data.password,
+        options: {
+          userAttributes: {
+            name: data.name,
+            email: data.email,
+            'custom:Company': data.company,
+          },
+        },
+      })
       toast({
         title: 'Account created',
         description:
           'Your account has been successfully created. Please check your email for verification.',
       })
-      navigate('/signin')
+      // Navigate to verification page, passing email as state
+      navigate('/verify-email', { state: { email: data.email } })
     } catch (err) {
       setError(
         'An error occurred while creating your account. Please try again.',
       )
     }
   }
-
   return (
     <AuthLayout
       title="Create an account"

@@ -19,49 +19,62 @@ import { Authenticator } from '@aws-amplify/ui-react'
 import { Amplify } from 'aws-amplify'
 import outputs from '../amplify_outputs.json'
 import '@aws-amplify/ui-react/styles.css'
+import VerifyEmail from './pages/VerifyEmail'
 
 Amplify.configure(outputs)
 
 // const queryClient = new QueryClient()
 
 const App = () => (
-  <Authenticator>
-    {({ signOut, user }) => (
-      // <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {/* <AuthProvider> */}
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/:companyId" element={<ProfileHome />} />{' '}
-            {/* List projects on profile landing page */}
-            <Route path="/:companyId/projects" element={<Projects />} />
-            <Route
-              path="/:companyId/projects/:projectId"
-              element={<ProjectDetails />}
-            />
-            <Route
-              path="/:companyId/projects/:projectId/documents"
-              element={<Documents />}
-            />
-            <Route
-              path="/:companyId/projects/:projectId/:documentId"
-              element={<Viewer />}
-            />
-            <Route path="/:companyId/settings" element={<ProfileSettings />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        {/* </AuthProvider> */}
-      </TooltipProvider>
-      // </QueryClientProvider>
-    )}
-  </Authenticator>
+  <>
+    {/* <QueryClientProvider client={queryClient}> */}
+    <TooltipProvider>
+      {/* <AuthProvider> */}
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="*" element={<NotFound />} />
+          <Route
+            path="/*"
+            element={
+              <Authenticator>
+                {({ signOut, user }) => (
+                  <Routes>
+                    <Route path=":companyId" element={<ProfileHome />} />
+                    <Route path=":companyId/projects" element={<Projects />} />
+                    <Route
+                      path=":companyId/projects/:projectId"
+                      element={<ProjectDetails />}
+                    />
+                    <Route
+                      path=":companyId/projects/:projectId/documents"
+                      element={<Documents />}
+                    />
+                    <Route
+                      path=":companyId/projects/:projectId/:documentId"
+                      element={<Viewer />}
+                    />
+                    <Route
+                      path=":companyId/settings"
+                      element={<ProfileSettings />}
+                    />
+                  </Routes>
+                )}
+              </Authenticator>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+      {/* </AuthProvider> */}
+    </TooltipProvider>
+    {/* </QueryClientProvider> */}
+  </>
 )
 
 export default App

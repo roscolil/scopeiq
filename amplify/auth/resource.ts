@@ -6,7 +6,7 @@ export const auth = defineAuth({
       verificationEmailStyle: 'CODE',
       verificationEmailSubject: 'Welcome to ScopeIQ',
       verificationEmailBody: createCode =>
-        `Use this code to confirm your account: ${createCode()}`,
+        `Use this code to verify your account: ${createCode()}`,
     },
   },
 })

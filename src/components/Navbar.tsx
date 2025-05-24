@@ -1,5 +1,5 @@
-import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   FilePlus,
@@ -9,15 +9,39 @@ import {
   User,
   Folders,
   LogIn,
+  LogOut,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { useIsMobile, useIsTablet } from '@/hooks/use-mobile'
+import { signOut, getCurrentUser } from 'aws-amplify/auth'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 export const Navbar = () => {
   const location = useLocation()
-  const isMobile = useIsMobile()
-  const isTablet = useIsTablet()
-  const isSmallScreen = isMobile || isTablet
+  const navigate = useNavigate()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await getCurrentUser()
+        setIsAuthenticated(true)
+      } catch {
+        setIsAuthenticated(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  const handleSignOut = async () => {
+    await signOut()
+    setIsAuthenticated(false)
+    navigate('/signin')
+  }
 
   const menuItems = [
     { name: 'Home', path: '/', icon: <Home className="w-5 h-5 mr-2" /> },
@@ -36,9 +60,6 @@ export const Navbar = () => {
   const isActive = (path: string) => {
     return location.pathname === path
   }
-
-  // Mock authentication status - replace with actual auth state when Supabase is connected
-  const isAuthenticated = false
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -97,17 +118,27 @@ export const Navbar = () => {
                   ))}
 
                 {isAuthenticated ? (
-                  <Link
-                    to="/profile"
-                    className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
-                      isActive('/profile')
-                        ? 'bg-secondary text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                    }`}
-                  >
-                    <User className="w-5 h-5 mr-2" />
-                    Profile
-                  </Link>
+                  <>
+                    <Link
+                      to="/profile"
+                      className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
+                        isActive('/profile')
+                          ? 'bg-secondary text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                      }`}
+                    >
+                      <User className="w-5 h-5 mr-2" />
+                      Profile
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center py-2 px-3 text-sm font-medium rounded-md"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="w-5 h-5 mr-2" />
+                      Sign Out
+                    </Button>
+                  </>
                 ) : (
                   <Link
                     to="/signin"
@@ -126,17 +157,46 @@ export const Navbar = () => {
           </Sheet>
 
           {isAuthenticated ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              asChild
-            >
-              <Link to="/profile">
-                <User className="h-5 w-5" />
-                <span className="sr-only">Profile</span>
-              </Link>
-            </Button>
+            <>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                      asChild
+                    >
+                      <Link to="/profile">
+                        <User className="h-5 w-5" />
+                        <span className="sr-only">Profile</span>
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>Profile</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span className="sr-only">Sign Out</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>Sign Out</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
           ) : (
             <Button
               variant="ghost"
