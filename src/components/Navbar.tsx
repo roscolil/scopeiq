@@ -20,11 +20,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,6 +47,7 @@ export const Navbar = () => {
   }, [])
 
   const handleSignOut = async () => {
+    setShowLogoutModal(false)
     await signOut()
     setIsAuthenticated(false)
     navigate('/signin')
@@ -136,7 +145,7 @@ export const Navbar = () => {
                     <Button
                       variant="ghost"
                       className="flex items-center py-2 px-3 text-sm font-medium rounded-md"
-                      onClick={handleSignOut}
+                      onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="w-5 h-5 mr-2" />
                       Sign Out
@@ -188,7 +197,7 @@ export const Navbar = () => {
                       variant="ghost"
                       size="icon"
                       className="rounded-full"
-                      onClick={handleSignOut}
+                      onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="h-5 w-5" />
                       <span className="sr-only">Sign Out</span>
@@ -215,6 +224,23 @@ export const Navbar = () => {
           )}
         </div>
       </div>
+      {/* Logout Confirmation Modal */}
+      <Dialog open={showLogoutModal} onOpenChange={setShowLogoutModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign out</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to sign out?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLogoutModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

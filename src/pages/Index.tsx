@@ -19,12 +19,14 @@ import {
 } from 'lucide-react'
 import { FaqAccordion } from '@/components/FaqAccordion'
 import { AddToHomeScreen } from '@/components/AddToHomeScreen'
-import { toast } from '@/hooks/use-toast' // <-- Make sure this is imported
+import { toast } from '@/hooks/use-toast'
 import { fetchUserAttributes } from 'aws-amplify/auth'
+import { Spinner } from '@/components/Spinner'
 
 const Index = () => {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [hasWelcomed, setHasWelcomed] = useState(false)
   const [name, setName] = useState<string>('user')
 
@@ -33,14 +35,7 @@ const Index = () => {
       try {
         const { name } = await fetchUserAttributes()
         setIsAuthenticated(true)
-        // Fetch user attributes and set name
-        // try {
-        //   const attrs = await fetchUserAttributes()
-        //   setName(attrs.name || 'user')
-        // } catch {
-        //   setName('user')
-        // }
-        if (!hasWelcomed) {
+        if (!hasWelcomed && !isAuthenticated) {
           toast({
             title: `Hello there ${name?.split(' ')[0] || 'friend'}!`,
             description: 'You have successfully signed in.',
@@ -49,11 +44,28 @@ const Index = () => {
         }
       } catch {
         setIsAuthenticated(false)
+      } finally {
+        setIsLoading(false)
       }
     }
     checkAuth()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasWelcomed, name])
+  }, [hasWelcomed, isAuthenticated, name])
+
+  if (isLoading) {
+    // Show a loading spinner or nothing while checking auth
+    return <Spinner />
+  }
+
+  if (!isAuthenticated) {
+    // Optionally, redirect or show a message
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Please sign in to access this page.
+      </div>
+    )
+  }
+
+  // Only render the body if authenticated
   return (
     <Layout>
       <div className="space-y-16">

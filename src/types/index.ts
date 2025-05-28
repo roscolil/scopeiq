@@ -15,6 +15,7 @@ export type Project = {
   createdAt: string
   documentIds: string[]
   address: string
+  companyId: string
   streetNumber: string
   streetName: string
   suburb: string
