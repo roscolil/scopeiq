@@ -65,7 +65,6 @@ const ForgotPassword = () => {
 
   // Step 2: Submit new password with code
   const onReset = async (data: ResetFormValues) => {
-    console.log('data :>> ', data)
     try {
       setError(null)
       await confirmResetPassword({

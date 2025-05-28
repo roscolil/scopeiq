@@ -40,6 +40,7 @@ const mockProjects: Project[] = [
     streetNumber: '123',
     streetName: 'Main St',
     suburb: 'Central',
+    state: 'NSW',
     postcode: '2000',
   },
   {
@@ -53,6 +54,7 @@ const mockProjects: Project[] = [
     streetNumber: '456',
     streetName: 'Side Rd',
     suburb: 'Westside',
+    state: 'VIC',
     postcode: '3000',
   },
   {
@@ -67,6 +69,7 @@ const mockProjects: Project[] = [
     streetNumber: '789',
     streetName: 'North Ave',
     suburb: 'Northville',
+    state: 'QLD',
     postcode: '4000',
   },
 ]
@@ -133,14 +136,20 @@ const ProjectDetails = () => {
     }
   }, [id])
 
-  const handleUpdateProject = (
-    projectData: Omit<Project, 'projectId' | 'createdAt' | 'documentIds'>,
-  ) => {
+  const handleUpdateProject = (data: {
+    address: string
+    streetNumber?: string
+    streetName?: string
+    suburb?: string
+    postcode?: string
+    name: string
+    description: string
+  }) => {
     if (!project) return
 
     const updatedProject = {
       ...project,
-      ...projectData,
+      ...data,
     }
 
     setProject(updatedProject)
