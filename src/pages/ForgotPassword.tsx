@@ -50,6 +50,7 @@ const ForgotPassword = () => {
       setError(null)
       await resetPassword({ username: data.email })
       setEmail(data.email)
+      resetForm.reset({ email: data.email, code: '', password: '' })
       setStep('reset')
       toast({
         title: 'Password reset code sent',
@@ -64,6 +65,7 @@ const ForgotPassword = () => {
 
   // Step 2: Submit new password with code
   const onReset = async (data: ResetFormValues) => {
+    console.log('data :>> ', data)
     try {
       setError(null)
       await confirmResetPassword({
