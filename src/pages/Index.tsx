@@ -51,19 +51,24 @@ const Index = () => {
     checkAuth()
   }, [hasWelcomed, isAuthenticated, name])
 
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      navigate('/')
+    }
+  }, [isAuthenticated, isLoading, navigate])
+
   if (isLoading) {
-    // Show a loading spinner or nothing while checking auth
+    // Show a loading spinner while checking auth
     return <Spinner />
   }
 
-  if (!isAuthenticated) {
-    // Optionally, redirect or show a message
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Please sign in to access this page.
-      </div>
-    )
-  }
+  // if (!isAuthenticated && !isLoading) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       Please sign in to access this page.
+  //     </div>
+  //   )
+  // }
 
   // Only render the body if authenticated
   return (
