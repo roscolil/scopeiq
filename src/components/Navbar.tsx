@@ -6,14 +6,13 @@ import {
   FolderOpen,
   Home,
   Menu,
-  User,
   Folders,
   LogIn,
   LogOut,
   Settings,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { signOut, getCurrentUser } from 'aws-amplify/auth'
+import { signOut, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth'
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +32,7 @@ export const Navbar = () => {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [companyId, setCompanyId] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -46,6 +46,19 @@ export const Navbar = () => {
     checkAuth()
   }, [])
 
+  useEffect(() => {
+    const getCompanyId = async () => {
+      try {
+        const attrs = await fetchUserAttributes()
+        console.log('attrs :>> ', attrs)
+        setCompanyId(attrs['custom:Company'] || attrs.company || null)
+      } catch {
+        setCompanyId(null)
+      }
+    }
+    getCompanyId()
+  }, [])
+
   const handleSignOut = async () => {
     setShowLogoutModal(false)
     await signOut()
@@ -54,15 +67,19 @@ export const Navbar = () => {
   }
 
   const menuItems = [
-    { name: 'Home', path: '/', icon: <Home className="w-5 h-5 mr-2" /> },
+    {
+      name: 'Home',
+      path: companyId ? `/${companyId}` : '/',
+      icon: <Home className="w-5 h-5 mr-2" />,
+    },
     {
       name: 'Projects',
-      path: '/projects',
+      path: companyId ? `/${companyId}/projects` : '/',
       icon: <Folders className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Documents',
-      path: '/documents',
+      path: companyId ? `/${companyId}/projects/:projectId/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
   ]
@@ -88,7 +105,7 @@ export const Navbar = () => {
             {isAuthenticated &&
               menuItems.map(item => (
                 <Link
-                  key={item.path}
+                  key={item.name}
                   to={item.path}
                   className={`flex items-center text-sm font-medium transition-colors ${
                     isActive(item.path)

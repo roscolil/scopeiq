@@ -21,6 +21,7 @@ import outputs from '../amplify_outputs.json'
 import '@aws-amplify/ui-react/styles.css'
 import VerifyEmail from './pages/VerifyEmail'
 import { AuthProvider } from './hooks/aws-auth'
+import AuthenticatedLayout from './pages/AuthenticatedLayout'
 
 Amplify.configure(outputs)
 
@@ -41,33 +42,23 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="*" element={<NotFound />} />
-            <Route
-              path="/*"
-              element={
-                <Authenticator>
-                  <Routes>
-                    <Route path=":companyId" element={<ProfileHome />} />
-                    <Route path=":companyId/projects" element={<Projects />} />
-                    <Route
-                      path=":companyId/projects/:projectId"
-                      element={<ProjectDetails />}
-                    />
-                    <Route
-                      path=":companyId/projects/:projectId/documents"
-                      element={<Documents />}
-                    />
-                    <Route
-                      path=":companyId/projects/:projectId/:documentId"
-                      element={<Viewer />}
-                    />
-                    <Route
-                      path=":companyId/settings"
-                      element={<ProfileSettings />}
-                    />
-                  </Routes>
-                </Authenticator>
-              }
-            />
+            <Route element={<AuthenticatedLayout />}>
+              <Route path=":companyId" element={<ProfileHome />} />
+              <Route path=":companyId/projects" element={<Projects />} />
+              <Route
+                path=":companyId/projects/:projectId"
+                element={<ProjectDetails />}
+              />
+              <Route
+                path=":companyId/projects/:projectId/documents"
+                element={<Documents />}
+              />
+              <Route
+                path=":companyId/projects/:projectId/:documentId"
+                element={<Viewer />}
+              />
+              <Route path=":companyId/settings" element={<ProfileSettings />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -13,7 +13,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-// import { useAuth } from '@/hooks/use-auth'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
@@ -30,6 +36,7 @@ const formSchema = z
       .string()
       .min(6, { message: 'Password must be at least 6 characters' }),
     confirmPassword: z.string(),
+    role: z.enum(['owner', 'user'], { required_error: 'Please select a role' }),
   })
   .refine(data => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -40,7 +47,6 @@ type FormValues = z.infer<typeof formSchema>
 
 const SignUp = () => {
   const navigate = useNavigate()
-  // const { signUp } = useAuth()
   const [error, setError] = React.useState<string | null>(null)
 
   const form = useForm<FormValues>({
@@ -51,6 +57,7 @@ const SignUp = () => {
       email: '',
       password: '',
       confirmPassword: '',
+      role: undefined,
     },
   })
 
@@ -65,6 +72,7 @@ const SignUp = () => {
             name: data.name,
             email: data.email,
             'custom:Company': data.company,
+            'custom:role': data.role, // Store the role as a custom attribute
           },
         },
       })
@@ -81,6 +89,7 @@ const SignUp = () => {
       )
     }
   }
+
   return (
     <AuthLayout
       title="Create an account"
@@ -130,6 +139,32 @@ const SignUp = () => {
                 <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input placeholder="you@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
