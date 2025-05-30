@@ -35,7 +35,7 @@ const Index = () => {
       try {
         const { name } = await fetchUserAttributes()
         setIsAuthenticated(true)
-        if (!hasWelcomed && !isAuthenticated) {
+        if (!hasWelcomed) {
           toast({
             title: `Hello there ${name?.split(' ')[0] || 'friend'}!`,
             description: 'You have successfully signed in.',

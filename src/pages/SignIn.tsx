@@ -12,12 +12,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-// import { useAuth } from '@/hooks/use-auth'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
-import { signIn } from 'aws-amplify/auth'
+import { signIn, fetchUserAttributes } from 'aws-amplify/auth'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -30,7 +29,6 @@ type FormValues = z.infer<typeof formSchema>
 
 const SignIn = () => {
   const navigate = useNavigate()
-  // const { signIn } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   const form = useForm<FormValues>({
@@ -45,11 +43,18 @@ const SignIn = () => {
     try {
       setError(null)
       await signIn({ username: data.email, password: data.password })
-      // toast({
-      //   title: 'Success',
-      //   description: 'You have successfully signed in.',
-      // })
-      navigate('/')
+      const attrs = await fetchUserAttributes()
+      // Get roles and companyId from Cognito attributes
+      const role = attrs['cognito:groups'] || attrs.groups || []
+      const companyId = attrs['custom:Company'] || attrs.company
+
+      if (role.includes('owner')) {
+        // Go to company dashboard
+        navigate(`/${companyId}`)
+      } else {
+        // Go to project landing page
+        navigate(`/${companyId}/projects`)
+      }
     } catch (err) {
       setError('Invalid email or password. Please try again.')
     }
