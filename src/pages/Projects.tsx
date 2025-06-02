@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
@@ -13,10 +13,24 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/ProjectForm'
+import { fetchUserAttributes } from 'aws-amplify/auth'
 
 const Projects = () => {
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [attrs, setAttrs] = useState<Record<string, string>>({})
+  const [companyId, setCompanyId] = useState<string>('')
+
+  useEffect(() => {
+    const fetchAttrs = async () => {
+      const userAttrs = await fetchUserAttributes()
+      setAttrs(userAttrs)
+      setCompanyId(userAttrs['custom:Company'] || '')
+      console.log('companyId :>> ', userAttrs)
+    }
+    fetchAttrs()
+  }, [])
+
   const [projects, setProjects] = useState<Project[]>([
     {
       id: 'project-1',
@@ -26,6 +40,7 @@ const Projects = () => {
       createdAt: new Date(2025, 3, 8).toISOString(),
       documentIds: ['doc-1', 'doc-3'],
       address: '123 Main St, Springfield',
+      companyId: 'company-1',
       streetNumber: '123',
       streetName: 'Main St',
       suburb: 'Springfield',
@@ -39,6 +54,7 @@ const Projects = () => {
       createdAt: new Date(2025, 3, 5).toISOString(),
       documentIds: ['doc-2'],
       address: '456 Side Rd, Shelbyville',
+      companyId: 'company-1',
       streetNumber: '456',
       streetName: 'Side Rd',
       suburb: 'Shelbyville',
@@ -53,6 +69,7 @@ const Projects = () => {
       createdAt: new Date(2025, 3, 1).toISOString(),
       documentIds: ['doc-4'],
       address: '789 High St, Capital City',
+      companyId: 'company-1',
       streetNumber: '789',
       streetName: 'High St',
       suburb: 'Capital City',
@@ -76,6 +93,7 @@ const Projects = () => {
       id: `project-${projects.length + 1}`,
       createdAt: new Date().toISOString(),
       documentIds: [],
+      companyId: companyId, // or use companyId if dynamic
       streetNumber: projectData.streetNumber || '',
       streetName: projectData.streetName || '',
       suburb: projectData.suburb || '',
@@ -116,7 +134,7 @@ const Projects = () => {
           </div>
         </div>
 
-        <ProjectList projects={projects} />
+        <ProjectList projects={projects} companyId={companyId.toLowerCase()} />
       </div>
     </Layout>
   )

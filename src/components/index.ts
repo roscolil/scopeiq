@@ -1,3 +1,5 @@
+import { MultiSelect } from './MultiSelect'
+
 export * as Layout from './Layout'
 export * as FaqAccordion from './FaqAccordion'
 export * as AddToHomeScreen from './AddToHomeScreen'
@@ -15,3 +17,4 @@ export * as DocumentViewer from './DocumentViewer'
 export * as AutocompleteInput from './AutocompleteInput'
 export * as AuthLayout from './AuthLayout'
 export * as AIActions from './AIActions'
+export * as MultiSelect from './MultiSelect'

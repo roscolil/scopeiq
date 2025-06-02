@@ -47,13 +47,13 @@ const SignIn = () => {
       // Get roles and companyId from Cognito attributes
       const role = attrs['cognito:groups'] || attrs.groups || []
       const companyId = attrs['custom:Company'] || attrs.company
-
+      console.log('attrs :>> ', attrs)
       if (role.includes('owner')) {
         // Go to company dashboard
-        navigate(`/${companyId}`)
+        navigate(`/${companyId.toLowerCase()}`)
       } else {
         // Go to project landing page
-        navigate(`/${companyId}/projects`)
+        navigate(`/${companyId.toLowerCase()}/projects`)
       }
     } catch (err) {
       setError('Invalid email or password. Please try again.')

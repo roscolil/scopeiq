@@ -78,7 +78,7 @@ const Documents = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
+        {/* <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="recent">Recent</TabsTrigger>
@@ -86,9 +86,9 @@ const Documents = () => {
             <TabsTrigger value="failed">Failed</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
-            <DocumentList documents={documents} />
-          </TabsContent>
+          <TabsContent value="all"> */}
+        <DocumentList documents={documents} />
+        {/* </TabsContent>
 
           <TabsContent value="recent">
             <DocumentList documents={documents.slice(0, 2)} />
@@ -105,7 +105,7 @@ const Documents = () => {
               documents={documents.filter(doc => doc.status === 'failed')}
             />
           </TabsContent>
-        </Tabs>
+        </Tabs> */}
       </div>
     </Layout>
   )
