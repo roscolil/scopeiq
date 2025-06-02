@@ -13,9 +13,10 @@ import { FileText, Folder } from 'lucide-react'
 
 interface ProjectListProps {
   projects: Project[]
+  companyId: string
 }
 
-export const ProjectList = ({ projects }: ProjectListProps) => {
+export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
   const navigate = useNavigate()
 
   if (projects.length === 0) {
@@ -26,7 +27,7 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
         <p className="text-muted-foreground mb-4">
           Create your first project to get started
         </p>
-        <Button onClick={() => navigate('/:companyId/projects/new')}>
+        <Button onClick={() => navigate(`/${companyId}/projects/new`)}>
           Create Project
         </Button>
       </div>
@@ -59,9 +60,7 @@ export const ProjectList = ({ projects }: ProjectListProps) => {
               variant="outline"
               size="sm"
               className="w-full"
-              onClick={() =>
-                navigate(`/${project.companyId}/projects/${project.id}`)
-              }
+              onClick={() => navigate(`/${companyId}/projects/${project.id}`)}
             >
               View Project
             </Button>

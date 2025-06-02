@@ -69,7 +69,7 @@ const ProfileHome = () => {
         {/* Dashboard Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight capitalize">
               {companyId} Dashboard
             </h1>
             <p className="text-muted-foreground">
@@ -81,7 +81,7 @@ const ProfileHome = () => {
               variant="ghost"
               size="icon"
               className="rounded-full"
-              onClick={() => navigate(`/${companyId}/settings`)}
+              onClick={() => navigate(`/${companyId.toLowerCase()}/settings`)}
             >
               <Settings className="h-5 w-5" />
               <span className="sr-only">Settings</span>

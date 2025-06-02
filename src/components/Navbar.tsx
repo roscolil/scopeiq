@@ -68,17 +68,19 @@ export const Navbar = () => {
   const menuItems = [
     {
       name: 'Home',
-      path: companyId ? `/${companyId}` : '/',
+      path: companyId ? `/${companyId.toLowerCase()}` : '/',
       icon: <Home className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Projects',
-      path: companyId ? `/${companyId}/projects` : '/',
+      path: companyId ? `/${companyId.toLowerCase()}/projects` : '/',
       icon: <Folders className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Documents',
-      path: companyId ? `/${companyId}/projects/:projectId/documents` : '/',
+      path: companyId
+        ? `/${companyId.toLowerCase()}/projects/:projectId/documents`
+        : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
   ]
@@ -195,10 +197,10 @@ export const Navbar = () => {
                       className="rounded-full"
                       asChild
                     >
-                      <Link to={`/${companyId}/settings`}>
+                      {/* <Link to={`/${companyId.toLowerCase()}/settings`}>
                         <Settings className="h-5 w-5" />
                         <span className="sr-only">Settings</span>
-                      </Link>
+                      </Link> */}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
