@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,6 +36,12 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { MoreHorizontal } from 'lucide-react'
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/components/ui/popover'
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -129,6 +135,10 @@ const ProfileSettings = () => {
   const [userList, setUserList] = useState<ManagedUser[]>(initialUsers)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDeleteIdx, setUserToDeleteIdx] = useState<number | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [userToEditIdx, setUserToEditIdx] = useState<number | null>(null)
+  const [editFormValues, setEditFormValues] =
+    useState<ManageUserFormValues | null>(null)
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -148,6 +158,16 @@ const ProfileSettings = () => {
   })
 
   const manageUserForm = useForm<ManageUserFormValues>({
+    resolver: zodResolver(manageUserFormSchema),
+    defaultValues: {
+      companyName: '',
+      contactName: '',
+      contactNumber: '',
+      projects: [],
+    },
+  })
+
+  const editUserForm = useForm<ManageUserFormValues>({
     resolver: zodResolver(manageUserFormSchema),
     defaultValues: {
       companyName: '',
@@ -263,6 +283,49 @@ const ProfileSettings = () => {
   const cancelDeleteUser = () => {
     setUserToDeleteIdx(null)
     setDeleteDialogOpen(false)
+  }
+
+  // When a user is selected for editing, populate the form
+  useEffect(() => {
+    if (userToEditIdx !== null) {
+      const user = userList[userToEditIdx]
+      if (user) {
+        setEditFormValues(user)
+        editUserForm.reset({
+          companyName: user.companyName,
+          contactName: user.contactName,
+          contactNumber: user.contactNumber,
+          projects: user.projects,
+        })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userToEditIdx])
+
+  const handleEditUserClick = (idx: number) => {
+    setUserToEditIdx(idx)
+    setEditDialogOpen(true)
+  }
+
+  const cancelEditUser = () => {
+    setUserToEditIdx(null)
+    setEditDialogOpen(false)
+  }
+
+  const confirmEditUser = (data: ManageUserFormValues) => {
+    if (userToEditIdx !== null) {
+      setUserList(prev =>
+        prev.map((user, idx) =>
+          idx === userToEditIdx ? { ...user, ...data } : user,
+        ),
+      )
+      setUserToEditIdx(null)
+      setEditDialogOpen(false)
+      toast({
+        title: 'User updated',
+        description: 'The user details have been updated.',
+      })
+    }
   }
 
   return (
@@ -637,14 +700,35 @@ const ProfileSettings = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3 rounded-r-lg border border-zinc-100 dark:border-zinc-800 text-center">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="transition hover:scale-105"
-                                onClick={() => handleDeleteUserClick(idx)}
-                              >
-                                Delete
-                              </Button>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 p-0"
+                                    aria-label="Open actions"
+                                  >
+                                    <MoreHorizontal className="w-5 h-5" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="end"
+                                  className="w-32 p-1"
+                                >
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded transition"
+                                    onClick={() => handleEditUserClick(idx)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-muted rounded transition"
+                                    onClick={() => handleDeleteUserClick(idx)}
+                                  >
+                                    Delete
+                                  </button>
+                                </PopoverContent>
+                              </Popover>
                             </td>
                           </tr>
                         ))}
@@ -672,6 +756,95 @@ const ProfileSettings = () => {
                     Delete
                   </Button>
                 </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit User Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit User</DialogTitle>
+                  <DialogDescription>
+                    Update the user details and assigned projects.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...editUserForm}>
+                  <form
+                    onSubmit={editUserForm.handleSubmit(confirmEditUser)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={editUserForm.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Company Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editUserForm.control}
+                      name="contactName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Contact Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editUserForm.control}
+                      name="contactNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Contact Number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Controller
+                      control={editUserForm.control}
+                      name="projects"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assign to Projects</FormLabel>
+                          <MultiSelect
+                            onValueChange={field.onChange}
+                            placeholder="Select projects"
+                            variant="inverted"
+                            animation={2}
+                            options={companyProjects.map(p => ({
+                              label: p.name,
+                              value: p.id,
+                            }))}
+                            value={field.value}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={cancelEditUser}
+                        type="button"
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit">Save Changes</Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </TabsContent>
