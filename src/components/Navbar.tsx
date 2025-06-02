@@ -50,7 +50,6 @@ export const Navbar = () => {
     const getCompanyId = async () => {
       try {
         const attrs = await fetchUserAttributes()
-        console.log('attrs :>> ', attrs)
         setCompanyId(attrs['custom:Company'] || attrs.company || null)
       } catch {
         setCompanyId(null)
@@ -196,7 +195,7 @@ export const Navbar = () => {
                       className="rounded-full"
                       asChild
                     >
-                      <Link to="/settings">
+                      <Link to={`/${companyId}/settings`}>
                         <Settings className="h-5 w-5" />
                         <span className="sr-only">Settings</span>
                       </Link>
