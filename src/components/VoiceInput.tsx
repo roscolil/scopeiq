@@ -92,20 +92,17 @@ export const VoiceInput = ({
 
   return (
     <Button
+      type="button"
       variant="outline"
       size="icon"
+      aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
       onClick={toggleListening}
-      className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${isListening ? 'bg-red-100 hover:bg-red-200' : ''}`}
-      title={isListening ? 'Stop listening' : 'Start voice input'}
-      type="button"
+      className="shrink-0"
     >
       {isListening ? (
-        <MicOff className="h-4 w-4 text-red-500" />
+        <MicOff className="w-5 h-5 text-red-500" />
       ) : (
-        <Mic className="h-4 w-4" />
-      )}
-      {isListening && (
-        <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+        <Mic className="w-5 h-5" />
       )}
     </Button>
   )

@@ -177,6 +177,22 @@ const ProfileSettings = () => {
     },
   })
 
+  // When a user is selected for editing, populate the form
+  useEffect(() => {
+    if (userToEditIdx !== null) {
+      const user = userList[userToEditIdx]
+      if (user) {
+        setEditFormValues(user)
+        editUserForm.reset({
+          companyName: user.companyName,
+          contactName: user.contactName,
+          contactNumber: user.contactNumber,
+          projects: user.projects,
+        })
+      }
+    }
+  }, [userToEditIdx, userList, editUserForm])
+
   // Redirect to sign in if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/signin" />
@@ -284,23 +300,6 @@ const ProfileSettings = () => {
     setUserToDeleteIdx(null)
     setDeleteDialogOpen(false)
   }
-
-  // When a user is selected for editing, populate the form
-  useEffect(() => {
-    if (userToEditIdx !== null) {
-      const user = userList[userToEditIdx]
-      if (user) {
-        setEditFormValues(user)
-        editUserForm.reset({
-          companyName: user.companyName,
-          contactName: user.contactName,
-          contactNumber: user.contactNumber,
-          projects: user.projects,
-        })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userToEditIdx])
 
   const handleEditUserClick = (idx: number) => {
     setUserToEditIdx(idx)
