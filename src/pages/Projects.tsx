@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
 import { Button } from '@/components/ui/button'
@@ -19,17 +19,10 @@ const Projects = () => {
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [attrs, setAttrs] = useState<Record<string, string>>({})
-  const [companyId, setCompanyId] = useState<string>('')
-
-  useEffect(() => {
-    const fetchAttrs = async () => {
-      const userAttrs = await fetchUserAttributes()
-      setAttrs(userAttrs)
-      setCompanyId(userAttrs['custom:Company'] || '')
-      console.log('companyId :>> ', userAttrs)
-    }
-    fetchAttrs()
-  }, [])
+  const { companyId, projectId } = useParams<{
+    companyId: string
+    projectId: string
+  }>()
 
   const [projects, setProjects] = useState<Project[]>([
     {

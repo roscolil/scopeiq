@@ -46,7 +46,7 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   const [isAnswering, setIsAnswering] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
-    'document',
+    'project',
   )
   const { toast } = useToast()
 
@@ -174,7 +174,7 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
                 setQueryScope(value)
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Select scope" />
               </SelectTrigger>
               <SelectContent>

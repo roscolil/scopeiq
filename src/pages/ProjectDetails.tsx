@@ -124,17 +124,23 @@ const ProjectDetails = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
-  const [showAITools, setShowAITools] = useState(false)
+  const [showAITools, setShowAITools] = useState(true)
+  const { companyId, projectId } = useParams<{
+    companyId: string
+    projectId: string
+  }>()
 
   useEffect(() => {
-    const foundProject = mockProjects.find(p => p.id === id) || null
+    const foundProject = mockProjects.find(p => p.id === projectId) || null
     setProject(foundProject)
 
     if (foundProject) {
-      const projectDocs = mockDocuments.filter(doc => doc.projectId === id)
+      const projectDocs = mockDocuments.filter(
+        doc => doc.projectId === projectId,
+      )
       setProjectDocuments(projectDocs)
     }
-  }, [id])
+  }, [projectId])
 
   const handleUpdateProject = (data: {
     address: string
@@ -184,7 +190,10 @@ const ProjectDetails = () => {
       <Layout>
         <div className="text-center">
           <p>Project not found</p>
-          <Button onClick={() => navigate('/projects')} className="mt-4">
+          <Button
+            onClick={() => navigate(`/${companyId.toLowerCase()}/projects`)}
+            className="mt-4"
+          >
             Back to Projects
           </Button>
         </div>
