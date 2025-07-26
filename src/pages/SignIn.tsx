@@ -53,7 +53,7 @@ const SignIn = () => {
         navigate(`/${companyId.toLowerCase()}`)
       } else {
         // Go to project landing page
-        navigate(`/${companyId.toLowerCase()}/projects`)
+        navigate('/')
       }
     } catch (err) {
       setError('Invalid email or password. Please try again.')

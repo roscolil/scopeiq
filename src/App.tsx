@@ -22,6 +22,7 @@ import '@aws-amplify/ui-react/styles.css'
 import VerifyEmail from './pages/VerifyEmail'
 import { AuthProvider } from './hooks/aws-auth'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
+import Pricing from './pages/Pricing'
 
 Amplify.configure(outputs)
 
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="*" element={<NotFound />} />
             <Route element={<AuthenticatedLayout />}>
               <Route path=":companyId" element={<ProfileHome />} />
