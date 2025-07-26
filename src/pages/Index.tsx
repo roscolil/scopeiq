@@ -27,7 +27,6 @@ const Index = () => {
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [hasWelcomed, setHasWelcomed] = useState(false)
   const [name, setName] = useState<string>('user')
 
   useEffect(() => {
@@ -35,21 +34,23 @@ const Index = () => {
       try {
         const { name } = await fetchUserAttributes()
         setIsAuthenticated(true)
-        if (!hasWelcomed) {
+        // Only show toast if not already welcomed
+        if (!localStorage.getItem('hasWelcomed')) {
           toast({
             title: `Hello there ${name?.split(' ')[0] || 'friend'}!`,
             description: 'You have successfully signed in.',
           })
-          setHasWelcomed(true)
+          localStorage.setItem('hasWelcomed', 'true')
         }
       } catch {
         setIsAuthenticated(false)
+        localStorage.removeItem('hasWelcomed')
       } finally {
         setIsLoading(false)
       }
     }
     checkAuth()
-  }, [hasWelcomed, isAuthenticated, name])
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -83,7 +84,7 @@ const Index = () => {
             documents by asking site-relevant questions.
           </p>
           {!isAuthenticated && (
-            <div className="mt-12 mb-16">
+            <div className="mt-12 mb-16 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
                 size="lg"
                 className="group relative px-8 py-6 overflow-hidden rounded-full bg-gradient-to-r from-primary to-primary/80 hover:shadow-lg transition-all duration-300"
@@ -96,6 +97,14 @@ const Index = () => {
                   </span>
                   <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                 </div>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="px-8 py-6 rounded-full border-2 hover:bg-secondary/50 transition-all duration-300"
+                onClick={() => navigate('/pricing')}
+              >
+                <span className="text-lg font-semibold">View Pricing</span>
               </Button>
             </div>
           )}
