@@ -29,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { callOpenAI } from '@/services/openai'
+// or import { callClaude } from '@/services/anthropic'
 
 interface AIActionsProps {
   documentId: string
@@ -48,6 +50,7 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
     'project',
   )
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   const handleSearch = () => {
@@ -147,6 +150,82 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
 
   const handleTranscript = (text: string) => {
     setQuestion(text)
+  }
+
+  const handleAskAI = async () => {
+    if (!question.trim()) return
+
+    setIsLoading(true)
+    try {
+      // Get context based on query scope
+      const context =
+        queryScope === 'document'
+          ? `Document ID: ${documentId}`
+          : `Project ID: ${projectId}`
+
+      // Call your chosen LLM API
+      const response = await callOpenAI(question, context)
+      // or: const response = await callClaude(aiQuery, context)
+
+      setAnswer(response)
+      toast({
+        title: 'AI Analysis Complete',
+        description: 'Your query has been processed.',
+      })
+    } catch (error) {
+      console.error('AI Query Error:', error)
+
+      // Extract and display the specific error from OpenAI service
+      let title = 'AI Query Failed'
+      let description =
+        'Please try again or contact support if the problem persists.'
+
+      if (error instanceof Error) {
+        const errorMessage = error.message
+
+        if (errorMessage.includes('API key is not configured')) {
+          title = 'Configuration Error'
+          description = 'OpenAI API key is missing from environment variables.'
+        } else if (errorMessage.includes('Network error')) {
+          title = 'Connection Error'
+          description =
+            'Unable to connect to OpenAI servers. Check your internet connection.'
+        } else if (errorMessage.includes('OpenAI API error: 401')) {
+          title = 'Authentication Failed'
+          description = 'Invalid OpenAI API key. Please check your credentials.'
+        } else if (errorMessage.includes('OpenAI API error: 429')) {
+          title = 'Rate Limit Exceeded'
+          description =
+            'Too many requests to OpenAI. Please wait before trying again.'
+        } else if (errorMessage.includes('OpenAI API error: 400')) {
+          title = 'Invalid Request'
+          description =
+            'The query format is invalid. Try rephrasing your question.'
+        } else if (errorMessage.includes('OpenAI API error: 500')) {
+          title = 'OpenAI Service Error'
+          description =
+            'OpenAI servers are experiencing issues. Please try again later.'
+        } else if (errorMessage.includes('Invalid response structure')) {
+          title = 'Response Error'
+          description = 'Received unexpected response format from OpenAI.'
+        } else if (errorMessage.startsWith('OpenAI API error:')) {
+          // Display the full OpenAI error message
+          title = 'OpenAI Error'
+          description = errorMessage.replace('OpenAI API error: ', '')
+        } else {
+          // Display the raw error message if it's concise
+          description = errorMessage.length < 150 ? errorMessage : description
+        }
+      }
+
+      toast({
+        title,
+        description,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -307,13 +386,13 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
                 isListening={isListening}
                 toggleListening={toggleListening}
               />
-              <Button
+              {/* <Button
                 onClick={askQuestion}
                 disabled={isAnswering || !question.trim()}
                 size="sm"
               >
                 {isAnswering ? 'Processing...' : 'Ask AI'}
-              </Button>
+              </Button> */}
             </div>
 
             {isAnswering && (
@@ -340,6 +419,26 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
                 <p className="text-xs">{answer}</p>
               </div>
             )}
+          </div>
+
+          <div className="flex justify-center">
+            <Button
+              onClick={handleAskAI}
+              disabled={!question.trim() || isLoading}
+              className="flex items-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <BrainCircuit className="w-4 h-4" />
+                  Ask AI
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </CardContent>
