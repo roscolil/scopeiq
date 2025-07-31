@@ -40,23 +40,6 @@ export const VoiceShazamButton = ({
     return () => clearTimeout(initialPulse)
   }, [isListening])
 
-  // Log mobile detection status
-  useEffect(() => {
-    console.log('Mobile view detection:', { isMobileView, isMobileOnly })
-  }, [isMobileView, isMobileOnly])
-
-  // Log SVG size after rendering
-  useEffect(() => {
-    const svgElement = document.querySelector('.VoiceShazamButton svg')
-    if (svgElement) {
-      console.log('SVG element size:', {
-        width: svgElement.clientWidth,
-        height: svgElement.clientHeight,
-        computedStyle: window.getComputedStyle(svgElement).width,
-      })
-    }
-  }, [])
-
   // Don't render anything if it's mobile only and we're on desktop
   if (isMobileOnly && !isMobileView) return null
 
