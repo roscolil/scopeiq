@@ -33,7 +33,7 @@ const Viewer = () => {
   const location = useLocation()
   const { toast } = useToast()
 
-  const [viewMode, setViewMode] = useState<'document' | 'ai'>('document')
+  const [viewMode, setViewMode] = useState<'document' | 'ai'>('ai')
   const [document, setDocument] = useState<DocumentType | null>(null)
   const [projectName, setProjectName] = useState<string>('')
   const [companyName, setCompanyName] = useState<string>('')
@@ -42,10 +42,11 @@ const Viewer = () => {
   // React to hash changes for AI/Document toggle
   useEffect(() => {
     const hash = location.hash
-    if (hash === '#ai') {
-      setViewMode('ai')
-    } else {
+    if (hash === '#document') {
       setViewMode('document')
+    } else {
+      // Default to 'ai' when no hash or #ai hash
+      setViewMode('ai')
     }
   }, [location.hash])
 
@@ -221,9 +222,10 @@ const Viewer = () => {
     setViewMode(value as 'document' | 'ai')
 
     // Update URL hash for bookmarking/sharing
-    if (value === 'ai') {
-      window.history.replaceState(null, '', `${location.pathname}#ai`)
+    if (value === 'document') {
+      window.history.replaceState(null, '', `${location.pathname}#document`)
     } else {
+      // For 'ai' mode, remove hash (since it's the default)
       window.history.replaceState(null, '', location.pathname)
     }
   }
