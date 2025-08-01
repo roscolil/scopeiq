@@ -6,18 +6,12 @@ import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Upload, X, FileText, FileImage, File } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Document } from '@/types'
 
 interface FileUploaderProps {
   projectId: string
   companyId: string
-  onUploadComplete: (uploadedFile: {
-    id: string
-    name: string
-    url: string
-    key: string
-    size: number
-    type: string
-  }) => void
+  onUploadComplete: (uploadedFile: Document) => void
 }
 
 export const FileUploader = ({
@@ -67,7 +61,6 @@ export const FileUploader = ({
 
     // Just set the selected file, don't upload automatically
     setSelectedFile(file)
-    // Remove this line: await uploadFile(file)
   }
 
   const uploadFile = async (file: File) => {
@@ -86,14 +79,32 @@ export const FileUploader = ({
       setUploadProgress(100)
 
       // Create document record
-      const uploadedFile = {
+      const uploadedFile: Document = {
         id: `doc-${Date.now()}`,
         name: file.name,
         url: result.url,
         key: result.key,
         size: result.size,
         type: result.type,
+        date: new Date().toISOString().split('T')[0],
+        status: 'processing',
+        projectId: projectId,
       }
+
+      // Save to localStorage
+      const storedDocuments = localStorage.getItem('uploadedDocuments')
+      let documents: Document[] = []
+
+      if (storedDocuments) {
+        try {
+          documents = JSON.parse(storedDocuments) as Document[]
+        } catch (error) {
+          console.error('Error parsing stored documents:', error)
+        }
+      }
+
+      documents.push(uploadedFile)
+      localStorage.setItem('uploadedDocuments', JSON.stringify(documents))
 
       onUploadComplete(uploadedFile)
 

@@ -27,91 +27,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const mockProjects: Project[] = [
-  {
-    id: 'project-1',
-    name: 'Construction Site A',
-    description:
-      'Main construction project for Site A including all blueprints and specifications.',
-    createdAt: new Date(2025, 3, 8).toISOString(),
-    documentIds: ['doc-1', 'doc-3'],
-    companyId: 'company-1',
-    address: '123 Main St',
-    streetNumber: '123',
-    streetName: 'Main St',
-    suburb: 'Central',
-    state: 'NSW',
-    postcode: '2000',
-  },
-  {
-    id: 'project-2',
-    name: 'Renovation Plan B',
-    description: 'Renovation project for existing building B.',
-    createdAt: new Date(2025, 3, 5).toISOString(),
-    documentIds: ['doc-2'],
-    companyId: 'company-1',
-    address: '456 Side Rd',
-    streetNumber: '456',
-    streetName: 'Side Rd',
-    suburb: 'Westside',
-    state: 'VIC',
-    postcode: '3000',
-  },
-  {
-    id: 'project-3',
-    name: 'Maintenance Schedule',
-    description:
-      'Regular maintenance schedule and documentation for all sites.',
-    createdAt: new Date(2025, 3, 1).toISOString(),
-    documentIds: ['doc-4'],
-    companyId: 'company-1',
-    address: '789 North Ave',
-    streetNumber: '789',
-    streetName: 'North Ave',
-    suburb: 'Northville',
-    state: 'QLD',
-    postcode: '4000',
-  },
-]
-
-const mockDocuments: Document[] = [
-  {
-    id: 'doc-1',
-    name: 'Business Proposal.pdf',
-    type: 'application/pdf',
-    size: '2.4 MB',
-    date: 'Apr 9, 2025',
-    status: 'processed',
-    projectId: 'project-1',
-  },
-  {
-    id: 'doc-2',
-    name: 'Financial Report.docx',
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    size: '1.8 MB',
-    date: 'Apr 8, 2025',
-    status: 'processed',
-    projectId: 'project-2',
-  },
-  {
-    id: 'doc-3',
-    name: 'Contract Agreement.pdf',
-    type: 'application/pdf',
-    size: '3.2 MB',
-    date: 'Apr 5, 2025',
-    status: 'processing',
-    projectId: 'project-1',
-  },
-  {
-    id: 'doc-4',
-    name: 'Project Timeline.png',
-    type: 'image/png',
-    size: '0.8 MB',
-    date: 'Apr 2, 2025',
-    status: 'failed',
-    projectId: 'project-3',
-  },
-]
+// Sample project for when there's no existing project data
+const createDefaultProject = (projectId: string): Project => ({
+  id: projectId,
+  name: 'New Project',
+  description: 'Project description',
+  createdAt: new Date().toISOString(),
+  documentIds: [],
+  companyId: 'company-1',
+  address: '',
+  streetNumber: '',
+  streetName: '',
+  suburb: '',
+  state: '',
+  postcode: '',
+})
 
 const ProjectDetails = () => {
   const { id } = useParams<{ id: string }>()
@@ -131,14 +61,53 @@ const ProjectDetails = () => {
   }>()
 
   useEffect(() => {
-    const foundProject = mockProjects.find(p => p.id === projectId) || null
-    setProject(foundProject)
+    // Create or retrieve project
+    if (projectId) {
+      // Check localStorage for existing project
+      const storedProjects = localStorage.getItem('projects')
+      let currentProject: Project | null = null
 
-    if (foundProject) {
-      const projectDocs = mockDocuments.filter(
-        doc => doc.projectId === projectId,
-      )
-      setProjectDocuments(projectDocs)
+      if (storedProjects) {
+        try {
+          const projects = JSON.parse(storedProjects) as Project[]
+          currentProject = projects.find(p => p.id === projectId) || null
+        } catch (error) {
+          console.error('Error parsing stored projects:', error)
+        }
+      }
+
+      // If no project exists, create a default one
+      if (!currentProject) {
+        currentProject = createDefaultProject(projectId)
+
+        // Save the new project
+        const projects = storedProjects
+          ? (JSON.parse(storedProjects) as Project[])
+          : []
+        projects.push(currentProject)
+        localStorage.setItem('projects', JSON.stringify(projects))
+      }
+
+      setProject(currentProject)
+
+      // Load uploaded documents for this project
+      const storedDocuments = localStorage.getItem('uploadedDocuments')
+      let uploadedDocs: Document[] = []
+
+      if (storedDocuments) {
+        try {
+          const allUploadedDocs = JSON.parse(storedDocuments) as Document[]
+          // Filter for documents that belong to this project
+          uploadedDocs = allUploadedDocs.filter(
+            doc => doc.projectId === projectId,
+          )
+        } catch (error) {
+          console.error('Error parsing stored documents:', error)
+        }
+      }
+
+      // Set documents
+      setProjectDocuments(uploadedDocs)
     }
   }, [projectId])
 
@@ -161,6 +130,20 @@ const ProjectDetails = () => {
     setProject(updatedProject)
     setIsEditDialogOpen(false)
 
+    // Update in localStorage
+    const storedProjects = localStorage.getItem('projects')
+    if (storedProjects) {
+      try {
+        const projects = JSON.parse(storedProjects) as Project[]
+        const updatedProjects = projects.map(p =>
+          p.id === project.id ? updatedProject : p,
+        )
+        localStorage.setItem('projects', JSON.stringify(updatedProjects))
+      } catch (error) {
+        console.error('Error updating stored projects:', error)
+      }
+    }
+
     toast({
       title: 'Project updated',
       description: 'Your project has been updated successfully.',
@@ -168,6 +151,34 @@ const ProjectDetails = () => {
   }
 
   const handleDeleteProject = () => {
+    if (!project) return
+
+    // Remove project from localStorage
+    const storedProjects = localStorage.getItem('projects')
+    if (storedProjects) {
+      try {
+        const projects = JSON.parse(storedProjects) as Project[]
+        const filteredProjects = projects.filter(p => p.id !== project.id)
+        localStorage.setItem('projects', JSON.stringify(filteredProjects))
+      } catch (error) {
+        console.error('Error deleting project from storage:', error)
+      }
+    }
+
+    // Remove all project documents from localStorage
+    const storedDocuments = localStorage.getItem('uploadedDocuments')
+    if (storedDocuments) {
+      try {
+        const documents = JSON.parse(storedDocuments) as Document[]
+        const remainingDocs = documents.filter(
+          doc => doc.projectId !== project.id,
+        )
+        localStorage.setItem('uploadedDocuments', JSON.stringify(remainingDocs))
+      } catch (error) {
+        console.error('Error removing project documents:', error)
+      }
+    }
+
     toast({
       title: 'Project deleted',
       description: 'Your project has been deleted successfully.',
@@ -176,41 +187,41 @@ const ProjectDetails = () => {
     navigate('/projects')
   }
 
-  const handleUploadDocument = (uploadedFile: {
-    id: string
-    name: string
-    url: string
-    key: string
-    size: number
-    type: string
-  }) => {
+  const handleUploadDocument = (uploadedDocument: Document) => {
     // Add the uploaded document to the project's document list
-    const newDocument: Document = {
-      id: uploadedFile.id,
-      name: uploadedFile.name,
-      type: uploadedFile.type,
-      size:
-        typeof uploadedFile.size === 'number'
-          ? `${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB`
-          : typeof uploadedFile.size === 'string'
-            ? uploadedFile.size
-            : 'Unknown size',
-      date: new Date().toLocaleDateString(),
-      status: 'processed',
-      projectId: project!.id,
-      url: uploadedFile.url,
-      key: uploadedFile.key,
-    }
-
-    // Update the documents list
-    setProjectDocuments(prev => [...prev, newDocument])
+    setProjectDocuments(prev => [...prev, uploadedDocument])
 
     // Close the dialog
     setIsUploadDialogOpen(false)
 
     toast({
       title: 'Document uploaded successfully',
-      description: `${uploadedFile.name} has been added to this project.`,
+      description: `${uploadedDocument.name} has been added to this project.`,
+    })
+  }
+
+  const handleDeleteDocument = (documentId: string) => {
+    // Update state to remove the document
+    setProjectDocuments(prev => prev.filter(doc => doc.id !== documentId))
+
+    // Update localStorage
+    const storedDocuments = localStorage.getItem('uploadedDocuments')
+    if (storedDocuments) {
+      try {
+        const documents = JSON.parse(storedDocuments) as Document[]
+        const updatedDocuments = documents.filter(doc => doc.id !== documentId)
+        localStorage.setItem(
+          'uploadedDocuments',
+          JSON.stringify(updatedDocuments),
+        )
+      } catch (error) {
+        console.error('Error updating stored documents:', error)
+      }
+    }
+
+    toast({
+      title: 'Document deleted',
+      description: 'The document has been removed from this project.',
     })
   }
 
@@ -237,7 +248,7 @@ const ProjectDetails = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/projects')}
+            onClick={() => navigate(`/${companyId}/projects`)}
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
@@ -449,7 +460,12 @@ const ProjectDetails = () => {
         </div>
 
         {projectDocuments.length > 0 ? (
-          <DocumentList documents={projectDocuments} />
+          <DocumentList
+            documents={projectDocuments}
+            onDelete={handleDeleteDocument}
+            projectId={project.id}
+            companyId={companyId || 'default-company'}
+          />
         ) : (
           <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
             <p className="text-muted-foreground mb-4">

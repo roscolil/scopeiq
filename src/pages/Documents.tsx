@@ -1,4 +1,5 @@
 import React from 'react'
+import { useParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
@@ -12,8 +13,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Document } from '@/types'
 
 const Documents = () => {
+  const { companyId, projectId } = useParams<{
+    companyId: string
+    projectId: string
+  }>()
   const [documents, setDocuments] = React.useState([
     {
       id: 'doc-1',
@@ -22,6 +28,7 @@ const Documents = () => {
       size: '2.4 MB',
       date: 'Apr 9, 2025',
       status: 'processed' as const,
+      projectId: 'default-project',
     },
     {
       id: 'doc-2',
@@ -30,6 +37,7 @@ const Documents = () => {
       size: '1.8 MB',
       date: 'Apr 8, 2025',
       status: 'processed' as const,
+      projectId: 'default-project',
     },
     {
       id: 'doc-3',
@@ -38,6 +46,7 @@ const Documents = () => {
       size: '3.2 MB',
       date: 'Apr 5, 2025',
       status: 'processing' as const,
+      projectId: 'default-project',
     },
     {
       id: 'doc-4',
@@ -46,6 +55,7 @@ const Documents = () => {
       size: '0.8 MB',
       date: 'Apr 2, 2025',
       status: 'failed' as const,
+      projectId: 'default-project',
     },
   ])
 
@@ -72,7 +82,13 @@ const Documents = () => {
                 <DialogHeader>
                   <DialogTitle>Upload Document</DialogTitle>
                 </DialogHeader>
-                <FileUploader />
+                <FileUploader
+                  projectId={projectId || 'default-project'}
+                  companyId={companyId || 'default-company'}
+                  onUploadComplete={doc =>
+                    console.log('Document uploaded:', doc)
+                  }
+                />
               </DialogContent>
             </Dialog>
           </div>
@@ -87,7 +103,11 @@ const Documents = () => {
           </TabsList>
 
           <TabsContent value="all"> */}
-        <DocumentList documents={documents} />
+        <DocumentList
+          documents={documents}
+          projectId={projectId || 'default-project'}
+          companyId={companyId || 'default-company'}
+        />
         {/* </TabsContent>
 
           <TabsContent value="recent">

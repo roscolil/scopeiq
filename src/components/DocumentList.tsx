@@ -25,21 +25,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-interface Document {
-  id: string
-  name: string
-  type: string
-  size: string
-  date: string
-  status: 'processed' | 'processing' | 'failed'
-}
+import { Document } from '@/types'
 
 interface DocumentListProps {
   documents: Document[]
+  onDelete?: (documentId: string) => void
+  projectId: string
+  companyId: string
 }
 
-export const DocumentList = ({ documents }: DocumentListProps) => {
+export const DocumentList = ({
+  documents,
+  onDelete,
+  projectId,
+  companyId,
+}: DocumentListProps) => {
   const navigate = useNavigate()
 
   const getFileIcon = (type: string) => {
@@ -74,11 +74,15 @@ export const DocumentList = ({ documents }: DocumentListProps) => {
   }
 
   const viewDocument = (id: string) => {
-    navigate(`/viewer/${id}`)
+    navigate(`/${companyId}/projects/${projectId}/${id}`)
   }
 
   const deleteDocument = (id: string) => {
-    console.log(`Delete document ${id}`)
+    if (onDelete) {
+      onDelete(id)
+    } else {
+      console.log(`Delete document ${id}`)
+    }
   }
 
   return (
@@ -101,7 +105,10 @@ export const DocumentList = ({ documents }: DocumentListProps) => {
                       {doc.name}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      {doc.size} • {doc.date}
+                      {typeof doc.size === 'number'
+                        ? `${(doc.size / 1024).toFixed(2)} KB`
+                        : doc.size}{' '}
+                      • {doc.date}
                     </CardDescription>
                   </div>
                 </div>

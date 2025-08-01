@@ -1,39 +1,93 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { FileText } from 'lucide-react'
+import { FileText, File, FileImage } from 'lucide-react'
 import { AIActions } from './AIActions'
+import { Document } from '@/types'
 
 interface DocumentViewerProps {
   documentId: string
+  projectId: string
+  companyId: string
 }
 
-export const DocumentViewer = ({ documentId }: DocumentViewerProps) => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [document, setDocument] = useState({
-    id: documentId,
-    name: 'Sample Document.pdf',
-    content:
-      'This is a sample document content that would be extracted from the PDF using AWS Textract. In a real application, this would contain the actual text content from the document that was processed through AWS services.\n\nThe content would be much longer and would be formatted properly. It might include paragraphs, bullet points, and other formatting from the original document.\n\nWhen a user uploads a document, it would be stored in S3, processed by Textract, and then the extracted text would be displayed here. The text would also be processed and stored in a vector database like Pinecone for semantic search capabilities.',
-    thumbnailUrl: null,
-    projectId: 'project-1', // Mock project ID for the current document
-  })
+export const DocumentViewer = ({
+  documentId,
+  projectId,
+  companyId,
+}: DocumentViewerProps) => {
+  const [isLoading, setIsLoading] = useState(true)
+  const [document, setDocument] = useState<Document | null>(null)
+  const [content, setContent] = useState<string>('')
 
-  // In a real app, we'd fetch the document from AWS S3 and Textract
+  // Fetch document from localStorage
   useEffect(() => {
     setIsLoading(true)
 
-    // Simulate API call
+    // Check for uploaded documents
+    const storedDocuments = localStorage.getItem('uploadedDocuments')
+
+    if (storedDocuments) {
+      try {
+        const uploadedDocs = JSON.parse(storedDocuments) as Document[]
+        const foundDoc = uploadedDocs.find(doc => doc.id === documentId)
+
+        if (foundDoc) {
+          setDocument(foundDoc)
+
+          let documentContent = ''
+          if (foundDoc.type.includes('image')) {
+            documentContent =
+              '[This is an image file. Preview available below.]'
+          } else if (foundDoc.type.includes('pdf')) {
+            documentContent =
+              'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+          } else if (foundDoc.type.includes('word')) {
+            documentContent =
+              'This is a Word document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+          } else {
+            documentContent =
+              'Document content is being processed. It will be available shortly.\n\nYou can use the AI actions below to analyze this document in the meantime.'
+          }
+
+          setContent(documentContent)
+        }
+      } catch (error) {
+        console.error('Error parsing stored documents:', error)
+      }
+    }
+
+    // Simulate processing delay
     setTimeout(() => {
       setIsLoading(false)
     }, 1000)
   }, [documentId])
+
+  const getFileIcon = () => {
+    if (!document) return <File className="h-5 w-5 text-primary" />
+
+    if (document.type.includes('pdf')) {
+      return <FileText className="h-5 w-5 text-red-500" />
+    } else if (document.type.includes('image')) {
+      return <FileImage className="h-5 w-5 text-blue-500" />
+    } else {
+      return <File className="h-5 w-5 text-green-500" />
+    }
+  }
+
+  if (!document) {
+    return (
+      <div className="flex justify-center items-center p-10">
+        <p className="text-muted-foreground">Document not found</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
       <div className="bg-white border rounded-lg overflow-hidden">
         <div className="p-4 border-b bg-muted/20">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+            {getFileIcon()}
             <h2 className="text-lg font-medium">{document.name}</h2>
           </div>
         </div>
@@ -50,15 +104,25 @@ export const DocumentViewer = ({ documentId }: DocumentViewerProps) => {
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
-              {document.content.split('\n\n').map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
+              {document.type.includes('image') && document.url ? (
+                <div className="flex justify-center">
+                  <img
+                    src={document.url}
+                    alt={document.name}
+                    className="max-w-full h-auto"
+                  />
+                </div>
+              ) : (
+                content
+                  .split('\n\n')
+                  .map((paragraph, index) => <p key={index}>{paragraph}</p>)
+              )}
             </div>
           )}
         </div>
       </div>
 
-      <AIActions documentId={documentId} projectId={document.projectId} />
+      <AIActions documentId={documentId} projectId={projectId} />
     </div>
   )
 }
