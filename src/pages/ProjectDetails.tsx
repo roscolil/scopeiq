@@ -176,12 +176,41 @@ const ProjectDetails = () => {
     navigate('/projects')
   }
 
-  const handleUploadDocument = () => {
+  const handleUploadDocument = (uploadedFile: {
+    id: string
+    name: string
+    url: string
+    key: string
+    size: number
+    type: string
+  }) => {
+    // Add the uploaded document to the project's document list
+    const newDocument: Document = {
+      id: uploadedFile.id,
+      name: uploadedFile.name,
+      type: uploadedFile.type,
+      size:
+        typeof uploadedFile.size === 'number'
+          ? `${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB`
+          : typeof uploadedFile.size === 'string'
+            ? uploadedFile.size
+            : 'Unknown size',
+      date: new Date().toLocaleDateString(),
+      status: 'processed',
+      projectId: project!.id,
+      url: uploadedFile.url,
+      key: uploadedFile.key,
+    }
+
+    // Update the documents list
+    setProjectDocuments(prev => [...prev, newDocument])
+
+    // Close the dialog
     setIsUploadDialogOpen(false)
 
     toast({
-      title: 'Document uploaded',
-      description: 'Your document has been uploaded to this project.',
+      title: 'Document uploaded successfully',
+      description: `${uploadedFile.name} has been added to this project.`,
     })
   }
 
@@ -404,14 +433,17 @@ const ProjectDetails = () => {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Upload Document to Project</DialogTitle>
+                <DialogDescription>
+                  Upload a document to {project.name}
+                </DialogDescription>
               </DialogHeader>
-              <ProjectSelector currentProjectId={project.id} />
-              <FileUploader />
-              <DialogFooter>
-                <Button onClick={handleUploadDocument}>
-                  Upload to Project
-                </Button>
-              </DialogFooter>
+
+              {/* Pass the required props to FileUploader */}
+              <FileUploader
+                projectId={project.id}
+                companyId={companyId || 'default-company'}
+                onUploadComplete={handleUploadDocument}
+              />
             </DialogContent>
           </Dialog>
         </div>

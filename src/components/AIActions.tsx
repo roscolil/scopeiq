@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { VoiceInput } from './VoiceInput'
+import { VoiceShazamButton } from './VoiceShazamButton'
 import { answerQuestionWithBedrock } from '@/utils/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -45,13 +46,23 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   const [isSummarizing, setIsSummarizing] = useState(false)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
-  const [isAnswering, setIsAnswering] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
     'project',
   )
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
+  const hasTranscriptRef = useRef(false)
+
+  // Add debugging info on component mount
+  useEffect(() => {
+    return () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+      }
+    }
+  }, [silenceTimer])
 
   const handleSearch = () => {
     if (!searchQuery.trim()) return
@@ -95,33 +106,9 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
     }, 2000)
   }
 
+  // Legacy method - redirecting to the newer handleAskAI method
   const askQuestion = async () => {
-    if (!question.trim()) return
-
-    setIsAnswering(true)
-    setAnswer(null)
-
-    try {
-      // Get the document text - in a real app, this would be fetched from the database
-      // We would use different content based on queryScope
-      const content =
-        queryScope === 'document'
-          ? 'This is the document text that would be retrieved from the database. It contains information about our document processing system.'
-          : 'This is combined text from all documents in the project. It includes information from the Business Proposal, Financial Report, and Contract Agreement documents, providing a comprehensive view of the project.'
-
-      // Use AWS Bedrock to answer the question
-      const response = await answerQuestionWithBedrock(question, content)
-      setAnswer(response)
-    } catch (error) {
-      console.error('Error answering question:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to answer your question. Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsAnswering(false)
-    }
+    await handleAskAI()
   }
 
   const copyToClipboard = (text: string) => {
@@ -132,30 +119,84 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
     })
   }
 
-  const toggleListening = () => {
-    setIsListening(!isListening)
+  // Note: We have another cleanup in the component mount effect, so this is redundant
+  // but keeping it for robustness
 
+  const toggleListening = () => {
+    // Toggle the listening state
+    const newListeningState = !isListening
+    setIsListening(newListeningState)
+
+    console.log(`Voice input ${newListeningState ? 'started' : 'stopped'}`)
+
+    // Clear any existing silence timer when toggling
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+      setSilenceTimer(null)
+    }
+
+    // Reset the transcript flag when stopping listening
     if (isListening) {
+      // Current state before toggle
+      hasTranscriptRef.current = false
       toast({
         title: 'Voice input stopped',
         description: 'Voice recording has been stopped.',
       })
     } else {
+      // Starting to listen
       toast({
         title: 'Voice input started',
-        description: 'Speak your question clearly...',
+        description:
+          'Speak your question clearly... Will auto-submit after 2s of silence.',
       })
     }
   }
 
   const handleTranscript = (text: string) => {
+    // Clear any existing timer when new transcript arrives
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+    }
+
+    // Update the question with the transcribed text
     setQuestion(text)
+
+    // Set flag that we have received a transcript
+    hasTranscriptRef.current = true
+
+    // Create a new timer for auto-submit after 2 seconds of silence
+    const timer = setTimeout(() => {
+      if (isListening && text.trim() && hasTranscriptRef.current) {
+        console.log('Auto-submitting after silence detected')
+        toggleListening() // Stop listening first
+
+        // Add a slight delay before submitting to ensure the listening is fully stopped
+        setTimeout(() => {
+          if (text.trim()) {
+            // Double-check we still have text
+            console.log('Executing handleAskAI after silence')
+            handleAskAI() // Submit the question
+          }
+        }, 100)
+      }
+    }, 2000)
+
+    setSilenceTimer(timer)
   }
 
   const handleAskAI = async () => {
     if (!question.trim()) return
 
+    // Clear any existing silence timer when submitting
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+      setSilenceTimer(null)
+    }
+
     setIsLoading(true)
+    setAnswer(null) // Clear previous answer
+
     try {
       // Get context based on query scope
       const context =
@@ -163,11 +204,15 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
           ? `Document ID: ${documentId}`
           : `Project ID: ${projectId}`
 
+      console.log('Submitting question to AI:', question)
+
       // Call your chosen LLM API
       const response = await callOpenAI(question, context)
       // or: const response = await callClaude(aiQuery, context)
 
       setAnswer(response)
+      // Clear the question field after getting a response
+      setQuestion('')
       toast({
         title: 'AI Analysis Complete',
         description: 'Your query has been processed.',
@@ -229,219 +274,218 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <BrainCircuit className="h-5 w-5 text-primary" />
-          <CardTitle className="text-lg">AI Tools</CardTitle>
-        </div>
-        <CardDescription>
-          Leverage AI to analyze and extract insights from your{' '}
-          {queryScope === 'document' ? 'document' : 'project'}
-        </CardDescription>
-      </CardHeader>
+    <>
+      <Card className="mb-32 md:mb-0">
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">AI Tools</CardTitle>
+          </div>
+          <CardDescription>
+            Leverage AI to analyze and extract insights from your{' '}
+            {queryScope === 'document' ? 'document' : 'project'}
+          </CardDescription>
+        </CardHeader>
 
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-muted-foreground">
-              Query Scope:
-            </span>
-            <Select
-              value={queryScope}
-              onValueChange={(value: 'project' | 'document') =>
-                setQueryScope(value)
-              }
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select scope" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project">
-                  <div className="flex items-center">
-                    <FileStack className="mr-2 h-4 w-4" />
-                    <span>Entire Project</span>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">
+                Query Scope:
+              </span>
+              <Select
+                value={queryScope}
+                onValueChange={(value: 'project' | 'document') =>
+                  setQueryScope(value)
+                }
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select scope" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">
+                    <div className="flex items-center">
+                      <FileStack className="mr-2 h-4 w-4" />
+                      <span>Entire Project</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="document">
+                    <div className="flex items-center">
+                      <FileSearch className="mr-2 h-4 w-4" />
+                      <span>Current Document</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <div className="flex items-center mb-2">
+                <FileSearch className="h-4 w-4 mr-2 text-primary" />
+                <h3 className="text-sm font-medium">Semantic Search</h3>
+              </div>
+
+              <div className="flex gap-2 mb-3">
+                <Input
+                  placeholder={`Search within ${queryScope === 'document' ? 'document' : 'project'}...`}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSearch}
+                  disabled={isSearching || !searchQuery.trim()}
+                >
+                  {isSearching ? (
+                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="bg-secondary p-3 rounded-md text-sm space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Badge variant="outline" className="bg-secondary">
+                      Results
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() =>
+                        copyToClipboard(searchResults.join('\n\n'))
+                      }
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
                   </div>
-                </SelectItem>
-                <SelectItem value="document">
-                  <div className="flex items-center">
-                    <FileSearch className="mr-2 h-4 w-4" />
-                    <span>Current Document</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <div className="flex items-center mb-2">
-              <FileSearch className="h-4 w-4 mr-2 text-primary" />
-              <h3 className="text-sm font-medium">Semantic Search</h3>
-            </div>
-
-            <div className="flex gap-2 mb-3">
-              <Input
-                placeholder={`Search within ${queryScope === 'document' ? 'document' : 'project'}...`}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              />
-              <Button
-                size="sm"
-                onClick={handleSearch}
-                disabled={isSearching || !searchQuery.trim()}
-              >
-                {isSearching ? (
-                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            {searchResults.length > 0 && (
-              <div className="bg-secondary p-3 rounded-md text-sm space-y-2">
-                <div className="flex justify-between items-center">
-                  <Badge variant="outline" className="bg-secondary">
-                    Results
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => copyToClipboard(searchResults.join('\n\n'))}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
+                  {searchResults.map((result, index) => (
+                    <p key={index} className="text-xs">
+                      {result}
+                    </p>
+                  ))}
                 </div>
-                {searchResults.map((result, index) => (
-                  <p key={index} className="text-xs">
-                    {result}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <ScrollText className="h-4 w-4 mr-2 text-primary" />
-                <h3 className="text-sm font-medium">AI Summary</h3>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={generateSummary}
-                disabled={isSummarizing}
-              >
-                {isSummarizing ? 'Generating...' : 'Generate'}
-              </Button>
-            </div>
-
-            {isSummarizing && (
-              <div className="bg-secondary p-4 rounded-md flex justify-center">
-                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-
-            {summary && (
-              <div className="bg-secondary p-3 rounded-md text-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <Badge variant="outline" className="bg-secondary">
-                    Summary
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => copyToClipboard(summary)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <p className="text-xs">{summary}</p>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center mb-2">
-              <MessageSquare className="h-4 w-4 mr-2 text-primary" />
-              <h3 className="text-sm font-medium">Ask Questions</h3>
-            </div>
-
-            <div className="flex gap-2 mb-3">
-              <Textarea
-                placeholder={`Ask a question about the ${queryScope === 'document' ? 'document' : 'project'}...`}
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-                className="resize-none min-h-[60px]"
-              />
-            </div>
-
-            <div className="flex justify-between gap-2 mb-3">
-              <VoiceInput
-                onTranscript={handleTranscript}
-                isListening={isListening}
-                toggleListening={toggleListening}
-              />
-              {/* <Button
-                onClick={askQuestion}
-                disabled={isAnswering || !question.trim()}
-                size="sm"
-              >
-                {isAnswering ? 'Processing...' : 'Ask AI'}
-              </Button> */}
-            </div>
-
-            {isAnswering && (
-              <div className="bg-secondary p-4 rounded-md flex justify-center">
-                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-
-            {answer && (
-              <div className="bg-secondary p-3 rounded-md text-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <Badge variant="outline" className="bg-secondary">
-                    Answer
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => copyToClipboard(answer)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <p className="text-xs">{answer}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-center">
-            <Button
-              onClick={handleAskAI}
-              disabled={!question.trim() || isLoading}
-              className="flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <BrainCircuit className="w-4 h-4" />
-                  Ask AI
-                </>
               )}
-            </Button>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <ScrollText className="h-4 w-4 mr-2 text-primary" />
+                  <h3 className="text-sm font-medium">AI Summary</h3>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={generateSummary}
+                  disabled={isSummarizing}
+                >
+                  {isSummarizing ? 'Generating...' : 'Generate'}
+                </Button>
+              </div>
+
+              {isSummarizing && (
+                <div className="bg-secondary p-4 rounded-md flex justify-center">
+                  <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {summary && (
+                <div className="bg-secondary p-3 rounded-md text-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <Badge variant="outline" className="bg-secondary">
+                      Summary
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => copyToClipboard(summary)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs">{summary}</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-center mb-2">
+                <MessageSquare className="h-4 w-4 mr-2 text-primary" />
+                <h3 className="text-sm font-medium">Ask Questions</h3>
+              </div>
+
+              <div className="flex gap-2 mb-3">
+                <Textarea
+                  placeholder={`Ask a question about the ${queryScope === 'document' ? 'document' : 'project'}...`}
+                  value={question}
+                  onChange={e => setQuestion(e.target.value)}
+                  className="resize-none min-h-[60px]"
+                />
+              </div>
+
+              <div className="flex justify-between gap-2 mb-3">
+                <VoiceInput
+                  onTranscript={handleTranscript}
+                  isListening={isListening}
+                  toggleListening={toggleListening}
+                />
+                <Button
+                  onClick={handleAskAI}
+                  disabled={isLoading || !question.trim()}
+                  className="flex items-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <BrainCircuit className="w-4 h-4" />
+                      Ask AI
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Loading indicator now handled by isLoading state */}
+
+              {answer && (
+                <div className="bg-secondary p-3 rounded-md text-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <Badge variant="outline" className="bg-secondary">
+                      Answer
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => copyToClipboard(answer)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs">{answer}</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Shazam-style voice button - only appears on mobile */}
+      <VoiceShazamButton
+        isListening={isListening}
+        toggleListening={toggleListening}
+        showTranscript={isListening || question ? question : undefined}
+        isProcessing={isLoading}
+        isMobileOnly={true} /* Only show on mobile devices */
+      />
+    </>
   )
 }

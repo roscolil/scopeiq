@@ -2,10 +2,12 @@ export interface Document {
   id: string
   name: string
   type: string
-  size: string
+  size: string | number
   date: string
-  status: 'processed' | 'processing' | 'failed'
-  projectId?: string
+  status: 'processing' | 'processed' | 'failed'
+  projectId: string
+  url?: string // S3 URL
+  key?: string // S3 key for management
 }
 
 export type Project = {
