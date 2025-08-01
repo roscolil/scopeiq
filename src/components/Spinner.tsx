@@ -12,24 +12,24 @@ export const Spinner = ({
   text = 'Loading...',
 }: SpinnerProps) => {
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-16 h-16',
-    lg: 'w-24 h-24',
-    xl: 'w-32 h-32',
+    sm: 'w-6 h-6', // was w-8 h-8 (8*0.75 = 6)
+    md: 'w-12 h-12', // was w-16 h-16 (16*0.75 = 12)
+    lg: 'w-18 h-18', // was w-24 h-24 (24*0.75 = 18)
+    xl: 'w-24 h-24', // was w-32 h-32 (32*0.75 = 24)
   }
 
   const textSizes = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-xl',
-    xl: 'text-2xl',
+    sm: 'text-xs', // keeping text-xs as it's already smallest
+    md: 'text-xs', // was text-sm, scaling down to text-xs
+    lg: 'text-lg', // was text-xl, scaling down to text-lg
+    xl: 'text-xl', // was text-2xl, scaling down to text-xl
   }
 
   const iqTextSizes = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-xl',
-    xl: 'text-2xl',
+    sm: 'text-xs', // keeping text-xs as it's already smallest
+    md: 'text-xs', // was text-sm, scaling down to text-xs
+    lg: 'text-lg', // was text-xl, scaling down to text-lg
+    xl: 'text-xl', // was text-2xl, scaling down to text-xl
   }
 
   const innerPadding = {
