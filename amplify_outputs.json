@@ -5,9 +5,15 @@
     "user_pool_client_id": "o765u53g0j1dkann9nllasmr5",
     "identity_pool_id": "ap-southeast-2:aec81434-7492-4e57-b165-5c5ff35980c6",
     "mfa_methods": [],
-    "standard_required_attributes": ["email"],
-    "username_attributes": ["email"],
-    "user_verification_types": ["email"],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
     "groups": [],
     "mfa_configuration": "NONE",
     "password_policy": {
@@ -23,7 +29,9 @@
     "url": "https://pbpthii7t5gxhlywgog7cpoamy.appsync-api.ap-southeast-2.amazonaws.com/graphql",
     "aws_region": "ap-southeast-2",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
-    "authorization_types": ["AWS_IAM"],
+    "authorization_types": [
+      "AWS_IAM"
+    ],
     "model_introspection": {
       "version": 1,
       "models": {
@@ -62,7 +70,9 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": ["projectId"]
+                "associatedWith": [
+                  "projectId"
+                ]
               }
             },
             "createdAt": {
@@ -98,7 +108,12 @@
                     "ownerField": "owner",
                     "allow": "owner",
                     "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
                   }
                 ]
               }
@@ -181,7 +196,9 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": ["projectId"]
+                "targetNames": [
+                  "projectId"
+                ]
               }
             },
             "content": {
@@ -224,7 +241,12 @@
                     "ownerField": "owner",
                     "allow": "owner",
                     "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
                   }
                 ]
               }
@@ -240,7 +262,11 @@
       "enums": {
         "DocumentStatus": {
           "name": "DocumentStatus",
-          "values": ["processed", "processing", "failed"]
+          "values": [
+            "processed",
+            "processing",
+            "failed"
+          ]
         }
       },
       "nonModels": {}
