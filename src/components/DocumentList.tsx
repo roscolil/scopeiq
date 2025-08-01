@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Document } from '@/types'
+import { routes } from '@/utils/navigation'
 
 interface DocumentListProps {
   documents: Document[]
@@ -74,7 +75,7 @@ export const DocumentList = ({
   }
 
   const viewDocument = (id: string) => {
-    navigate(`/${companyId}/projects/${projectId}/${id}`)
+    navigate(routes.company.project.document(companyId, projectId, id))
   }
 
   const deleteDocument = (id: string) => {

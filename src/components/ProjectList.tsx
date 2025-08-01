@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FileText, Folder } from 'lucide-react'
+import { routes } from '@/utils/navigation'
 
 interface ProjectListProps {
   projects: Project[]
@@ -27,7 +28,9 @@ export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
         <p className="text-muted-foreground mb-4">
           Create your first project to get started
         </p>
-        <Button onClick={() => navigate(`/${companyId}/projects/new`)}>
+        <Button
+          onClick={() => navigate(routes.company.projects.new(companyId))}
+        >
           Create Project
         </Button>
       </div>
@@ -60,7 +63,9 @@ export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
               variant="outline"
               size="sm"
               className="w-full"
-              onClick={() => navigate(`/${companyId}/projects/${project.id}`)}
+              onClick={() =>
+                navigate(routes.company.project.details(companyId, project.id))
+              }
             >
               View Project
             </Button>

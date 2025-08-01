@@ -26,6 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { routes } from '@/utils/navigation'
 
 // Sample project for when there's no existing project data
 const createDefaultProject = (projectId: string): Project => ({
@@ -231,7 +232,9 @@ const ProjectDetails = () => {
         <div className="text-center">
           <p>Project not found</p>
           <Button
-            onClick={() => navigate(`/${companyId.toLowerCase()}/projects`)}
+            onClick={() =>
+              navigate(routes.company.projects.list(companyId || ''))
+            }
             className="mt-4"
           >
             Back to Projects
@@ -248,7 +251,9 @@ const ProjectDetails = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/${companyId}/projects`)}
+            onClick={() =>
+              navigate(routes.company.projects.list(companyId || ''))
+            }
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back

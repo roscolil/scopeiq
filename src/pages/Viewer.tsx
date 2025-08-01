@@ -5,6 +5,7 @@ import { DocumentViewer } from '@/components/DocumentViewer'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { routes } from '@/utils/navigation'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -21,7 +22,9 @@ const Viewer = () => {
         <div className="text-center">
           <p>Document not found</p>
           <Button
-            onClick={() => navigate(`/${companyId}/projects`)}
+            onClick={() =>
+              navigate(routes.company.projects.list(companyId || ''))
+            }
             className="mt-4"
           >
             Back to Projects
@@ -52,7 +55,14 @@ const Viewer = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/${companyId}/projects/${projectId}`)}
+            onClick={() =>
+              navigate(
+                routes.company.project.details(
+                  companyId || '',
+                  projectId || '',
+                ),
+              )
+            }
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back

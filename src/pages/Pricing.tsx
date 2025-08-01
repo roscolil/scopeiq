@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
+import { routes } from '@/utils/navigation'
 import {
   Card,
   CardContent,
@@ -78,7 +79,7 @@ const Pricing = () => {
       window.location.href = 'mailto:sales@scopeiq.com'
     } else {
       // Navigate to signup with plan parameter
-      navigate(`/signup?plan=${planName.toLowerCase()}`)
+      navigate(routes.auth.signup() + `?plan=${planName.toLowerCase()}`)
     }
   }
 

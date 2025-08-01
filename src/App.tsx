@@ -30,42 +30,49 @@ Amplify.configure(outputs)
 
 const App = () => (
   <>
-    {/* <QueryClientProvider client={queryClient}> */}
     <TooltipProvider>
       <AuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<Index />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="*" element={<NotFound />} />
-            <Route element={<AuthenticatedLayout />}>
-              <Route path=":companyId" element={<ProfileHome />} />
-              <Route path=":companyId/projects" element={<Projects />} />
-              <Route
-                path=":companyId/projects/:projectId"
-                element={<ProjectDetails />}
-              />
-              <Route
-                path=":companyId/projects/:projectId/documents"
-                element={<Documents />}
-              />
-              <Route
-                path=":companyId/projects/:projectId/:documentId"
-                element={<Viewer />}
-              />
-              <Route path=":companyId/settings" element={<ProfileSettings />} />
+            <Route path="/auth">
+              <Route path="signin" element={<SignIn />} />
+              <Route path="signup" element={<SignUp />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="verify-email" element={<VerifyEmail />} />
             </Route>
+            <Route path="/pricing" element={<Pricing />} />
+
+            {/* Authenticated routes */}
+            <Route element={<AuthenticatedLayout />}>
+              {/* Company dashboard */}
+              <Route path="/:companyId">
+                <Route index element={<ProfileHome />} />
+                <Route path="settings" element={<ProfileSettings />} />
+
+                {/* Direct project routes */}
+                <Route path=":projectId">
+                  <Route index element={<ProjectDetails />} />
+                  {/* Direct document routes */}
+                  <Route path=":documentId" element={<Viewer />} />
+                  {/* Documents listing */}
+                  <Route path="documents" element={<Documents />} />
+                </Route>
+
+                {/* Projects index still needed */}
+                <Route path="projects" element={<Projects />} />
+              </Route>
+            </Route>
+
+            {/* Catch-all route for 404 */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
-    {/* </QueryClientProvider> */}
   </>
 )
 
