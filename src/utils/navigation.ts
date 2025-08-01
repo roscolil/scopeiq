@@ -38,6 +38,10 @@ export const routes = {
       list: (companyId: string) => `/${companyId}/projects`,
       new: (companyId: string) => `/${companyId}/projects/new`,
     },
+    documents: {
+      // All documents view
+      all: (companyId: string) => `/${companyId}/documents`,
+    },
     // Direct routes for project and document - now with optional readable names
     project: {
       details: (companyId: string, projectId: string, projectName?: string) => {

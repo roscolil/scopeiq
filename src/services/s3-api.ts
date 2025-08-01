@@ -223,6 +223,44 @@ export const projectService = {
       throw error
     }
   },
+
+  // Get all projects with their documents for comprehensive view
+  async getAllProjectsWithDocuments() {
+    try {
+      const companyId = getCurrentCompanyId()
+      console.log(
+        `S3 projectService: Fetching all projects with documents for company ${companyId}`,
+      )
+
+      const projects = await s3ProjectService.getProjects(companyId)
+      console.log(`S3 projectService: Found ${projects.length} projects`)
+
+      // For each project, fetch its documents
+      const projectsWithDocuments = await Promise.all(
+        projects.map(async project => {
+          const documents = await s3DocumentService.getDocumentsByProject(
+            companyId,
+            project.id,
+          )
+          console.log(
+            `S3 projectService: Project "${project.name}" has ${documents.length} documents`,
+          )
+          return {
+            ...project,
+            documents,
+          }
+        }),
+      )
+
+      console.log(
+        `S3 projectService: Returning ${projectsWithDocuments.length} projects with documents`,
+      )
+      return projectsWithDocuments
+    } catch (error) {
+      console.error('Error fetching projects with documents:', error)
+      throw error
+    }
+  },
 }
 
 // Document service functions using S3

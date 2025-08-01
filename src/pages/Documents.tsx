@@ -21,9 +21,20 @@ import { documentService, projectService } from '@/services/s3-api'
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
-    projectId: string
+    projectId?: string
   }>()
   const [documents, setDocuments] = React.useState<Document[]>([])
+  const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
+    Array<{
+      id: string
+      name: string
+      description?: string
+      createdAt: string
+      updatedAt?: string
+      companyId: string
+      documents: Document[]
+    }>
+  >([])
   const [projectName, setProjectName] = React.useState<string>('')
   const [companyName, setCompanyName] = React.useState<string>('')
   const [loading, setLoading] = React.useState(true)
@@ -37,50 +48,61 @@ const Documents = () => {
 
   React.useEffect(() => {
     const loadData = async () => {
-      if (!projectId || !companyId) return
+      if (!companyId) return
 
       try {
         setLoading(true)
 
-        // Fetch project details using slug resolution
-        console.log('Documents page resolving project slug/ID:', projectId)
-        const project = await projectService.resolveProject(projectId)
-        console.log('Documents page resolved project data:', project)
-
-        if (project) {
-          console.log('Documents page setting project name to:', project.name)
-          setProjectName(project.name)
-          setResolvedProject(project)
-        } else {
-          console.log(
-            'Documents page: No project found for slug/ID:',
-            projectId,
-          )
-          setProjectName('Unknown Project')
-        }
-
         // Set company name (using companyId as name for now)
         setCompanyName(companyId)
 
-        // Fetch documents for this project using the resolved project ID
-        if (project) {
-          const projectDocuments = await documentService.getDocumentsByProject(
-            project.id,
-          )
-          setDocuments(projectDocuments)
-        } else {
-          setDocuments([])
-        }
+        if (projectId) {
+          // Single project view - load documents for specific project
+          console.log('Documents page resolving project slug/ID:', projectId)
+          const project = await projectService.resolveProject(projectId)
+          console.log('Documents page resolved project data:', project)
 
-        // Debug: Also fetch all documents to see what's in the database
-        console.log('Documents page: Fetching all documents for debugging...')
-        const allDocuments = await documentService.getAllDocuments()
-        console.log('Documents page: All documents in database:', allDocuments)
+          if (project) {
+            console.log('Documents page setting project name to:', project.name)
+            setProjectName(project.name)
+            setResolvedProject(project)
+
+            // Fetch documents for this project using the resolved project ID
+            const projectDocuments =
+              await documentService.getDocumentsByProject(project.id)
+            setDocuments(projectDocuments)
+          } else {
+            console.log(
+              'Documents page: No project found for slug/ID:',
+              projectId,
+            )
+            setProjectName('Unknown Project')
+            setDocuments([])
+          }
+        } else {
+          // All projects view - load all projects with their documents
+          console.log('Documents page: Loading all projects with documents...')
+          const allProjectsWithDocs =
+            await projectService.getAllProjectsWithDocuments()
+          console.log(
+            'Documents page: Loaded projects with documents:',
+            allProjectsWithDocs,
+          )
+          setProjectsWithDocuments(allProjectsWithDocs)
+
+          // Also set a flat list of all documents for the general documents tab
+          const allDocuments = await documentService.getAllDocuments()
+          console.log(
+            'Documents page: All documents in database:',
+            allDocuments,
+          )
+          setDocuments(allDocuments)
+        }
       } catch (error) {
         console.error('Error loading data:', error)
         toast({
           title: 'Error loading data',
-          description: 'Failed to load project documents.',
+          description: 'Failed to load documents.',
           variant: 'destructive',
         })
       } finally {
@@ -115,6 +137,106 @@ const Documents = () => {
     }
   }
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="text-center p-8">
+          <p className="text-muted-foreground">Loading documents...</p>
+        </div>
+      </Layout>
+    )
+  }
+
+  // Single project view
+  if (projectId) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                navigate(
+                  routes.company.project.details(
+                    companyId || '',
+                    projectId || '',
+                    projectName,
+                  ),
+                )
+              }
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Project
+            </Button>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {projectName ? `${projectName} Documents` : 'Project Documents'}
+            </h1>
+
+            <div className="flex gap-2">
+              <Dialog
+                open={isUploadDialogOpen}
+                onOpenChange={setIsUploadDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Upload
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Upload Document</DialogTitle>
+                  </DialogHeader>
+                  <FileUploader
+                    projectId={resolvedProject?.id || projectId}
+                    companyId={companyId || 'default-company'}
+                    onUploadComplete={doc => {
+                      // Add the uploaded document to the current list
+                      setDocuments(prev => [...prev, doc])
+
+                      // Close the dialog
+                      setIsUploadDialogOpen(false)
+
+                      // Show success toast
+                      toast({
+                        title: 'Document uploaded',
+                        description: `${doc.name} has been added to this project.`,
+                      })
+                    }}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {documents.length > 0 ? (
+            <DocumentList
+              documents={documents}
+              projectId={resolvedProject?.id || projectId}
+              companyId={companyId || 'default-company'}
+              projectName={projectName}
+              onDelete={handleDeleteDocument}
+            />
+          ) : (
+            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
+              <p className="text-muted-foreground mb-4">
+                No documents in this project yet
+              </p>
+              <Button onClick={() => setIsUploadDialogOpen(true)}>
+                Upload Document
+              </Button>
+            </div>
+          )}
+        </div>
+      </Layout>
+    )
+  }
+
+  // All projects view
   return (
     <Layout>
       <div className="space-y-6">
@@ -124,129 +246,125 @@ const Documents = () => {
             size="sm"
             onClick={() =>
               navigate(
-                routes.company.project.details(
-                  companyId || '',
-                  projectId || '',
-                  projectName,
-                ),
+                routes.company.projects.list(companyId || 'default-company'),
               )
             }
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Project
+            Back to Projects
           </Button>
         </div>
 
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {projectName ? `${projectName} Documents` : 'Project Documents'}
-          </h1>
-
-          <div className="flex gap-2">
-            <Dialog
-              open={isUploadDialogOpen}
-              onOpenChange={setIsUploadDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Upload
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Upload Document</DialogTitle>
-                </DialogHeader>
-                <FileUploader
-                  projectId={projectId || 'default-project'}
-                  companyId={companyId || 'default-company'}
-                  onUploadComplete={doc => {
-                    // Add the uploaded document to the current list
-                    setDocuments(prev => [...prev, doc])
-
-                    // Close the dialog
-                    setIsUploadDialogOpen(false)
-
-                    // Show success toast
-                    toast({
-                      title: 'Document uploaded',
-                      description: `${doc.name} has been added to this project.`,
-                    })
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">All Documents</h1>
         </div>
 
-        {/* <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid grid-cols-4 mb-4">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="processed">Processed</TabsTrigger>
-            <TabsTrigger value="failed">Failed</TabsTrigger>
+        <Tabs defaultValue="by-project" className="w-full">
+          <TabsList className="grid grid-cols-2 mb-4">
+            <TabsTrigger value="by-project">By Project</TabsTrigger>
+            <TabsTrigger value="all-documents">All Documents</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all"> */}
-        {documents.length > 0 ? (
-          <DocumentList
-            documents={documents}
-            projectId={resolvedProject?.id || projectId || 'default-project'}
-            companyId={companyId || 'default-company'}
-            projectName={projectName}
-            onDelete={handleDeleteDocument}
-          />
-        ) : (
-          <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-            <p className="text-muted-foreground mb-4">
-              No documents in this project yet
-            </p>
-            <Button onClick={() => setIsUploadDialogOpen(true)}>
-              Upload Document
-            </Button>
-          </div>
-        )}
-        {/* </TabsContent>
+          <TabsContent value="by-project">
+            {projectsWithDocuments.length > 0 ? (
+              <div className="space-y-6">
+                {projectsWithDocuments.map(project => (
+                  <div key={project.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {project.name}
+                        </h3>
+                        {project.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {project.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {project.documents.length} document
+                          {project.documents.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigate(
+                            routes.company.project.details(
+                              companyId || 'default-company',
+                              project.id,
+                              project.name,
+                            ),
+                          )
+                        }
+                      >
+                        View Project
+                      </Button>
+                    </div>
 
-          <TabsContent value="recent">
-            <DocumentList documents={documents.slice(0, 2)} />
+                    {project.documents.length > 0 ? (
+                      <DocumentList
+                        documents={project.documents}
+                        projectId={project.id}
+                        companyId={companyId || 'default-company'}
+                        projectName={project.name}
+                        onDelete={handleDeleteDocument}
+                      />
+                    ) : (
+                      <div className="text-center p-4 border rounded bg-secondary/10">
+                        <p className="text-sm text-muted-foreground">
+                          No documents in this project yet
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-8 border rounded-lg bg-secondary/20">
+                <p className="text-muted-foreground mb-4">No projects found</p>
+                <Button
+                  onClick={() =>
+                    navigate(
+                      routes.company.projects.list(
+                        companyId || 'default-company',
+                      ),
+                    )
+                  }
+                >
+                  Create Project
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
-          <TabsContent value="processed">
-            <DocumentList
-              documents={documents.filter(doc => doc.status === 'processed')}
-            />
+          <TabsContent value="all-documents">
+            {documents.length > 0 ? (
+              <DocumentList
+                documents={documents}
+                projectId=""
+                companyId={companyId || 'default-company'}
+                projectName=""
+                onDelete={handleDeleteDocument}
+              />
+            ) : (
+              <div className="text-center p-8 border rounded-lg bg-secondary/20">
+                <p className="text-muted-foreground mb-4">No documents found</p>
+                <Button
+                  onClick={() =>
+                    navigate(
+                      routes.company.projects.list(
+                        companyId || 'default-company',
+                      ),
+                    )
+                  }
+                >
+                  Create a Project and Upload Documents
+                </Button>
+              </div>
+            )}
           </TabsContent>
-
-          <TabsContent value="failed">
-            <DocumentList
-              documents={documents.filter(doc => doc.status === 'failed')}
-            />
-          </TabsContent>
-        </Tabs> */}
-
-        {loading ? (
-          <div className="text-center p-8">
-            <p className="text-muted-foreground">Loading documents...</p>
-          </div>
-        ) : documents.length > 0 ? (
-          <DocumentList
-            documents={documents}
-            projectId={projectId || 'default-project'}
-            companyId={companyId || 'default-company'}
-            projectName={projectName}
-            onDelete={handleDeleteDocument}
-          />
-        ) : (
-          <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-            <p className="text-muted-foreground mb-4">
-              No documents in this project yet
-            </p>
-            <Button onClick={() => setIsUploadDialogOpen(true)}>
-              Upload Document
-            </Button>
-          </div>
-        )}
+        </Tabs>
       </div>
     </Layout>
   )
