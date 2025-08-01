@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
+import { Spinner } from '@/components/Spinner'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Edit, Trash2, Plus, ChevronDown } from 'lucide-react'
 import {
@@ -235,10 +236,7 @@ const ProjectDetails = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading project...</p>
-          </div>
+          <Spinner size="lg" text="Loading project..." />
         </div>
       </Layout>
     )

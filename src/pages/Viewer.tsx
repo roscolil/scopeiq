@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentViewer } from '@/components/DocumentViewerNew'
+import { Spinner } from '@/components/Spinner'
 import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
@@ -149,10 +150,7 @@ const Viewer = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading document...</p>
-          </div>
+          <Spinner size="lg" text="Loading document..." />
         </div>
       </Layout>
     )

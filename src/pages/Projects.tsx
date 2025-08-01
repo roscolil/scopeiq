@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
+import { Spinner } from '@/components/Spinner'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter } from 'lucide-react'
 import { Project } from '@/types'
@@ -158,8 +159,8 @@ const Projects = () => {
         </div>
 
         {loading ? (
-          <div className="text-center p-8">
-            <p className="text-muted-foreground">Loading projects...</p>
+          <div className="flex justify-center items-center min-h-[300px]">
+            <Spinner size="lg" text="Loading projects..." />
           </div>
         ) : (
           <ProjectList
