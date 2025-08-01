@@ -79,7 +79,7 @@ export const Navbar = () => {
     {
       name: 'Documents',
       path: companyId
-        ? `/${companyId.toLowerCase()}/projects/:projectId/documents`
+        ? `/${companyId.toLowerCase()}/projects/documents`
         : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
