@@ -40,8 +40,11 @@ const Projects = () => {
       )
       try {
         setLoading(true)
-        const projectsData = await projectService.getProjects()
-        console.log('Projects page: Loaded projects from API:', projectsData)
+        const projectsData = await projectService.getAllProjectsWithDocuments()
+        console.log(
+          'Projects page: Loaded projects with documents from API:',
+          projectsData,
+        )
 
         // Transform API data to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -51,6 +54,7 @@ const Projects = () => {
             description: project.description || '',
             createdAt: project.createdAt,
             updatedAt: project.updatedAt,
+            documents: project.documents || [], // Include the documents array
             // Add any required fields from our Project type
             address: '',
             companyId: companyId || 'default-company',
@@ -107,6 +111,7 @@ const Projects = () => {
           description: newProject.description || '',
           createdAt: newProject.createdAt,
           updatedAt: newProject.updatedAt,
+          documents: [], // New projects start with no documents
           address: projectData.address,
           companyId: companyId || 'default-company',
           streetNumber: projectData.streetNumber || '',
@@ -125,6 +130,11 @@ const Projects = () => {
       console.error('Projects: Error creating project:', error)
       throw error // Re-throw to let ProjectForm handle the error display
     }
+  }
+
+  const handleProjectDeleted = (projectId: string) => {
+    console.log('Projects: Removing deleted project from state:', projectId)
+    setProjects(prev => prev.filter(project => project.id !== projectId))
   }
 
   return (
@@ -167,6 +177,7 @@ const Projects = () => {
             projects={projects}
             companyId={(companyId || 'default-company').toLowerCase()}
             onCreateProject={() => setIsDialogOpen(true)}
+            onProjectDeleted={handleProjectDeleted}
           />
         )}
       </div>

@@ -5,11 +5,23 @@ import { DocumentViewer } from '@/components/DocumentViewerNew'
 import { Spinner } from '@/components/Spinner'
 import { Button } from '@/components/ui/button'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
   ArrowLeft,
   Download,
   Share2,
   FileText,
   BrainCircuit,
+  Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/navigation'
@@ -33,19 +45,21 @@ const Viewer = () => {
   const location = useLocation()
   const { toast } = useToast()
 
-  const [viewMode, setViewMode] = useState<'document' | 'ai'>('document')
+  const [viewMode, setViewMode] = useState<'document' | 'ai'>('ai')
   const [document, setDocument] = useState<DocumentType | null>(null)
   const [projectName, setProjectName] = useState<string>('')
   const [companyName, setCompanyName] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // React to hash changes for AI/Document toggle
   useEffect(() => {
     const hash = location.hash
-    if (hash === '#ai') {
-      setViewMode('ai')
-    } else {
+    if (hash === '#document') {
       setViewMode('document')
+    } else {
+      // Default to 'ai' when no hash or #ai hash
+      setViewMode('ai')
     }
   }, [location.hash])
 
@@ -217,13 +231,50 @@ const Viewer = () => {
     }
   }
 
+  const handleDelete = async () => {
+    if (!document) return
+
+    try {
+      setIsDeleting(true)
+
+      // Delete the document using the service
+      await documentService.deleteDocument(document.id)
+
+      toast({
+        title: 'Document deleted',
+        description: `"${document.name}" has been permanently deleted.`,
+      })
+
+      // Redirect back to the project details page
+      if (companyId && projectId) {
+        navigate(
+          routes.company.project.details(companyId, projectId, projectName),
+        )
+      } else if (companyId) {
+        navigate(routes.company.projects.list(companyId))
+      } else {
+        navigate('/')
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      toast({
+        title: 'Delete failed',
+        description: 'Failed to delete the document. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const handleTabChange = (value: string) => {
     setViewMode(value as 'document' | 'ai')
 
     // Update URL hash for bookmarking/sharing
-    if (value === 'ai') {
-      window.history.replaceState(null, '', `${location.pathname}#ai`)
+    if (value === 'document') {
+      window.history.replaceState(null, '', `${location.pathname}#document`)
     } else {
+      // For 'ai' mode, remove hash (since it's the default)
       window.history.replaceState(null, '', location.pathname)
     }
   }
@@ -306,6 +357,42 @@ const Viewer = () => {
               <Share2 className="h-4 w-4" />
               <span>Share</span>
             </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2 text-destructive hover:text-destructive"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Document</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{document?.name}"? This
+                    action will permanently remove the document from your
+                    project and cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Document'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
