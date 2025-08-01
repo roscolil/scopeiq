@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { Project } from '@/types'
 import {
   Card,
@@ -9,21 +10,71 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Folder } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { FileText, Folder, MoreVertical, Trash2 } from 'lucide-react'
 import { routes } from '@/utils/navigation'
+import { useToast } from '@/hooks/use-toast'
+import { projectService } from '@/services/s3-api'
 
 interface ProjectListProps {
   projects: Project[]
   companyId: string
   onCreateProject?: () => void
+  onProjectDeleted?: (projectId: string) => void
 }
 
 export const ProjectList = ({
   projects,
   companyId,
   onCreateProject,
+  onProjectDeleted,
 }: ProjectListProps) => {
   const navigate = useNavigate()
+  const { toast } = useToast()
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
+    null,
+  )
+
+  const handleDeleteProject = async (project: Project) => {
+    try {
+      setDeletingProjectId(project.id)
+      await projectService.deleteProject(project.id)
+
+      if (onProjectDeleted) {
+        onProjectDeleted(project.id)
+      }
+
+      toast({
+        title: 'Project deleted',
+        description: `"${project.name}" has been permanently deleted.`,
+      })
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast({
+        title: 'Delete failed',
+        description: 'Failed to delete the project. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingProjectId(null)
+    }
+  }
 
   if (projects.length === 0) {
     return (
@@ -53,12 +104,59 @@ export const ProjectList = ({
       {projects.map(project => (
         <Card key={project.id} className="overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">
-              {project.name}
-            </CardTitle>
-            <CardDescription className="line-clamp-2">
-              {project.description}
-            </CardDescription>
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <CardTitle className="text-lg font-medium">
+                  {project.name}
+                </CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {project.description}
+                </CardDescription>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={e => e.preventDefault()}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Project
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{project.name}"? This
+                          action will permanently delete the project and all its
+                          documents. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteProject(project)}
+                          disabled={deletingProjectId === project.id}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          {deletingProjectId === project.id
+                            ? 'Deleting...'
+                            : 'Delete Project'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </CardHeader>
           <CardContent className="pb-2">
             <div className="flex items-center text-sm text-muted-foreground">

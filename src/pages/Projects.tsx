@@ -111,6 +111,7 @@ const Projects = () => {
           description: newProject.description || '',
           createdAt: newProject.createdAt,
           updatedAt: newProject.updatedAt,
+          documents: [], // New projects start with no documents
           address: projectData.address,
           companyId: companyId || 'default-company',
           streetNumber: projectData.streetNumber || '',
@@ -129,6 +130,11 @@ const Projects = () => {
       console.error('Projects: Error creating project:', error)
       throw error // Re-throw to let ProjectForm handle the error display
     }
+  }
+
+  const handleProjectDeleted = (projectId: string) => {
+    console.log('Projects: Removing deleted project from state:', projectId)
+    setProjects(prev => prev.filter(project => project.id !== projectId))
   }
 
   return (
@@ -171,6 +177,7 @@ const Projects = () => {
             projects={projects}
             companyId={(companyId || 'default-company').toLowerCase()}
             onCreateProject={() => setIsDialogOpen(true)}
+            onProjectDeleted={handleProjectDeleted}
           />
         )}
       </div>
