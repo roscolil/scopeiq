@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
 import { signIn, fetchUserAttributes } from 'aws-amplify/auth'
+import { routes } from '@/utils/navigation'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -50,10 +51,10 @@ const SignIn = () => {
       console.log('attrs :>> ', attrs)
       if (role.includes('owner')) {
         // Go to company dashboard
-        navigate(`/${companyId.toLowerCase()}`)
+        navigate(routes.company.home(companyId.toLowerCase()))
       } else {
         // Go to project landing page
-        navigate('/')
+        navigate(routes.home())
       }
     } catch (err) {
       setError('Invalid email or password. Please try again.')

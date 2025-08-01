@@ -5,19 +5,29 @@ import { DocumentViewer } from '@/components/DocumentViewer'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Share2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { routes } from '@/utils/navigation'
 
 const Viewer = () => {
-  const { id } = useParams<{ id: string }>()
+  const { companyId, projectId, documentId } = useParams<{
+    companyId: string
+    projectId: string
+    documentId: string
+  }>()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  if (!id) {
+  if (!documentId || !projectId || !companyId) {
     return (
       <Layout>
         <div className="text-center">
           <p>Document not found</p>
-          <Button onClick={() => navigate('/documents')} className="mt-4">
-            Back to Documents
+          <Button
+            onClick={() =>
+              navigate(routes.company.projects.list(companyId || ''))
+            }
+            className="mt-4"
+          >
+            Back to Projects
           </Button>
         </div>
       </Layout>
@@ -45,7 +55,14 @@ const Viewer = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/documents')}
+            onClick={() =>
+              navigate(
+                routes.company.project.details(
+                  companyId || '',
+                  projectId || '',
+                ),
+              )
+            }
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
@@ -63,7 +80,11 @@ const Viewer = () => {
           </div>
         </div>
 
-        <DocumentViewer documentId={id} />
+        <DocumentViewer
+          documentId={documentId}
+          projectId={projectId}
+          companyId={companyId}
+        />
       </div>
     </Layout>
   )
