@@ -63,7 +63,10 @@ export const ProjectList = ({
           <CardContent className="pb-2">
             <div className="flex items-center text-sm text-muted-foreground">
               <FileText className="h-4 w-4 mr-1" />
-              <span>{project.documents?.length || 0} documents</span>
+              <span>
+                {project.documents?.length || 0}{' '}
+                {project.documents?.length === 1 ? 'document' : 'documents'}
+              </span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               Created on {new Date(project.createdAt).toLocaleDateString()}

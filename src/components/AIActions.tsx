@@ -12,7 +12,6 @@ import {
   BrainCircuit,
   Search,
   FileSearch,
-  ScrollText,
   Copy,
   MessageSquare,
   FileStack,
@@ -41,9 +40,7 @@ interface AIActionsProps {
 export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<string[]>([])
-  const [summary, setSummary] = useState<string | null>(null)
   const [isSearching, setIsSearching] = useState(false)
-  const [isSummarizing, setIsSummarizing] = useState(false)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
@@ -87,23 +84,6 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
       setSearchResults(results)
       setIsSearching(false)
     }, 1500)
-  }
-
-  const generateSummary = () => {
-    setIsSummarizing(true)
-    setSummary(null)
-
-    // Simulate LLM summary generation using AWS SageMaker
-    // In a real app, we would generate different summaries based on queryScope
-    setTimeout(() => {
-      const summaryText =
-        queryScope === 'document'
-          ? 'This document describes a cloud-based document processing system that utilizes AWS services for storage and AI capabilities. It outlines the architecture using S3 for storage, Textract for text extraction, and integration with vector databases for semantic search functionality.'
-          : 'This project contains multiple documents related to a cloud-based document processing system. The Business Proposal outlines the system architecture, the Financial Report details cost implications, and the Contract Agreement provides legal frameworks for implementation. All documents together form a comprehensive implementation plan for an AWS-powered document management solution.'
-
-      setSummary(summaryText)
-      setIsSummarizing(false)
-    }, 2000)
   }
 
   // Legacy method - redirecting to the newer handleAskAI method
@@ -367,48 +347,6 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
                       {result}
                     </p>
                   ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center">
-                  <ScrollText className="h-4 w-4 mr-2 text-primary" />
-                  <h3 className="text-sm font-medium">AI Summary</h3>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={generateSummary}
-                  disabled={isSummarizing}
-                >
-                  {isSummarizing ? 'Generating...' : 'Generate'}
-                </Button>
-              </div>
-
-              {isSummarizing && (
-                <div className="bg-secondary p-4 rounded-md flex justify-center">
-                  <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-
-              {summary && (
-                <div className="bg-secondary p-3 rounded-md text-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <Badge variant="outline" className="bg-secondary">
-                      Summary
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => copyToClipboard(summary)}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <p className="text-xs">{summary}</p>
                 </div>
               )}
             </div>

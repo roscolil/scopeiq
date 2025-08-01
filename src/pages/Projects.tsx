@@ -40,8 +40,11 @@ const Projects = () => {
       )
       try {
         setLoading(true)
-        const projectsData = await projectService.getProjects()
-        console.log('Projects page: Loaded projects from API:', projectsData)
+        const projectsData = await projectService.getAllProjectsWithDocuments()
+        console.log(
+          'Projects page: Loaded projects with documents from API:',
+          projectsData,
+        )
 
         // Transform API data to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -51,6 +54,7 @@ const Projects = () => {
             description: project.description || '',
             createdAt: project.createdAt,
             updatedAt: project.updatedAt,
+            documents: project.documents || [], // Include the documents array
             // Add any required fields from our Project type
             address: '',
             companyId: companyId || 'default-company',
