@@ -14,64 +14,70 @@ import {
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/ProjectForm'
 import { fetchUserAttributes } from 'aws-amplify/auth'
+import { projectService } from '@/services/s3-api'
 
 const Projects = () => {
+  console.log('Projects component: Rendering')
+
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [attrs, setAttrs] = useState<Record<string, string>>({})
-  const { companyId, projectId } = useParams<{
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const { companyId } = useParams<{
     companyId: string
-    projectId: string
   }>()
 
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: 'project-1',
-      name: 'Construction Site A',
-      description:
-        'Main construction project for Site A including all blueprints and specifications.',
-      createdAt: new Date(2025, 3, 8).toISOString(),
-      documentIds: ['doc-1', 'doc-3'],
-      address: '123 Main St, Springfield',
-      companyId: 'company-1',
-      streetNumber: '123',
-      streetName: 'Main St',
-      suburb: 'Springfield',
-      state: 'VIC',
-      postcode: '3000',
-    },
-    {
-      id: 'project-2',
-      name: 'Renovation Plan B',
-      description: 'Renovation project for existing building B.',
-      createdAt: new Date(2025, 3, 5).toISOString(),
-      documentIds: ['doc-2'],
-      address: '456 Side Rd, Shelbyville',
-      companyId: 'company-1',
-      streetNumber: '456',
-      streetName: 'Side Rd',
-      suburb: 'Shelbyville',
-      state: 'NSW',
-      postcode: '2000',
-    },
-    {
-      id: 'project-3',
-      name: 'Maintenance Schedule',
-      description:
-        'Regular maintenance schedule and documentation for all sites.',
-      createdAt: new Date(2025, 3, 1).toISOString(),
-      documentIds: ['doc-4'],
-      address: '789 High St, Capital City',
-      companyId: 'company-1',
-      streetNumber: '789',
-      streetName: 'High St',
-      suburb: 'Capital City',
-      state: 'QLD',
-      postcode: '4000',
-    },
-  ])
+  console.log('Projects component: companyId from params:', companyId)
 
-  const handleCreateProject = (projectData: {
+  // Load projects from API
+  useEffect(() => {
+    const loadProjects = async () => {
+      console.log(
+        'Projects page: Starting to load projects for companyId:',
+        companyId,
+      )
+      try {
+        setLoading(true)
+        const projectsData = await projectService.getProjects()
+        console.log('Projects page: Loaded projects from API:', projectsData)
+
+        // Transform API data to our Project type
+        const transformedProjects: Project[] = (projectsData || []).map(
+          project => ({
+            id: project.id,
+            name: project.name || 'Untitled Project',
+            description: project.description || '',
+            createdAt: project.createdAt,
+            updatedAt: project.updatedAt,
+            // Add any required fields from our Project type
+            address: '',
+            companyId: companyId || 'default-company',
+            streetNumber: '',
+            streetName: '',
+            suburb: '',
+            state: '',
+            postcode: '',
+          }),
+        )
+
+        console.log('Projects page: Transformed projects:', transformedProjects)
+        setProjects(transformedProjects)
+      } catch (error) {
+        console.error('Projects page: Error loading projects:', error)
+        // Fallback to empty array
+        setProjects([])
+      } finally {
+        console.log('Projects page: Finished loading, setting loading to false')
+        setLoading(false)
+      }
+    }
+
+    console.log('Projects page: useEffect triggered with companyId:', companyId)
+    loadProjects()
+  }, [companyId])
+
+  const handleCreateProject = async (projectData: {
     address: string
     name: string
     description: string
@@ -81,28 +87,52 @@ const Projects = () => {
     state?: string
     postcode?: string
   }) => {
-    const newProject: Project = {
-      ...projectData,
-      id: `project-${projects.length + 1}`,
-      createdAt: new Date().toISOString(),
-      documentIds: [],
-      companyId: companyId, // or use companyId if dynamic
-      streetNumber: projectData.streetNumber || '',
-      streetName: projectData.streetName || '',
-      suburb: projectData.suburb || '',
-      state: projectData.state || '',
-      postcode: projectData.postcode || '',
-    }
+    console.log('Projects: Creating project with data:', projectData)
 
-    setProjects([...projects, newProject])
-    setIsDialogOpen(false)
+    try {
+      // Create project using API
+      const newProject = await projectService.createProject({
+        name: projectData.name,
+        description: projectData.description || '',
+      })
+
+      if (newProject) {
+        console.log('Projects: Project created successfully:', newProject)
+
+        // Transform and add to local state
+        const transformedProject: Project = {
+          id: newProject.id,
+          name: newProject.name || 'Untitled Project',
+          description: newProject.description || '',
+          createdAt: newProject.createdAt,
+          updatedAt: newProject.updatedAt,
+          address: projectData.address,
+          companyId: companyId || 'default-company',
+          streetNumber: projectData.streetNumber || '',
+          streetName: projectData.streetName || '',
+          suburb: projectData.suburb || '',
+          state: projectData.state || '',
+          postcode: projectData.postcode || '',
+        }
+
+        setProjects(prev => [...prev, transformedProject])
+        setIsDialogOpen(false)
+
+        console.log('Projects: Project added to state and dialog closed')
+      }
+    } catch (error) {
+      console.error('Projects: Error creating project:', error)
+      throw error // Re-throw to let ProjectForm handle the error display
+    }
   }
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">My Projects</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            My Projects {companyId && `(${companyId})`}
+          </h1>
 
           <div className="flex gap-2">
             {/* <Button variant="outline" size="sm">
@@ -127,7 +157,17 @@ const Projects = () => {
           </div>
         </div>
 
-        <ProjectList projects={projects} companyId={companyId.toLowerCase()} />
+        {loading ? (
+          <div className="text-center p-8">
+            <p className="text-muted-foreground">Loading projects...</p>
+          </div>
+        ) : (
+          <ProjectList
+            projects={projects}
+            companyId={(companyId || 'default-company').toLowerCase()}
+            onCreateProject={() => setIsDialogOpen(true)}
+          />
+        )}
       </div>
     </Layout>
   )

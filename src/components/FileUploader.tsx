@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Upload, X, FileText, FileImage, File } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
+import { documentService } from '@/services/s3-api'
 
 interface FileUploaderProps {
   projectId: string
@@ -78,35 +79,47 @@ export const FileUploader = ({
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      // Create document record
-      const uploadedFile: Document = {
-        id: `doc-${Date.now()}`,
+      // Create document record in the database using the API
+      console.log('Creating document record with name:', file.name)
+      console.log('Document creation data:', {
         name: file.name,
-        url: result.url,
-        key: result.key,
-        size: result.size,
-        type: result.type,
-        date: new Date().toISOString().split('T')[0],
+        type: file.type,
+        size: String(result.size),
         status: 'processing',
+        url: result.url,
         projectId: projectId,
-      }
+      })
 
-      // Save to localStorage
-      const storedDocuments = localStorage.getItem('uploadedDocuments')
-      let documents: Document[] = []
+      const newDocument = await documentService.createDocument({
+        name: file.name, // Use the original file name
+        type: file.type,
+        size: String(result.size),
+        status: 'processing',
+        url: result.url,
+        projectId: projectId,
+        companyId: companyId, // Explicitly pass companyId
+      })
 
-      if (storedDocuments) {
+      console.log('Created document:', newDocument)
+      console.log('Created document ID:', newDocument?.id)
+
+      // Test: Immediately try to fetch the document we just created
+      if (newDocument?.id) {
+        console.log(
+          'Testing: Attempting to fetch document immediately after creation...',
+        )
         try {
-          documents = JSON.parse(storedDocuments) as Document[]
-        } catch (error) {
-          console.error('Error parsing stored documents:', error)
+          const fetchTest = await documentService.getDocument(newDocument.id)
+          console.log('Testing: Successfully fetched document:', fetchTest)
+        } catch (testError) {
+          console.error(
+            'Testing: Failed to fetch document immediately after creation:',
+            testError,
+          )
         }
       }
 
-      documents.push(uploadedFile)
-      localStorage.setItem('uploadedDocuments', JSON.stringify(documents))
-
-      onUploadComplete(uploadedFile)
+      onUploadComplete(newDocument as Document)
 
       toast({
         title: 'Upload Successful',

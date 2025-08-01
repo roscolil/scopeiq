@@ -58,17 +58,33 @@ export const DocumentViewer = ({
       return
     }
 
+    console.log(
+      'DocumentViewer: Attempting to fetch document with ID:',
+      documentId,
+    )
+    console.log('DocumentViewer: projectId:', projectId)
+    console.log('DocumentViewer: companyId:', companyId)
+
     const fetchDocument = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
+        console.log(
+          'DocumentViewer: Calling documentService.getDocument with ID:',
+          documentId,
+        )
+
         // Fetch document from API
         const documentData = await documentService.getDocument(documentId)
+
+        console.log('DocumentViewer: Response from getDocument:', documentData)
 
         if (documentData) {
           console.log('Found document:', documentData)
           console.log('Document URL:', documentData.url)
+          console.log('Document name:', documentData.name)
+          console.log('Document ID:', documentData.id)
           setDocument(documentData)
 
           let documentContent = ''
@@ -120,7 +136,7 @@ export const DocumentViewer = ({
     }
 
     fetchDocument()
-  }, [documentId])
+  }, [documentId, projectId, companyId])
 
   const getFileIcon = () => {
     if (!document) return <File className="h-5 w-5 text-primary" />
@@ -236,62 +252,58 @@ export const DocumentViewer = ({
             </Card>
 
             {/* Document Preview */}
-            {document.type.includes('pdf') ? (
-              <div className="border rounded overflow-auto max-h-[70vh] w-full flex justify-center">
-                <div className="text-center p-8">
-                  <FileText className="h-16 w-16 mx-auto mb-4 text-primary" />
-                  <p className="text-lg font-medium mb-2">{document.name}</p>
-                  <p className="text-muted-foreground mb-4">
-                    PDF viewing is temporarily disabled. You can download the
-                    file to view it.
-                  </p>
-                  {document.url && (
-                    <Button
-                      variant="default"
-                      onClick={() =>
-                        window.open(document.url as string, '_blank')
-                      }
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download PDF
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : document.type.includes('image') ? (
-              <div className="border rounded overflow-auto max-h-[70vh] w-full flex justify-center">
-                {document.url ? (
-                  <img
-                    src={document.url}
-                    alt={document.name}
-                    className="max-w-full h-auto"
-                    onError={e => {
-                      console.error('Image load error:', e)
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      target.nextElementSibling?.classList.remove('hidden')
-                    }}
-                  />
-                ) : (
-                  <div className="text-center p-8">
-                    <FileImage className="h-16 w-16 mx-auto mb-4 text-primary" />
-                    <p className="text-muted-foreground">
-                      Image preview not available
-                    </p>
-                  </div>
+            <div className="p-4 bg-background rounded-md border">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-medium">
+                  {document?.name || 'Document'}
+                </h3>
+                {document?.type && (
+                  <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                    {document.type.split('/')[1]?.toUpperCase() ||
+                      document.type}
+                  </span>
                 )}
               </div>
-            ) : (
-              <div className="border rounded p-4 max-h-[70vh] overflow-auto">
-                <div className="prose prose-sm max-w-none">
-                  {content.split('\n\n').map((paragraph, index) => (
-                    <p key={index} className="mb-3">
-                      {paragraph}
-                    </p>
-                  ))}
+
+              {/* Document content based on type */}
+              {document?.type?.includes('image') ? (
+                <div className="flex justify-center">
+                  <img
+                    src={document.url}
+                    alt={document.name || 'Document image'}
+                    className="max-w-full max-h-[600px] object-contain"
+                  />
                 </div>
-              </div>
-            )}
+              ) : document?.type?.includes('pdf') ? (
+                <div className="text-center">
+                  <p className="mb-4">PDF Document</p>
+                  <Button
+                    onClick={() => window.open(document.url, '_blank')}
+                    className="mb-4"
+                  >
+                    Open PDF in New Tab
+                  </Button>
+                  <div className="bg-muted p-4 rounded text-sm">
+                    <p>
+                      PDF content preview is not available directly in the
+                      browser.
+                    </p>
+                    <p>
+                      Please use the button above to view the PDF in a new tab.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
+                  {document?.content ||
+                    `This document (${document?.name || 'Unknown'}) has been uploaded successfully.
+                   
+Content extraction is in progress.
+       
+You can use the AI Analysis tab to analyze this document.`}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (

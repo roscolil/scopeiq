@@ -50,7 +50,7 @@ interface ProjectFormProps {
     address: string
     name: string
     description: string
-  }) => void
+  }) => Promise<void>
   defaultValues?: {
     address: string
     streetNumber: string
@@ -65,6 +65,7 @@ interface ProjectFormProps {
 export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
   const { toast } = useToast()
   const [showManualFields, setShowManualFields] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -79,22 +80,45 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
     },
   })
 
-  const handleSubmit = (data: FormData) => {
-    console.log('data', data)
-    const formattedAddress =
-      data.address ||
-      `${data.streetNumber} ${data.streetName}, ${data.suburb} ${data.postcode}`
+  const handleSubmit = async (data: FormData) => {
+    if (isSubmitting) {
+      console.log(
+        'ProjectForm: Already submitting, ignoring duplicate submission',
+      )
+      return
+    }
 
-    onSubmit({
-      address: formattedAddress,
-      name: data.name,
-      description: data.description || '',
-    })
+    try {
+      setIsSubmitting(true)
+      console.log('ProjectForm: Submitting data:', data)
 
-    toast({
-      title: 'Project saved',
-      description: 'Your project has been saved successfully.',
-    })
+      const formattedAddress =
+        data.address ||
+        `${data.streetNumber} ${data.streetName}, ${data.suburb} ${data.postcode}`
+
+      await onSubmit({
+        address: formattedAddress,
+        name: data.name,
+        description: data.description || '',
+      })
+
+      toast({
+        title: 'Project saved',
+        description: 'Your project has been saved successfully.',
+      })
+
+      // Reset form after successful submission
+      form.reset()
+    } catch (error) {
+      console.error('ProjectForm: Error submitting form:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -233,8 +257,8 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
           )}
         />
 
-        <Button type="submit" className="w-full">
-          Save Project
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating Project...' : 'Save Project'}
         </Button>
       </form>
     </Form>
