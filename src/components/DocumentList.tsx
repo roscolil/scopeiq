@@ -33,6 +33,7 @@ interface DocumentListProps {
   onDelete?: (documentId: string) => void
   projectId: string
   companyId: string
+  projectName?: string
 }
 
 export const DocumentList = ({
@@ -40,6 +41,7 @@ export const DocumentList = ({
   onDelete,
   projectId,
   companyId,
+  projectName,
 }: DocumentListProps) => {
   const navigate = useNavigate()
 
@@ -74,8 +76,25 @@ export const DocumentList = ({
     }
   }
 
-  const viewDocument = (id: string) => {
-    navigate(routes.company.project.document(companyId, projectId, id))
+  const viewDocument = (documentId: string, documentName: string) => {
+    console.log('DocumentList: Attempting to navigate to document:')
+    console.log('DocumentList: Document ID:', documentId)
+    console.log('DocumentList: Document name:', documentName)
+    console.log('DocumentList: Project ID (actual):', projectId)
+    console.log('DocumentList: Project name (for slug):', projectName)
+    console.log('DocumentList: Company ID:', companyId)
+
+    // Generate route using project name and document name for slugs
+    // The route function will convert these to slugs for the URL
+    const route = routes.company.project.document(
+      companyId,
+      projectId,
+      documentId,
+      projectName,
+      documentName,
+    )
+    console.log('DocumentList: Generated route:', route)
+    navigate(route)
   }
 
   const deleteDocument = (id: string) => {
@@ -109,7 +128,10 @@ export const DocumentList = ({
                       {typeof doc.size === 'number'
                         ? `${(doc.size / 1024).toFixed(2)} KB`
                         : doc.size}{' '}
-                      • {doc.date}
+                      •{' '}
+                      {doc.createdAt
+                        ? new Date(doc.createdAt).toLocaleDateString()
+                        : 'No date'}
                     </CardDescription>
                   </div>
                 </div>
@@ -121,7 +143,9 @@ export const DocumentList = ({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => viewDocument(doc.id)}>
+                    <DropdownMenuItem
+                      onClick={() => viewDocument(doc.id, doc.name)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       View
                     </DropdownMenuItem>
@@ -145,7 +169,7 @@ export const DocumentList = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => viewDocument(doc.id)}
+                onClick={() => viewDocument(doc.id, doc.name)}
               >
                 <Eye className="h-4 w-4 mr-1" />
                 View

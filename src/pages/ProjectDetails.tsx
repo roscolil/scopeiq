@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
+import { Spinner } from '@/components/Spinner'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Edit, Trash2, Plus, ChevronDown } from 'lucide-react'
 import {
@@ -27,92 +28,110 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/navigation'
-
-// Sample project for when there's no existing project data
-const createDefaultProject = (projectId: string): Project => ({
-  id: projectId,
-  name: 'New Project',
-  description: 'Project description',
-  createdAt: new Date().toISOString(),
-  documentIds: [],
-  companyId: 'company-1',
-  address: '',
-  streetNumber: '',
-  streetName: '',
-  suburb: '',
-  state: '',
-  postcode: '',
-})
+import { projectService, documentService } from '@/services/s3-api'
 
 const ProjectDetails = () => {
-  const { id } = useParams<{ id: string }>()
+  const { companyId, projectId } = useParams<{
+    companyId: string // Company ID
+    projectId: string // Project slug (from project name)
+  }>()
   const navigate = useNavigate()
   const { toast } = useToast()
   const isMobile = useIsMobile()
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
-  const { companyId, projectId } = useParams<{
-    companyId: string
-    projectId: string
-  }>()
+
+  console.log('ProjectDetails: URL params received:')
+  console.log('  - companyId:', companyId)
+  console.log('  - projectId (slug):', projectId)
 
   useEffect(() => {
-    // Create or retrieve project
-    if (projectId) {
-      // Check localStorage for existing project
-      const storedProjects = localStorage.getItem('projects')
-      let currentProject: Project | null = null
+    const fetchProjectData = async () => {
+      if (!projectId || !companyId) return
 
-      if (storedProjects) {
-        try {
-          const projects = JSON.parse(storedProjects) as Project[]
-          currentProject = projects.find(p => p.id === projectId) || null
-        } catch (error) {
-          console.error('Error parsing stored projects:', error)
-        }
-      }
+      console.log('ProjectDetails: Fetching data for:')
+      console.log('  - projectId (slug):', projectId)
+      console.log('  - companyId:', companyId)
 
-      // If no project exists, create a default one
-      if (!currentProject) {
-        currentProject = createDefaultProject(projectId)
+      try {
+        setIsLoading(true)
 
-        // Save the new project
-        const projects = storedProjects
-          ? (JSON.parse(storedProjects) as Project[])
-          : []
-        projects.push(currentProject)
-        localStorage.setItem('projects', JSON.stringify(projects))
-      }
+        // Resolve project slug to actual project
+        // The projectId from URL is actually a project slug (project name)
+        console.log(
+          'ProjectDetails: Resolving project slug to actual project...',
+        )
+        const projectData = await projectService.resolveProject(projectId)
 
-      setProject(currentProject)
+        if (projectData) {
+          console.log('ProjectDetails: Project resolved successfully:', {
+            id: projectData.id,
+            name: projectData.name,
+            slug: projectId,
+          })
 
-      // Load uploaded documents for this project
-      const storedDocuments = localStorage.getItem('uploadedDocuments')
-      let uploadedDocs: Document[] = []
+          // Transform data to our Project type
+          const transformedProject: Project = {
+            id: projectData.id,
+            name: projectData.name || 'Untitled Project',
+            description: projectData.description,
+            createdAt: projectData.createdAt,
+            updatedAt: projectData.updatedAt,
+          }
+          setProject(transformedProject)
 
-      if (storedDocuments) {
-        try {
-          const allUploadedDocs = JSON.parse(storedDocuments) as Document[]
-          // Filter for documents that belong to this project
-          uploadedDocs = allUploadedDocs.filter(
-            doc => doc.projectId === projectId,
+          // Fetch documents for this project using the resolved project ID
+          console.log(
+            'ProjectDetails: Fetching documents for project ID:',
+            projectData.id,
           )
-        } catch (error) {
-          console.error('Error parsing stored documents:', error)
+          const documents = await documentService.getDocumentsByProject(
+            projectData.id,
+          )
+          const transformedDocuments: Document[] = (documents || []).map(
+            doc => ({
+              id: doc.id,
+              name: doc.name || 'Untitled Document',
+              type: doc.type || 'unknown',
+              size: doc.size || '0 KB',
+              status: doc.status || 'processing',
+              url: doc.url,
+              thumbnailUrl: doc.thumbnailUrl,
+              projectId: doc.projectId,
+              content: doc.content,
+              createdAt: doc.createdAt,
+              updatedAt: doc.updatedAt,
+            }),
+          )
+          setProjectDocuments(transformedDocuments)
+        } else {
+          console.log('ProjectDetails: No project found for slug:', projectId)
+          // Set project to null or show error state
+          setProject(null)
+          setProjectDocuments([])
         }
+      } catch (error) {
+        console.error('Error fetching project data:', error)
+        toast({
+          title: 'Error loading project',
+          description: 'Failed to load project data. Please try again.',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsLoading(false)
       }
-
-      // Set documents
-      setProjectDocuments(uploadedDocs)
     }
-  }, [projectId])
 
-  const handleUpdateProject = (data: {
+    fetchProjectData()
+  }, [projectId, companyId, toast])
+
+  const handleUpdateProject = async (data: {
     address: string
     streetNumber?: string
     streetName?: string
@@ -123,69 +142,59 @@ const ProjectDetails = () => {
   }) => {
     if (!project) return
 
-    const updatedProject = {
-      ...project,
-      ...data,
-    }
+    try {
+      const updatedProject = await projectService.updateProject(project.id, {
+        name: data.name,
+        description: data.description,
+      })
 
-    setProject(updatedProject)
-    setIsEditDialogOpen(false)
+      if (updatedProject) {
+        setProject({
+          ...project,
+          name: updatedProject.name,
+          description: updatedProject.description,
+          updatedAt: updatedProject.updatedAt,
+        })
 
-    // Update in localStorage
-    const storedProjects = localStorage.getItem('projects')
-    if (storedProjects) {
-      try {
-        const projects = JSON.parse(storedProjects) as Project[]
-        const updatedProjects = projects.map(p =>
-          p.id === project.id ? updatedProject : p,
-        )
-        localStorage.setItem('projects', JSON.stringify(updatedProjects))
-      } catch (error) {
-        console.error('Error updating stored projects:', error)
+        toast({
+          title: 'Project updated',
+          description: 'Your project has been updated successfully.',
+        })
       }
-    }
 
-    toast({
-      title: 'Project updated',
-      description: 'Your project has been updated successfully.',
-    })
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      console.error('Error updating project:', error)
+      toast({
+        title: 'Update failed',
+        description:
+          'There was an error updating your project. Please try again.',
+        variant: 'destructive',
+      })
+    }
   }
 
-  const handleDeleteProject = () => {
+  const handleDeleteProject = async () => {
     if (!project) return
 
-    // Remove project from localStorage
-    const storedProjects = localStorage.getItem('projects')
-    if (storedProjects) {
-      try {
-        const projects = JSON.parse(storedProjects) as Project[]
-        const filteredProjects = projects.filter(p => p.id !== project.id)
-        localStorage.setItem('projects', JSON.stringify(filteredProjects))
-      } catch (error) {
-        console.error('Error deleting project from storage:', error)
-      }
+    try {
+      await projectService.deleteProject(project.id)
+
+      toast({
+        title: 'Project deleted',
+        description: 'Your project has been deleted successfully.',
+      })
+
+      navigate(routes.company.projects.list(companyId || ''))
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast({
+        title: 'Delete failed',
+        description:
+          'There was an error deleting your project. Please try again.',
+        variant: 'destructive',
+      })
     }
-
-    // Remove all project documents from localStorage
-    const storedDocuments = localStorage.getItem('uploadedDocuments')
-    if (storedDocuments) {
-      try {
-        const documents = JSON.parse(storedDocuments) as Document[]
-        const remainingDocs = documents.filter(
-          doc => doc.projectId !== project.id,
-        )
-        localStorage.setItem('uploadedDocuments', JSON.stringify(remainingDocs))
-      } catch (error) {
-        console.error('Error removing project documents:', error)
-      }
-    }
-
-    toast({
-      title: 'Project deleted',
-      description: 'Your project has been deleted successfully.',
-    })
-
-    navigate('/projects')
   }
 
   const handleUploadDocument = (uploadedDocument: Document) => {
@@ -201,29 +210,36 @@ const ProjectDetails = () => {
     })
   }
 
-  const handleDeleteDocument = (documentId: string) => {
-    // Update state to remove the document
-    setProjectDocuments(prev => prev.filter(doc => doc.id !== documentId))
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      await documentService.deleteDocument(documentId)
 
-    // Update localStorage
-    const storedDocuments = localStorage.getItem('uploadedDocuments')
-    if (storedDocuments) {
-      try {
-        const documents = JSON.parse(storedDocuments) as Document[]
-        const updatedDocuments = documents.filter(doc => doc.id !== documentId)
-        localStorage.setItem(
-          'uploadedDocuments',
-          JSON.stringify(updatedDocuments),
-        )
-      } catch (error) {
-        console.error('Error updating stored documents:', error)
-      }
+      // Update the local state to remove the document
+      setProjectDocuments(prev => prev.filter(doc => doc.id !== documentId))
+
+      toast({
+        title: 'Document deleted',
+        description: 'The document has been removed from this project.',
+      })
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      toast({
+        title: 'Delete failed',
+        description:
+          'There was an error deleting the document. Please try again.',
+        variant: 'destructive',
+      })
     }
+  }
 
-    toast({
-      title: 'Document deleted',
-      description: 'The document has been removed from this project.',
-    })
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Spinner size="lg" text="Loading project..." />
+        </div>
+      </Layout>
+    )
   }
 
   if (!project) {
@@ -470,6 +486,7 @@ const ProjectDetails = () => {
             onDelete={handleDeleteDocument}
             projectId={project.id}
             companyId={companyId || 'default-company'}
+            projectName={project.name}
           />
         ) : (
           <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">

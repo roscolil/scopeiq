@@ -58,10 +58,11 @@ export const uploadDocumentToS3 = async (
 
     console.log('File converted to compatible format')
 
-    // Generate unique file key
+    // Generate file key with clean hierarchy: company/projectId/files
+    // Always use projectId for consistency with metadata system
     const timestamp = Date.now()
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const key = `document-upload/${companyId}/${projectId}/${timestamp}_${sanitizedFileName}`
+    const key = `${companyId}/${projectId}/files/${timestamp}_${sanitizedFileName}`
 
     console.log('S3 upload path:', key)
 
@@ -94,10 +95,10 @@ export const uploadDocumentToS3 = async (
       throw uploadError
     }
 
-    const url = `https://${BUCKET_NAME}.s3.${s3Client.config.region}.amazonaws.com/${key}`
+    const url = `https://${BUCKET_NAME}.s3.${awsRegion}.amazonaws.com/${key}`
 
     // Alternative URL format (virtual-hosted style)
-    // const url = `https://s3.${s3Client.config.region}.amazonaws.com/${BUCKET_NAME}/${key}`
+    // const url = `https://s3.${awsRegion}.amazonaws.com/${BUCKET_NAME}/${key}`
 
     console.log('Upload completed successfully', url)
 

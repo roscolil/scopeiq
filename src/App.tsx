@@ -53,12 +53,15 @@ const App = () => (
                 <Route index element={<ProfileHome />} />
                 <Route path="settings" element={<ProfileSettings />} />
 
+                {/* All documents view */}
+                <Route path="documents" element={<Documents />} />
+
                 {/* Direct project routes */}
                 <Route path=":projectId">
                   <Route index element={<ProjectDetails />} />
                   {/* Direct document routes */}
                   <Route path=":documentId" element={<Viewer />} />
-                  {/* Documents listing */}
+                  {/* Documents listing for specific project */}
                   <Route path="documents" element={<Documents />} />
                 </Route>
 

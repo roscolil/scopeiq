@@ -15,9 +15,14 @@ import { routes } from '@/utils/navigation'
 interface ProjectListProps {
   projects: Project[]
   companyId: string
+  onCreateProject?: () => void
 }
 
-export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
+export const ProjectList = ({
+  projects,
+  companyId,
+  onCreateProject,
+}: ProjectListProps) => {
   const navigate = useNavigate()
 
   if (projects.length === 0) {
@@ -29,7 +34,13 @@ export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
           Create your first project to get started
         </p>
         <Button
-          onClick={() => navigate(routes.company.projects.new(companyId))}
+          onClick={() => {
+            if (onCreateProject) {
+              onCreateProject()
+            } else {
+              navigate(routes.company.projects.list(companyId))
+            }
+          }}
         >
           Create Project
         </Button>
@@ -52,7 +63,7 @@ export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
           <CardContent className="pb-2">
             <div className="flex items-center text-sm text-muted-foreground">
               <FileText className="h-4 w-4 mr-1" />
-              <span>{project.documentIds.length} documents</span>
+              <span>{project.documents?.length || 0} documents</span>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               Created on {new Date(project.createdAt).toLocaleDateString()}
@@ -64,7 +75,13 @@ export const ProjectList = ({ projects, companyId }: ProjectListProps) => {
               size="sm"
               className="w-full"
               onClick={() =>
-                navigate(routes.company.project.details(companyId, project.id))
+                navigate(
+                  routes.company.project.details(
+                    companyId,
+                    project.id,
+                    project.name,
+                  ),
+                )
               }
             >
               View Project
