@@ -7,7 +7,7 @@ import amplifyOutputs from '../../amplify_outputs.json'
 
 // Helper function to get environment variables
 const getEnvVar = (key: string): string | undefined => {
-  return import.meta.env[`VITE_${key}`] || import.meta.env[key]
+  return import.meta.env[`VITE_${key}`]
 }
 
 // Define the type for Amplify outputs
@@ -57,8 +57,8 @@ export const getAWSRegion = (): string => {
 
 // Get AWS credentials (still from environment as these are sensitive)
 export const getAWSCredentials = () => {
-  const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')
-  const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')
+  const accessKeyId = getEnvVar('AWS_ACCESS_KEY_ID')
+  const secretAccessKey = getEnvVar('AWS_SECRET_ACCESS_KEY')
 
   // Debug what we're getting from environment
   console.log('🔐 AWS Credentials Debug:', {

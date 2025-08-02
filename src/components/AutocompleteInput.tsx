@@ -22,9 +22,7 @@ export const AutocompleteInput = forwardRef<
   AutocompleteInputProps
 >(({ value, onChange, onBlur, name }, ref) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey:
-      import.meta.env.VITE_GOOGLE_PLACES_API_KEY ||
-      import.meta.env.GOOGLE_PLACES_API_KEY,
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY,
     libraries,
   })
 
