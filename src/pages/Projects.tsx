@@ -18,8 +18,6 @@ import { fetchUserAttributes } from 'aws-amplify/auth'
 import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
-  console.log('Projects component: Rendering')
-
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [attrs, setAttrs] = useState<Record<string, string>>({})
@@ -29,22 +27,12 @@ const Projects = () => {
     companyId: string
   }>()
 
-  console.log('Projects component: companyId from params:', companyId)
-
   // Load projects from API
   useEffect(() => {
     const loadProjects = async () => {
-      console.log(
-        'Projects page: Starting to load projects for companyId:',
-        companyId,
-      )
       try {
         setLoading(true)
         const projectsData = await projectService.getAllProjectsWithDocuments()
-        console.log(
-          'Projects page: Loaded projects with documents from API:',
-          projectsData,
-        )
 
         // Transform API data to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -66,19 +54,15 @@ const Projects = () => {
           }),
         )
 
-        console.log('Projects page: Transformed projects:', transformedProjects)
         setProjects(transformedProjects)
       } catch (error) {
         console.error('Projects page: Error loading projects:', error)
         // Fallback to empty array
         setProjects([])
       } finally {
-        console.log('Projects page: Finished loading, setting loading to false')
         setLoading(false)
       }
     }
-
-    console.log('Projects page: useEffect triggered with companyId:', companyId)
     loadProjects()
   }, [companyId])
 

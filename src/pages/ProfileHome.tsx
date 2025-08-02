@@ -58,12 +58,7 @@ const ProfileHome = () => {
         setIsLoadingProjects(true)
         setIsLoadingDocuments(true)
 
-        console.log(
-          'ProfileHome: Loading data for company:',
-          companyId.toLowerCase(),
-        )
         const projectsData = await projectService.getAllProjectsWithDocuments()
-        console.log('ProfileHome: Loaded projects:', projectsData)
 
         // Transform to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -101,8 +96,6 @@ const ProfileHome = () => {
 
         setDocuments(allDocuments)
       } catch (error) {
-        console.error('ProfileHome: Error loading data:', error)
-
         // Check if it's a "no projects exist" scenario vs actual error
         const errorMessage =
           error instanceof Error ? error.message : String(error)
@@ -111,10 +104,6 @@ const ProfileHome = () => {
           errorMessage.includes('NoSuchKey') ||
           errorMessage.includes('The specified key does not exist')
         ) {
-          // This is normal for new companies with no projects yet
-          console.log(
-            'ProfileHome: No projects found - this is normal for new companies',
-          )
           setProjects([])
           setDocuments([])
         } else {

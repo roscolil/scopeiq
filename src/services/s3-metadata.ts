@@ -16,24 +16,6 @@ const awsRegion = getAWSRegion()
 const credentials = getAWSCredentialsSafe()
 const BUCKET_NAME = getS3BucketName()
 
-// Log configuration for debugging
-console.log('🔧 S3 Metadata Service Configuration:', {
-  region: awsRegion,
-  bucketName: BUCKET_NAME,
-  hasCredentials: !!credentials,
-})
-
-if (!BUCKET_NAME) {
-  console.error('❌ S3 Metadata Service: BUCKET_NAME is empty!')
-  throw new Error('S3 bucket name is required but not configured')
-}
-
-if (!credentials) {
-  console.warn(
-    '⚠️ S3 Metadata Service: AWS credentials not available - S3 operations will fail',
-  )
-}
-
 const s3Client = new S3Client({
   region: awsRegion,
   credentials: credentials

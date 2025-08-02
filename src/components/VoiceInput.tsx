@@ -127,7 +127,6 @@ export const VoiceInput = ({
       }
     } else {
       try {
-        console.log('Stopping speech recognition')
         recognition.stop()
         setTranscript('')
       } catch (error) {

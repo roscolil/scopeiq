@@ -28,6 +28,18 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
     working: boolean
   } | null>(null)
 
+  // Add null check for document
+  if (!document) {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Document not found or still loading.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
   const testPDFUrl = async (url: string) => {
     setTesting(true)
     try {
@@ -89,7 +101,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
         <div className="flex gap-2">
           <Button
             onClick={() => {
-              console.log('Opening PDF URL:', primaryUrl)
               window.open(primaryUrl, '_blank')
             }}
           >
@@ -114,9 +125,9 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
                 const link = window.document.createElement('a')
                 link.href = blobUrl
                 link.download = document.name
-                document.body?.appendChild(link)
+                window.document.body?.appendChild(link)
                 link.click()
-                document.body?.removeChild(link)
+                window.document.body?.removeChild(link)
 
                 window.URL.revokeObjectURL(blobUrl)
                 console.log('PDF download initiated for:', document.name)

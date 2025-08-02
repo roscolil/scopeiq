@@ -57,10 +57,6 @@ export const DocumentViewer = ({
   useEffect(() => {
     // If we already have the document from parent, use it
     if (preResolvedDocument) {
-      console.log(
-        'DocumentViewer: Using pre-resolved document:',
-        preResolvedDocument,
-      )
       setDocument(preResolvedDocument)
       setIsLoading(false)
 
@@ -83,28 +79,15 @@ export const DocumentViewer = ({
 
     // Otherwise, fetch the document
     if (!documentId) {
-      console.error('No documentId provided to DocumentViewer')
       setError('No document ID provided')
       setIsLoading(false)
       return
     }
 
-    console.log(
-      'DocumentViewer: Attempting to fetch document with ID:',
-      documentId,
-    )
-    console.log('DocumentViewer: projectId:', projectId)
-    console.log('DocumentViewer: companyId:', companyId)
-
     const fetchDocument = async () => {
       try {
         setIsLoading(true)
         setError(null)
-
-        console.log(
-          'DocumentViewer: Calling documentService.getDocument with ID:',
-          documentId,
-        )
 
         // Fetch document from API using hybrid service
         const documentData = await documentService.getDocument(
@@ -113,13 +96,7 @@ export const DocumentViewer = ({
           documentId,
         )
 
-        console.log('DocumentViewer: Response from getDocument:', documentData)
-
         if (documentData) {
-          console.log('Found document:', documentData)
-          console.log('Document URL:', documentData.url)
-          console.log('Document name:', documentData.name)
-          console.log('Document ID:', documentData.id)
           setDocument(documentData)
 
           let documentContent = ''

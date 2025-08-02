@@ -15,22 +15,6 @@ const awsRegion = getAWSRegion()
 const credentials = getAWSCredentialsSafe()
 const BUCKET_NAME = getS3BucketName()
 
-// Log configuration without exposing secrets
-console.log('🔧 Document Upload Service Configuration:', {
-  region: awsRegion,
-  bucketName: BUCKET_NAME,
-  hasCredentials: !!credentials,
-})
-
-if (!credentials) {
-  console.error('WARNING: AWS credentials are missing or incomplete')
-}
-
-if (!BUCKET_NAME) {
-  console.error('❌ Document Upload Service: BUCKET_NAME is empty!')
-  throw new Error('S3 bucket name is required but not configured')
-}
-
 const s3Client = new S3Client({
   region: awsRegion,
   credentials: credentials

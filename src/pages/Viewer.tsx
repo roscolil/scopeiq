@@ -35,12 +35,6 @@ const Viewer = () => {
     documentId: string // Document slug (from document name)
   }>()
 
-  console.log('Viewer: URL params received (all slugs except companyId):')
-  console.log('  - companyId:', companyId)
-  console.log('  - projectId (slug):', projectId)
-  console.log('  - documentId (slug):', documentId)
-  console.log('Viewer: Current URL:', window.location.href)
-
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -72,40 +66,22 @@ const Viewer = () => {
     const fetchData = async () => {
       if (!documentId || !projectId) return
 
-      console.log('Viewer fetchData called with:')
-      console.log('  - documentId (slug):', documentId)
-      console.log('  - projectId (slug):', projectId)
-      console.log('  - companyId:', companyId)
-
       try {
         setIsLoading(true)
 
         // First resolve the project slug to get the actual project
-        console.log('Viewer: Resolving project slug to actual project...')
         const projectData = await projectService.resolveProject(projectId!)
 
         if (!projectData) {
-          console.log('Viewer: No project found for slug:', projectId)
           setProjectName('Unknown Project')
           setIsLoading(false)
           return
         }
 
-        console.log('Viewer: Project resolved successfully:', {
-          id: projectData.id,
-          name: projectData.name,
-          slug: projectId,
-        })
         setProjectName(projectData.name)
         setResolvedProject({ id: projectData.id, name: projectData.name })
 
         // Now try to get the document by ID first
-        console.log('Viewer: Trying to get document by direct ID...')
-        console.log(`Viewer: Calling getDocument with:`)
-        console.log(`  - companyId: ${companyId}`)
-        console.log(`  - projectId: ${projectData.id}`)
-        console.log(`  - documentId: ${documentId}`)
-
         let documentData = null
         try {
           documentData = await documentService.getDocument(
@@ -113,42 +89,15 @@ const Viewer = () => {
             projectData.id,
             documentId!,
           )
-          console.log(
-            'Viewer: getDocument result:',
-            documentData ? 'Found document' : 'No document returned',
-          )
         } catch (error) {
           console.error('Viewer: Error in getDocument call:', error)
-          console.error('Viewer: Error details:', {
-            message: error instanceof Error ? error.message : String(error),
-            companyId,
-            projectId: projectData.id,
-            documentId,
-          })
         }
 
         // If not found by direct ID, search by slug/name in the project
         if (!documentData) {
-          console.log(
-            'Viewer: Document not found by ID, searching by name/slug...',
-          )
           try {
             const allProjectDocuments =
               await documentService.getDocumentsByProject(projectData.id)
-            console.log(
-              `Viewer: Found ${allProjectDocuments.length} documents in project`,
-            )
-            console.log(
-              'Viewer: Project documents:',
-              allProjectDocuments.map(doc => ({
-                id: doc.id,
-                name: doc.name,
-                slug: doc.name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-+|-+$/g, ''),
-              })),
-            )
 
             // Create slug from document name and compare
             documentData = allProjectDocuments.find(doc => {
@@ -161,43 +110,16 @@ const Viewer = () => {
               const matchesNavigation = navigationSlug === documentId
               const matchesId = doc.id === documentId
 
-              console.log(`Viewer: Checking document ${doc.name}:`)
-              console.log(`  - Viewer-style slug: ${viewerSlug}`)
-              console.log(`  - Navigation-style slug: ${navigationSlug}`)
-              console.log(`  - URL documentId: ${documentId}`)
-              console.log(`  - Viewer slug match: ${matchesViewer}`)
-              console.log(`  - Navigation slug match: ${matchesNavigation}`)
-              console.log(`  - ID match: ${matchesId}`)
-
               return matchesViewer || matchesNavigation || matchesId
             })
-
-            if (documentData) {
-              console.log(
-                'Viewer: Found document by slug/name search:',
-                documentData.name,
-              )
-            } else {
-              console.log('Viewer: No document found by slug/name search')
-            }
           } catch (error) {
             console.error('Viewer: Error searching documents by slug:', error)
           }
         }
 
         if (documentData) {
-          console.log('Viewer: Document resolved successfully:', {
-            id: documentData.id,
-            name: documentData.name,
-            slug: documentId,
-            hasUrl: !!documentData.url,
-            hasS3Url: !!documentData.s3Url,
-            status: documentData.status,
-          })
           setDocument(documentData)
-          console.log('Viewer: Document state updated, should now render')
         } else {
-          console.log('Viewer: Document not found for slug:', documentId)
           toast({
             title: 'Document not found',
             description: 'The requested document could not be found.',
@@ -261,11 +183,6 @@ const Viewer = () => {
   }
 
   if (!document) {
-    console.log(
-      'Viewer: Rendering "Document not found" - document state is:',
-      document,
-    )
-    console.log('Viewer: isLoading:', isLoading)
     return (
       <Layout>
         <div className="text-center">
@@ -436,16 +353,6 @@ const Viewer = () => {
       window.history.replaceState(null, '', location.pathname)
     }
   }
-
-  console.log('Viewer: About to render main component with:', {
-    document: document
-      ? { id: document.id, name: document.name, url: document.url }
-      : null,
-    isLoading,
-    resolvedProject: resolvedProject
-      ? { id: resolvedProject.id, name: resolvedProject.name }
-      : null,
-  })
 
   return (
     <Layout>

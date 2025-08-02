@@ -88,13 +88,6 @@ export const DocumentList = ({
   }
 
   const viewDocument = (documentId: string, documentName: string) => {
-    console.log('DocumentList: Attempting to navigate to document:')
-    console.log('DocumentList: Document ID:', documentId)
-    console.log('DocumentList: Document name:', documentName)
-    console.log('DocumentList: Project ID (actual):', projectId)
-    console.log('DocumentList: Project name (for slug):', projectName)
-    console.log('DocumentList: Company ID:', companyId)
-
     // Generate route using project name and document name for slugs
     // The route function will convert these to slugs for the URL
     const route = routes.company.project.document(
@@ -104,7 +97,6 @@ export const DocumentList = ({
       projectName,
       documentName,
     )
-    console.log('DocumentList: Generated route:', route)
     navigate(route)
   }
 

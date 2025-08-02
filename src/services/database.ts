@@ -58,8 +58,6 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
-      console.log(`DB: Fetching documents for project: ${projectId}`)
-
       const { data: documents, errors } = await client.models.Document.list({
         filter: { projectId: { eq: projectId } },
       })
@@ -70,8 +68,6 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
-
-      console.log(`DB: Found ${documents.length} documents for project`)
       return documents.map(doc => ({
         id: doc.id,
         name: doc.name,
@@ -98,8 +94,6 @@ export const databaseDocumentService = {
   // Get a single document by ID
   async getDocument(documentId: string): Promise<DatabaseDocument | null> {
     try {
-      console.log(`DB: Fetching document: ${documentId}`)
-
       const { data: document, errors } = await client.models.Document.get({
         id: documentId,
       })
@@ -143,8 +137,6 @@ export const databaseDocumentService = {
     documentData: Omit<DatabaseDocument, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<DatabaseDocument> {
     try {
-      console.log('DB: Creating document:', documentData)
-
       // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
       const { data: document, errors } = await client.models.Document.create({
         name: documentData.name as string & string[],
@@ -167,8 +159,6 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
-
-      console.log('DB: Document created successfully:', document.id)
       return {
         id: document.id,
         name: document.name,
@@ -198,8 +188,6 @@ export const databaseDocumentService = {
     updates: Partial<Omit<DatabaseDocument, 'id' | 'createdAt'>>,
   ): Promise<DatabaseDocument | null> {
     try {
-      console.log(`DB: Updating document ${documentId}:`, updates)
-
       // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
       // @ts-expect-error - Known issue with Amplify codegen, expecting string[] instead of string
       const { data: document, errors } = await client.models.Document.update({
@@ -244,8 +232,6 @@ export const databaseDocumentService = {
   // Delete document
   async deleteDocument(documentId: string): Promise<void> {
     try {
-      console.log(`DB: Deleting document: ${documentId}`)
-
       const { errors } = await client.models.Document.delete({
         id: documentId,
       })
@@ -256,8 +242,6 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
-
-      console.log('DB: Document deleted successfully')
     } catch (error) {
       console.error('DB: Error deleting document:', error)
       throw error
@@ -268,14 +252,11 @@ export const databaseDocumentService = {
   async getAllDocuments(): Promise<DatabaseDocument[]> {
     try {
       const companyId = await getCurrentCompanyId()
-      console.log(`DB: Fetching all documents for company: ${companyId}`)
-
       // Get all projects for the company first
       const projects = await databaseProjectService.getProjects()
       const projectIds = projects.map(p => p.id)
 
       if (projectIds.length === 0) {
-        console.log('DB: No projects found, returning empty documents array')
         return []
       }
 
@@ -287,9 +268,6 @@ export const databaseDocumentService = {
       const documentArrays = await Promise.all(documentPromises)
       const allDocuments = documentArrays.flat()
 
-      console.log(
-        `DB: Found ${allDocuments.length} total documents for company`,
-      )
       return allDocuments
     } catch (error) {
       console.error('DB: Error fetching all documents:', error)
@@ -303,7 +281,6 @@ export const databaseProjectService = {
   async getProjects(): Promise<DatabaseProject[]> {
     try {
       const companyId = await getCurrentCompanyId()
-      console.log(`DB: Fetching projects for company: ${companyId}`)
 
       const { data: projects, errors } = await client.models.Project.list({
         filter: { companyId: { eq: companyId } },
@@ -316,7 +293,6 @@ export const databaseProjectService = {
         )
       }
 
-      console.log(`DB: Found ${projects.length} projects for company`)
       return projects.map(project => ({
         id: project.id,
         name: project.name,
@@ -335,8 +311,6 @@ export const databaseProjectService = {
   // Get a single project by ID
   async getProject(projectId: string): Promise<DatabaseProject | null> {
     try {
-      console.log(`DB: Fetching project: ${projectId}`)
-
       const { data: project, errors } = await client.models.Project.get({
         id: projectId,
       })
@@ -376,7 +350,6 @@ export const databaseProjectService = {
   ): Promise<DatabaseProject> {
     try {
       const companyId = await getCurrentCompanyId()
-      console.log('DB: Creating project:', projectData)
 
       // Generate slug if not provided
       const slug =
@@ -401,7 +374,6 @@ export const databaseProjectService = {
         )
       }
 
-      console.log('DB: Project created successfully:', project.id)
       return {
         id: project.id,
         name: project.name,
@@ -423,8 +395,6 @@ export const databaseProjectService = {
     updates: Partial<Omit<DatabaseProject, 'id' | 'companyId' | 'createdAt'>>,
   ): Promise<DatabaseProject | null> {
     try {
-      console.log(`DB: Updating project ${projectId}:`, updates)
-
       // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
       // @ts-expect-error - Known issue with Amplify codegen, expecting string[] instead of string
       const { data: project, errors } = await client.models.Project.update({
@@ -461,8 +431,6 @@ export const databaseProjectService = {
   // Delete project
   async deleteProject(projectId: string): Promise<void> {
     try {
-      console.log(`DB: Deleting project: ${projectId}`)
-
       // First delete all documents in the project from the database
       const documents =
         await databaseDocumentService.getDocumentsByProject(projectId)
@@ -481,8 +449,6 @@ export const databaseProjectService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
-
-      console.log('DB: Project and all its documents deleted successfully')
     } catch (error) {
       console.error('DB: Error deleting project:', error)
       throw error
@@ -494,8 +460,6 @@ export const databaseProjectService = {
     (DatabaseProject & { documents: DatabaseDocument[] })[]
   > {
     try {
-      console.log('DB: Fetching all projects with documents')
-
       const projects = await this.getProjects()
 
       const projectsWithDocuments = await Promise.all(
@@ -510,9 +474,6 @@ export const databaseProjectService = {
         }),
       )
 
-      console.log(
-        `DB: Returning ${projectsWithDocuments.length} projects with documents`,
-      )
       return projectsWithDocuments
     } catch (error) {
       console.error('DB: Error fetching projects with documents:', error)

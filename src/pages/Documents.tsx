@@ -64,7 +64,6 @@ const Documents = () => {
           console.log('Documents page resolved project data:', project)
 
           if (project) {
-            console.log('Documents page setting project name to:', project.name)
             setProjectName(project.name)
             setResolvedProject(project)
 
@@ -73,30 +72,17 @@ const Documents = () => {
               await documentService.getDocumentsByProject(project.id)
             setDocuments(projectDocuments)
           } else {
-            console.log(
-              'Documents page: No project found for slug/ID:',
-              projectId,
-            )
             setProjectName('Unknown Project')
             setDocuments([])
           }
         } else {
           // All projects view - load all projects with their documents
-          console.log('Documents page: Loading all projects with documents...')
           const allProjectsWithDocs =
             await projectService.getAllProjectsWithDocuments()
-          console.log(
-            'Documents page: Loaded projects with documents:',
-            allProjectsWithDocs,
-          )
           setProjectsWithDocuments(allProjectsWithDocs)
 
           // Also set a flat list of all documents for the general documents tab
           const allDocuments = await documentService.getAllDocuments()
-          console.log(
-            'Documents page: All documents in database:',
-            allDocuments,
-          )
           setDocuments(allDocuments)
         }
       } catch (error) {

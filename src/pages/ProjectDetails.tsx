@@ -47,35 +47,15 @@ const ProjectDetails = () => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
 
-  console.log('ProjectDetails: URL params received:')
-  console.log('  - companyId:', companyId)
-  console.log('  - projectId (slug):', projectId)
-
   useEffect(() => {
     const fetchProjectData = async () => {
       if (!projectId || !companyId) return
 
-      console.log('ProjectDetails: Fetching data for:')
-      console.log('  - projectId (slug):', projectId)
-      console.log('  - companyId:', companyId)
-
       try {
         setIsLoading(true)
-
-        // Resolve project slug to actual project
-        // The projectId from URL is actually a project slug (project name)
-        console.log(
-          'ProjectDetails: Resolving project slug to actual project...',
-        )
         const projectData = await projectService.resolveProject(projectId)
 
         if (projectData) {
-          console.log('ProjectDetails: Project resolved successfully:', {
-            id: projectData.id,
-            name: projectData.name,
-            slug: projectId,
-          })
-
           // Transform data to our Project type
           const transformedProject: Project = {
             id: projectData.id,
@@ -87,11 +67,6 @@ const ProjectDetails = () => {
           }
           setProject(transformedProject)
 
-          // Fetch documents for this project using the resolved project ID
-          console.log(
-            'ProjectDetails: Fetching documents for project ID:',
-            projectData.id,
-          )
           const documents = await documentService.getDocumentsByProject(
             projectData.id,
           )
@@ -115,7 +90,6 @@ const ProjectDetails = () => {
           )
           setProjectDocuments(transformedDocuments)
         } else {
-          console.log('ProjectDetails: No project found for slug:', projectId)
           // Set project to null or show error state
           setProject(null)
           setProjectDocuments([])
