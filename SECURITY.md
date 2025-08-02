@@ -61,14 +61,11 @@ If credentials are compromised:
 
 Required variables (see `.env.example`):
 
-- `VITE_AWS_ACCESS_KEY_ID` - AWS access key
-- `VITE_AWS_SECRET_ACCESS_KEY` - AWS secret key
-- `VITE_AWS_REGION` - AWS region for S3
-- `VITE_S3_BUCKET_NAME` - S3 bucket name
-- `VITE_OPENAI_API_KEY` - OpenAI API key
-- `VITE_GOOGLE_PLACES_API_KEY` - Google Places API key
-
-## 🔍 Security Validation
+- AWS credentials: Access key and secret key for S3 operations
+- AWS region: Region for S3 bucket operations  
+- S3 bucket name: Target bucket for file storage
+- OpenAI API key: For AI-powered document analysis
+- Google Places API key: For location-based features## 🔍 Security Validation
 
 The application includes automatic validation:
 

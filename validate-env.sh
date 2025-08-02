@@ -16,7 +16,7 @@ else
 fi
 
 # Check for required environment variables
-required_vars=(
+ENV_VARS=(
     "VITE_AWS_ACCESS_KEY_ID"
     "VITE_AWS_SECRET_ACCESS_KEY" 
     "VITE_AWS_REGION"
@@ -26,7 +26,7 @@ required_vars=(
 
 missing_vars=()
 
-for var in "${required_vars[@]}"; do
+for var in "${ENV_VARS[@]}"; do
     if grep -q "^${var}=" .env; then
         value=$(grep "^${var}=" .env | cut -d'=' -f2-)
         if [ -n "$value" ] && [ "$value" != "your_${var,,}_here" ]; then

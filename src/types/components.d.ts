@@ -13,6 +13,7 @@ export interface ImportMetaEnv {
   readonly VITE_AWS_ACCESS_KEY_ID?: string
   readonly VITE_AWS_SECRET_ACCESS_KEY?: string
   readonly VITE_OPENAI_API_KEY?: string
+  readonly VITE_GOOGLE_PLACES_API_KEY?: string
   // Add other environment variables as needed
 }
 
