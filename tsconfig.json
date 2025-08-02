@@ -6,11 +6,12 @@
   // ],
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "jsx": "react-jsx", // or "react" for older versions
     "lib": ["DOM", "ESNext"],
-    "types": ["react", "react-dom"],
+    "types": ["react", "react-dom", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     },

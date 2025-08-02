@@ -4,35 +4,41 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import {
+  getS3BucketName,
+  getAWSRegion,
+  getAWSCredentialsSafe,
+} from '../utils/aws-config'
 
-// Check environment variables at startup
-const awsRegion = import.meta.env.VITE_AWS_REGION || 'us-east-1'
-const awsAccessKey = import.meta.env.VITE_AWS_ACCESS_KEY_ID
-const awsSecretKey = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-const BUCKET_NAME = import.meta.env.VITE_S3_BUCKET_NAME!
+// Check configuration at startup
+const awsRegion = getAWSRegion()
+const credentials = getAWSCredentialsSafe()
+const BUCKET_NAME = getS3BucketName()
 
 // Log configuration without exposing secrets
-console.log('S3 Configuration:', {
+console.log('🔧 Document Upload Service Configuration:', {
   region: awsRegion,
   bucketName: BUCKET_NAME,
-  hasAccessKey: !!awsAccessKey,
-  hasSecretKey: !!awsSecretKey,
+  hasCredentials: !!credentials,
 })
 
-if (!awsAccessKey || !awsSecretKey) {
+if (!credentials) {
   console.error('WARNING: AWS credentials are missing or incomplete')
 }
 
 if (!BUCKET_NAME) {
-  console.error('WARNING: S3 bucket name is not defined')
+  console.error('❌ Document Upload Service: BUCKET_NAME is empty!')
+  throw new Error('S3 bucket name is required but not configured')
 }
 
 const s3Client = new S3Client({
   region: awsRegion,
-  credentials: {
-    accessKeyId: awsAccessKey!,
-    secretAccessKey: awsSecretKey!,
-  },
+  credentials: credentials
+    ? {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+      }
+    : undefined,
   // Use path style addressing for better compatibility
   forcePathStyle: true,
 })
@@ -97,6 +103,18 @@ export const uploadDocumentToS3 = async (
 
     const url = `https://${BUCKET_NAME}.s3.${awsRegion}.amazonaws.com/${key}`
 
+    // Generate a pre-signed URL for viewing (1 hour expiration)
+    const viewCommand = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    })
+
+    const preSignedUrl = await getSignedUrl(s3Client, viewCommand, {
+      expiresIn: 3600, // 1 hour
+    })
+
+    console.log('Generated pre-signed URL for viewing:', preSignedUrl)
+
     // Alternative URL format (virtual-hosted style)
     // const url = `https://s3.${awsRegion}.amazonaws.com/${BUCKET_NAME}/${key}`
 
@@ -104,7 +122,7 @@ export const uploadDocumentToS3 = async (
 
     return {
       key,
-      url,
+      url: preSignedUrl, // Use pre-signed URL instead of plain URL
       size: file.size,
       type: file.type,
     }
@@ -178,5 +196,82 @@ export const getSignedDownloadUrl = async (key: string): Promise<string> => {
   } catch (error) {
     console.error('Error generating signed URL:', error)
     throw new Error('Failed to generate download URL')
+  }
+}
+
+/**
+ * Generate a new pre-signed URL for an existing S3 object
+ * @param key - The S3 object key
+ * @param expiresIn - Expiration time in seconds (default: 1 hour)
+ * @returns Pre-signed URL for downloading/viewing the file
+ */
+export const generatePreSignedUrl = async (
+  key: string,
+  expiresIn: number = 3600,
+): Promise<string> => {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    })
+
+    const preSignedUrl = await getSignedUrl(s3Client, command, { expiresIn })
+    console.log(
+      `Generated pre-signed URL for key: ${key}, expires in: ${expiresIn}s`,
+    )
+
+    return preSignedUrl
+  } catch (error) {
+    console.error('Error generating pre-signed URL:', error)
+    throw new Error('Failed to generate pre-signed URL for document access')
+  }
+}
+
+/**
+ * Check if a URL is expired by examining its X-Amz-Date and X-Amz-Expires parameters
+ * @param url - The pre-signed URL to check
+ * @returns Object with expiration status and details
+ */
+export const checkUrlExpiration = (url: string) => {
+  try {
+    const urlObj = new URL(url)
+    const dateParam = urlObj.searchParams.get('X-Amz-Date')
+    const expiresParam = urlObj.searchParams.get('X-Amz-Expires')
+
+    if (!dateParam || !expiresParam) {
+      return {
+        isExpired: false,
+        isSigned: false,
+        message: 'URL is not pre-signed',
+      }
+    }
+
+    const signedDate = new Date(
+      dateParam.replace(
+        /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
+        '$1-$2-$3T$4:$5:$6Z',
+      ),
+    )
+    const expiresInSeconds = parseInt(expiresParam)
+    const expirationDate = new Date(
+      signedDate.getTime() + expiresInSeconds * 1000,
+    )
+    const isExpired = new Date() > expirationDate
+
+    return {
+      isExpired,
+      isSigned: true,
+      signedAt: signedDate,
+      expiresAt: expirationDate,
+      message: isExpired
+        ? `URL expired ${Math.abs(Math.floor((new Date().getTime() - expirationDate.getTime()) / 60000))} minutes ago`
+        : `URL expires in ${Math.floor((expirationDate.getTime() - new Date().getTime()) / 60000)} minutes`,
+    }
+  } catch (error) {
+    return {
+      isExpired: true,
+      isSigned: false,
+      message: 'Invalid URL format',
+    }
   }
 }

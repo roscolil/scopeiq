@@ -23,6 +23,7 @@ import VerifyEmail from './pages/VerifyEmail'
 import { AuthProvider } from './hooks/aws-auth'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
 import Pricing from './pages/Pricing'
+import Migration from './pages/Migration'
 
 Amplify.configure(outputs)
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="verify-email" element={<VerifyEmail />} />
             </Route>
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/migration" element={<Migration />} />
 
             {/* Authenticated routes */}
             <Route element={<AuthenticatedLayout />}>

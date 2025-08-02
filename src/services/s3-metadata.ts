@@ -5,19 +5,43 @@ import {
   ListObjectsV2Command,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3'
+import {
+  getS3BucketName,
+  getAWSRegion,
+  getAWSCredentialsSafe,
+} from '../utils/aws-config'
 
 // S3 Configuration
-const awsRegion = import.meta.env.VITE_AWS_REGION || 'us-east-1'
-const awsAccessKey = import.meta.env.VITE_AWS_ACCESS_KEY_ID
-const awsSecretKey = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-const BUCKET_NAME = import.meta.env.VITE_S3_BUCKET_NAME!
+const awsRegion = getAWSRegion()
+const credentials = getAWSCredentialsSafe()
+const BUCKET_NAME = getS3BucketName()
+
+// Log configuration for debugging
+console.log('🔧 S3 Metadata Service Configuration:', {
+  region: awsRegion,
+  bucketName: BUCKET_NAME,
+  hasCredentials: !!credentials,
+})
+
+if (!BUCKET_NAME) {
+  console.error('❌ S3 Metadata Service: BUCKET_NAME is empty!')
+  throw new Error('S3 bucket name is required but not configured')
+}
+
+if (!credentials) {
+  console.warn(
+    '⚠️ S3 Metadata Service: AWS credentials not available - S3 operations will fail',
+  )
+}
 
 const s3Client = new S3Client({
   region: awsRegion,
-  credentials: {
-    accessKeyId: awsAccessKey!,
-    secretAccessKey: awsSecretKey!,
-  },
+  credentials: credentials
+    ? {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+      }
+    : undefined,
   forcePathStyle: true,
 })
 
@@ -132,6 +156,23 @@ export const s3DocumentService = {
       return documents
     } catch (error) {
       console.error('Error fetching documents from S3:', error)
+
+      // Check if it's a "no documents exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for projects with no documents yet
+        console.log(
+          `No documents found for project ${companyId}/${projectId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },
@@ -277,12 +318,63 @@ export const s3DocumentService = {
       return documents
     } catch (error) {
       console.error('Error fetching all documents from S3:', error)
+
+      // Check if it's a "no documents exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for companies with no documents yet
+        console.log(
+          `No documents found for company ${companyId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },
 }
 
 export const s3ProjectService = {
+  // Get all company IDs that have projects
+  async getAllCompanies(): Promise<string[]> {
+    try {
+      console.log('Scanning S3 bucket for all companies...')
+
+      // List all objects in the bucket to find company directories
+      const command = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        Delimiter: '/', // This groups objects by directory
+      })
+
+      const response = await s3Client.send(command)
+      const companies: string[] = []
+
+      if (response.CommonPrefixes) {
+        for (const prefix of response.CommonPrefixes) {
+          if (prefix.Prefix) {
+            // Extract company ID from prefix like "company-id/"
+            const companyId = prefix.Prefix.replace('/', '')
+            if (companyId && !companyId.includes('/')) {
+              companies.push(companyId)
+            }
+          }
+        }
+      }
+
+      console.log(`Found ${companies.length} companies in S3:`, companies)
+      return companies
+    } catch (error) {
+      console.error('Error scanning for companies in S3:', error)
+      return []
+    }
+  },
+
   // Get all projects for a company
   async getProjects(companyId: string): Promise<S3Project[]> {
     try {
@@ -309,6 +401,23 @@ export const s3ProjectService = {
       return projects
     } catch (error) {
       console.error('Error fetching projects from S3:', error)
+
+      // Check if it's a "no projects exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for new companies with no projects yet
+        console.log(
+          `No projects found for company ${companyId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },

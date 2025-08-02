@@ -13,6 +13,17 @@ dist-ssr
 *.local
 
 .env
+.env.example
+.env.local
+.env.production
+.env.staging
+.env.test
+
+# API Keys and Secrets
+*.key
+*.pem
+secrets/
+config/secrets.json
 
 # Editor directories and files
 .vscode/*

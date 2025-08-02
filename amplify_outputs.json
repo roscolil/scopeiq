@@ -27,6 +27,192 @@
     "model_introspection": {
       "version": 1,
       "models": {
+        "Company": {
+          "name": "Company",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "description": {
+              "name": "description",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "projects": {
+              "name": "projects",
+              "isArray": true,
+              "type": {
+                "model": "Project"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["companyId"]
+              }
+            },
+            "users": {
+              "name": "users",
+              "isArray": true,
+              "type": {
+                "model": "UserCompany"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["companyId"]
+              }
+            }
+          },
+          "syncable": true,
+          "pluralName": "Companies",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": ["create", "update", "delete", "read"]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "UserCompany": {
+          "name": "UserCompany",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userId": {
+              "name": "userId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "companyId": {
+              "name": "companyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "role": {
+              "name": "role",
+              "isArray": false,
+              "type": {
+                "enum": "UserCompanyRole"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "company": {
+              "name": "company",
+              "isArray": false,
+              "type": {
+                "model": "Company"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["companyId"]
+              }
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "UserCompanies",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": ["create", "update", "delete", "read"]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
         "Project": {
           "name": "Project",
           "fields": {
@@ -51,6 +237,47 @@
               "isRequired": false,
               "attributes": []
             },
+            "companyId": {
+              "name": "companyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "slug": {
+              "name": "slug",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company": {
+              "name": "company",
+              "isArray": false,
+              "type": {
+                "model": "Company"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["companyId"]
+              }
+            },
             "documents": {
               "name": "documents",
               "isArray": true,
@@ -64,22 +291,6 @@
                 "connectionType": "HAS_MANY",
                 "associatedWith": ["projectId"]
               }
-            },
-            "createdAt": {
-              "name": "createdAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            },
-            "updatedAt": {
-              "name": "updatedAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
             }
           },
           "syncable": true,
@@ -88,6 +299,22 @@
             {
               "type": "model",
               "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "projectsByCompanyIdAndCreatedAt",
+                "queryField": "projectsByCompany",
+                "fields": ["companyId", "createdAt"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "projectsByCompanyIdAndName",
+                "queryField": "projectsByCompanyAndName",
+                "fields": ["companyId", "name"]
+              }
             },
             {
               "type": "auth",
@@ -137,7 +364,7 @@
             "size": {
               "name": "size",
               "isArray": false,
-              "type": "String",
+              "type": "Int",
               "isRequired": true,
               "attributes": []
             },
@@ -150,8 +377,22 @@
               "isRequired": false,
               "attributes": []
             },
-            "url": {
-              "name": "url",
+            "s3Key": {
+              "name": "s3Key",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "s3Url": {
+              "name": "s3Url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "thumbnailS3Key": {
+              "name": "thumbnailS3Key",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -168,6 +409,42 @@
               "name": "projectId",
               "isArray": false,
               "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "mimeType": {
+              "name": "mimeType",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "content": {
+              "name": "content",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "tags": {
+              "name": "tags",
+              "isArray": true,
+              "type": "String",
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
               "isRequired": false,
               "attributes": []
             },
@@ -183,29 +460,6 @@
                 "connectionType": "BELONGS_TO",
                 "targetNames": ["projectId"]
               }
-            },
-            "content": {
-              "name": "content",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "createdAt": {
-              "name": "createdAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
-            },
-            "updatedAt": {
-              "name": "updatedAt",
-              "isArray": false,
-              "type": "AWSDateTime",
-              "isRequired": false,
-              "attributes": [],
-              "isReadOnly": true
             }
           },
           "syncable": true,
@@ -214,6 +468,30 @@
             {
               "type": "model",
               "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "documentsByStatus",
+                "queryField": "documentsByStatus",
+                "fields": ["status"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "documentsByProjectIdAndCreatedAt",
+                "queryField": "documentsByProject",
+                "fields": ["projectId", "createdAt"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "documentsByProjectIdAndName",
+                "queryField": "documentsByProjectAndName",
+                "fields": ["projectId", "name"]
+              }
             },
             {
               "type": "auth",
@@ -238,6 +516,10 @@
         }
       },
       "enums": {
+        "UserCompanyRole": {
+          "name": "UserCompanyRole",
+          "values": ["admin", "member", "viewer"]
+        },
         "DocumentStatus": {
           "name": "DocumentStatus",
           "values": ["processed", "processing", "failed"]
@@ -253,7 +535,19 @@
       {
         "name": "amplifyTeamDrive",
         "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-3sjth3rkm1cu",
-        "aws_region": "ap-southeast-2"
+        "aws_region": "ap-southeast-2",
+        "paths": {
+          "public/*": {
+            "guest": ["get", "list"],
+            "authenticated": ["get", "list", "write", "delete"]
+          },
+          "protected/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": ["get", "list", "write", "delete"]
+          },
+          "private/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": ["get", "list", "write", "delete"]
+          }
+        }
       }
     ]
   },

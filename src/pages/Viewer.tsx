@@ -24,9 +24,9 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { routes } from '@/utils/navigation'
+import { routes, createSlug } from '@/utils/navigation'
 import { Document as DocumentType } from '@/types'
-import { documentService, projectService } from '@/services/s3-api'
+import { documentService, projectService } from '@/services/hybrid'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -49,6 +49,10 @@ const Viewer = () => {
   const [document, setDocument] = useState<DocumentType | null>(null)
   const [projectName, setProjectName] = useState<string>('')
   const [companyName, setCompanyName] = useState<string>('')
+  const [resolvedProject, setResolvedProject] = useState<{
+    id: string
+    name: string
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -76,17 +80,122 @@ const Viewer = () => {
       try {
         setIsLoading(true)
 
-        // Fetch document data using slug resolution
-        // The documentId from URL is actually a document slug (document name)
-        console.log('Viewer: Resolving document slug to actual document...')
-        const documentData = await documentService.getDocument(documentId)
+        // First resolve the project slug to get the actual project
+        console.log('Viewer: Resolving project slug to actual project...')
+        const projectData = await projectService.resolveProject(projectId!)
+
+        if (!projectData) {
+          console.log('Viewer: No project found for slug:', projectId)
+          setProjectName('Unknown Project')
+          setIsLoading(false)
+          return
+        }
+
+        console.log('Viewer: Project resolved successfully:', {
+          id: projectData.id,
+          name: projectData.name,
+          slug: projectId,
+        })
+        setProjectName(projectData.name)
+        setResolvedProject({ id: projectData.id, name: projectData.name })
+
+        // Now try to get the document by ID first
+        console.log('Viewer: Trying to get document by direct ID...')
+        console.log(`Viewer: Calling getDocument with:`)
+        console.log(`  - companyId: ${companyId}`)
+        console.log(`  - projectId: ${projectData.id}`)
+        console.log(`  - documentId: ${documentId}`)
+
+        let documentData = null
+        try {
+          documentData = await documentService.getDocument(
+            companyId!,
+            projectData.id,
+            documentId!,
+          )
+          console.log(
+            'Viewer: getDocument result:',
+            documentData ? 'Found document' : 'No document returned',
+          )
+        } catch (error) {
+          console.error('Viewer: Error in getDocument call:', error)
+          console.error('Viewer: Error details:', {
+            message: error instanceof Error ? error.message : String(error),
+            companyId,
+            projectId: projectData.id,
+            documentId,
+          })
+        }
+
+        // If not found by direct ID, search by slug/name in the project
+        if (!documentData) {
+          console.log(
+            'Viewer: Document not found by ID, searching by name/slug...',
+          )
+          try {
+            const allProjectDocuments =
+              await documentService.getDocumentsByProject(projectData.id)
+            console.log(
+              `Viewer: Found ${allProjectDocuments.length} documents in project`,
+            )
+            console.log(
+              'Viewer: Project documents:',
+              allProjectDocuments.map(doc => ({
+                id: doc.id,
+                name: doc.name,
+                slug: doc.name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, ''),
+              })),
+            )
+
+            // Create slug from document name and compare
+            documentData = allProjectDocuments.find(doc => {
+              const viewerSlug = doc.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+              const navigationSlug = createSlug(doc.name)
+              const matchesViewer = viewerSlug === documentId
+              const matchesNavigation = navigationSlug === documentId
+              const matchesId = doc.id === documentId
+
+              console.log(`Viewer: Checking document ${doc.name}:`)
+              console.log(`  - Viewer-style slug: ${viewerSlug}`)
+              console.log(`  - Navigation-style slug: ${navigationSlug}`)
+              console.log(`  - URL documentId: ${documentId}`)
+              console.log(`  - Viewer slug match: ${matchesViewer}`)
+              console.log(`  - Navigation slug match: ${matchesNavigation}`)
+              console.log(`  - ID match: ${matchesId}`)
+
+              return matchesViewer || matchesNavigation || matchesId
+            })
+
+            if (documentData) {
+              console.log(
+                'Viewer: Found document by slug/name search:',
+                documentData.name,
+              )
+            } else {
+              console.log('Viewer: No document found by slug/name search')
+            }
+          } catch (error) {
+            console.error('Viewer: Error searching documents by slug:', error)
+          }
+        }
+
         if (documentData) {
           console.log('Viewer: Document resolved successfully:', {
             id: documentData.id,
             name: documentData.name,
             slug: documentId,
+            hasUrl: !!documentData.url,
+            hasS3Url: !!documentData.s3Url,
+            status: documentData.status,
           })
           setDocument(documentData)
+          console.log('Viewer: Document state updated, should now render')
         } else {
           console.log('Viewer: Document not found for slug:', documentId)
           toast({
@@ -96,27 +205,8 @@ const Viewer = () => {
           })
         }
 
-        // Fetch project data using slug resolution
-        // The projectId from URL is actually a project slug (project name)
-        if (projectId) {
-          console.log('Viewer: Resolving project slug to actual project...')
-          const projectData = await projectService.resolveProject(projectId)
-
-          if (projectData) {
-            console.log('Viewer: Project resolved successfully:', {
-              id: projectData.id,
-              name: projectData.name,
-              slug: projectId,
-            })
-            setProjectName(projectData.name)
-          } else {
-            console.log('Viewer: No project found for slug:', projectId)
-            setProjectName('Unknown Project')
-          }
-
-          // Use companyId as company name for now (can be enhanced with actual company data later)
-          setCompanyName(companyId || 'Your Company')
-        }
+        // Use companyId as company name for now (can be enhanced with actual company data later)
+        setCompanyName(companyId || 'Your Company')
       } catch (error) {
         console.error('Error fetching data:', error)
         toast({
@@ -171,10 +261,19 @@ const Viewer = () => {
   }
 
   if (!document) {
+    console.log(
+      'Viewer: Rendering "Document not found" - document state is:',
+      document,
+    )
+    console.log('Viewer: isLoading:', isLoading)
     return (
       <Layout>
         <div className="text-center">
           <p>Document not found</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Debug info: documentId={documentId}, projectId={projectId},
+            companyId={companyId}
+          </p>
           <Button
             onClick={() => {
               if (companyId && projectId) {
@@ -192,13 +291,68 @@ const Viewer = () => {
     )
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (document?.url) {
-      window.open(document.url, '_blank')
-      toast({
-        title: 'Download started',
-        description: 'Your document is being prepared for download.',
-      })
+      try {
+        // Fetch the file as a blob to force download behavior
+        console.log('Fetching file from URL:', document.url)
+        const response = await fetch(document.url)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const blob = await response.blob()
+        console.log('File fetched successfully, size:', blob.size)
+
+        // Create object URL for the blob
+        const blobUrl = window.URL.createObjectURL(blob)
+
+        // Create temporary anchor element to trigger download
+        const link = window.document.createElement('a')
+        link.href = blobUrl
+        link.download = document.name || 'document' // Force download instead of opening in new tab
+
+        // Temporarily add to DOM and click
+        document.body?.appendChild(link)
+        link.click()
+        document.body?.removeChild(link)
+
+        // Clean up the object URL
+        window.URL.revokeObjectURL(blobUrl)
+
+        toast({
+          title: 'Download started',
+          description: 'Your document download has been initiated.',
+        })
+      } catch (error) {
+        console.error('Error downloading document:', error)
+
+        // Fallback: try the direct link approach
+        console.log('Falling back to direct link approach')
+        try {
+          const link = window.document.createElement('a')
+          link.href = document.url
+          link.download = document.name || 'document'
+          link.target = '_blank' // As fallback, open in new tab
+          document.body?.appendChild(link)
+          link.click()
+          document.body?.removeChild(link)
+
+          toast({
+            title: 'Download started',
+            description:
+              'Your document download has been initiated (fallback method).',
+          })
+        } catch (fallbackError) {
+          console.error('Fallback download also failed:', fallbackError)
+          toast({
+            title: 'Download failed',
+            description: 'Unable to download the document. Please try again.',
+            variant: 'destructive',
+          })
+        }
+      }
     } else {
       toast({
         title: 'Download failed',
@@ -232,13 +386,17 @@ const Viewer = () => {
   }
 
   const handleDelete = async () => {
-    if (!document) return
+    if (!document || !resolvedProject || !companyId) return
 
     try {
       setIsDeleting(true)
 
-      // Delete the document using the service
-      await documentService.deleteDocument(document.id)
+      // Delete the document using the hybrid service
+      await documentService.deleteDocument(
+        companyId,
+        resolvedProject.id,
+        document.id,
+      )
 
       toast({
         title: 'Document deleted',
@@ -278,6 +436,16 @@ const Viewer = () => {
       window.history.replaceState(null, '', location.pathname)
     }
   }
+
+  console.log('Viewer: About to render main component with:', {
+    document: document
+      ? { id: document.id, name: document.name, url: document.url }
+      : null,
+    isLoading,
+    resolvedProject: resolvedProject
+      ? { id: resolvedProject.id, name: resolvedProject.name }
+      : null,
+  })
 
   return (
     <Layout>
@@ -430,10 +598,11 @@ const Viewer = () => {
 
         <div className="mt-0">
           <DocumentViewer
-            documentId={documentId}
-            projectId={projectId}
+            documentId={document?.id || documentId}
+            projectId={resolvedProject?.id || projectId}
             companyId={companyId}
             viewMode={viewMode}
+            document={document} // Pass the resolved document data
           />
         </div>
       </div>

@@ -17,7 +17,7 @@ import {
 import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/navigation'
-import { documentService, projectService } from '@/services/s3-api'
+import { documentService, projectService } from '@/services/hybrid'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{
@@ -116,8 +116,23 @@ const Documents = () => {
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      // Delete from API
-      await documentService.deleteDocument(documentId)
+      // Find the document to get its projectId
+      const documentToDelete =
+        documents.find(doc => doc.id === documentId) ||
+        projectsWithDocuments
+          .flatMap(p => p.documents)
+          .find(doc => doc.id === documentId)
+
+      if (!documentToDelete || !companyId) {
+        throw new Error('Document or company information not found')
+      }
+
+      // Delete from API using hybrid service
+      await documentService.deleteDocument(
+        companyId,
+        documentToDelete.projectId,
+        documentId,
+      )
 
       // Update state to remove the document
       setDocuments(prev => prev.filter(doc => doc.id !== documentId))

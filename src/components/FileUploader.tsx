@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Upload, X, FileText, FileImage, File } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
-import { documentService } from '@/services/s3-api'
+import { documentService } from '@/services/hybrid'
 
 interface FileUploaderProps {
   projectId: string
@@ -79,26 +79,29 @@ export const FileUploader = ({
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      // Create document record in the database using the API
+      // Create document record in the database using the hybrid API
       console.log('Creating document record with name:', file.name)
       console.log('Document creation data:', {
         name: file.name,
         type: file.type,
-        size: String(result.size),
+        size: result.size,
         status: 'processing',
         url: result.url,
         projectId: projectId,
       })
 
-      const newDocument = await documentService.createDocument({
-        name: file.name, // Use the original file name
-        type: file.type,
-        size: String(result.size),
-        status: 'processing',
-        url: result.url,
-        projectId: projectId,
-        companyId: companyId, // Explicitly pass companyId
-      })
+      const newDocument = await documentService.createDocument(
+        companyId,
+        projectId,
+        {
+          name: file.name, // Use the original file name
+          type: file.type,
+          size: result.size,
+          status: 'processing',
+          url: result.url,
+          s3Key: result.key, // Pass the actual S3 key from upload
+        },
+      )
 
       console.log('Created document:', newDocument)
       console.log('Created document ID:', newDocument?.id)
@@ -109,7 +112,11 @@ export const FileUploader = ({
           'Testing: Attempting to fetch document immediately after creation...',
         )
         try {
-          const fetchTest = await documentService.getDocument(newDocument.id)
+          const fetchTest = await documentService.getDocument(
+            companyId,
+            projectId,
+            newDocument.id,
+          )
           console.log('Testing: Successfully fetched document:', fetchTest)
         } catch (testError) {
           console.error(
