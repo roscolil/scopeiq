@@ -32,9 +32,39 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Set up environment variables.
+cp .env.example .env
+# Edit .env file with your actual API keys and credentials
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Environment Setup
+
+This application requires several environment variables to function properly. **Never commit your actual credentials to version control.**
+
+### Required Environment Variables
+
+Copy `.env.example` to `.env` and fill in your actual values:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your credentials:
+
+- **AWS Configuration**: Your AWS access keys and S3 bucket for file storage
+- **OpenAI API Key**: For AI-powered document analysis features
+- **Google Places API Key**: For location-based features (if used)
+
+### Security Notes
+
+- ✅ `.env` is in `.gitignore` - your credentials won't be committed
+- ✅ Use `.env.example` as a template for team members
+- ❌ Never hardcode credentials in source code
+- ❌ Never commit `.env` files to version control
+- 🔄 Rotate API keys regularly for security
 
 **Edit a file directly in GitHub**
 

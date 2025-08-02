@@ -3,32 +3,27 @@
  * Handles environment variables safely across different contexts
  */
 
-/**
- * Environment configuration utility
- * Handles environment variables safely across different contexts
- */
+// Get environment variables from Vite (client-side)
+const getEnvVar = (key: string): string | undefined => {
+  // In Vite, environment variables are prefixed with VITE_
+  return import.meta.env[`VITE_${key}`] || import.meta.env[key]
+}
 
-/**
- * Environment configuration utility
- * Handles environment variables safely across different contexts
- */
-
-// Temporary hardcoded values from your .env file to fix immediate issue
-// TODO: Fix proper environment variable loading
+// Environment configuration object
 export const env = {
-  // AWS Configuration - using values from your .env file
-  AWS_REGION: 'ap-southeast-2',
-  AWS_ACCESS_KEY_ID: 'process.env.VITE_AWS_ACCESS_KEY_ID || ""',
-  AWS_SECRET_ACCESS_KEY: 'process.env.VITE_AWS_SECRET_ACCESS_KEY || ""',
-  S3_BUCKET_NAME: 'scopeiq-fileupload', // This will be overridden by Amplify bucket
+  // AWS Configuration - read from environment variables
+  AWS_REGION: getEnvVar('AWS_REGION') || 'ap-southeast-2',
+  AWS_ACCESS_KEY_ID: getEnvVar('AWS_ACCESS_KEY_ID'),
+  AWS_SECRET_ACCESS_KEY: getEnvVar('AWS_SECRET_ACCESS_KEY'),
+  S3_BUCKET_NAME: getEnvVar('S3_BUCKET_NAME'),
 
   // API Configuration
-  OPENAI_API_KEY:
-    'process.env.VITE_OPENAI_API_KEY || ""',
+  OPENAI_API_KEY: getEnvVar('OPENAI_API_KEY'),
+  GOOGLE_PLACES_API_KEY: getEnvVar('GOOGLE_PLACES_API_KEY'),
 
   // App Configuration
-  NODE_ENV: 'development',
-  APP_URL: 'http://localhost:3000',
+  NODE_ENV: getEnvVar('NODE_ENV') || 'development',
+  APP_URL: getEnvVar('APP_URL') || 'http://localhost:3000',
 
   // Validation method
   validate(): boolean {

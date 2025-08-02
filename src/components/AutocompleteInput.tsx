@@ -2,6 +2,7 @@ import { useRef, forwardRef } from 'react'
 import { useLoadScript, Autocomplete } from '@react-google-maps/api'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/Spinner'
+import { env } from '@/services/env'
 
 const libraries = ['places'] as (
   | 'drawing'
@@ -22,7 +23,7 @@ export const AutocompleteInput = forwardRef<
   AutocompleteInputProps
 >(({ value, onChange, onBlur, name }, ref) => {
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY,
+    googleMapsApiKey: env.GOOGLE_PLACES_API_KEY,
     libraries,
   })
 

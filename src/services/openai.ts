@@ -1,4 +1,6 @@
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
+import { env } from './env'
+
+const OPENAI_API_KEY = env.OPENAI_API_KEY
 
 export const callOpenAI = async (prompt: string, context?: string) => {
   if (!OPENAI_API_KEY) {
