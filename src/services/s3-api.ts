@@ -108,8 +108,8 @@ export const projectService = {
 
   // Get all projects for a company
   async getProjects() {
+    const companyId = getCurrentCompanyId()
     try {
-      const companyId = getCurrentCompanyId()
       console.log(
         `S3 projectService: Fetching projects for company ${companyId}`,
       )
@@ -119,6 +119,23 @@ export const projectService = {
       return projects
     } catch (error) {
       console.error('Error fetching projects:', error)
+
+      // Check if it's a "no projects exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for new companies with no projects yet
+        console.log(
+          `No projects found for company ${companyId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },
@@ -258,6 +275,24 @@ export const projectService = {
       return projectsWithDocuments
     } catch (error) {
       console.error('Error fetching projects with documents:', error)
+
+      // Check if it's a "no projects exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for new companies with no projects yet
+        const companyId = getCurrentCompanyId()
+        console.log(
+          `No projects found for company ${companyId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },
@@ -360,6 +395,24 @@ export const documentService = {
       return documents
     } catch (error) {
       console.error('Error fetching documents:', error)
+
+      // Check if it's a "no documents exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for projects with no documents yet
+        const companyId = getCurrentCompanyId()
+        console.log(
+          `No documents found for project ${companyId}/${projectId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },
@@ -589,6 +642,24 @@ export const documentService = {
       return documents
     } catch (error) {
       console.error('Error fetching all documents:', error)
+
+      // Check if it's a "no documents exist" scenario
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
+
+      if (
+        errorMessage.includes('NoSuchKey') ||
+        errorMessage.includes('The specified key does not exist')
+      ) {
+        // This is normal for companies with no documents yet
+        const companyId = getCurrentCompanyId()
+        console.log(
+          `No documents found for company ${companyId} - returning empty array`,
+        )
+        return []
+      }
+
+      // Re-throw other errors
       throw error
     }
   },

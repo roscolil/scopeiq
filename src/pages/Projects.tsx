@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/ProjectForm'
 import { fetchUserAttributes } from 'aws-amplify/auth'
-import { projectService } from '@/services/s3-api'
+import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
   console.log('Projects component: Rendering')
@@ -96,7 +96,7 @@ const Projects = () => {
 
     try {
       // Create project using API
-      const newProject = await projectService.createProject({
+      const newProject = await projectService.createProject(companyId!, {
         name: projectData.name,
         description: projectData.description || '',
       })
@@ -142,7 +142,7 @@ const Projects = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">
-            My Projects {companyId && `(${companyId})`}
+            Projects for {companyId && `(${companyId})`}
           </h1>
 
           <div className="flex gap-2">

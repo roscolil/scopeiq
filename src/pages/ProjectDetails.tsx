@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/navigation'
-import { projectService, documentService } from '@/services/s3-api'
+import { projectService, documentService } from '@/services/hybrid'
 
 const ProjectDetails = () => {
   const { companyId, projectId } = useParams<{
@@ -83,6 +83,7 @@ const ProjectDetails = () => {
             description: projectData.description,
             createdAt: projectData.createdAt,
             updatedAt: projectData.updatedAt,
+            companyId: companyId || projectData.companyId,
           }
           setProject(transformedProject)
 
@@ -99,7 +100,10 @@ const ProjectDetails = () => {
               id: doc.id,
               name: doc.name || 'Untitled Document',
               type: doc.type || 'unknown',
-              size: doc.size || '0 KB',
+              size:
+                typeof doc.size === 'number'
+                  ? doc.size
+                  : parseInt(String(doc.size)) || 0,
               status: doc.status || 'processing',
               url: doc.url,
               thumbnailUrl: doc.thumbnailUrl,
@@ -143,10 +147,14 @@ const ProjectDetails = () => {
     if (!project) return
 
     try {
-      const updatedProject = await projectService.updateProject(project.id, {
-        name: data.name,
-        description: data.description,
-      })
+      const updatedProject = await projectService.updateProject(
+        companyId!,
+        project.id,
+        {
+          name: data.name,
+          description: data.description,
+        },
+      )
 
       if (updatedProject) {
         setProject({
@@ -178,7 +186,7 @@ const ProjectDetails = () => {
     if (!project) return
 
     try {
-      await projectService.deleteProject(project.id)
+      await projectService.deleteProject(companyId!, project.id)
 
       toast({
         title: 'Project deleted',
@@ -212,7 +220,16 @@ const ProjectDetails = () => {
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      await documentService.deleteDocument(documentId)
+      // Find the document to get its projectId (should be the current project)
+      const documentToDelete = projectDocuments.find(
+        doc => doc.id === documentId,
+      )
+
+      if (!documentToDelete || !companyId || !project) {
+        throw new Error('Document, company, or project information not found')
+      }
+
+      await documentService.deleteDocument(companyId, project.id, documentId)
 
       // Update the local state to remove the document
       setProjectDocuments(prev => prev.filter(doc => doc.id !== documentId))

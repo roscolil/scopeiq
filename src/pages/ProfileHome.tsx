@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Project, Document } from '@/types'
-import { projectService, documentService } from '@/services/s3-api'
+import { projectService, documentService } from '@/services/hybrid'
 import { routes } from '@/utils/navigation'
 
 const ProfileHome = () => {
@@ -56,6 +56,12 @@ const ProfileHome = () => {
       try {
         // Load projects with documents
         setIsLoadingProjects(true)
+        setIsLoadingDocuments(true)
+
+        console.log(
+          'ProfileHome: Loading data for company:',
+          companyId.toLowerCase(),
+        )
         const projectsData = await projectService.getAllProjectsWithDocuments()
         console.log('ProfileHome: Loaded projects:', projectsData)
 
@@ -96,11 +102,29 @@ const ProfileHome = () => {
         setDocuments(allDocuments)
       } catch (error) {
         console.error('ProfileHome: Error loading data:', error)
-        toast({
-          title: 'Loading Error',
-          description: 'Failed to load dashboard data. Please try again.',
-          variant: 'destructive',
-        })
+
+        // Check if it's a "no projects exist" scenario vs actual error
+        const errorMessage =
+          error instanceof Error ? error.message : String(error)
+
+        if (
+          errorMessage.includes('NoSuchKey') ||
+          errorMessage.includes('The specified key does not exist')
+        ) {
+          // This is normal for new companies with no projects yet
+          console.log(
+            'ProfileHome: No projects found - this is normal for new companies',
+          )
+          setProjects([])
+          setDocuments([])
+        } else {
+          // This is an actual error
+          toast({
+            title: 'Loading Error',
+            description: 'Failed to load dashboard data. Please try again.',
+            variant: 'destructive',
+          })
+        }
       } finally {
         setIsLoadingProjects(false)
         setIsLoadingDocuments(false)
@@ -566,10 +590,12 @@ const ProfileHome = () => {
                               onClick={() => {
                                 if (project) {
                                   navigate(
-                                    routes.company.project.document.view(
+                                    routes.company.project.document(
                                       companyId.toLowerCase(),
                                       project.id,
                                       document.id,
+                                      project.name,
+                                      document.name,
                                     ),
                                   )
                                 }

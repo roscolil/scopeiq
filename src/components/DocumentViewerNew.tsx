@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { FileText, File, FileImage, Download, BrainCircuit } from 'lucide-react'
 import { AIActions } from './AIActions'
 import { Spinner } from './Spinner'
+import { PDFViewer } from './PDFViewer'
 import { Document as DocumentType } from '@/types'
-import { documentService } from '@/services/s3-api'
+import { documentService } from '@/services/hybrid'
 import { Button } from './ui/button'
 import {
   Card,
@@ -37,6 +38,7 @@ interface DocumentViewerProps {
   projectId: string
   companyId: string
   viewMode?: 'document' | 'ai'
+  document?: DocumentType | null // Optional pre-resolved document
 }
 
 export const DocumentViewer = ({
@@ -44,6 +46,7 @@ export const DocumentViewer = ({
   projectId,
   companyId,
   viewMode = 'document',
+  document: preResolvedDocument,
 }: DocumentViewerProps) => {
   const [isLoading, setIsLoading] = useState(true)
   const [document, setDocument] = useState<DocumentType | null>(null)
@@ -52,6 +55,33 @@ export const DocumentViewer = ({
 
   // Fetch document from API
   useEffect(() => {
+    // If we already have the document from parent, use it
+    if (preResolvedDocument) {
+      console.log(
+        'DocumentViewer: Using pre-resolved document:',
+        preResolvedDocument,
+      )
+      setDocument(preResolvedDocument)
+      setIsLoading(false)
+
+      // Set content based on document type
+      let documentContent = ''
+      if (preResolvedDocument.type.includes('image')) {
+        documentContent =
+          '[This is an image file. Preview available in Document view.]'
+      } else if (preResolvedDocument.type.includes('pdf')) {
+        documentContent =
+          preResolvedDocument.content ||
+          'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+      } else {
+        documentContent =
+          preResolvedDocument.content || 'Document content not available.'
+      }
+      setContent(documentContent)
+      return
+    }
+
+    // Otherwise, fetch the document
     if (!documentId) {
       console.error('No documentId provided to DocumentViewer')
       setError('No document ID provided')
@@ -76,8 +106,12 @@ export const DocumentViewer = ({
           documentId,
         )
 
-        // Fetch document from API
-        const documentData = await documentService.getDocument(documentId)
+        // Fetch document from API using hybrid service
+        const documentData = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
 
         console.log('DocumentViewer: Response from getDocument:', documentData)
 
@@ -137,7 +171,7 @@ export const DocumentViewer = ({
     }
 
     fetchDocument()
-  }, [documentId, projectId, companyId])
+  }, [documentId, projectId, companyId, preResolvedDocument])
 
   const getFileIcon = () => {
     if (!document) return <File className="h-5 w-5 text-primary" />
@@ -273,24 +307,7 @@ export const DocumentViewer = ({
                   />
                 </div>
               ) : document?.type?.includes('pdf') ? (
-                <div className="text-center">
-                  <p className="mb-4">PDF Document</p>
-                  <Button
-                    onClick={() => window.open(document.url, '_blank')}
-                    className="mb-4"
-                  >
-                    Open PDF in New Tab
-                  </Button>
-                  <div className="bg-muted p-4 rounded text-sm">
-                    <p>
-                      PDF content preview is not available directly in the
-                      browser.
-                    </p>
-                    <p>
-                      Please use the button above to view the PDF in a new tab.
-                    </p>
-                  </div>
-                </div>
+                <PDFViewer document={document} />
               ) : (
                 <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
                   {document?.content ||

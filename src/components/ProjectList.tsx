@@ -30,7 +30,7 @@ import {
 import { FileText, Folder, MoreVertical, Trash2 } from 'lucide-react'
 import { routes } from '@/utils/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { projectService } from '@/services/s3-api'
+import { projectService } from '@/services/hybrid'
 
 interface ProjectListProps {
   projects: Project[]
@@ -54,7 +54,7 @@ export const ProjectList = ({
   const handleDeleteProject = async (project: Project) => {
     try {
       setDeletingProjectId(project.id)
-      await projectService.deleteProject(project.id)
+      await projectService.deleteProject(companyId, project.id)
 
       if (onProjectDeleted) {
         onProjectDeleted(project.id)

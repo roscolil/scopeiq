@@ -23,6 +23,11 @@ import VerifyEmail from './pages/VerifyEmail'
 import { AuthProvider } from './hooks/aws-auth'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
 import Pricing from './pages/Pricing'
+import DatabaseTest from './pages/DatabaseTest'
+import Migration from './pages/Migration'
+import DataStructureTest from './pages/DataStructureTest'
+import { DocumentStorageTest } from './pages/DocumentStorageTest'
+import SimplePDFDiagnosticTest from './pages/SimplePDFDiagnosticTest'
 
 Amplify.configure(outputs)
 
@@ -45,6 +50,20 @@ const App = () => (
               <Route path="verify-email" element={<VerifyEmail />} />
             </Route>
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/database-test" element={<DatabaseTest />} />
+            <Route path="/migration" element={<Migration />} />
+            <Route
+              path="/data-structure-test"
+              element={<DataStructureTest />}
+            />
+            <Route
+              path="/document-storage-test"
+              element={<DocumentStorageTest />}
+            />
+            <Route
+              path="/pdf-diagnostic-test"
+              element={<SimplePDFDiagnosticTest />}
+            />
 
             {/* Authenticated routes */}
             <Route element={<AuthenticatedLayout />}>
