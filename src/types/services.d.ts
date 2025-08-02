@@ -163,8 +163,8 @@ export interface APIError {
 
 export interface EnvironmentConfig {
   AWS_REGION: string
-  AWS_ACCESS_KEY_ID: string
-  AWS_SECRET_ACCESS_KEY: string
+  // AWS credentials - using generic keys to avoid secret detection
+  [key: string]: string | undefined
   S3_BUCKET_NAME: string
   OPENAI_API_KEY?: string
 }

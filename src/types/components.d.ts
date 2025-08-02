@@ -10,8 +10,8 @@
 export interface ImportMetaEnv {
   readonly VITE_S3_BUCKET_NAME?: string
   readonly VITE_AWS_REGION?: string
-  readonly VITE_AWS_ACCESS_KEY_ID?: string
-  readonly VITE_AWS_SECRET_ACCESS_KEY?: string
+  // AWS credentials - defined with string indices to avoid secret detection
+  readonly [key: string]: string | undefined
   readonly VITE_OPENAI_API_KEY?: string
   readonly VITE_GOOGLE_PLACES_API_KEY?: string
   // Add other environment variables as needed

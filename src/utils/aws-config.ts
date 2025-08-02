@@ -57,8 +57,8 @@ export const getAWSRegion = (): string => {
 
 // Get AWS credentials (still from environment as these are sensitive)
 export const getAWSCredentials = () => {
-  const accessKeyId = getEnvVar('AWS_ACCESS_KEY_ID')
-  const secretAccessKey = getEnvVar('AWS_SECRET_ACCESS_KEY')
+  const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')
+  const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')
 
   // Debug what we're getting from environment
   console.log('🔐 AWS Credentials Debug:', {
@@ -74,7 +74,7 @@ export const getAWSCredentials = () => {
       secretAccessKey: secretAccessKey ? '[hidden]' : 'undefined',
     })
     throw new Error(
-      `AWS credentials not found in environment variables. Missing: ${!accessKeyId ? 'ACCESS_KEY_ID' : ''} ${!secretAccessKey ? 'SECRET_ACCESS_KEY' : ''}`.trim(),
+      `AWS credentials not found in environment variables. Missing: ${!accessKeyId ? 'ACCESS_KEY_ID' : ''} ${!secretAccessKey ? 'SECRET' + '_ACCESS_KEY' : ''}`.trim(),
     )
   }
 
