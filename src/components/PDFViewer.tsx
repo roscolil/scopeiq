@@ -100,11 +100,36 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
 
           <Button
             variant="outline"
-            onClick={() => {
-              const link = window.document.createElement('a')
-              link.href = primaryUrl
-              link.download = document.name
-              link.click()
+            onClick={async () => {
+              try {
+                console.log('Downloading PDF from URL:', primaryUrl)
+                const response = await fetch(primaryUrl)
+
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`)
+                }
+
+                const blob = await response.blob()
+                const blobUrl = window.URL.createObjectURL(blob)
+
+                const link = window.document.createElement('a')
+                link.href = blobUrl
+                link.download = document.name
+                document.body?.appendChild(link)
+                link.click()
+                document.body?.removeChild(link)
+
+                window.URL.revokeObjectURL(blobUrl)
+                console.log('PDF download initiated for:', document.name)
+              } catch (error) {
+                console.error('PDF download failed:', error)
+                // Fallback to direct link
+                const link = window.document.createElement('a')
+                link.href = primaryUrl
+                link.download = document.name
+                link.target = '_blank'
+                link.click()
+              }
             }}
           >
             <Download className="h-4 w-4 mr-2" />

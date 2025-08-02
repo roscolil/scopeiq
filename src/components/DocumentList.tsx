@@ -108,6 +108,65 @@ export const DocumentList = ({
     navigate(route)
   }
 
+  const downloadDocument = async (document: Document) => {
+    try {
+      console.log('Downloading document:', document.name)
+
+      // Use the document's URL (which should be a pre-signed URL)
+      const downloadUrl = document.url
+
+      if (!downloadUrl) {
+        console.error('No URL available for document:', document.name)
+        return
+      }
+
+      // Fetch the file as a blob to force download behavior
+      console.log('Fetching file from URL:', downloadUrl)
+      const response = await fetch(downloadUrl)
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      console.log('File fetched successfully, size:', blob.size)
+
+      // Create object URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob)
+
+      // Create temporary anchor element to trigger download
+      const link = window.document.createElement('a')
+      link.href = blobUrl
+      link.download = document.name // This forces download instead of opening in tab
+
+      // Temporarily add to DOM and click
+      document.body?.appendChild(link)
+      link.click()
+      document.body?.removeChild(link)
+
+      // Clean up the object URL
+      window.URL.revokeObjectURL(blobUrl)
+
+      console.log('Download initiated for:', document.name)
+    } catch (error) {
+      console.error('Error downloading document:', error)
+
+      // Fallback: try the direct link approach
+      console.log('Falling back to direct link approach')
+      try {
+        const link = window.document.createElement('a')
+        link.href = document.url || ''
+        link.download = document.name
+        link.target = '_blank' // As fallback, open in new tab
+        document.body?.appendChild(link)
+        link.click()
+        document.body?.removeChild(link)
+      } catch (fallbackError) {
+        console.error('Fallback download also failed:', fallbackError)
+      }
+    }
+  }
+
   const deleteDocument = (id: string) => {
     if (onDelete) {
       onDelete(id)
@@ -160,7 +219,7 @@ export const DocumentList = ({
                       <Eye className="h-4 w-4 mr-2" />
                       View
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => downloadDocument(doc)}>
                       <Download className="h-4 w-4 mr-2" />
                       Download
                     </DropdownMenuItem>

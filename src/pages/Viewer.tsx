@@ -291,13 +291,68 @@ const Viewer = () => {
     )
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (document?.url) {
-      window.open(document.url, '_blank')
-      toast({
-        title: 'Download started',
-        description: 'Your document is being prepared for download.',
-      })
+      try {
+        // Fetch the file as a blob to force download behavior
+        console.log('Fetching file from URL:', document.url)
+        const response = await fetch(document.url)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const blob = await response.blob()
+        console.log('File fetched successfully, size:', blob.size)
+
+        // Create object URL for the blob
+        const blobUrl = window.URL.createObjectURL(blob)
+
+        // Create temporary anchor element to trigger download
+        const link = window.document.createElement('a')
+        link.href = blobUrl
+        link.download = document.name || 'document' // Force download instead of opening in new tab
+
+        // Temporarily add to DOM and click
+        document.body?.appendChild(link)
+        link.click()
+        document.body?.removeChild(link)
+
+        // Clean up the object URL
+        window.URL.revokeObjectURL(blobUrl)
+
+        toast({
+          title: 'Download started',
+          description: 'Your document download has been initiated.',
+        })
+      } catch (error) {
+        console.error('Error downloading document:', error)
+
+        // Fallback: try the direct link approach
+        console.log('Falling back to direct link approach')
+        try {
+          const link = window.document.createElement('a')
+          link.href = document.url
+          link.download = document.name || 'document'
+          link.target = '_blank' // As fallback, open in new tab
+          document.body?.appendChild(link)
+          link.click()
+          document.body?.removeChild(link)
+
+          toast({
+            title: 'Download started',
+            description:
+              'Your document download has been initiated (fallback method).',
+          })
+        } catch (fallbackError) {
+          console.error('Fallback download also failed:', fallbackError)
+          toast({
+            title: 'Download failed',
+            description: 'Unable to download the document. Please try again.',
+            variant: 'destructive',
+          })
+        }
+      }
     } else {
       toast({
         title: 'Download failed',
