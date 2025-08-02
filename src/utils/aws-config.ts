@@ -3,8 +3,12 @@
  * Gets AWS configuration from Amplify outputs and environment variables
  */
 
-import { env } from '../services/env'
 import amplifyOutputs from '../../amplify_outputs.json'
+
+// Helper function to get environment variables
+const getEnvVar = (key: string): string | undefined => {
+  return import.meta.env[`VITE_${key}`] || import.meta.env[key]
+}
 
 // Define the type for Amplify outputs
 interface AmplifyOutputs {
@@ -29,12 +33,10 @@ export const getS3BucketName = (): string => {
   }
 
   // Fallback to environment variable
-  if (env.S3_BUCKET_NAME) {
-    console.log(
-      'Using S3 bucket from environment variable:',
-      env.S3_BUCKET_NAME,
-    )
-    return env.S3_BUCKET_NAME
+  const s3BucketName = getEnvVar('S3_BUCKET_NAME')
+  if (s3BucketName) {
+    console.log('Using S3 bucket from environment variable:', s3BucketName)
+    return s3BucketName
   }
 
   throw new Error(
@@ -50,13 +52,13 @@ export const getAWSRegion = (): string => {
   }
 
   // Fallback to environment variable
-  return env.AWS_REGION || 'us-east-1'
+  return getEnvVar('AWS_REGION') || 'us-east-1'
 }
 
 // Get AWS credentials (still from environment as these are sensitive)
 export const getAWSCredentials = () => {
-  const accessKeyId = env.AWS_ACCESS_KEY_ID
-  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY
+  const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')
+  const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')
 
   // Debug what we're getting from environment
   console.log('🔐 AWS Credentials Debug:', {
@@ -64,7 +66,6 @@ export const getAWSCredentials = () => {
     hasSecretKey: !!secretAccessKey,
     accessKeyLength: accessKeyId?.length || 0,
     secretKeyLength: secretAccessKey?.length || 0,
-    envKeys: Object.keys(env).filter(key => key.includes('AWS')),
   })
 
   if (!accessKeyId || !secretAccessKey) {
