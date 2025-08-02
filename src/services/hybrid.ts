@@ -190,6 +190,11 @@ export const hybridDocumentService = {
       // Read from database
       const dbDocument = await databaseDocumentService.getDocument(documentId)
 
+      // Check if document exists
+      if (!dbDocument) {
+        return null
+      }
+
       // Generate fresh pre-signed URLs if we have S3 keys
       let s3Url = dbDocument.s3Url
       const thumbnailUrl = dbDocument.thumbnailUrl
