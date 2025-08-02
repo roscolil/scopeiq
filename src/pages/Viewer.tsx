@@ -48,6 +48,22 @@ const Viewer = () => {
     name: string
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Handle unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.warn('Unhandled promise rejection caught:', event.reason)
+      // Prevent the default browser behavior
+      event.preventDefault()
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  }, [])
   const [isDeleting, setIsDeleting] = useState(false)
 
   // React to hash changes for AI/Document toggle
@@ -63,14 +79,24 @@ const Viewer = () => {
 
   // Fetch document info from API
   useEffect(() => {
+    let isMounted = true
+
     const fetchData = async () => {
       if (!documentId || !projectId) return
 
       try {
         setIsLoading(true)
 
+        // Add a small delay to prevent race conditions
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        // Check if component is still mounted
+        if (!isMounted) return
+
         // First resolve the project slug to get the actual project
         const projectData = await projectService.resolveProject(projectId!)
+
+        if (!isMounted) return
 
         if (!projectData) {
           setProjectName('Unknown Project')
@@ -117,6 +143,8 @@ const Viewer = () => {
           }
         }
 
+        if (!isMounted) return
+
         if (documentData) {
           setDocument(documentData)
         } else {
@@ -126,6 +154,8 @@ const Viewer = () => {
             variant: 'destructive',
           })
         }
+
+        if (!isMounted) return
 
         // Use companyId as company name for now (can be enhanced with actual company data later)
         setCompanyName(companyId || 'Your Company')
@@ -138,11 +168,18 @@ const Viewer = () => {
           variant: 'destructive',
         })
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchData()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
   }, [documentId, projectId, companyId, toast])
 
   if (!documentId || !projectId || !companyId) {
