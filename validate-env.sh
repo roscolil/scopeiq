@@ -55,10 +55,10 @@ fi
 
 # Check for hardcoded credentials in source code
 echo "🔍 Checking for hardcoded credentials..."
-if grep -r "YOUR_AWS_ACCESS_KEY_HERE\|YOUR_AWS_SECRET_KEY_HERE" src/ 2>/dev/null; then
-    echo "❌ Found hardcoded AWS credentials in source code!"
+if grep -r "AKIA[0-9A-Z]\{16\}" src/ 2>/dev/null; then
+    echo "❌ Found hardcoded AWS access keys in source code!"
 else
-    echo "✅ No hardcoded AWS credentials found in source code"
+    echo "✅ No hardcoded AWS access keys found in source code"
 fi
 
 if grep -r "sk-proj-" src/ 2>/dev/null; then

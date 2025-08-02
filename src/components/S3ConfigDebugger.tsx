@@ -140,7 +140,7 @@ export const S3ConfigDebugger: React.FC = () => {
                     {!hasCredentials && (
                       <li>
                         Set <code>VITE_AWS_ACCESS_KEY_ID</code> and{' '}
-                        <code>VITE_AWS_SECRET_ACCESS_KEY</code>
+                        <code>VITE_AWS_SECRET_ACCESS_KEY</code> environment variables
                       </li>
                     )}
                     {region === 'Not configured' && (
