@@ -62,7 +62,7 @@ If credentials are compromised:
 Required variables (see `.env.example`):
 
 - AWS credentials: Access key and secret key for S3 operations
-- AWS region: Region for S3 bucket operations  
+- AWS region: Region for S3 bucket operations
 - S3 bucket name: Target bucket for file storage
 - OpenAI API key: For AI-powered document analysis
 - Google Places API key: For location-based features## 🔍 Security Validation
