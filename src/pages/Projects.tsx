@@ -107,8 +107,6 @@ const Projects = () => {
 
         setProjects(prev => [...prev, transformedProject])
         setIsDialogOpen(false)
-
-        console.log('Projects: Project added to state and dialog closed')
       }
     } catch (error) {
       console.error('Projects: Error creating project:', error)
@@ -117,7 +115,6 @@ const Projects = () => {
   }
 
   const handleProjectDeleted = (projectId: string) => {
-    console.log('Projects: Removing deleted project from state:', projectId)
     setProjects(prev => prev.filter(project => project.id !== projectId))
   }
 

@@ -103,21 +103,14 @@ export const FileUploader = ({
         },
       )
 
-      console.log('Created document:', newDocument)
-      console.log('Created document ID:', newDocument?.id)
-
       // Test: Immediately try to fetch the document we just created
       if (newDocument?.id) {
-        console.log(
-          'Testing: Attempting to fetch document immediately after creation...',
-        )
         try {
           const fetchTest = await documentService.getDocument(
             companyId,
             projectId,
             newDocument.id,
           )
-          console.log('Testing: Successfully fetched document:', fetchTest)
         } catch (testError) {
           console.error(
             'Testing: Failed to fetch document immediately after creation:',

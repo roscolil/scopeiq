@@ -383,10 +383,6 @@ export const documentService = {
   async getDocumentsByProject(projectId: string) {
     try {
       const companyId = getCurrentCompanyId()
-      console.log(
-        `S3 documentService: Fetching documents for ${companyId}/${projectId}`,
-      )
-
       const documents = await s3DocumentService.getDocumentsByProject(
         companyId,
         projectId,
@@ -535,8 +531,6 @@ export const documentService = {
           content: documentData.content,
         },
       )
-
-      console.log(`S3 documentService: Created document ${document.id}`)
       return document
     } catch (error) {
       console.error('Error creating document:', error)

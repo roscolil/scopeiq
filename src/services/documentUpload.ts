@@ -40,8 +40,6 @@ export const uploadDocumentToS3 = async (
   companyId: string,
 ): Promise<UploadResult> => {
   try {
-    console.log('Starting upload process for file:', file.name)
-
     const fileBuffer = await file.arrayBuffer()
     // Convert ArrayBuffer to Uint8Array which is compatible with S3 client
     const fileContent = new Uint8Array(fileBuffer)

@@ -115,8 +115,6 @@ export const s3DocumentService = {
     projectId: string,
   ): Promise<S3Document[]> {
     try {
-      console.log(`Fetching documents for project: ${companyId}/${projectId}`)
-
       const prefix = `${companyId}/${projectId}/documents/`
       const keys = await listS3Objects(prefix)
 
@@ -249,7 +247,6 @@ export const s3DocumentService = {
     try {
       const key = `${companyId}/${projectId}/documents/${documentId}.json`
       await deleteS3Object(key)
-      console.log(`Document deleted: ${key}`)
     } catch (error) {
       console.error('Error deleting document from S3:', error)
       throw error
@@ -438,16 +435,10 @@ export const s3ProjectService = {
         companyId,
       }
 
-      console.log('🏗️ S3 createProject: Creating project in S3:', project)
-      console.log('🏗️ S3 createProject: Project data received:', projectData)
-      console.log('🏗️ S3 createProject: Company ID:', companyId)
-
       const key = `${companyId}/projects/${project.id}.json`
-      console.log('🏗️ S3 createProject: Saving to S3 key:', key)
 
       await putS3Object(key, JSON.stringify(project, null, 2))
 
-      console.log('✅ S3 createProject: Project created successfully:', key)
       return project
     } catch (error) {
       console.error('❌ S3 createProject: Error creating project in S3:', error)

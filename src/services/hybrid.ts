@@ -197,9 +197,6 @@ export const hybridDocumentService = {
       if (dbDocument.s3Key) {
         try {
           // Always generate fresh pre-signed URLs for security and to avoid expiration
-          console.log(
-            `Generating fresh pre-signed URL for key: ${dbDocument.s3Key}`,
-          )
           s3Url = await getSignedDownloadUrl(dbDocument.s3Key)
 
           // Update the database with the new URL (async, don't wait)

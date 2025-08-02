@@ -173,9 +173,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
                 console.error('Fallback URL:', fallbackUrl)
                 setEmbedError(true)
               }}
-              onLoad={() => {
-                console.log('PDF iframe loaded successfully')
-              }}
             />
           </div>
         ) : (
