@@ -9,7 +9,6 @@ import {
   CheckCircle,
   RefreshCw,
 } from 'lucide-react'
-import { PDFDiagnostic } from './PDFDiagnostic'
 
 interface PDFViewerProps {
   document: {
@@ -199,10 +198,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
             Try Embed Again
           </Button>
         )}
-        {/* PDF Access Diagnostic */}
-        <div className="mt-6">
-          <PDFDiagnostic document={document} />
-        </div>
       </CardContent>
     </Card>
   )
