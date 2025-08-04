@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/navigation'
 import { projectService, documentService } from '@/services/hybrid'
+import SemanticVoiceSearch from '@/components/SemanticVoiceSearch'
 
 const ProjectDetails = () => {
   const { companyId, projectId } = useParams<{
@@ -469,6 +470,10 @@ const ProjectDetails = () => {
               />
             </DialogContent>
           </Dialog>
+        </div>
+
+        <div className="my-6">
+          <SemanticVoiceSearch projectId={project?.id || projectId || ''} />
         </div>
 
         {projectDocuments.length > 0 ? (

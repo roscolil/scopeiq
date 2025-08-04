@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/hybrid'
+import SemanticVoiceSearch from '@/components/SemanticVoiceSearch'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -538,6 +539,12 @@ const Viewer = () => {
               </span>
             </button>
           </div>
+        </div>
+
+        <div className="my-6">
+          <SemanticVoiceSearch
+            projectId={resolvedProject?.id || projectId || ''}
+          />
         </div>
 
         <div className="mt-0">

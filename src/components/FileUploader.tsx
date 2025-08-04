@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import {
+  processEmbeddingOnly,
+  extractTextFromFile,
+} from '@/services/embedding-simple'
 import { useToast } from '@/hooks/use-toast'
 import { uploadDocumentToS3 } from '@/services/documentUpload'
 import { Button } from '@/components/ui/button'
@@ -79,7 +83,6 @@ export const FileUploader = ({
       clearInterval(progressInterval)
       setUploadProgress(100)
 
-      // Create document record in the database using the hybrid API
       console.log('Creating document record with name:', file.name)
       console.log('Document creation data:', {
         name: file.name,
@@ -123,8 +126,48 @@ export const FileUploader = ({
 
       toast({
         title: 'Upload Successful',
-        description: `${file.name} has been uploaded successfully.`,
+        description: `${file.name} has been uploaded and is being processed for AI search.`,
       })
+
+      // Extract text from file and process embedding directly (client-side)
+      if (newDocument?.id) {
+        try {
+          console.log('Extracting text from file for embedding...')
+          const fileText = await extractTextFromFile(file)
+
+          if (fileText && fileText.trim().length > 0) {
+            console.log(`Extracted ${fileText.length} characters of text`)
+
+            // Process embedding directly without database status updates
+            await processEmbeddingOnly(projectId, newDocument.id, fileText, {
+              name: file.name,
+              type: file.type,
+              url: result.url,
+              s3Key: result.key,
+              companyId,
+              size: result.size,
+            })
+
+            toast({
+              title: 'AI Search Ready',
+              description: `${file.name} is now available for semantic search.`,
+            })
+          } else {
+            toast({
+              title: 'Processing Info',
+              description: 'Document uploaded but no text found for AI search.',
+              variant: 'default',
+            })
+          }
+        } catch (embeddingError) {
+          console.error('Embedding processing failed:', embeddingError)
+          toast({
+            title: 'Processing Warning',
+            description: 'Document uploaded but AI search processing failed.',
+            variant: 'destructive',
+          })
+        }
+      }
 
       // Reset state after a successful upload
       setSelectedFile(null)

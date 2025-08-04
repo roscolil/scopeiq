@@ -503,6 +503,10 @@
                     "allow": "owner",
                     "identityClaim": "cognito:username",
                     "operations": ["create", "update", "delete", "read"]
+                  },
+                  {
+                    "allow": "private",
+                    "operations": ["read", "update"]
                   }
                 ]
               }
@@ -522,7 +526,7 @@
         },
         "DocumentStatus": {
           "name": "DocumentStatus",
-          "values": ["processed", "processing", "failed"]
+          "values": ["processed", "processing", "failed", "ready", "error"]
         }
       },
       "nonModels": {}

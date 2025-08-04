@@ -71,7 +71,7 @@ export const DocumentList = ({
       case 'processed':
         return (
           <Badge variant="default" className="bg-green-500">
-            Processed
+            AI Ready
           </Badge>
         )
       case 'processing':
@@ -129,12 +129,14 @@ export const DocumentList = ({
       // Create temporary anchor element to trigger download
       const link = window.document.createElement('a')
       link.href = blobUrl
-      link.download = document.name // This forces download instead of opening in tab
+      link.download = doc.name // This forces download instead of opening in tab
 
       // Temporarily add to DOM and click
-      document.body?.appendChild(link)
+      link.href = presignedUrl
+      link.download = doc.name
+      window.document.body?.appendChild(link)
       link.click()
-      document.body?.removeChild(link)
+      window.document.body?.removeChild(link)
 
       // Clean up the object URL
       window.URL.revokeObjectURL(blobUrl)
@@ -147,12 +149,12 @@ export const DocumentList = ({
       console.log('Falling back to direct link approach')
       try {
         const link = window.document.createElement('a')
-        link.href = document.url || ''
-        link.download = document.name
+        link.href = doc.url || ''
+        link.download = doc.name
         link.target = '_blank' // As fallback, open in new tab
-        document.body?.appendChild(link)
+        window.document.body?.appendChild(link)
         link.click()
-        document.body?.removeChild(link)
+        window.document.body?.removeChild(link)
       } catch (fallbackError) {
         console.error('Fallback download also failed:', fallbackError)
       }
