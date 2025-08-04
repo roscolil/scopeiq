@@ -129,8 +129,6 @@ export const hybridDocumentService = {
   // Get all documents for a project (read from DB)
   async getDocumentsByProject(projectId: string): Promise<HybridDocument[]> {
     try {
-      console.log(`Hybrid: Fetching documents for project: ${projectId}`)
-
       // Read from database for fast queries
       const dbDocuments =
         await databaseDocumentService.getDocumentsByProject(projectId)
@@ -145,9 +143,6 @@ export const hybridDocumentService = {
           // Generate fresh pre-signed URLs if we have S3 keys
           if (doc.s3Key) {
             try {
-              console.log(
-                `Generating fresh pre-signed URL for key: ${doc.s3Key}`,
-              )
               s3Url = await getSignedDownloadUrl(doc.s3Key)
               // Update the database with the new URL (async, don't wait)
               databaseDocumentService
@@ -178,7 +173,6 @@ export const hybridDocumentService = {
         }),
       )
 
-      console.log(`Hybrid: Found ${documents.length} documents for project`)
       return documents
     } catch (error) {
       console.error('Hybrid: Error fetching documents by project:', error)
@@ -193,35 +187,12 @@ export const hybridDocumentService = {
     documentId: string,
   ): Promise<HybridDocument | null> {
     try {
-      console.log(
-        `Hybrid: Fetching document: ${documentId} for project: ${projectId}`,
-      )
-
       // Read from database
       const dbDocument = await databaseDocumentService.getDocument(documentId)
 
+      // Check if document exists
       if (!dbDocument) {
-        console.log(`Hybrid: Document ${documentId} not found in database`)
         return null
-      }
-
-      // Validate that the document belongs to the specified project
-      if (dbDocument.projectId !== projectId) {
-        console.warn(`Hybrid: Project ID mismatch for document ${documentId}:`)
-        console.warn(`  Document belongs to project: ${dbDocument.projectId}`)
-        console.warn(`  Requested for project: ${projectId}`)
-
-        // For debugging: Let's be more lenient and return the document anyway
-        // but log the mismatch so we can fix it
-        console.warn(
-          `Hybrid: Returning document despite project mismatch for debugging`,
-        )
-        // In production, you might want to return null here for security
-        // return null
-      } else {
-        console.log(
-          `Hybrid: Document found and validated for project ${projectId}`,
-        )
       }
 
       // Generate fresh pre-signed URLs if we have S3 keys
@@ -231,9 +202,6 @@ export const hybridDocumentService = {
       if (dbDocument.s3Key) {
         try {
           // Always generate fresh pre-signed URLs for security and to avoid expiration
-          console.log(
-            `Generating fresh pre-signed URL for key: ${dbDocument.s3Key}`,
-          )
           s3Url = await getSignedDownloadUrl(dbDocument.s3Key)
 
           // Update the database with the new URL (async, don't wait)
@@ -269,10 +237,6 @@ export const hybridDocumentService = {
     } catch (error) {
       console.error('Hybrid: Error fetching document by ID:', error)
 
-      // Fallback: Try to find the document by searching project documents
-      console.log(
-        'Hybrid: Trying fallback method - searching project documents...',
-      )
       try {
         const projectDocuments = await this.getDocumentsByProject(projectId)
         const foundDocument = projectDocuments.find(
@@ -280,7 +244,6 @@ export const hybridDocumentService = {
         )
 
         if (foundDocument) {
-          console.log('Hybrid: Found document via fallback method')
           return foundDocument
         } else {
           console.log('Hybrid: Document not found via fallback method either')
@@ -300,8 +263,6 @@ export const hybridDocumentService = {
     documentId: string,
   ): Promise<HybridDocument | null> {
     try {
-      console.log(`Hybrid: Refreshing URL for document: ${documentId}`)
-
       // Get the document to access its S3 key
       const dbDocument = await databaseDocumentService.getDocument(documentId)
       if (!dbDocument) {
@@ -354,8 +315,6 @@ export const hybridDocumentService = {
     documentData: CreateDocumentInput,
   ): Promise<HybridDocument> {
     try {
-      console.log('Hybrid: Creating document (dual write):', documentData)
-
       // Generate unique document ID
       const documentId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -398,7 +357,6 @@ export const hybridDocumentService = {
           console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
         })
 
-      console.log('Hybrid: Document created successfully:', dbDocument.id)
       return {
         id: dbDocument.id,
         name: dbDocument.name,
@@ -426,11 +384,6 @@ export const hybridDocumentService = {
     updates: UpdateDocumentInput,
   ): Promise<HybridDocument | null> {
     try {
-      console.log(
-        `Hybrid: Updating document ${documentId} (dual write):`,
-        updates,
-      )
-
       // Update in database first (primary source)
       const dbDocument = await databaseDocumentService.updateDocument(
         documentId,
@@ -483,8 +436,6 @@ export const hybridDocumentService = {
     documentId: string,
   ): Promise<void> {
     try {
-      console.log(`Hybrid: Deleting document: ${documentId}`)
-
       // Get document metadata first to get S3 keys
       const dbDocument = await databaseDocumentService.getDocument(documentId)
 
@@ -500,17 +451,6 @@ export const hybridDocumentService = {
             error,
           )
         })
-
-      // TODO: Delete actual files from S3 using the s3Key
-      // This should be done in a separate cleanup process
-      if (dbDocument?.s3Key) {
-        console.log(`TODO: Delete S3 file: ${dbDocument.s3Key}`)
-      }
-      if (dbDocument?.thumbnailS3Key) {
-        console.log(`TODO: Delete S3 thumbnail: ${dbDocument.thumbnailS3Key}`)
-      }
-
-      console.log('Hybrid: Document deleted successfully')
     } catch (error) {
       console.error('Hybrid: Error deleting document:', error)
       throw error
@@ -520,8 +460,6 @@ export const hybridDocumentService = {
   // Get all documents for a company (read from DB)
   async getAllDocuments(): Promise<HybridDocument[]> {
     try {
-      console.log('Hybrid: Fetching all documents for company')
-
       // Read from database for fast queries
       const dbDocuments = await databaseDocumentService.getAllDocuments()
       const companyId = await getCurrentCompanyId()
@@ -540,10 +478,6 @@ export const hybridDocumentService = {
         createdAt: doc.createdAt || new Date().toISOString(),
         updatedAt: doc.updatedAt,
       }))
-
-      console.log(
-        `Hybrid: Found ${documents.length} total documents for company`,
-      )
       return documents
     } catch (error) {
       console.error('Hybrid: Error fetching all documents:', error)
@@ -556,8 +490,6 @@ export const hybridProjectService = {
   // Get all projects for a company (read from DB)
   async getProjects(): Promise<HybridProject[]> {
     try {
-      console.log('Hybrid: Fetching projects for company')
-
       // Read from database for fast queries
       const dbProjects = await databaseProjectService.getProjects()
 
@@ -571,7 +503,6 @@ export const hybridProjectService = {
         companyId: project.companyId,
       }))
 
-      console.log(`Hybrid: Found ${projects.length} projects for company`)
       return projects
     } catch (error) {
       console.error('Hybrid: Error fetching projects:', error)
@@ -585,8 +516,6 @@ export const hybridProjectService = {
     projectId: string,
   ): Promise<HybridProject | null> {
     try {
-      console.log(`Hybrid: Fetching project: ${projectId}`)
-
       // Read from database
       const dbProject = await databaseProjectService.getProject(projectId)
 
@@ -614,8 +543,6 @@ export const hybridProjectService = {
     projectData: CreateProjectInput,
   ): Promise<HybridProject> {
     try {
-      console.log('Hybrid: Creating project (dual write):', projectData)
-
       // Write to database first (primary source)
       const dbProject = await databaseProjectService.createProject({
         name: projectData.name,
@@ -629,7 +556,6 @@ export const hybridProjectService = {
         console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
       })
 
-      console.log('Hybrid: Project created successfully:', dbProject.id)
       return {
         id: dbProject.id,
         name: dbProject.name,
@@ -651,11 +577,6 @@ export const hybridProjectService = {
     updates: UpdateProjectInput,
   ): Promise<HybridProject | null> {
     try {
-      console.log(
-        `Hybrid: Updating project ${projectId} (dual write):`,
-        updates,
-      )
-
       // Update in database first (primary source)
       const dbProject = await databaseProjectService.updateProject(projectId, {
         name: updates.name,
@@ -692,8 +613,6 @@ export const hybridProjectService = {
   // Delete project (dual delete)
   async deleteProject(companyId: string, projectId: string): Promise<void> {
     try {
-      console.log(`Hybrid: Deleting project: ${projectId}`)
-
       // Delete from database first (primary source)
       await databaseProjectService.deleteProject(projectId)
 
@@ -701,8 +620,6 @@ export const hybridProjectService = {
       s3ProjectService.deleteProject(companyId, projectId).catch(error => {
         console.warn('Hybrid: Failed to delete from S3 (non-critical):', error)
       })
-
-      console.log('Hybrid: Project and all its documents deleted successfully')
     } catch (error) {
       console.error('Hybrid: Error deleting project:', error)
       throw error
@@ -712,8 +629,6 @@ export const hybridProjectService = {
   // Get all projects with their documents (read from DB)
   async getAllProjectsWithDocuments(): Promise<HybridProjectWithDocuments[]> {
     try {
-      console.log('Hybrid: Fetching all projects with documents')
-
       // Read from database for fast queries
       const projectsWithDocuments =
         await databaseProjectService.getAllProjectsWithDocuments()
@@ -741,7 +656,6 @@ export const hybridProjectService = {
         })),
       }))
 
-      console.log(`Hybrid: Returning ${result.length} projects with documents`)
       return result
     } catch (error) {
       console.error('Hybrid: Error fetching projects with documents:', error)
@@ -752,8 +666,6 @@ export const hybridProjectService = {
   // Resolve project by slug or ID (read from DB with fast lookup)
   async resolveProject(slugOrId: string): Promise<HybridProject | null> {
     try {
-      console.log(`Hybrid: Resolving project by slug/ID: ${slugOrId}`)
-
       // Try direct ID lookup first
       const project = await databaseProjectService.getProject(slugOrId)
 
@@ -774,7 +686,6 @@ export const hybridProjectService = {
       const projectBySlug = projects.find(p => p.slug === slugOrId)
 
       if (projectBySlug) {
-        console.log('Hybrid: Found project by slug')
         return {
           id: projectBySlug.id,
           name: projectBySlug.name,
@@ -784,8 +695,6 @@ export const hybridProjectService = {
           companyId: projectBySlug.companyId,
         }
       }
-
-      console.log('Hybrid: No project found for slug/ID')
       return null
     } catch (error) {
       console.error('Hybrid: Error resolving project:', error)

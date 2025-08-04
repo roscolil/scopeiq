@@ -82,15 +82,11 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
 
   const handleSubmit = async (data: FormData) => {
     if (isSubmitting) {
-      console.log(
-        'ProjectForm: Already submitting, ignoring duplicate submission',
-      )
       return
     }
 
     try {
       setIsSubmitting(true)
-      console.log('ProjectForm: Submitting data:', data)
 
       const formattedAddress =
         data.address ||

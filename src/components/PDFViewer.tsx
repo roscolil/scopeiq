@@ -28,6 +28,18 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
     working: boolean
   } | null>(null)
 
+  // Add null check for document
+  if (!document) {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Document not found or still loading.
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
   const testPDFUrl = async (url: string) => {
     setTesting(true)
     try {
@@ -89,7 +101,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
         <div className="flex gap-2">
           <Button
             onClick={() => {
-              console.log('Opening PDF URL:', primaryUrl)
               window.open(primaryUrl, '_blank')
             }}
           >
@@ -101,7 +112,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
             variant="outline"
             onClick={async () => {
               try {
-                console.log('Downloading PDF from URL:', primaryUrl)
                 const response = await fetch(primaryUrl)
 
                 if (!response.ok) {
@@ -114,12 +124,11 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
                 const link = window.document.createElement('a')
                 link.href = blobUrl
                 link.download = document.name
-                document.body?.appendChild(link)
+                window.document.body?.appendChild(link)
                 link.click()
-                document.body?.removeChild(link)
+                window.document.body?.removeChild(link)
 
                 window.URL.revokeObjectURL(blobUrl)
-                console.log('PDF download initiated for:', document.name)
               } catch (error) {
                 console.error('PDF download failed:', error)
                 // Fallback to direct link
@@ -140,7 +149,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
               variant="outline"
               size="sm"
               onClick={() => {
-                console.log('Trying fallback URL:', fallbackUrl)
                 window.open(fallbackUrl, '_blank')
               }}
             >
@@ -157,13 +165,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
               className="w-full h-[600px]"
               title={document.name}
               onError={() => {
-                console.error('PDF iframe failed to load')
-                console.error('Primary URL:', primaryUrl)
-                console.error('Fallback URL:', fallbackUrl)
                 setEmbedError(true)
-              }}
-              onLoad={() => {
-                console.log('PDF iframe loaded successfully')
               }}
             />
           </div>

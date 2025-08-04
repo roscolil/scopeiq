@@ -25,17 +25,12 @@ const outputs = amplifyOutputs as AmplifyOutputs
 export const getS3BucketName = (): string => {
   // First try to get from Amplify outputs (primary source)
   if (outputs.storage?.bucket_name) {
-    console.log(
-      'Using S3 bucket from Amplify outputs:',
-      outputs.storage.bucket_name,
-    )
     return outputs.storage.bucket_name
   }
 
   // Fallback to environment variable
   const s3BucketName = getEnvVar('S3_BUCKET_NAME')
   if (s3BucketName) {
-    console.log('Using S3 bucket from environment variable:', s3BucketName)
     return s3BucketName
   }
 
@@ -59,14 +54,6 @@ export const getAWSRegion = (): string => {
 export const getAWSCredentials = () => {
   const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')
   const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')
-
-  // Debug what we're getting from environment
-  console.log('🔐 AWS Credentials Debug:', {
-    hasAccessKey: !!accessKeyId,
-    hasSecretKey: !!secretAccessKey,
-    accessKeyLength: accessKeyId?.length || 0,
-    secretKeyLength: secretAccessKey?.length || 0,
-  })
 
   if (!accessKeyId || !secretAccessKey) {
     console.error('❌ AWS credentials missing:', {

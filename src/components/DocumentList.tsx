@@ -71,7 +71,7 @@ export const DocumentList = ({
       case 'processed':
         return (
           <Badge variant="default" className="bg-green-500">
-            Processed
+            AI Ready
           </Badge>
         )
       case 'processing':
@@ -88,13 +88,6 @@ export const DocumentList = ({
   }
 
   const viewDocument = (documentId: string, documentName: string) => {
-    console.log('DocumentList: Attempting to navigate to document:')
-    console.log('DocumentList: Document ID:', documentId)
-    console.log('DocumentList: Document name:', documentName)
-    console.log('DocumentList: Project ID (actual):', projectId)
-    console.log('DocumentList: Project name (for slug):', projectName)
-    console.log('DocumentList: Company ID:', companyId)
-
     // Generate route using project name and document name for slugs
     // The route function will convert these to slugs for the URL
     const route = routes.company.project.document(
@@ -104,24 +97,18 @@ export const DocumentList = ({
       projectName,
       documentName,
     )
-    console.log('DocumentList: Generated route:', route)
     navigate(route)
   }
 
   const downloadDocument = async (document: Document) => {
     try {
-      console.log('Downloading document:', document.name)
-
-      // Use the document's URL (which should be a pre-signed URL)
       const downloadUrl = document.url
 
       if (!downloadUrl) {
-        console.error('No URL available for document:', document.name)
         return
       }
 
       // Fetch the file as a blob to force download behavior
-      console.log('Fetching file from URL:', downloadUrl)
       const response = await fetch(downloadUrl)
 
       if (!response.ok) {
@@ -129,7 +116,6 @@ export const DocumentList = ({
       }
 
       const blob = await response.blob()
-      console.log('File fetched successfully, size:', blob.size)
 
       // Create object URL for the blob
       const blobUrl = window.URL.createObjectURL(blob)
@@ -140,29 +126,26 @@ export const DocumentList = ({
       link.download = document.name // This forces download instead of opening in tab
 
       // Temporarily add to DOM and click
-      document.body?.appendChild(link)
+      window.document.body?.appendChild(link)
       link.click()
-      document.body?.removeChild(link)
+      window.document.body?.removeChild(link)
 
       // Clean up the object URL
       window.URL.revokeObjectURL(blobUrl)
-
-      console.log('Download initiated for:', document.name)
     } catch (error) {
       console.error('Error downloading document:', error)
 
       // Fallback: try the direct link approach
-      console.log('Falling back to direct link approach')
       try {
         const link = window.document.createElement('a')
         link.href = document.url || ''
         link.download = document.name
         link.target = '_blank' // As fallback, open in new tab
-        document.body?.appendChild(link)
+        window.document.body?.appendChild(link)
         link.click()
-        document.body?.removeChild(link)
+        window.document.body?.removeChild(link)
       } catch (fallbackError) {
-        console.error('Fallback download also failed:', fallbackError)
+        // Silent fallback failure
       }
     }
   }
@@ -170,8 +153,6 @@ export const DocumentList = ({
   const deleteDocument = (id: string) => {
     if (onDelete) {
       onDelete(id)
-    } else {
-      console.log(`Delete document ${id}`)
     }
   }
 

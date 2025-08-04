@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-// import { getCurrentUser } from 'aws-amplify/auth'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
@@ -20,48 +19,39 @@ import {
 import { FaqAccordion } from '@/components/FaqAccordion'
 import { AddToHomeScreen } from '@/components/AddToHomeScreen'
 import { toast } from '@/hooks/use-toast'
-import { fetchUserAttributes } from 'aws-amplify/auth'
-import { Spinner } from '@/components/Spinner'
+import { useAuth } from '@/hooks/aws-auth'
 
 const Index = () => {
   const navigate = useNavigate()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [name, setName] = useState<string>('user')
+  const { isAuthenticated, isLoading, user } = useAuth()
+  const [hasShownWelcome, setHasShownWelcome] = useState(false)
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { name } = await fetchUserAttributes()
-        setIsAuthenticated(true)
-        // Only show toast if not already welcomed
-        if (!localStorage.getItem('hasWelcomed')) {
-          toast({
-            title: `Hello there ${name?.split(' ')[0] || 'friend'}!`,
-            description: 'You have successfully signed in.',
-          })
-          localStorage.setItem('hasWelcomed', 'true')
-        }
-      } catch {
-        setIsAuthenticated(false)
-        localStorage.removeItem('hasWelcomed')
-      } finally {
-        setIsLoading(false)
-      }
+    // Show welcome message for authenticated users (only once)
+    if (
+      isAuthenticated &&
+      user &&
+      !hasShownWelcome &&
+      !localStorage.getItem('hasWelcomed')
+    ) {
+      const firstName = user.name?.split(' ')[0] || 'friend'
+      toast({
+        title: `Hello there ${firstName}!`,
+        description: 'You have successfully signed in.',
+      })
+      localStorage.setItem('hasWelcomed', 'true')
+      setHasShownWelcome(true)
     }
-    checkAuth()
-  }, [])
+  }, [isAuthenticated, user, hasShownWelcome])
 
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      navigate('/')
-    }
-  }, [isAuthenticated, isLoading, navigate])
+  // Don't redirect on loading anymore - let users see the homepage content
+  // This improves perceived performance
 
-  if (isLoading) {
-    // Show a loading spinner while checking auth
-    return <Spinner />
-  }
+  // Removed loading spinner - show content immediately
+  // if (isLoading) {
+  //   // Show a loading spinner while checking auth
+  //   return <Spinner />
+  // }
 
   // if (!isAuthenticated && !isLoading) {
   //   return (

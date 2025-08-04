@@ -12,7 +12,6 @@ import {
   Settings,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { signOut, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth'
 import {
   Tooltip,
   TooltipContent,
@@ -26,42 +25,22 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useAuth } from '@/hooks/aws-auth'
 
 export const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { isAuthenticated, user, signOut: authSignOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const [companyId, setCompanyId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await getCurrentUser()
-        setIsAuthenticated(true)
-      } catch {
-        setIsAuthenticated(false)
-      }
-    }
-    checkAuth()
-  }, [])
-
-  useEffect(() => {
-    const getCompanyId = async () => {
-      try {
-        const attrs = await fetchUserAttributes()
-        setCompanyId(attrs['custom:Company'] || attrs.company || null)
-      } catch {
-        setCompanyId(null)
-      }
-    }
-    getCompanyId()
-  }, [])
+  // Extract company ID from user attributes
+  const companyId = (user?.['custom:Company'] || user?.company || null) as
+    | string
+    | null
 
   const handleSignOut = async () => {
     setShowLogoutModal(false)
-    await signOut()
-    setIsAuthenticated(false)
+    await authSignOut() // Use the auth context sign out method
     navigate('/signin')
   }
 

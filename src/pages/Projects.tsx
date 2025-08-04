@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
-import { Spinner } from '@/components/Spinner'
+import { PageHeaderSkeleton, ProjectListSkeleton } from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter } from 'lucide-react'
 import { Project } from '@/types'
@@ -14,37 +14,23 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/ProjectForm'
-import { fetchUserAttributes } from 'aws-amplify/auth'
 import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
-  console.log('Projects component: Rendering')
-
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [attrs, setAttrs] = useState<Record<string, string>>({})
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const { companyId } = useParams<{
     companyId: string
   }>()
 
-  console.log('Projects component: companyId from params:', companyId)
-
   // Load projects from API
   useEffect(() => {
     const loadProjects = async () => {
-      console.log(
-        'Projects page: Starting to load projects for companyId:',
-        companyId,
-      )
       try {
         setLoading(true)
         const projectsData = await projectService.getAllProjectsWithDocuments()
-        console.log(
-          'Projects page: Loaded projects with documents from API:',
-          projectsData,
-        )
 
         // Transform API data to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -66,19 +52,15 @@ const Projects = () => {
           }),
         )
 
-        console.log('Projects page: Transformed projects:', transformedProjects)
         setProjects(transformedProjects)
       } catch (error) {
         console.error('Projects page: Error loading projects:', error)
         // Fallback to empty array
         setProjects([])
       } finally {
-        console.log('Projects page: Finished loading, setting loading to false')
         setLoading(false)
       }
     }
-
-    console.log('Projects page: useEffect triggered with companyId:', companyId)
     loadProjects()
   }, [companyId])
 
@@ -123,8 +105,6 @@ const Projects = () => {
 
         setProjects(prev => [...prev, transformedProject])
         setIsDialogOpen(false)
-
-        console.log('Projects: Project added to state and dialog closed')
       }
     } catch (error) {
       console.error('Projects: Error creating project:', error)
@@ -133,7 +113,6 @@ const Projects = () => {
   }
 
   const handleProjectDeleted = (projectId: string) => {
-    console.log('Projects: Removing deleted project from state:', projectId)
     setProjects(prev => prev.filter(project => project.id !== projectId))
   }
 
@@ -169,8 +148,9 @@ const Projects = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center min-h-[300px]">
-            <Spinner size="lg" text="Loading projects..." />
+          <div className="space-y-6">
+            <PageHeaderSkeleton />
+            <ProjectListSkeleton itemCount={6} />
           </div>
         ) : (
           <ProjectList

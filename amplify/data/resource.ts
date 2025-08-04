@@ -54,7 +54,7 @@ const schema = a.schema({
       name: a.string().required(),
       type: a.string().required(),
       size: a.integer().required(), // Changed to integer
-      status: a.enum(['processed', 'processing', 'failed']),
+      status: a.enum(['processed', 'processing', 'failed', 'ready', 'error']),
       // S3 file paths - keeping files in S3
       s3Key: a.string().required(), // Path to actual file in S3
       s3Url: a.string(), // Pre-signed URL (generated)
@@ -70,7 +70,10 @@ const schema = a.schema({
       // Relations
       project: a.belongsTo('Project', 'projectId'),
     })
-    .authorization(allow => [allow.owner()])
+    .authorization(allow => [
+      allow.owner(),
+      allow.authenticated().to(['read', 'update']), // Allow authenticated users to read and update
+    ])
     .secondaryIndexes(index => [
       index('projectId')
         .sortKeys(['createdAt'])

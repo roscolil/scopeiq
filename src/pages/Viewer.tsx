@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentViewer } from '@/components/DocumentViewerNew'
-import { Spinner } from '@/components/Spinner'
+import {
+  PageHeaderSkeleton,
+  DocumentViewerSkeleton,
+} from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -35,12 +38,6 @@ const Viewer = () => {
     documentId: string // Document slug (from document name)
   }>()
 
-  console.log('Viewer: URL params received (all slugs except companyId):')
-  console.log('  - companyId:', companyId)
-  console.log('  - projectId (slug):', projectId)
-  console.log('  - documentId (slug):', documentId)
-  console.log('Viewer: Current URL:', window.location.href)
-
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
@@ -54,6 +51,22 @@ const Viewer = () => {
     name: string
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Handle unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.warn('Unhandled promise rejection caught:', event.reason)
+      // Prevent the default browser behavior
+      event.preventDefault()
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  }, [])
   const [isDeleting, setIsDeleting] = useState(false)
 
   // React to hash changes for AI/Document toggle
@@ -69,43 +82,35 @@ const Viewer = () => {
 
   // Fetch document info from API
   useEffect(() => {
+    let isMounted = true
+
     const fetchData = async () => {
       if (!documentId || !projectId) return
-
-      console.log('Viewer fetchData called with:')
-      console.log('  - documentId (slug):', documentId)
-      console.log('  - projectId (slug):', projectId)
-      console.log('  - companyId:', companyId)
 
       try {
         setIsLoading(true)
 
+        // Add a small delay to prevent race conditions
+        await new Promise(resolve => setTimeout(resolve, 10))
+
+        // Check if component is still mounted
+        if (!isMounted) return
+
         // First resolve the project slug to get the actual project
-        console.log('Viewer: Resolving project slug to actual project...')
         const projectData = await projectService.resolveProject(projectId!)
 
+        if (!isMounted) return
+
         if (!projectData) {
-          console.log('Viewer: No project found for slug:', projectId)
           setProjectName('Unknown Project')
           setIsLoading(false)
           return
         }
 
-        console.log('Viewer: Project resolved successfully:', {
-          id: projectData.id,
-          name: projectData.name,
-          slug: projectId,
-        })
         setProjectName(projectData.name)
         setResolvedProject({ id: projectData.id, name: projectData.name })
 
         // Now try to get the document by ID first
-        console.log('Viewer: Trying to get document by direct ID...')
-        console.log(`Viewer: Calling getDocument with:`)
-        console.log(`  - companyId: ${companyId}`)
-        console.log(`  - projectId: ${projectData.id}`)
-        console.log(`  - documentId: ${documentId}`)
-
         let documentData = null
         try {
           documentData = await documentService.getDocument(
@@ -113,42 +118,15 @@ const Viewer = () => {
             projectData.id,
             documentId!,
           )
-          console.log(
-            'Viewer: getDocument result:',
-            documentData ? 'Found document' : 'No document returned',
-          )
         } catch (error) {
           console.error('Viewer: Error in getDocument call:', error)
-          console.error('Viewer: Error details:', {
-            message: error instanceof Error ? error.message : String(error),
-            companyId,
-            projectId: projectData.id,
-            documentId,
-          })
         }
 
         // If not found by direct ID, search by slug/name in the project
         if (!documentData) {
-          console.log(
-            'Viewer: Document not found by ID, searching by name/slug...',
-          )
           try {
             const allProjectDocuments =
               await documentService.getDocumentsByProject(projectData.id)
-            console.log(
-              `Viewer: Found ${allProjectDocuments.length} documents in project`,
-            )
-            console.log(
-              'Viewer: Project documents:',
-              allProjectDocuments.map(doc => ({
-                id: doc.id,
-                name: doc.name,
-                slug: doc.name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-+|-+$/g, ''),
-              })),
-            )
 
             // Create slug from document name and compare
             documentData = allProjectDocuments.find(doc => {
@@ -161,49 +139,26 @@ const Viewer = () => {
               const matchesNavigation = navigationSlug === documentId
               const matchesId = doc.id === documentId
 
-              console.log(`Viewer: Checking document ${doc.name}:`)
-              console.log(`  - Viewer-style slug: ${viewerSlug}`)
-              console.log(`  - Navigation-style slug: ${navigationSlug}`)
-              console.log(`  - URL documentId: ${documentId}`)
-              console.log(`  - Viewer slug match: ${matchesViewer}`)
-              console.log(`  - Navigation slug match: ${matchesNavigation}`)
-              console.log(`  - ID match: ${matchesId}`)
-
               return matchesViewer || matchesNavigation || matchesId
             })
-
-            if (documentData) {
-              console.log(
-                'Viewer: Found document by slug/name search:',
-                documentData.name,
-              )
-            } else {
-              console.log('Viewer: No document found by slug/name search')
-            }
           } catch (error) {
             console.error('Viewer: Error searching documents by slug:', error)
           }
         }
 
+        if (!isMounted) return
+
         if (documentData) {
-          console.log('Viewer: Document resolved successfully:', {
-            id: documentData.id,
-            name: documentData.name,
-            slug: documentId,
-            hasUrl: !!documentData.url,
-            hasS3Url: !!documentData.s3Url,
-            status: documentData.status,
-          })
           setDocument(documentData)
-          console.log('Viewer: Document state updated, should now render')
         } else {
-          console.log('Viewer: Document not found for slug:', documentId)
           toast({
             title: 'Document not found',
             description: 'The requested document could not be found.',
             variant: 'destructive',
           })
         }
+
+        if (!isMounted) return
 
         // Use companyId as company name for now (can be enhanced with actual company data later)
         setCompanyName(companyId || 'Your Company')
@@ -216,11 +171,18 @@ const Viewer = () => {
           variant: 'destructive',
         })
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     fetchData()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
   }, [documentId, projectId, companyId, toast])
 
   if (!documentId || !projectId || !companyId) {
@@ -253,19 +215,15 @@ const Viewer = () => {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Spinner size="lg" text="Loading document..." />
+        <div className="container mx-auto px-4 py-8 space-y-6">
+          <PageHeaderSkeleton showBackButton={true} showActions={3} />
+          <DocumentViewerSkeleton />
         </div>
       </Layout>
     )
   }
 
   if (!document) {
-    console.log(
-      'Viewer: Rendering "Document not found" - document state is:',
-      document,
-    )
-    console.log('Viewer: isLoading:', isLoading)
     return (
       <Layout>
         <div className="text-center">
@@ -314,9 +272,9 @@ const Viewer = () => {
         link.download = document.name || 'document' // Force download instead of opening in new tab
 
         // Temporarily add to DOM and click
-        document.body?.appendChild(link)
+        window.document.body?.appendChild(link)
         link.click()
-        document.body?.removeChild(link)
+        window.document.body?.removeChild(link)
 
         // Clean up the object URL
         window.URL.revokeObjectURL(blobUrl)
@@ -335,9 +293,9 @@ const Viewer = () => {
           link.href = document.url
           link.download = document.name || 'document'
           link.target = '_blank' // As fallback, open in new tab
-          document.body?.appendChild(link)
+          window.document.body?.appendChild(link)
           link.click()
-          document.body?.removeChild(link)
+          window.document.body?.removeChild(link)
 
           toast({
             title: 'Download started',
@@ -436,16 +394,6 @@ const Viewer = () => {
       window.history.replaceState(null, '', location.pathname)
     }
   }
-
-  console.log('Viewer: About to render main component with:', {
-    document: document
-      ? { id: document.id, name: document.name, url: document.url }
-      : null,
-    isLoading,
-    resolvedProject: resolvedProject
-      ? { id: resolvedProject.id, name: resolvedProject.name }
-      : null,
-  })
 
   return (
     <Layout>

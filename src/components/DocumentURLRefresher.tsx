@@ -34,8 +34,6 @@ export const DocumentURLRefresher: React.FC = () => {
     setResult(null)
 
     try {
-      console.log(`Refreshing URL for document: ${documentId}`)
-
       // Call the refresh function we just added
       const refreshedDocument = await documentService.refreshDocumentUrl(
         companyId.trim(),

@@ -2,7 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/Spinner'
+import {
+  PageHeaderSkeleton,
+  ProjectListSkeleton,
+  ProjectRowsSkeleton,
+  DocumentListSkeleton,
+} from '@/components/skeletons'
 import {
   Card,
   CardContent,
@@ -58,12 +63,7 @@ const ProfileHome = () => {
         setIsLoadingProjects(true)
         setIsLoadingDocuments(true)
 
-        console.log(
-          'ProfileHome: Loading data for company:',
-          companyId.toLowerCase(),
-        )
         const projectsData = await projectService.getAllProjectsWithDocuments()
-        console.log('ProfileHome: Loaded projects:', projectsData)
 
         // Transform to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
@@ -101,8 +101,6 @@ const ProfileHome = () => {
 
         setDocuments(allDocuments)
       } catch (error) {
-        console.error('ProfileHome: Error loading data:', error)
-
         // Check if it's a "no projects exist" scenario vs actual error
         const errorMessage =
           error instanceof Error ? error.message : String(error)
@@ -111,10 +109,6 @@ const ProfileHome = () => {
           errorMessage.includes('NoSuchKey') ||
           errorMessage.includes('The specified key does not exist')
         ) {
-          // This is normal for new companies with no projects yet
-          console.log(
-            'ProfileHome: No projects found - this is normal for new companies',
-          )
           setProjects([])
           setDocuments([])
         } else {
@@ -280,9 +274,7 @@ const ProfileHome = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isLoadingProjects ? (
-                    <div className="flex justify-center py-8">
-                      <Spinner size="md" text="Loading projects..." />
-                    </div>
+                    <ProjectRowsSkeleton itemCount={3} />
                   ) : projects.length > 0 ? (
                     projects.slice(0, 3).map(project => (
                       <div key={project.id} className="space-y-2">
@@ -433,9 +425,7 @@ const ProfileHome = () => {
               </CardHeader>
               <CardContent>
                 {isLoadingProjects ? (
-                  <div className="flex justify-center py-8">
-                    <Spinner size="lg" text="Loading projects..." />
-                  </div>
+                  <ProjectListSkeleton itemCount={6} />
                 ) : projects.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.map(project => (
@@ -527,9 +517,7 @@ const ProfileHome = () => {
               </CardHeader>
               <CardContent>
                 {isLoadingDocuments ? (
-                  <div className="flex justify-center py-8">
-                    <Spinner size="lg" text="Loading documents..." />
-                  </div>
+                  <DocumentListSkeleton itemCount={6} />
                 ) : documents.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {documents.slice(0, 6).map(document => {

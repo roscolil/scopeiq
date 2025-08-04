@@ -234,29 +234,24 @@ const bucketName = env.S3_BUCKET_NAME
 3. Use secondary indexes for efficient queries
 4. S3 JSON backup available for verification/recovery
 
-## Data Verification Tools
+## Data Architecture
 
-### DataStructureDebugger Component
+The system uses a cloud-native architecture with:
 
-Navigate to `/data-structure-test` to access the verification tool that:
+- **Primary Storage**: AWS DynamoDB for relational data
+- **File Storage**: AWS S3 with hierarchical organization
+- **Search Index**: Pinecone vector database for semantic search
+- **Authentication**: AWS Cognito for user management
 
-- ✅ Lists all S3 objects and their hierarchy
-- ✅ Analyzes company/project/document structure
-- ✅ Verifies metadata consistency
-- ✅ Shows file distribution and organization
-- ✅ Compares expected vs actual structure
+### File Organization
 
-### Verification Functions
-
-```typescript
-// Verify complete data structure
-const report = await verifyDataStructure(companyId?)
-
-// Print detailed console report
-printDataStructureReport(report)
-
-// Quick verification
-await quickVerify(companyId?)
+```
+s3://bucket/
+├── company-id/
+│   ├── project-id/
+│   │   ├── document-files/
+│   │   └── metadata/
+│   └── company-metadata/
 ```
 
 ## Migration and Compatibility

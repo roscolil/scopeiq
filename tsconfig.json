@@ -26,5 +26,10 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true
   },
-  "exclude": ["dist", "eslint.config.js", "postcss.config.js"]
+  "exclude": [
+    "dist",
+    "eslint.config.js",
+    "postcss.config.js",
+    "test-aws-config.js"
+  ]
 }
