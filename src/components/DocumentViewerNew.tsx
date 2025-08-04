@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FileText, File, FileImage, Download, BrainCircuit } from 'lucide-react'
 import { AIActions } from './AIActions'
-import { Spinner } from './Spinner'
+import { DocumentViewerSkeleton } from './skeletons'
 import { PDFViewer } from './PDFViewer'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/hybrid'
@@ -179,11 +179,7 @@ export const DocumentViewer = ({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner size="md" text="Loading document content..." />
-      </div>
-    )
+    return <DocumentViewerSkeleton />
   }
 
   if (error) {

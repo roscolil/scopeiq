@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentViewer } from '@/components/DocumentViewerNew'
-import { Spinner } from '@/components/Spinner'
+import {
+  PageHeaderSkeleton,
+  DocumentViewerSkeleton,
+} from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -212,8 +215,9 @@ const Viewer = () => {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Spinner size="lg" text="Loading document..." />
+        <div className="container mx-auto px-4 py-8 space-y-6">
+          <PageHeaderSkeleton showBackButton={true} showActions={3} />
+          <DocumentViewerSkeleton />
         </div>
       </Layout>
     )

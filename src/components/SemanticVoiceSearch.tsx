@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/Spinner'
+import { Loader2 } from 'lucide-react'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { VoiceInput } from '@/components/VoiceInput'
 
@@ -36,7 +36,7 @@ const SemanticVoiceSearch: React.FC<SemanticVoiceSearchProps> = ({
           className="flex-1"
         />
         <Button type="submit" disabled={loading || !query.trim()}>
-          {loading ? <Spinner size={16} /> : 'Search'}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
         </Button>
         <VoiceInput
           onTranscript={handleVoiceTranscript}

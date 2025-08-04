@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
-import { Spinner } from '@/components/Spinner'
+import {
+  DocumentListSkeleton,
+  PageHeaderSkeleton,
+} from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Filter, ArrowLeft } from 'lucide-react'
@@ -142,15 +145,9 @@ const Documents = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center min-h-[400px]">
-          <Spinner
-            size="lg"
-            text={
-              projectId
-                ? 'Loading project documents...'
-                : 'Loading all documents...'
-            }
-          />
+        <div className="space-y-6">
+          <PageHeaderSkeleton />
+          <DocumentListSkeleton />
         </div>
       </Layout>
     )

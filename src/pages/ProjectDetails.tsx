@@ -3,7 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
-import { Spinner } from '@/components/Spinner'
+import {
+  PageHeaderSkeleton,
+  DocumentListSkeleton,
+  AIActionsSkeleton,
+} from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Edit, Trash2, Plus, ChevronDown } from 'lucide-react'
 import {
@@ -226,8 +230,14 @@ const ProjectDetails = () => {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Spinner size="lg" text="Loading project..." />
+        <div className="container mx-auto px-4 py-8">
+          <PageHeaderSkeleton showBackButton={true} showActions={2} />
+          <div className="mt-8">
+            <AIActionsSkeleton />
+          </div>
+          <div className="mt-8">
+            <DocumentListSkeleton itemCount={3} />
+          </div>
         </div>
       </Layout>
     )

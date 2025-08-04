@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/openai'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import { Spinner } from '@/components/Spinner'
 import { documentService } from '@/services/hybrid'
 import { Document } from '@/types'
 // or import { callClaude } from '@/services/anthropic'

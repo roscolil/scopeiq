@@ -1,7 +1,7 @@
 import { useRef, forwardRef } from 'react'
 import { useLoadScript, Autocomplete } from '@react-google-maps/api'
 import { Input } from '@/components/ui/input'
-import { Spinner } from '@/components/Spinner'
+import { Loader2 } from 'lucide-react'
 
 const libraries = ['places'] as (
   | 'drawing'
@@ -45,8 +45,9 @@ export const AutocompleteInput = forwardRef<
   if (loadError) return <div>Error loading maps</div>
   if (!isLoaded)
     return (
-      <div className="flex justify-center py-4">
-        <Spinner size="sm" text="Loading maps..." />
+      <div className="flex justify-center items-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        <span className="text-sm text-muted-foreground">Loading maps...</span>
       </div>
     )
 
