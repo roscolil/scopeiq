@@ -1,28 +1,80 @@
-import { Pinecone, Index } from '@pinecone-database/pinecone'
+// Mock implementation for client-side compatibility
+// In production, Pinecone operations should be handled server-side
 
-const pinecone = new Pinecone({
-  apiKey: import.meta.env.VITE_PINECONE_API_KEY!,
+interface MockVector {
+  id: string
+  values: number[]
+  metadata?: Record<string, string | number | boolean>
+}
+
+interface MockIndex {
+  namespace(name: string): {
+    upsert: (vectors: MockVector[]) => Promise<void>
+    query: (params: {
+      vector: number[]
+      topK: number
+      includeMetadata?: boolean
+      includeValues?: boolean
+    }) => Promise<{
+      matches: Array<{
+        id: string
+        score: number
+        metadata?: Record<string, string | number | boolean>
+      }>
+    }>
+  }
+}
+
+// Mock storage for vectors
+const mockVectorStore: { [namespace: string]: MockVector[] } = {}
+
+const createMockIndex = (): MockIndex => ({
+  namespace: (name: string) => ({
+    upsert: async (vectors: MockVector[]) => {
+      if (!mockVectorStore[name]) {
+        mockVectorStore[name] = []
+      }
+      // Simulate upsert by replacing existing or adding new
+      vectors.forEach(vector => {
+        const existingIndex = mockVectorStore[name].findIndex(
+          v => v.id === vector.id,
+        )
+        if (existingIndex >= 0) {
+          mockVectorStore[name][existingIndex] = vector
+        } else {
+          mockVectorStore[name].push(vector)
+        }
+      })
+      console.log(
+        `Mock: Upserted ${vectors.length} vectors to namespace ${name}`,
+      )
+    },
+    query: async params => {
+      const vectors = mockVectorStore[name] || []
+      // Simple mock similarity calculation (random for demo)
+      const matches = vectors
+        .map(vector => ({
+          id: vector.id,
+          score: Math.random() * 0.5 + 0.5, // Random score between 0.5-1.0
+          metadata: vector.metadata,
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, params.topK)
+
+      console.log(
+        `Mock: Queried namespace ${name}, found ${matches.length} matches`,
+      )
+      return { matches }
+    },
+  }),
 })
 
-const INDEX_NAME = 'scopeiq-documents'
-const DIMENSION = 1536
-let indexCache: Index | null = null
+const mockIndex = createMockIndex()
 
 async function getOrCreateIndex() {
-  if (indexCache) return indexCache
-  const indexList = await pinecone.listIndexes()
-  const existingIndex = indexList.indexes?.find(idx => idx.name === INDEX_NAME)
-  if (!existingIndex) {
-    await pinecone.createIndex({
-      name: INDEX_NAME,
-      dimension: DIMENSION,
-      metric: 'cosine',
-      spec: { serverless: { cloud: 'aws', region: 'us-east-1' } },
-    })
-    await new Promise(resolve => setTimeout(resolve, 60000))
-  }
-  indexCache = pinecone.index(INDEX_NAME)
-  return indexCache
+  // Mock implementation - just return the mock index
+  console.log('Mock: Using mock Pinecone index')
+  return mockIndex
 }
 
 export async function upsertEmbeddings(
