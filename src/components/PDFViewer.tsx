@@ -112,7 +112,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
             variant="outline"
             onClick={async () => {
               try {
-                console.log('Downloading PDF from URL:', primaryUrl)
                 const response = await fetch(primaryUrl)
 
                 if (!response.ok) {
@@ -130,7 +129,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
                 window.document.body?.removeChild(link)
 
                 window.URL.revokeObjectURL(blobUrl)
-                console.log('PDF download initiated for:', document.name)
               } catch (error) {
                 console.error('PDF download failed:', error)
                 // Fallback to direct link
@@ -151,7 +149,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
               variant="outline"
               size="sm"
               onClick={() => {
-                console.log('Trying fallback URL:', fallbackUrl)
                 window.open(fallbackUrl, '_blank')
               }}
             >
@@ -168,9 +165,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
               className="w-full h-[600px]"
               title={document.name}
               onError={() => {
-                console.error('PDF iframe failed to load')
-                console.error('Primary URL:', primaryUrl)
-                console.error('Fallback URL:', fallbackUrl)
                 setEmbedError(true)
               }}
             />

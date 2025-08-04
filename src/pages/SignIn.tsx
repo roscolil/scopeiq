@@ -48,7 +48,6 @@ const SignIn = () => {
       // Get roles and companyId from Cognito attributes
       const role = attrs['cognito:groups'] || attrs.groups || []
       const companyId = attrs['custom:Company'] || attrs.company
-      console.log('attrs :>> ', attrs)
       if (role.includes('owner')) {
         // Go to company dashboard
         navigate(routes.company.home(companyId.toLowerCase()))
