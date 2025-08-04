@@ -48,56 +48,135 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
     const loadUser = async () => {
+      // Skip if already initialized to prevent duplicate calls
+      if (isInitialized) return
+
       try {
+        // Check for cached auth state first
+        const cachedAuthState = sessionStorage.getItem('authState')
+        const cachedTimestamp = sessionStorage.getItem('authTimestamp')
+
+        // If we have recent cached data (less than 5 minutes old), use it
+        if (cachedAuthState && cachedTimestamp) {
+          const age = Date.now() - parseInt(cachedTimestamp)
+          if (age < 5 * 60 * 1000) {
+            // 5 minutes
+            const cachedUser = JSON.parse(cachedAuthState)
+            if (cachedUser) {
+              setUser(cachedUser)
+              setIsLoading(false)
+              setIsInitialized(true)
+
+              // Optionally refresh in background
+              refreshUserInBackground()
+              return
+            }
+          }
+        }
+
+        // Fresh auth check
         const amplifyUser = await getCurrentUser()
         const attrs = await fetchUserAttributes()
-        setUser({
+        const userData = {
           id: amplifyUser.userId,
           email: attrs.email,
           name: attrs.name,
           ...attrs,
-        })
+        }
+
+        setUser(userData)
+
+        // Cache the auth state
+        sessionStorage.setItem('authState', JSON.stringify(userData))
+        sessionStorage.setItem('authTimestamp', Date.now().toString())
       } catch {
         setUser(null)
+        // Clear any stale cache
+        sessionStorage.removeItem('authState')
+        sessionStorage.removeItem('authTimestamp')
       } finally {
         setIsLoading(false)
+        setIsInitialized(true)
       }
     }
+
+    const refreshUserInBackground = async () => {
+      try {
+        const amplifyUser = await getCurrentUser()
+        const attrs = await fetchUserAttributes()
+        const userData = {
+          id: amplifyUser.userId,
+          email: attrs.email,
+          name: attrs.name,
+          ...attrs,
+        }
+
+        setUser(userData)
+
+        // Update cache
+        sessionStorage.setItem('authState', JSON.stringify(userData))
+        sessionStorage.setItem('authTimestamp', Date.now().toString())
+      } catch {
+        // Silent failure for background refresh
+      }
+    }
+
     loadUser()
-  }, [])
+  }, [isInitialized])
 
   const signIn = async (email: string, password: string) => {
     setIsLoading(true)
-    await amplifySignIn({ username: email, password })
-    const amplifyUser = await getCurrentUser()
-    const attrs = await fetchUserAttributes()
-    setUser({
-      id: amplifyUser.userId,
-      email: attrs.email,
-      name: attrs.name,
-      ...attrs,
-    })
-    setIsLoading(false)
+    try {
+      await amplifySignIn({ username: email, password })
+      const amplifyUser = await getCurrentUser()
+      const attrs = await fetchUserAttributes()
+      const userData = {
+        id: amplifyUser.userId,
+        email: attrs.email,
+        name: attrs.name,
+        ...attrs,
+      }
+
+      setUser(userData)
+
+      // Update cache
+      sessionStorage.setItem('authState', JSON.stringify(userData))
+      sessionStorage.setItem('authTimestamp', Date.now().toString())
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const signUp = async (email: string, password: string, name: string) => {
     setIsLoading(true)
-    await amplifySignUp({
-      username: email,
-      password,
-      options: { userAttributes: { email, name } },
-    })
-    setIsLoading(false)
+    try {
+      await amplifySignUp({
+        username: email,
+        password,
+        options: { userAttributes: { email, name } },
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const signOut = async () => {
     setIsLoading(true)
-    await amplifySignOut()
-    setUser(null)
-    setIsLoading(false)
+    try {
+      await amplifySignOut()
+      setUser(null)
+
+      // Clear cache
+      sessionStorage.removeItem('authState')
+      sessionStorage.removeItem('authTimestamp')
+      localStorage.removeItem('hasWelcomed') // Clear welcome flag too
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const resetPassword = async (email: string) => {
@@ -129,7 +208,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       userAttributes: data as Partial<Record<string, string>>,
     })
     const attrs = await fetchUserAttributes()
-    setUser({ ...user, ...attrs })
+    const updatedUser = { ...user, ...attrs }
+    setUser(updatedUser)
+
+    // Update cache
+    sessionStorage.setItem('authState', JSON.stringify(updatedUser))
+    sessionStorage.setItem('authTimestamp', Date.now().toString())
   }
 
   return (

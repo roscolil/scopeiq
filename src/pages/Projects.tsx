@@ -14,13 +14,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/ProjectForm'
-import { fetchUserAttributes } from 'aws-amplify/auth'
 import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
   const navigate = useNavigate()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [attrs, setAttrs] = useState<Record<string, string>>({})
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const { companyId } = useParams<{

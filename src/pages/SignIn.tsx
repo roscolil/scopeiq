@@ -16,7 +16,7 @@ import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
-import { signIn, fetchUserAttributes } from 'aws-amplify/auth'
+import { useAuth } from '@/hooks/aws-auth'
 import { routes } from '@/utils/navigation'
 
 const formSchema = z.object({
@@ -30,6 +30,7 @@ type FormValues = z.infer<typeof formSchema>
 
 const SignIn = () => {
   const navigate = useNavigate()
+  const { signIn, user } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   const form = useForm<FormValues>({
@@ -43,18 +44,27 @@ const SignIn = () => {
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
-      await signIn({ username: data.email, password: data.password })
-      const attrs = await fetchUserAttributes()
-      // Get roles and companyId from Cognito attributes
-      const role = attrs['cognito:groups'] || attrs.groups || []
-      const companyId = attrs['custom:Company'] || attrs.company
-      if (role.includes('owner')) {
-        // Go to company dashboard
-        navigate(routes.company.home(companyId.toLowerCase()))
-      } else {
-        // Go to project landing page
-        navigate(routes.home())
-      }
+      await signIn(data.email, data.password)
+
+      // After successful sign in, check user attributes for navigation
+      // Give a moment for the auth context to update
+      setTimeout(() => {
+        if (user) {
+          const role = user['cognito:groups'] || user.groups
+          const companyId = user['custom:Company'] || user.company
+
+          if (Array.isArray(role) && role.includes('owner')) {
+            // Go to company dashboard
+            navigate(routes.company.home((companyId as string).toLowerCase()))
+          } else {
+            // Go to home page
+            navigate(routes.home())
+          }
+        } else {
+          // Fallback navigation
+          navigate(routes.home())
+        }
+      }, 100)
     } catch (err) {
       setError('Invalid email or password. Please try again.')
     }
