@@ -15,6 +15,7 @@ import {
   Copy,
   MessageSquare,
   FileStack,
+  RefreshCw,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -32,14 +33,21 @@ import {
 import { callOpenAI } from '@/services/openai'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { Spinner } from '@/components/Spinner'
+import { documentService } from '@/services/hybrid'
+import { Document } from '@/types'
 // or import { callClaude } from '@/services/anthropic'
 
 interface AIActionsProps {
   documentId: string
   projectId?: string
+  companyId?: string
 }
 
-export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
+export const AIActions = ({
+  documentId,
+  projectId,
+  companyId,
+}: AIActionsProps) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{
     type: 'search' | 'ai'
@@ -58,6 +66,8 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
     'project',
   )
   const [isLoading, setIsLoading] = useState(false)
+  const [document, setDocument] = useState<Document | null>(null)
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false)
   const { toast } = useToast()
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
@@ -70,6 +80,43 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
     search,
   } = useSemanticSearch(projectId || '')
 
+  // Fetch document status on component mount and set up polling
+  useEffect(() => {
+    const fetchDocumentStatus = async () => {
+      if (!documentId || !projectId || !companyId) return
+
+      setIsLoadingStatus(true)
+      try {
+        const doc = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
+        setDocument(doc)
+      } catch (error) {
+        console.error('Error fetching document status:', error)
+      } finally {
+        setIsLoadingStatus(false)
+      }
+    }
+
+    // Initial fetch
+    fetchDocumentStatus()
+
+    // Set up polling for status updates (every 30 seconds for processing documents)
+    let intervalId: NodeJS.Timeout | null = null
+
+    if (document?.status === 'processing') {
+      intervalId = setInterval(fetchDocumentStatus, 30000) // Poll every 30 seconds
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [documentId, projectId, companyId, document?.status])
+
   // Add debugging info on component mount
   useEffect(() => {
     return () => {
@@ -78,6 +125,58 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
       }
     }
   }, [silenceTimer])
+
+  // Get status badge component similar to DocumentList
+  const getStatusBadge = (status: Document['status']) => {
+    switch (status) {
+      case 'processed':
+        return (
+          <Badge variant="default" className="bg-green-500 text-white">
+            AI Ready
+          </Badge>
+        )
+      case 'processing':
+        return (
+          <Badge variant="secondary" className="bg-amber-500 text-white">
+            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+            Processing
+          </Badge>
+        )
+      case 'failed':
+        return <Badge variant="destructive">Failed</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
+  }
+
+  // Manual refresh function
+  const refreshDocumentStatus = async () => {
+    if (!documentId || !projectId || !companyId) return
+
+    setIsLoadingStatus(true)
+    try {
+      const doc = await documentService.getDocument(
+        companyId,
+        projectId,
+        documentId,
+      )
+      setDocument(doc)
+
+      toast({
+        title: 'Status Updated',
+        description: `Document status: ${doc?.status || 'unknown'}`,
+      })
+    } catch (error) {
+      console.error('Error refreshing document status:', error)
+      toast({
+        title: 'Refresh Failed',
+        description: 'Could not update document status.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }
 
   // Smart query detection - determines if it's a search or AI question
   const isQuestion = (text: string): boolean => {
@@ -283,6 +382,51 @@ export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
 
         <CardContent>
           <div className="space-y-4">
+            {/* Document Status Section */}
+            {document && (
+              <div className="border rounded-lg p-3 bg-secondary/20">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FileSearch className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Document Status</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={refreshDocumentStatus}
+                    disabled={isLoadingStatus}
+                    className="h-6 w-6 p-0"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 ${isLoadingStatus ? 'animate-spin' : ''}`}
+                    />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {document.name}
+                  </span>
+                  {getStatusBadge(document.status)}
+                </div>
+                {document.status === 'processing' && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Document is being processed for AI search. This may take a
+                    few minutes.
+                  </div>
+                )}
+                {document.status === 'failed' && (
+                  <div className="text-xs text-red-600 mt-1">
+                    Document processing failed. Try re-uploading the document.
+                  </div>
+                )}
+                {document.status === 'processed' && (
+                  <div className="text-xs text-green-600 mt-1">
+                    Document is ready for AI search and questions.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-muted-foreground">
                 Query Scope:

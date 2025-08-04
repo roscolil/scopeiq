@@ -386,7 +386,11 @@ const ProjectDetails = () => {
 
         {showAITools && (
           <div className="mb-2 md:mb-4">
-            <AIActions documentId="" projectId={project.id} />
+            <AIActions
+              documentId=""
+              projectId={project.id}
+              companyId={companyId || 'default-company'}
+            />
           </div>
         )}
 

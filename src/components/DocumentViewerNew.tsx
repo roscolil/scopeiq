@@ -315,7 +315,11 @@ You can use the AI Analysis tab to analyze this document.`}
       )}
 
       {viewMode === 'ai' && documentId && projectId && (
-        <AIActions documentId={documentId} projectId={projectId} />
+        <AIActions
+          documentId={documentId}
+          projectId={projectId}
+          companyId={companyId}
+        />
       )}
     </div>
   )
