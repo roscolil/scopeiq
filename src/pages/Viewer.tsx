@@ -27,7 +27,6 @@ import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/hybrid'
-import SemanticVoiceSearch from '@/components/SemanticVoiceSearch'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -269,9 +268,9 @@ const Viewer = () => {
         link.download = document.name || 'document' // Force download instead of opening in new tab
 
         // Temporarily add to DOM and click
-        document.body?.appendChild(link)
+        window.document.body?.appendChild(link)
         link.click()
-        document.body?.removeChild(link)
+        window.document.body?.removeChild(link)
 
         // Clean up the object URL
         window.URL.revokeObjectURL(blobUrl)
@@ -290,9 +289,9 @@ const Viewer = () => {
           link.href = document.url
           link.download = document.name || 'document'
           link.target = '_blank' // As fallback, open in new tab
-          document.body?.appendChild(link)
+          window.document.body?.appendChild(link)
           link.click()
-          document.body?.removeChild(link)
+          window.document.body?.removeChild(link)
 
           toast({
             title: 'Download started',
@@ -539,12 +538,6 @@ const Viewer = () => {
               </span>
             </button>
           </div>
-        </div>
-
-        <div className="my-6">
-          <SemanticVoiceSearch
-            projectId={resolvedProject?.id || projectId || ''}
-          />
         </div>
 
         <div className="mt-0">

@@ -219,7 +219,7 @@ src/
 ├── components/          # Reusable UI components
 │   ├── ui/             # Base UI components (shadcn/ui)
 │   ├── FileUploader.tsx
-│   ├── SemanticVoiceSearch.tsx
+│   ├── AIActions.tsx
 │   └── ...
 ├── pages/              # Application pages
 │   ├── Projects.tsx
