@@ -1,6 +1,6 @@
 import { upsertEmbeddings, queryEmbeddings } from './pinecone'
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!OPENAI_API_KEY) throw new Error('OpenAI API key missing')
