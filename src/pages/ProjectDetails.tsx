@@ -113,6 +113,67 @@ const ProjectDetails = () => {
     fetchProjectData()
   }, [projectId, companyId, toast])
 
+  // Add live document status polling
+  useEffect(() => {
+    if (!project?.id) return
+
+    const pollDocumentStatuses = async () => {
+      try {
+        const documents = await documentService.getDocumentsByProject(
+          project.id,
+        )
+        const transformedDocuments: Document[] = (documents || []).map(doc => ({
+          id: doc.id,
+          name: doc.name || 'Untitled Document',
+          type: doc.type || 'unknown',
+          size:
+            typeof doc.size === 'number'
+              ? doc.size
+              : parseInt(String(doc.size)) || 0,
+          status: doc.status || 'processing',
+          url: doc.url,
+          thumbnailUrl: doc.thumbnailUrl,
+          projectId: doc.projectId,
+          content: doc.content,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        }))
+
+        // Only update if there are actual status changes to avoid unnecessary re-renders
+        setProjectDocuments(prev => {
+          const hasChanges = prev.some((prevDoc, index) => {
+            const newDoc = transformedDocuments.find(d => d.id === prevDoc.id)
+            return newDoc && newDoc.status !== prevDoc.status
+          })
+          return hasChanges ? transformedDocuments : prev
+        })
+      } catch (error) {
+        console.error('Error polling document statuses:', error)
+      }
+    }
+
+    // Determine polling interval based on document statuses
+    const hasProcessingDocs = projectDocuments.some(
+      doc => doc.status === 'processing',
+    )
+    const hasFailedDocs = projectDocuments.some(doc => doc.status === 'failed')
+
+    let pollInterval: number
+    if (hasProcessingDocs) {
+      pollInterval = 5000 // Poll every 5 seconds if any docs are processing
+    } else if (hasFailedDocs) {
+      pollInterval = 15000 // Poll every 15 seconds if any docs failed
+    } else {
+      pollInterval = 30000 // Poll every 30 seconds for completed docs
+    }
+
+    const intervalId = setInterval(pollDocumentStatuses, pollInterval)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [project?.id, projectDocuments])
+
   const handleUpdateProject = async (data: {
     address: string
     streetNumber?: string

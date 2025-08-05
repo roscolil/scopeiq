@@ -35,6 +35,7 @@ import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
 import { Document } from '@/types'
+import { retryDocumentProcessing } from '@/utils/document-recovery'
 // or import { callClaude } from '@/services/anthropic'
 
 interface AIActionsProps {
@@ -80,7 +81,7 @@ export const AIActions = ({
     search,
   } = useSemanticSearch(projectId || '')
 
-  // Fetch document status on component mount and set up polling
+  // Fetch document status on component mount and set up live polling
   useEffect(() => {
     const fetchDocumentStatus = async () => {
       if (!documentId || !projectId || !companyId) return
@@ -103,13 +104,36 @@ export const AIActions = ({
     // Initial fetch
     fetchDocumentStatus()
 
-    // Set up polling for status updates (every 30 seconds for processing documents)
+    // Set up adaptive polling with status-dependent intervals
     let intervalId: NodeJS.Timeout | null = null
 
-    if (document?.status === 'processing') {
-      intervalId = setInterval(fetchDocumentStatus, 30000) // Poll every 30 seconds
+    const startPolling = () => {
+      // Clear any existing interval
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+
+      // Determine polling frequency based on current document status
+      const currentStatus = document?.status
+      let pollInterval: number
+
+      if (currentStatus === 'processing') {
+        pollInterval = 3000 // Poll every 3 seconds for processing documents
+      } else if (currentStatus === 'failed') {
+        pollInterval = 10000 // Poll every 10 seconds for failed documents
+      } else if (currentStatus === 'processed') {
+        pollInterval = 30000 // Poll every 30 seconds for completed documents
+      } else {
+        pollInterval = 5000 // Default 5 seconds for other states
+      }
+
+      intervalId = setInterval(fetchDocumentStatus, pollInterval)
     }
 
+    // Start polling immediately
+    startPolling()
+
+    // Cleanup function
     return () => {
       if (intervalId) {
         clearInterval(intervalId)
@@ -149,7 +173,7 @@ export const AIActions = ({
     }
   }
 
-  // Manual refresh function
+  // Enhanced manual refresh function with better feedback
   const refreshDocumentStatus = async () => {
     if (!documentId || !projectId || !companyId) return
 
@@ -160,17 +184,72 @@ export const AIActions = ({
         projectId,
         documentId,
       )
+      const previousStatus = document?.status
       setDocument(doc)
 
-      toast({
-        title: 'Status Updated',
-        description: `Document status: ${doc?.status || 'unknown'}`,
-      })
+      // Provide more detailed feedback based on status change
+      if (previousStatus !== doc?.status) {
+        toast({
+          title: 'Status Updated',
+          description: `Document status changed from ${previousStatus || 'unknown'} to ${doc?.status || 'unknown'}`,
+        })
+      } else {
+        toast({
+          title: 'Status Refreshed',
+          description: `Document status: ${doc?.status || 'unknown'} (no change)`,
+        })
+      }
     } catch (error) {
       console.error('Error refreshing document status:', error)
       toast({
         title: 'Refresh Failed',
-        description: 'Could not update document status.',
+        description: 'Could not update document status. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }
+
+  // Fix stuck processing documents
+  const fixStuckDocument = async () => {
+    if (!documentId || !projectId || !companyId) return
+
+    setIsLoadingStatus(true)
+    try {
+      const success = await retryDocumentProcessing(
+        companyId,
+        projectId,
+        documentId,
+      )
+
+      if (success) {
+        // Refresh the document status
+        const doc = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
+        setDocument(doc)
+
+        toast({
+          title: 'Document Fixed',
+          description:
+            'Document processing has been retried and completed successfully.',
+        })
+      } else {
+        toast({
+          title: 'Fix Failed',
+          description:
+            'Could not fix the document. It has been marked as failed.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error fixing stuck document:', error)
+      toast({
+        title: 'Fix Failed',
+        description: 'An error occurred while trying to fix the document.',
         variant: 'destructive',
       })
     } finally {
@@ -402,7 +481,7 @@ export const AIActions = ({
   return (
     <>
       <Card className="mb-32 md:mb-0">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2" style={{ display: 'none' }}>
           <div className="flex items-center gap-2">
             <BrainCircuit className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">AI Tools</CardTitle>
@@ -414,26 +493,13 @@ export const AIActions = ({
         </CardHeader>
 
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-4 mt-4">
             {/* Document Status Section */}
             {document && (
               <div className="border rounded-lg p-3 bg-secondary/20">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileSearch className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Document Status</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={refreshDocumentStatus}
-                    disabled={isLoadingStatus}
-                    className="h-6 w-6 p-0"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${isLoadingStatus ? 'animate-spin' : ''}`}
-                    />
-                  </Button>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileSearch className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Document Status</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground truncate max-w-[200px]">
@@ -442,14 +508,35 @@ export const AIActions = ({
                   {getStatusBadge(document.status)}
                 </div>
                 {document.status === 'processing' && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Document is being processed for AI search. This may take a
-                    few minutes.
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Document is being processed for AI search.
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fixStuckDocument}
+                      disabled={isLoadingStatus}
+                      className="text-xs h-7"
+                    >
+                      Fix Stuck Processing
+                    </Button>
                   </div>
                 )}
                 {document.status === 'failed' && (
-                  <div className="text-xs text-red-600 mt-1">
-                    Document processing failed. Try re-uploading the document.
+                  <div className="space-y-2">
+                    <div className="text-xs text-red-600 mt-1">
+                      Document processing failed. Try re-uploading the document.
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fixStuckDocument}
+                      disabled={isLoadingStatus}
+                      className="text-xs h-7"
+                    >
+                      Retry Processing
+                    </Button>
                   </div>
                 )}
                 {document.status === 'processed' && (
@@ -460,7 +547,10 @@ export const AIActions = ({
               </div>
             )}
 
-            <div className="flex justify-between items-center">
+            <div
+              className="flex justify-between items-center"
+              style={{ display: 'none' }}
+            >
               <span className="text-sm font-medium text-muted-foreground">
                 Query Scope:
               </span>
@@ -491,7 +581,7 @@ export const AIActions = ({
             </div>
 
             <div>
-              <div className="flex items-center mb-2">
+              <div className="flex items-center mb-2 mt-10">
                 <BrainCircuit className="h-4 w-4 mr-2 text-primary" />
                 <h3 className="text-sm font-medium">Smart AI Query</h3>
                 <Badge variant="secondary" className="ml-2 text-xs">

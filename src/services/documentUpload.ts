@@ -38,14 +38,22 @@ export const uploadDocumentToS3 = async (
   file: File,
   projectId: string,
   companyId: string,
+  onProgress?: (progress: number) => void,
 ): Promise<UploadResult> => {
   try {
+    // Phase 1: File preparation (0-15%)
+    onProgress?.(5)
+
     const fileBuffer = await file.arrayBuffer()
+    onProgress?.(10)
+
     // Convert ArrayBuffer to Uint8Array which is compatible with S3 client
     const fileContent = new Uint8Array(fileBuffer)
+    onProgress?.(15)
 
     console.log('File converted to compatible format')
 
+    // Phase 2: Upload preparation (15-25%)
     // Generate file key with clean hierarchy: company/projectId/files
     // Always use projectId for consistency with metadata system
     const timestamp = Date.now()
@@ -53,6 +61,7 @@ export const uploadDocumentToS3 = async (
     const key = `${companyId}/${projectId}/files/${timestamp}_${sanitizedFileName}`
 
     console.log('S3 upload path:', key)
+    onProgress?.(20)
 
     // Create upload command
     const uploadCommand = new PutObjectCommand({
@@ -62,11 +71,35 @@ export const uploadDocumentToS3 = async (
       ContentType: file.type,
     })
 
-    // Execute the upload
+    onProgress?.(25)
+
+    // Phase 3: S3 Upload (25-75%)
     console.log(`Uploading file to S3 bucket: ${BUCKET_NAME}...`)
+    onProgress?.(30)
+
     try {
-      const uploadResult = await s3Client.send(uploadCommand)
-      console.log('S3 upload result:', uploadResult)
+      // Simulate upload progress for large files
+      const uploadPromise = s3Client.send(uploadCommand)
+
+      // For files larger than 1MB, show intermediate progress
+      if (file.size > 1024 * 1024) {
+        let currentProgress = 35
+        const progressInterval = setInterval(() => {
+          currentProgress = Math.min(currentProgress + 5, 70)
+          onProgress?.(currentProgress)
+        }, 200)
+
+        const uploadResult = await uploadPromise
+        clearInterval(progressInterval)
+        onProgress?.(75)
+
+        console.log('S3 upload result:', uploadResult)
+      } else {
+        // For smaller files, jump to completion
+        const uploadResult = await uploadPromise
+        onProgress?.(75)
+        console.log('S3 upload result:', uploadResult)
+      }
     } catch (uploadError) {
       console.error('Direct S3 upload error:', uploadError)
       // Log more specific details about the error
@@ -83,7 +116,12 @@ export const uploadDocumentToS3 = async (
       throw uploadError
     }
 
+    // Phase 4: URL generation (75-100%)
+    onProgress?.(80)
+
     const url = `https://${BUCKET_NAME}.s3.${awsRegion}.amazonaws.com/${key}`
+
+    onProgress?.(90)
 
     // Generate a pre-signed URL for viewing (1 hour expiration)
     const viewCommand = new GetObjectCommand({
@@ -96,6 +134,7 @@ export const uploadDocumentToS3 = async (
     })
 
     console.log('Generated pre-signed URL for viewing:', preSignedUrl)
+    onProgress?.(100)
 
     // Alternative URL format (virtual-hosted style)
     // const url = `https://s3.${awsRegion}.amazonaws.com/${BUCKET_NAME}/${key}`

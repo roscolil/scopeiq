@@ -103,6 +103,87 @@ const Documents = () => {
     loadData()
   }, [projectId, companyId, toast])
 
+  // Add live document status polling
+  React.useEffect(() => {
+    if (!companyId) return
+
+    const pollDocumentStatuses = async () => {
+      try {
+        if (projectId && resolvedProject) {
+          // Single project view - poll documents for specific project
+          const projectDocuments = await documentService.getDocumentsByProject(
+            resolvedProject.id,
+          )
+
+          // Only update if there are actual status changes
+          setDocuments(prev => {
+            const hasChanges = prev.some((prevDoc, index) => {
+              const newDoc = projectDocuments.find(d => d.id === prevDoc.id)
+              return newDoc && newDoc.status !== prevDoc.status
+            })
+            return hasChanges ? projectDocuments : prev
+          })
+        } else {
+          // All projects view - poll all projects with their documents
+          const allProjectsWithDocs =
+            await projectService.getAllProjectsWithDocuments()
+
+          // Only update if there are actual status changes
+          setProjectsWithDocuments(prev => {
+            const hasChanges = prev.some(prevProject => {
+              const newProject = allProjectsWithDocs.find(
+                p => p.id === prevProject.id,
+              )
+              if (!newProject) return false
+
+              return prevProject.documents.some(prevDoc => {
+                const newDoc = newProject.documents.find(
+                  d => d.id === prevDoc.id,
+                )
+                return newDoc && newDoc.status !== prevDoc.status
+              })
+            })
+            return hasChanges ? allProjectsWithDocs : prev
+          })
+
+          // Also update the flat list of all documents
+          const allDocuments = await documentService.getAllDocuments()
+          setDocuments(prev => {
+            const hasChanges = prev.some((prevDoc, index) => {
+              const newDoc = allDocuments.find(d => d.id === prevDoc.id)
+              return newDoc && newDoc.status !== prevDoc.status
+            })
+            return hasChanges ? allDocuments : prev
+          })
+        }
+      } catch (error) {
+        console.error('Error polling document statuses:', error)
+      }
+    }
+
+    // Determine polling interval based on document statuses
+    const allDocs = projectId
+      ? documents
+      : documents.concat(projectsWithDocuments.flatMap(p => p.documents))
+    const hasProcessingDocs = allDocs.some(doc => doc.status === 'processing')
+    const hasFailedDocs = allDocs.some(doc => doc.status === 'failed')
+
+    let pollInterval: number
+    if (hasProcessingDocs) {
+      pollInterval = 5000 // Poll every 5 seconds if any docs are processing
+    } else if (hasFailedDocs) {
+      pollInterval = 15000 // Poll every 15 seconds if any docs failed
+    } else {
+      pollInterval = 30000 // Poll every 30 seconds for completed docs
+    }
+
+    const intervalId = setInterval(pollDocumentStatuses, pollInterval)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [companyId, projectId, resolvedProject, documents, projectsWithDocuments])
+
   const handleDeleteDocument = async (documentId: string) => {
     try {
       // Find the document to get its projectId

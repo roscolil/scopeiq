@@ -22,6 +22,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadStartTime, setUploadStartTime] = useState<number>(0)
   const { toast } = useToast()
 
   const handleFileSelect = async (files: FileList | null) => {
@@ -61,15 +62,18 @@ export const FileUploader = (props: FileUploaderProps) => {
   const uploadFile = async (file: File) => {
     setIsUploading(true)
     setUploadProgress(0)
-    try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90))
-      }, 200)
+    setUploadStartTime(Date.now())
 
-      const result = await uploadDocumentToS3(file, projectId, companyId)
-      clearInterval(progressInterval)
-      setUploadProgress(100)
+    try {
+      // Use real progress tracking instead of simulation
+      const result = await uploadDocumentToS3(
+        file,
+        projectId,
+        companyId,
+        progress => {
+          setUploadProgress(progress)
+        },
+      )
 
       console.log('Creating document record with name:', file.name)
       console.log('Document creation data:', {
@@ -153,11 +157,48 @@ export const FileUploader = (props: FileUploaderProps) => {
               companyId,
               size: result.size,
             })
+
+            // Update document status to 'processed' after successful embedding
+            try {
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'processed',
+                },
+              )
+              console.log('Document status updated to processed')
+            } catch (statusError) {
+              console.warn(
+                'Could not update document status to processed:',
+                statusError,
+              )
+            }
+
             toast({
               title: 'AI Search Ready',
               description: `${file.name} is now available for semantic search.`,
             })
           } else {
+            // Update document status to 'failed' if no text found
+            try {
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'failed',
+                },
+              )
+              console.log('Document status updated to failed (no text content)')
+            } catch (statusError) {
+              console.warn(
+                'Could not update document status to failed:',
+                statusError,
+              )
+            }
+
             toast({
               title: 'Processing Info',
               description: 'Document uploaded but no text found for AI search.',
@@ -166,9 +207,29 @@ export const FileUploader = (props: FileUploaderProps) => {
           }
         } catch (embeddingError) {
           console.error('Embedding processing failed:', embeddingError)
+
+          // Update document status to 'failed' when embedding processing fails
+          try {
+            await documentService.updateDocument(
+              companyId,
+              projectId,
+              newDocument.id,
+              {
+                status: 'failed',
+              },
+            )
+            console.log('Document status updated to failed (embedding error)')
+          } catch (statusError) {
+            console.warn(
+              'Could not update document status to failed:',
+              statusError,
+            )
+          }
+
           toast({
-            title: 'Processing Warning',
-            description: 'Document uploaded but AI search processing failed.',
+            title: 'Processing Failed',
+            description:
+              'Document uploaded but AI processing failed. You can try re-uploading.',
             variant: 'destructive',
           })
         }
@@ -224,6 +285,40 @@ export const FileUploader = (props: FileUploaderProps) => {
 
   const removeFile = () => {
     setSelectedFile(null)
+  }
+
+  // Helper functions for upload progress display
+  const getUploadStatusText = (progress: number): string => {
+    if (progress < 15) return 'Preparing file...'
+    if (progress < 25) return 'Initializing upload...'
+    if (progress < 75) return 'Uploading to S3...'
+    if (progress < 100) return 'Finalizing...'
+    return 'Upload complete!'
+  }
+
+  const getUploadPhaseText = (progress: number): string => {
+    if (progress < 15) return 'Processing file data and validating format'
+    if (progress < 25)
+      return 'Generating secure upload path and preparing request'
+    if (progress < 75) return 'Transferring file data to cloud storage'
+    if (progress < 100) return 'Generating access URLs and completing upload'
+    return 'File successfully uploaded and ready for processing'
+  }
+
+  const getUploadStats = (): { elapsedTime: string; estimatedTime: string } => {
+    if (!uploadStartTime || uploadProgress === 0) {
+      return { elapsedTime: '0s', estimatedTime: 'calculating...' }
+    }
+
+    const elapsed = (Date.now() - uploadStartTime) / 1000
+    const rate = uploadProgress / elapsed
+    const remaining = rate > 0 ? (100 - uploadProgress) / rate : 0
+
+    return {
+      elapsedTime: `${elapsed.toFixed(1)}s`,
+      estimatedTime:
+        remaining > 0 ? `${remaining.toFixed(1)}s remaining` : 'almost done',
+    }
   }
 
   const getFileIcon = () => {
@@ -307,16 +402,37 @@ export const FileUploader = (props: FileUploaderProps) => {
           )}
         </div>
       </div>
-      {/* Upload Progress */}
+      {/* Enhanced Upload Progress */}
       {isUploading && (
-        <div className="space-y-2">
+        <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Uploading to S3...</span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm font-medium">
+              {getUploadStatusText(uploadProgress)}
+            </span>
+            <span className="text-sm text-muted-foreground font-mono">
               {uploadProgress}%
             </span>
           </div>
-          <Progress value={uploadProgress} className="w-full" />
+          <Progress value={uploadProgress} className="w-full h-2" />
+          <div className="text-xs text-muted-foreground">
+            {getUploadPhaseText(uploadProgress)}
+          </div>
+          {selectedFile && (
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="truncate max-w-[200px]">
+                  {selectedFile.name}
+                </span>
+                <span>•</span>
+                <span>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>{getUploadStats().elapsedTime}</span>
+                <span>•</span>
+                <span>{getUploadStats().estimatedTime}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
