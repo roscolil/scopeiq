@@ -39,7 +39,8 @@ export const FileUploader = (props: FileUploaderProps) => {
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: 'Invalid File Type',
-        description: 'Please upload PDF, Word, text, or image files only.',
+        description:
+          'Please upload PDF, Word (.doc/.docx), text (.txt), or image files only.',
         variant: 'destructive',
       })
       return
