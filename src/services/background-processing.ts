@@ -77,7 +77,7 @@ async function extractTextFromS3(
       const rawText = textDecoder.decode(fileBuffer)
       // Filter out binary characters and keep only readable text
       text = rawText
-      // eslint-disable-next-line no-control-regex
+        // eslint-disable-next-line no-control-regex
         .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()

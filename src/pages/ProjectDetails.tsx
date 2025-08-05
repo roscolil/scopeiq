@@ -45,7 +45,8 @@ const ProjectDetails = () => {
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isProjectLoading, setIsProjectLoading] = useState(true)
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
@@ -56,7 +57,9 @@ const ProjectDetails = () => {
       if (!projectId || !companyId) return
 
       try {
-        setIsLoading(true)
+        setIsProjectLoading(true)
+        setIsDocumentsLoading(true)
+
         const projectData = await projectService.resolveProject(projectId)
 
         if (projectData) {
@@ -70,6 +73,7 @@ const ProjectDetails = () => {
             companyId: companyId || projectData.companyId,
           }
           setProject(transformedProject)
+          setIsProjectLoading(false) // Project loaded first
 
           const documents = await documentService.getDocumentsByProject(
             projectData.id,
@@ -93,10 +97,13 @@ const ProjectDetails = () => {
             }),
           )
           setProjectDocuments(transformedDocuments)
+          setIsDocumentsLoading(false) // Documents loaded second
         } else {
           // Set project to null or show error state
           setProject(null)
           setProjectDocuments([])
+          setIsProjectLoading(false)
+          setIsDocumentsLoading(false)
         }
       } catch (error) {
         console.error('Error fetching project data:', error)
@@ -105,8 +112,8 @@ const ProjectDetails = () => {
           description: 'Failed to load project data. Please try again.',
           variant: 'destructive',
         })
-      } finally {
-        setIsLoading(false)
+        setIsProjectLoading(false)
+        setIsDocumentsLoading(false)
       }
     }
 
@@ -288,17 +295,12 @@ const ProjectDetails = () => {
     }
   }
 
-  if (isLoading) {
+  if (isProjectLoading) {
+    // Show only the essential page structure with project header skeleton
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <PageHeaderSkeleton showBackButton={true} showActions={2} />
-          <div className="mt-8">
-            <AIActionsSkeleton />
-          </div>
-          <div className="mt-8">
-            <DocumentListSkeleton itemCount={3} />
-          </div>
         </div>
       </Layout>
     )
@@ -546,7 +548,10 @@ const ProjectDetails = () => {
           </Dialog>
         </div>
 
-        {projectDocuments.length > 0 ? (
+        {/* Progressive loading for documents */}
+        {isDocumentsLoading ? (
+          <DocumentListSkeleton itemCount={3} />
+        ) : projectDocuments.length > 0 ? (
           <DocumentList
             documents={projectDocuments}
             onDelete={handleDeleteDocument}

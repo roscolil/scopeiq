@@ -41,7 +41,8 @@ const Documents = () => {
   >([])
   const [projectName, setProjectName] = React.useState<string>('')
   const [companyName, setCompanyName] = React.useState<string>('')
-  const [loading, setLoading] = React.useState(true)
+  const [isProjectLoading, setIsProjectLoading] = React.useState(true)
+  const [isDocumentsLoading, setIsDocumentsLoading] = React.useState(true)
   const [resolvedProject, setResolvedProject] = React.useState<{
     id: string
     name: string
@@ -55,7 +56,8 @@ const Documents = () => {
       if (!companyId) return
 
       try {
-        setLoading(true)
+        setIsProjectLoading(true)
+        setIsDocumentsLoading(true)
 
         // Set company name (using companyId as name for now)
         setCompanyName(companyId)
@@ -69,24 +71,30 @@ const Documents = () => {
           if (project) {
             setProjectName(project.name)
             setResolvedProject(project)
+            setIsProjectLoading(false) // Project loaded first
 
             // Fetch documents for this project using the resolved project ID
             const projectDocuments =
               await documentService.getDocumentsByProject(project.id)
             setDocuments(projectDocuments)
+            setIsDocumentsLoading(false) // Documents loaded second
           } else {
             setProjectName('Unknown Project')
             setDocuments([])
+            setIsProjectLoading(false)
+            setIsDocumentsLoading(false)
           }
         } else {
           // All projects view - load all projects with their documents
           const allProjectsWithDocs =
             await projectService.getAllProjectsWithDocuments()
           setProjectsWithDocuments(allProjectsWithDocs)
+          setIsProjectLoading(false) // Projects loaded first
 
           // Also set a flat list of all documents for the general documents tab
           const allDocuments = await documentService.getAllDocuments()
           setDocuments(allDocuments)
+          setIsDocumentsLoading(false) // Documents loaded second
         }
       } catch (error) {
         console.error('Error loading data:', error)
@@ -95,8 +103,8 @@ const Documents = () => {
           description: 'Failed to load documents.',
           variant: 'destructive',
         })
-      } finally {
-        setLoading(false)
+        setIsProjectLoading(false)
+        setIsDocumentsLoading(false)
       }
     }
 
@@ -223,12 +231,11 @@ const Documents = () => {
     }
   }
 
-  if (loading) {
+  if (isProjectLoading) {
     return (
       <Layout>
         <div className="space-y-6">
           <PageHeaderSkeleton />
-          <DocumentListSkeleton />
         </div>
       </Layout>
     )
@@ -300,7 +307,10 @@ const Documents = () => {
             </div>
           </div>
 
-          {documents.length > 0 ? (
+          {/* Progressive loading for documents */}
+          {isDocumentsLoading ? (
+            <DocumentListSkeleton itemCount={3} />
+          ) : documents.length > 0 ? (
             <DocumentList
               documents={documents}
               projectId={resolvedProject?.id || projectId}
@@ -353,7 +363,10 @@ const Documents = () => {
           </TabsList>
 
           <TabsContent value="by-project">
-            {projectsWithDocuments.length > 0 ? (
+            {/* Progressive loading for projects */}
+            {isDocumentsLoading ? (
+              <DocumentListSkeleton itemCount={3} />
+            ) : projectsWithDocuments.length > 0 ? (
               <div className="space-y-6">
                 {projectsWithDocuments.map(project => (
                   <div key={project.id} className="border rounded-lg p-4">
@@ -426,7 +439,10 @@ const Documents = () => {
           </TabsContent>
 
           <TabsContent value="all-documents">
-            {documents.length > 0 ? (
+            {/* Progressive loading for all documents */}
+            {isDocumentsLoading ? (
+              <DocumentListSkeleton itemCount={5} />
+            ) : documents.length > 0 ? (
               <DocumentList
                 documents={documents}
                 projectId=""

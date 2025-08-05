@@ -65,7 +65,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
         text = await file.text()
         // Filter out binary characters and keep only readable text
         text = text
-        // eslint-disable-next-line no-control-regex
+          // eslint-disable-next-line no-control-regex
           .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
