@@ -2,13 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Download,
-  ExternalLink,
-  AlertCircle,
-  CheckCircle,
-  RefreshCw,
-} from 'lucide-react'
+import { Download, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface PDFViewerProps {
   document: {
@@ -22,11 +16,6 @@ interface PDFViewerProps {
 
 export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
   const [embedError, setEmbedError] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [urlTest, setUrlTest] = useState<{
-    url: string
-    working: boolean
-  } | null>(null)
 
   // Add null check for document
   if (!document) {
@@ -38,19 +27,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
         </AlertDescription>
       </Alert>
     )
-  }
-
-  const testPDFUrl = async (url: string) => {
-    setTesting(true)
-    try {
-      const response = await fetch(url, { method: 'HEAD' })
-      setUrlTest({ url, working: response.ok })
-    } catch (error) {
-      console.error('URL test failed:', error)
-      setUrlTest({ url, working: false })
-    } finally {
-      setTesting(false)
-    }
   }
 
   const primaryUrl = document.url || document.s3Url
@@ -75,28 +51,6 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* URL Testing */}
-        <div className="flex gap-2 items-center">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => testPDFUrl(primaryUrl)}
-            disabled={testing}
-          >
-            {testing ? 'Testing...' : 'Test PDF URL'}
-          </Button>
-          {urlTest && (
-            <div className="flex items-center gap-2 text-sm">
-              {urlTest.working ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-red-500" />
-              )}
-              <span>URL {urlTest.working ? 'accessible' : 'failed'}</span>
-            </div>
-          )}
-        </div>
-
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button

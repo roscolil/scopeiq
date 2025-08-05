@@ -32,8 +32,10 @@ import {
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/openai'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
+import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
 import { Document } from '@/types'
+import { retryDocumentProcessing } from '@/utils/document-recovery'
 // or import { callClaude } from '@/services/anthropic'
 
 interface AIActionsProps {
@@ -79,7 +81,7 @@ export const AIActions = ({
     search,
   } = useSemanticSearch(projectId || '')
 
-  // Fetch document status on component mount and set up polling
+  // Fetch document status on component mount and set up live polling
   useEffect(() => {
     const fetchDocumentStatus = async () => {
       if (!documentId || !projectId || !companyId) return
@@ -102,13 +104,36 @@ export const AIActions = ({
     // Initial fetch
     fetchDocumentStatus()
 
-    // Set up polling for status updates (every 30 seconds for processing documents)
+    // Set up adaptive polling with status-dependent intervals
     let intervalId: NodeJS.Timeout | null = null
 
-    if (document?.status === 'processing') {
-      intervalId = setInterval(fetchDocumentStatus, 30000) // Poll every 30 seconds
+    const startPolling = () => {
+      // Clear any existing interval
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+
+      // Determine polling frequency based on current document status
+      const currentStatus = document?.status
+      let pollInterval: number
+
+      if (currentStatus === 'processing') {
+        pollInterval = 3000 // Poll every 3 seconds for processing documents
+      } else if (currentStatus === 'failed') {
+        pollInterval = 10000 // Poll every 10 seconds for failed documents
+      } else if (currentStatus === 'processed') {
+        pollInterval = 30000 // Poll every 30 seconds for completed documents
+      } else {
+        pollInterval = 5000 // Default 5 seconds for other states
+      }
+
+      intervalId = setInterval(fetchDocumentStatus, pollInterval)
     }
 
+    // Start polling immediately
+    startPolling()
+
+    // Cleanup function
     return () => {
       if (intervalId) {
         clearInterval(intervalId)
@@ -123,7 +148,7 @@ export const AIActions = ({
         clearTimeout(silenceTimer)
       }
     }
-  }, [silenceTimer])
+  }, [documentId, projectId, companyId, silenceTimer])
 
   // Get status badge component similar to DocumentList
   const getStatusBadge = (status: Document['status']) => {
@@ -148,7 +173,7 @@ export const AIActions = ({
     }
   }
 
-  // Manual refresh function
+  // Enhanced manual refresh function with better feedback
   const refreshDocumentStatus = async () => {
     if (!documentId || !projectId || !companyId) return
 
@@ -159,17 +184,72 @@ export const AIActions = ({
         projectId,
         documentId,
       )
+      const previousStatus = document?.status
       setDocument(doc)
 
-      toast({
-        title: 'Status Updated',
-        description: `Document status: ${doc?.status || 'unknown'}`,
-      })
+      // Provide more detailed feedback based on status change
+      if (previousStatus !== doc?.status) {
+        toast({
+          title: 'Status Updated',
+          description: `Document status changed from ${previousStatus || 'unknown'} to ${doc?.status || 'unknown'}`,
+        })
+      } else {
+        toast({
+          title: 'Status Refreshed',
+          description: `Document status: ${doc?.status || 'unknown'} (no change)`,
+        })
+      }
     } catch (error) {
       console.error('Error refreshing document status:', error)
       toast({
         title: 'Refresh Failed',
-        description: 'Could not update document status.',
+        description: 'Could not update document status. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }
+
+  // Fix stuck processing documents
+  const fixStuckDocument = async () => {
+    if (!documentId || !projectId || !companyId) return
+
+    setIsLoadingStatus(true)
+    try {
+      const success = await retryDocumentProcessing(
+        companyId,
+        projectId,
+        documentId,
+      )
+
+      if (success) {
+        // Refresh the document status
+        const doc = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
+        setDocument(doc)
+
+        toast({
+          title: 'Document Fixed',
+          description:
+            'Document processing has been retried and completed successfully.',
+        })
+      } else {
+        toast({
+          title: 'Fix Failed',
+          description:
+            'Could not fix the document. It has been marked as failed.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error fixing stuck document:', error)
+      toast({
+        title: 'Fix Failed',
+        description: 'An error occurred while trying to fix the document.',
         variant: 'destructive',
       })
     } finally {
@@ -228,16 +308,45 @@ export const AIActions = ({
       return
     }
 
+    console.log('Starting query:', { query, projectId, queryScope })
     setIsLoading(true)
     setResults(null)
 
     try {
       if (isQuestion(query)) {
-        // Handle as AI question
-        const context =
-          queryScope === 'document'
-            ? `Document ID: ${documentId}`
-            : `Project ID: ${projectId}`
+        // Handle as AI question - first get relevant content via semantic search
+        const searchResponse = await semanticSearch({
+          projectId: projectId,
+          query: query,
+          topK: 3,
+        })
+
+        // Build context from search results
+        let context = `Project ID: ${projectId}\n`
+        if (queryScope === 'document') {
+          context = `Document ID: ${documentId}\n`
+        }
+
+        // Add relevant document content as context
+        if (
+          searchResponse &&
+          searchResponse.documents &&
+          searchResponse.documents[0] &&
+          searchResponse.documents[0].length > 0
+        ) {
+          const relevantContent = searchResponse.documents[0]
+            .slice(0, 3) // Use top 3 results
+            .map((doc, i) => {
+              const metadata = searchResponse.metadatas?.[0]?.[i]
+              const docName = metadata?.name || `Document ${i + 1}`
+              return `Document: ${docName}\nContent: ${doc}`
+            })
+            .join('\n\n')
+
+          context += `\nRelevant Content:\n${relevantContent}`
+        } else {
+          context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+        }
 
         const response = await callOpenAI(query, context)
         setResults({
@@ -255,6 +364,8 @@ export const AIActions = ({
       } else {
         // Handle as semantic search
         await search(query)
+        // Clear the query field after successful search
+        setQuery('')
         // The search results will be handled by the useEffect below
       }
     } catch (error) {
@@ -287,16 +398,18 @@ export const AIActions = ({
 
   // Handle search results from the hook
   useEffect(() => {
-    if (searchResults && !isQuestion(query) && query.trim()) {
+    if (
+      searchResults &&
+      searchResults.ids &&
+      searchResults.ids[0] &&
+      searchResults.ids[0].length > 0
+    ) {
       setResults({
         type: 'search',
         searchResults: searchResults,
       })
-
-      // Clear the query field after successful search
-      setQuery('')
     }
-  }, [searchResults, query])
+  }, [searchResults])
 
   const handleSearch = () => {
     handleQuery()
@@ -368,7 +481,7 @@ export const AIActions = ({
   return (
     <>
       <Card className="mb-32 md:mb-0">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2" style={{ display: 'none' }}>
           <div className="flex items-center gap-2">
             <BrainCircuit className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">AI Tools</CardTitle>
@@ -380,26 +493,13 @@ export const AIActions = ({
         </CardHeader>
 
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-4 mt-4">
             {/* Document Status Section */}
             {document && (
               <div className="border rounded-lg p-3 bg-secondary/20">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileSearch className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Document Status</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={refreshDocumentStatus}
-                    disabled={isLoadingStatus}
-                    className="h-6 w-6 p-0"
-                  >
-                    <RefreshCw
-                      className={`h-3 w-3 ${isLoadingStatus ? 'animate-spin' : ''}`}
-                    />
-                  </Button>
+                <div className="flex items-center gap-2 mb-2">
+                  <FileSearch className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Document Status</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground truncate max-w-[200px]">
@@ -408,14 +508,35 @@ export const AIActions = ({
                   {getStatusBadge(document.status)}
                 </div>
                 {document.status === 'processing' && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Document is being processed for AI search. This may take a
-                    few minutes.
+                  <div className="space-y-2">
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Document is being processed for AI search.
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fixStuckDocument}
+                      disabled={isLoadingStatus}
+                      className="text-xs h-7"
+                    >
+                      Fix Stuck Processing
+                    </Button>
                   </div>
                 )}
                 {document.status === 'failed' && (
-                  <div className="text-xs text-red-600 mt-1">
-                    Document processing failed. Try re-uploading the document.
+                  <div className="space-y-2">
+                    <div className="text-xs text-red-600 mt-1">
+                      Document processing failed. Try re-uploading the document.
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fixStuckDocument}
+                      disabled={isLoadingStatus}
+                      className="text-xs h-7"
+                    >
+                      Retry Processing
+                    </Button>
                   </div>
                 )}
                 {document.status === 'processed' && (
@@ -426,7 +547,10 @@ export const AIActions = ({
               </div>
             )}
 
-            <div className="flex justify-between items-center">
+            <div
+              className="flex justify-between items-center"
+              style={{ display: 'none' }}
+            >
               <span className="text-sm font-medium text-muted-foreground">
                 Query Scope:
               </span>
@@ -457,7 +581,7 @@ export const AIActions = ({
             </div>
 
             <div>
-              <div className="flex items-center mb-2">
+              <div className="flex items-center mb-2 mt-10">
                 <BrainCircuit className="h-4 w-4 mr-2 text-primary" />
                 <h3 className="text-sm font-medium">Smart AI Query</h3>
                 <Badge variant="secondary" className="ml-2 text-xs">
@@ -470,12 +594,12 @@ export const AIActions = ({
                 analysis
               </div>
 
-              <div className="flex gap-2 mb-3">
+              <div className="mb-3">
                 <Textarea
                   placeholder={`Search documents or ask questions about your ${queryScope === 'document' ? 'document' : 'project'}...`}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  className="resize-none min-h-[60px]"
+                  className="w-full resize-none min-h-[60px]"
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()

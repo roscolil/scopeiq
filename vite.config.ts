@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: '::',
     port: 8080,
+    cors: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
   },
   plugins: [react(), mode === 'development' && componentTagger()].filter(
     Boolean,
@@ -20,7 +24,15 @@ export default defineConfig(({ mode }) => ({
   define: {
     global: 'globalThis',
   },
-  // commonjsOptions: {
-  //   esmExternals: true,
-  // },
+  optimizeDeps: {
+    include: ['pdfjs-dist', 'react-pdf'],
+    esbuildOptions: {
+      target: 'es2020',
+    },
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+  },
 }))

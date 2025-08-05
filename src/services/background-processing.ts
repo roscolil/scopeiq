@@ -11,6 +11,11 @@ import {
   getAWSRegion,
   getS3BucketName,
 } from '../utils/aws-config'
+import * as pdfjs from 'pdfjs-dist'
+import mammoth from 'mammoth'
+
+// Set worker source for PDF.js
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 const s3Client = new S3Client({
   region: getAWSRegion(),
@@ -44,10 +49,8 @@ async function extractTextFromS3(
 
     if (fileType === 'text/plain') {
       text = new TextDecoder().decode(fileBuffer)
-    } else if (fileType.includes('pdf')) {
-      // Use pdfjs-dist for server-side PDF processing
-      const pdfjsLib = await import('pdfjs-dist')
-      const pdf = await pdfjsLib.getDocument(fileBuffer).promise
+    } else if (fileType === 'application/pdf' || fileType.includes('pdf')) {
+      const pdf = await pdfjs.getDocument({ data: fileBuffer }).promise
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
         const content = await page.getTextContent()
@@ -57,9 +60,31 @@ async function extractTextFromS3(
           }
         })
       }
-    } else if (fileType.includes('word') || fileType.includes('docx')) {
-      // TODO: Add DOCX processing with mammoth or similar
-      console.warn('DOCX processing not implemented yet')
+    } else if (
+      fileType ===
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      fileType.includes('docx')
+    ) {
+      // Handle .docx files with mammoth - convert Uint8Array to ArrayBuffer
+      const buffer = new ArrayBuffer(fileBuffer.length)
+      const view = new Uint8Array(buffer)
+      view.set(fileBuffer)
+      const result = await mammoth.extractRawText({ arrayBuffer: buffer })
+      text = result.value
+    } else if (fileType === 'application/msword' || fileType.includes('doc')) {
+      // Handle legacy .doc files - basic text extraction
+      const textDecoder = new TextDecoder('utf-8', { fatal: false })
+      const rawText = textDecoder.decode(fileBuffer)
+      // Filter out binary characters and keep only readable text
+      text = rawText
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    } else if (fileType.includes('word')) {
+      // Fallback for other Word document types
+      const textDecoder = new TextDecoder('utf-8', { fatal: false })
+      text = textDecoder.decode(fileBuffer)
     }
 
     return text

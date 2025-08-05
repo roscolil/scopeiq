@@ -41,7 +41,8 @@ const Documents = () => {
   >([])
   const [projectName, setProjectName] = React.useState<string>('')
   const [companyName, setCompanyName] = React.useState<string>('')
-  const [loading, setLoading] = React.useState(true)
+  const [isProjectLoading, setIsProjectLoading] = React.useState(true)
+  const [isDocumentsLoading, setIsDocumentsLoading] = React.useState(true)
   const [resolvedProject, setResolvedProject] = React.useState<{
     id: string
     name: string
@@ -55,7 +56,8 @@ const Documents = () => {
       if (!companyId) return
 
       try {
-        setLoading(true)
+        setIsProjectLoading(true)
+        setIsDocumentsLoading(true)
 
         // Set company name (using companyId as name for now)
         setCompanyName(companyId)
@@ -69,24 +71,30 @@ const Documents = () => {
           if (project) {
             setProjectName(project.name)
             setResolvedProject(project)
+            setIsProjectLoading(false) // Project loaded first
 
             // Fetch documents for this project using the resolved project ID
             const projectDocuments =
               await documentService.getDocumentsByProject(project.id)
             setDocuments(projectDocuments)
+            setIsDocumentsLoading(false) // Documents loaded second
           } else {
             setProjectName('Unknown Project')
             setDocuments([])
+            setIsProjectLoading(false)
+            setIsDocumentsLoading(false)
           }
         } else {
           // All projects view - load all projects with their documents
           const allProjectsWithDocs =
             await projectService.getAllProjectsWithDocuments()
           setProjectsWithDocuments(allProjectsWithDocs)
+          setIsProjectLoading(false) // Projects loaded first
 
           // Also set a flat list of all documents for the general documents tab
           const allDocuments = await documentService.getAllDocuments()
           setDocuments(allDocuments)
+          setIsDocumentsLoading(false) // Documents loaded second
         }
       } catch (error) {
         console.error('Error loading data:', error)
@@ -95,13 +103,94 @@ const Documents = () => {
           description: 'Failed to load documents.',
           variant: 'destructive',
         })
-      } finally {
-        setLoading(false)
+        setIsProjectLoading(false)
+        setIsDocumentsLoading(false)
       }
     }
 
     loadData()
   }, [projectId, companyId, toast])
+
+  // Add live document status polling
+  React.useEffect(() => {
+    if (!companyId) return
+
+    const pollDocumentStatuses = async () => {
+      try {
+        if (projectId && resolvedProject) {
+          // Single project view - poll documents for specific project
+          const projectDocuments = await documentService.getDocumentsByProject(
+            resolvedProject.id,
+          )
+
+          // Only update if there are actual status changes
+          setDocuments(prev => {
+            const hasChanges = prev.some((prevDoc, index) => {
+              const newDoc = projectDocuments.find(d => d.id === prevDoc.id)
+              return newDoc && newDoc.status !== prevDoc.status
+            })
+            return hasChanges ? projectDocuments : prev
+          })
+        } else {
+          // All projects view - poll all projects with their documents
+          const allProjectsWithDocs =
+            await projectService.getAllProjectsWithDocuments()
+
+          // Only update if there are actual status changes
+          setProjectsWithDocuments(prev => {
+            const hasChanges = prev.some(prevProject => {
+              const newProject = allProjectsWithDocs.find(
+                p => p.id === prevProject.id,
+              )
+              if (!newProject) return false
+
+              return prevProject.documents.some(prevDoc => {
+                const newDoc = newProject.documents.find(
+                  d => d.id === prevDoc.id,
+                )
+                return newDoc && newDoc.status !== prevDoc.status
+              })
+            })
+            return hasChanges ? allProjectsWithDocs : prev
+          })
+
+          // Also update the flat list of all documents
+          const allDocuments = await documentService.getAllDocuments()
+          setDocuments(prev => {
+            const hasChanges = prev.some((prevDoc, index) => {
+              const newDoc = allDocuments.find(d => d.id === prevDoc.id)
+              return newDoc && newDoc.status !== prevDoc.status
+            })
+            return hasChanges ? allDocuments : prev
+          })
+        }
+      } catch (error) {
+        console.error('Error polling document statuses:', error)
+      }
+    }
+
+    // Determine polling interval based on document statuses
+    const allDocs = projectId
+      ? documents
+      : documents.concat(projectsWithDocuments.flatMap(p => p.documents))
+    const hasProcessingDocs = allDocs.some(doc => doc.status === 'processing')
+    const hasFailedDocs = allDocs.some(doc => doc.status === 'failed')
+
+    let pollInterval: number
+    if (hasProcessingDocs) {
+      pollInterval = 5000 // Poll every 5 seconds if any docs are processing
+    } else if (hasFailedDocs) {
+      pollInterval = 15000 // Poll every 15 seconds if any docs failed
+    } else {
+      pollInterval = 30000 // Poll every 30 seconds for completed docs
+    }
+
+    const intervalId = setInterval(pollDocumentStatuses, pollInterval)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [companyId, projectId, resolvedProject, documents, projectsWithDocuments])
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
@@ -142,12 +231,11 @@ const Documents = () => {
     }
   }
 
-  if (loading) {
+  if (isProjectLoading) {
     return (
       <Layout>
         <div className="space-y-6">
           <PageHeaderSkeleton />
-          <DocumentListSkeleton />
         </div>
       </Layout>
     )
@@ -219,7 +307,10 @@ const Documents = () => {
             </div>
           </div>
 
-          {documents.length > 0 ? (
+          {/* Progressive loading for documents */}
+          {isDocumentsLoading ? (
+            <DocumentListSkeleton itemCount={3} />
+          ) : documents.length > 0 ? (
             <DocumentList
               documents={documents}
               projectId={resolvedProject?.id || projectId}
@@ -272,7 +363,10 @@ const Documents = () => {
           </TabsList>
 
           <TabsContent value="by-project">
-            {projectsWithDocuments.length > 0 ? (
+            {/* Progressive loading for projects */}
+            {isDocumentsLoading ? (
+              <DocumentListSkeleton itemCount={3} />
+            ) : projectsWithDocuments.length > 0 ? (
               <div className="space-y-6">
                 {projectsWithDocuments.map(project => (
                   <div key={project.id} className="border rounded-lg p-4">
@@ -345,7 +439,10 @@ const Documents = () => {
           </TabsContent>
 
           <TabsContent value="all-documents">
-            {documents.length > 0 ? (
+            {/* Progressive loading for all documents */}
+            {isDocumentsLoading ? (
+              <DocumentListSkeleton itemCount={5} />
+            ) : documents.length > 0 ? (
               <DocumentList
                 documents={documents}
                 projectId=""

@@ -297,7 +297,7 @@ You can use the AI Analysis tab to analyze this document.`}
       ) : (
         <div className="space-y-4">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2" style={{ display: 'none' }}>
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <BrainCircuit className="h-5 w-5 text-primary" />
                 AI Analysis

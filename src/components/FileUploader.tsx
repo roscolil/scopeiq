@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import {
-  processEmbeddingOnly,
-  extractTextFromFile,
-} from '@/services/embedding-simple'
+import React from 'react'
+import { processEmbeddingOnly, extractTextFromFile } from '@/services/embedding'
 import { useToast } from '@/hooks/use-toast'
 import { uploadDocumentToS3 } from '@/services/documentUpload'
 import { Button } from '@/components/ui/button'
@@ -18,23 +16,18 @@ interface FileUploaderProps {
   companyId: string
   onUploadComplete: (uploadedFile: Document) => void
 }
-
-export const FileUploader = ({
-  projectId,
-  companyId,
-  onUploadComplete,
-}: FileUploaderProps) => {
+export const FileUploader = (props: FileUploaderProps) => {
+  const { projectId, companyId, onUploadComplete } = props
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadStartTime, setUploadStartTime] = useState<number>(0)
   const { toast } = useToast()
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return
-
     const file = files[0]
-
     // Validate file type
     const allowedTypes = [
       'application/pdf',
@@ -44,16 +37,15 @@ export const FileUploader = ({
       'image/jpeg',
       'image/png',
     ]
-
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: 'Invalid File Type',
-        description: 'Please upload PDF, Word, text, or image files only.',
+        description:
+          'Please upload PDF, Word (.doc/.docx), text (.txt), or image files only.',
         variant: 'destructive',
       })
       return
     }
-
     // Validate file size (50MB limit)
     if (file.size > 50 * 1024 * 1024) {
       toast({
@@ -63,7 +55,6 @@ export const FileUploader = ({
       })
       return
     }
-
     // Just set the selected file, don't upload automatically
     setSelectedFile(file)
   }
@@ -71,17 +62,18 @@ export const FileUploader = ({
   const uploadFile = async (file: File) => {
     setIsUploading(true)
     setUploadProgress(0)
+    setUploadStartTime(Date.now())
 
     try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90))
-      }, 200)
-
-      const result = await uploadDocumentToS3(file, projectId, companyId)
-
-      clearInterval(progressInterval)
-      setUploadProgress(100)
+      // Use real progress tracking instead of simulation
+      const result = await uploadDocumentToS3(
+        file,
+        projectId,
+        companyId,
+        progress => {
+          setUploadProgress(progress)
+        },
+      )
 
       console.log('Creating document record with name:', file.name)
       console.log('Document creation data:', {
@@ -123,7 +115,6 @@ export const FileUploader = ({
       }
 
       onUploadComplete(newDocument as Document)
-
       toast({
         title: 'Upload Successful',
         description: `${file.name} has been uploaded and is being processed for AI search.`,
@@ -133,11 +124,30 @@ export const FileUploader = ({
       if (newDocument?.id) {
         try {
           console.log('Extracting text from file for embedding...')
-          const fileText = await extractTextFromFile(file)
 
+          // For PDF files, ensure PDF.js worker is loaded
+          if (file.type.includes('pdf')) {
+            try {
+              const pdfjs = await import('pdfjs-dist')
+              if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+                // Set directly to jsdelivr CDN - most reliable approach
+                pdfjs.GlobalWorkerOptions.workerSrc =
+                  'https://cdn.jsdelivr.net/npm/pdfjs-dist@' +
+                  pdfjs.version +
+                  '/build/pdf.worker.min.js'
+
+                // Give the worker time to load
+                await new Promise(resolve => setTimeout(resolve, 500))
+                console.log('PDF.js worker set to jsdelivr CDN')
+              }
+            } catch (pdfError) {
+              console.error('Error configuring PDF.js worker:', pdfError)
+            }
+          }
+
+          const fileText = await extractTextFromFile(file)
           if (fileText && fileText.trim().length > 0) {
             console.log(`Extracted ${fileText.length} characters of text`)
-
             // Process embedding directly without database status updates
             await processEmbeddingOnly(projectId, newDocument.id, fileText, {
               name: file.name,
@@ -148,11 +158,47 @@ export const FileUploader = ({
               size: result.size,
             })
 
+            // Update document status to 'processed' after successful embedding
+            try {
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'processed',
+                },
+              )
+              console.log('Document status updated to processed')
+            } catch (statusError) {
+              console.warn(
+                'Could not update document status to processed:',
+                statusError,
+              )
+            }
+
             toast({
               title: 'AI Search Ready',
               description: `${file.name} is now available for semantic search.`,
             })
           } else {
+            // Update document status to 'failed' if no text found
+            try {
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'failed',
+                },
+              )
+              console.log('Document status updated to failed (no text content)')
+            } catch (statusError) {
+              console.warn(
+                'Could not update document status to failed:',
+                statusError,
+              )
+            }
+
             toast({
               title: 'Processing Info',
               description: 'Document uploaded but no text found for AI search.',
@@ -161,9 +207,29 @@ export const FileUploader = ({
           }
         } catch (embeddingError) {
           console.error('Embedding processing failed:', embeddingError)
+
+          // Update document status to 'failed' when embedding processing fails
+          try {
+            await documentService.updateDocument(
+              companyId,
+              projectId,
+              newDocument.id,
+              {
+                status: 'failed',
+              },
+            )
+            console.log('Document status updated to failed (embedding error)')
+          } catch (statusError) {
+            console.warn(
+              'Could not update document status to failed:',
+              statusError,
+            )
+          }
+
           toast({
-            title: 'Processing Warning',
-            description: 'Document uploaded but AI search processing failed.',
+            title: 'Processing Failed',
+            description:
+              'Document uploaded but AI processing failed. You can try re-uploading.',
             variant: 'destructive',
           })
         }
@@ -176,7 +242,6 @@ export const FileUploader = ({
       }, 1000)
     } catch (error) {
       console.error('Upload error:', error)
-
       const errorMessage = 'Failed to upload file. Please try again.'
       // if (error instanceof Error) {
       //   if (error.message.includes('credentials')) {
@@ -191,13 +256,11 @@ export const FileUploader = ({
       //     errorMessage = error.message
       //   }
       // }
-
       toast({
         title: 'Upload Failed',
         description: errorMessage,
         variant: 'destructive',
       })
-
       setUploadProgress(0)
     } finally {
       setIsUploading(false)
@@ -224,10 +287,43 @@ export const FileUploader = ({
     setSelectedFile(null)
   }
 
+  // Helper functions for upload progress display
+  const getUploadStatusText = (progress: number): string => {
+    if (progress < 15) return 'Preparing file...'
+    if (progress < 25) return 'Initializing upload...'
+    if (progress < 75) return 'Uploading to S3...'
+    if (progress < 100) return 'Finalizing...'
+    return 'Upload complete!'
+  }
+
+  const getUploadPhaseText = (progress: number): string => {
+    if (progress < 15) return 'Processing file data and validating format'
+    if (progress < 25)
+      return 'Generating secure upload path and preparing request'
+    if (progress < 75) return 'Transferring file data to cloud storage'
+    if (progress < 100) return 'Generating access URLs and completing upload'
+    return 'File successfully uploaded and ready for processing'
+  }
+
+  const getUploadStats = (): { elapsedTime: string; estimatedTime: string } => {
+    if (!uploadStartTime || uploadProgress === 0) {
+      return { elapsedTime: '0s', estimatedTime: 'calculating...' }
+    }
+
+    const elapsed = (Date.now() - uploadStartTime) / 1000
+    const rate = uploadProgress / elapsed
+    const remaining = rate > 0 ? (100 - uploadProgress) / rate : 0
+
+    return {
+      elapsedTime: `${elapsed.toFixed(1)}s`,
+      estimatedTime:
+        remaining > 0 ? `${remaining.toFixed(1)}s remaining` : 'almost done',
+    }
+  }
+
   const getFileIcon = () => {
     if (!selectedFile)
       return <Upload className="h-10 w-10 text-muted-foreground" />
-
     if (selectedFile.type.includes('pdf')) {
       return <FileText className="h-10 w-10 text-red-500" />
     } else if (selectedFile.type.includes('image')) {
@@ -259,7 +355,6 @@ export const FileUploader = ({
       >
         <div className="flex flex-col items-center justify-center gap-4">
           {getFileIcon()}
-
           {selectedFile ? (
             <div className="flex flex-col items-center text-center">
               <p className="text-sm font-medium">{selectedFile.name}</p>
@@ -291,7 +386,6 @@ export const FileUploader = ({
                   Support for PDF, DOCX, TXT, JPG, PNG (max 50MB)
                 </p>
               </div>
-
               <label htmlFor="file-upload">
                 <Input
                   id="file-upload"
@@ -308,17 +402,37 @@ export const FileUploader = ({
           )}
         </div>
       </div>
-
-      {/* Upload Progress */}
+      {/* Enhanced Upload Progress */}
       {isUploading && (
-        <div className="space-y-2">
+        <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Uploading to S3...</span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm font-medium">
+              {getUploadStatusText(uploadProgress)}
+            </span>
+            <span className="text-sm text-muted-foreground font-mono">
               {uploadProgress}%
             </span>
           </div>
-          <Progress value={uploadProgress} className="w-full" />
+          <Progress value={uploadProgress} className="w-full h-2" />
+          <div className="text-xs text-muted-foreground">
+            {getUploadPhaseText(uploadProgress)}
+          </div>
+          {selectedFile && (
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="truncate max-w-[200px]">
+                  {selectedFile.name}
+                </span>
+                <span>•</span>
+                <span>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>{getUploadStats().elapsedTime}</span>
+                <span>•</span>
+                <span>{getUploadStats().estimatedTime}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
