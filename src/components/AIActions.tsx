@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/openai'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
+import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
 import { Document } from '@/types'
 // or import { callClaude } from '@/services/anthropic'
@@ -123,7 +124,7 @@ export const AIActions = ({
         clearTimeout(silenceTimer)
       }
     }
-  }, [silenceTimer])
+  }, [documentId, projectId, companyId, silenceTimer])
 
   // Get status badge component similar to DocumentList
   const getStatusBadge = (status: Document['status']) => {
@@ -228,16 +229,45 @@ export const AIActions = ({
       return
     }
 
+    console.log('Starting query:', { query, projectId, queryScope })
     setIsLoading(true)
     setResults(null)
 
     try {
       if (isQuestion(query)) {
-        // Handle as AI question
-        const context =
-          queryScope === 'document'
-            ? `Document ID: ${documentId}`
-            : `Project ID: ${projectId}`
+        // Handle as AI question - first get relevant content via semantic search
+        const searchResponse = await semanticSearch({
+          projectId: projectId,
+          query: query,
+          topK: 3,
+        })
+
+        // Build context from search results
+        let context = `Project ID: ${projectId}\n`
+        if (queryScope === 'document') {
+          context = `Document ID: ${documentId}\n`
+        }
+
+        // Add relevant document content as context
+        if (
+          searchResponse &&
+          searchResponse.documents &&
+          searchResponse.documents[0] &&
+          searchResponse.documents[0].length > 0
+        ) {
+          const relevantContent = searchResponse.documents[0]
+            .slice(0, 3) // Use top 3 results
+            .map((doc, i) => {
+              const metadata = searchResponse.metadatas?.[0]?.[i]
+              const docName = metadata?.name || `Document ${i + 1}`
+              return `Document: ${docName}\nContent: ${doc}`
+            })
+            .join('\n\n')
+
+          context += `\nRelevant Content:\n${relevantContent}`
+        } else {
+          context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+        }
 
         const response = await callOpenAI(query, context)
         setResults({
@@ -255,6 +285,8 @@ export const AIActions = ({
       } else {
         // Handle as semantic search
         await search(query)
+        // Clear the query field after successful search
+        setQuery('')
         // The search results will be handled by the useEffect below
       }
     } catch (error) {
@@ -287,16 +319,18 @@ export const AIActions = ({
 
   // Handle search results from the hook
   useEffect(() => {
-    if (searchResults && !isQuestion(query) && query.trim()) {
+    if (
+      searchResults &&
+      searchResults.ids &&
+      searchResults.ids[0] &&
+      searchResults.ids[0].length > 0
+    ) {
       setResults({
         type: 'search',
         searchResults: searchResults,
       })
-
-      // Clear the query field after successful search
-      setQuery('')
     }
-  }, [searchResults, query])
+  }, [searchResults])
 
   const handleSearch = () => {
     handleQuery()
@@ -470,12 +504,12 @@ export const AIActions = ({
                 analysis
               </div>
 
-              <div className="flex gap-2 mb-3">
+              <div className="mb-3">
                 <Textarea
                   placeholder={`Search documents or ask questions about your ${queryScope === 'document' ? 'document' : 'project'}...`}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  className="resize-none min-h-[60px]"
+                  className="w-full resize-none min-h-[60px]"
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()

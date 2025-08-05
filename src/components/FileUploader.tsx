@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import {
-  processEmbeddingOnly,
-  extractTextFromFile,
-} from '@/services/embedding-simple'
+import React from 'react'
+import { processEmbeddingOnly, extractTextFromFile } from '@/services/embedding'
 import { useToast } from '@/hooks/use-toast'
 import { uploadDocumentToS3 } from '@/services/documentUpload'
 import { Button } from '@/components/ui/button'
@@ -18,12 +16,8 @@ interface FileUploaderProps {
   companyId: string
   onUploadComplete: (uploadedFile: Document) => void
 }
-
-export const FileUploader = ({
-  projectId,
-  companyId,
-  onUploadComplete,
-}: FileUploaderProps) => {
+export const FileUploader = (props: FileUploaderProps) => {
+  const { projectId, companyId, onUploadComplete } = props
   const [isDragging, setIsDragging] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
@@ -32,9 +26,7 @@ export const FileUploader = ({
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return
-
     const file = files[0]
-
     // Validate file type
     const allowedTypes = [
       'application/pdf',
@@ -44,7 +36,6 @@ export const FileUploader = ({
       'image/jpeg',
       'image/png',
     ]
-
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: 'Invalid File Type',
@@ -53,7 +44,6 @@ export const FileUploader = ({
       })
       return
     }
-
     // Validate file size (50MB limit)
     if (file.size > 50 * 1024 * 1024) {
       toast({
@@ -63,7 +53,6 @@ export const FileUploader = ({
       })
       return
     }
-
     // Just set the selected file, don't upload automatically
     setSelectedFile(file)
   }
@@ -71,7 +60,6 @@ export const FileUploader = ({
   const uploadFile = async (file: File) => {
     setIsUploading(true)
     setUploadProgress(0)
-
     try {
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -79,7 +67,6 @@ export const FileUploader = ({
       }, 200)
 
       const result = await uploadDocumentToS3(file, projectId, companyId)
-
       clearInterval(progressInterval)
       setUploadProgress(100)
 
@@ -123,7 +110,6 @@ export const FileUploader = ({
       }
 
       onUploadComplete(newDocument as Document)
-
       toast({
         title: 'Upload Successful',
         description: `${file.name} has been uploaded and is being processed for AI search.`,
@@ -133,11 +119,30 @@ export const FileUploader = ({
       if (newDocument?.id) {
         try {
           console.log('Extracting text from file for embedding...')
-          const fileText = await extractTextFromFile(file)
 
+          // For PDF files, ensure PDF.js worker is loaded
+          if (file.type.includes('pdf')) {
+            try {
+              const pdfjs = await import('pdfjs-dist')
+              if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+                // Set directly to jsdelivr CDN - most reliable approach
+                pdfjs.GlobalWorkerOptions.workerSrc =
+                  'https://cdn.jsdelivr.net/npm/pdfjs-dist@' +
+                  pdfjs.version +
+                  '/build/pdf.worker.min.js'
+
+                // Give the worker time to load
+                await new Promise(resolve => setTimeout(resolve, 500))
+                console.log('PDF.js worker set to jsdelivr CDN')
+              }
+            } catch (pdfError) {
+              console.error('Error configuring PDF.js worker:', pdfError)
+            }
+          }
+
+          const fileText = await extractTextFromFile(file)
           if (fileText && fileText.trim().length > 0) {
             console.log(`Extracted ${fileText.length} characters of text`)
-
             // Process embedding directly without database status updates
             await processEmbeddingOnly(projectId, newDocument.id, fileText, {
               name: file.name,
@@ -147,7 +152,6 @@ export const FileUploader = ({
               companyId,
               size: result.size,
             })
-
             toast({
               title: 'AI Search Ready',
               description: `${file.name} is now available for semantic search.`,
@@ -176,7 +180,6 @@ export const FileUploader = ({
       }, 1000)
     } catch (error) {
       console.error('Upload error:', error)
-
       const errorMessage = 'Failed to upload file. Please try again.'
       // if (error instanceof Error) {
       //   if (error.message.includes('credentials')) {
@@ -191,13 +194,11 @@ export const FileUploader = ({
       //     errorMessage = error.message
       //   }
       // }
-
       toast({
         title: 'Upload Failed',
         description: errorMessage,
         variant: 'destructive',
       })
-
       setUploadProgress(0)
     } finally {
       setIsUploading(false)
@@ -227,7 +228,6 @@ export const FileUploader = ({
   const getFileIcon = () => {
     if (!selectedFile)
       return <Upload className="h-10 w-10 text-muted-foreground" />
-
     if (selectedFile.type.includes('pdf')) {
       return <FileText className="h-10 w-10 text-red-500" />
     } else if (selectedFile.type.includes('image')) {
@@ -259,7 +259,6 @@ export const FileUploader = ({
       >
         <div className="flex flex-col items-center justify-center gap-4">
           {getFileIcon()}
-
           {selectedFile ? (
             <div className="flex flex-col items-center text-center">
               <p className="text-sm font-medium">{selectedFile.name}</p>
@@ -291,7 +290,6 @@ export const FileUploader = ({
                   Support for PDF, DOCX, TXT, JPG, PNG (max 50MB)
                 </p>
               </div>
-
               <label htmlFor="file-upload">
                 <Input
                   id="file-upload"
@@ -308,7 +306,6 @@ export const FileUploader = ({
           )}
         </div>
       </div>
-
       {/* Upload Progress */}
       {isUploading && (
         <div className="space-y-2">

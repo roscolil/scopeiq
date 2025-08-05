@@ -11,6 +11,10 @@ import {
   getAWSRegion,
   getS3BucketName,
 } from '../utils/aws-config'
+import * as pdfjs from 'pdfjs-dist'
+
+// Set worker source directly
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`
 
 const s3Client = new S3Client({
   region: getAWSRegion(),

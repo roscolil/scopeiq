@@ -1,80 +1,37 @@
-// Mock implementation for client-side compatibility
-// In production, Pinecone operations should be handled server-side
+import { Pinecone } from '@pinecone-database/pinecone'
 
-interface MockVector {
-  id: string
-  values: number[]
-  metadata?: Record<string, string | number | boolean>
-}
+// Pinecone configuration
+const PINECONE_API_KEY = import.meta.env.VITE_PINECONE_API_KEY
+const PINECONE_INDEX_NAME =
+  import.meta.env.VITE_PINECONE_INDEX_NAME || 'scopeiq-documents'
 
-interface MockIndex {
-  namespace(name: string): {
-    upsert: (vectors: MockVector[]) => Promise<void>
-    query: (params: {
-      vector: number[]
-      topK: number
-      includeMetadata?: boolean
-      includeValues?: boolean
-    }) => Promise<{
-      matches: Array<{
-        id: string
-        score: number
-        metadata?: Record<string, string | number | boolean>
-      }>
-    }>
+// Initialize Pinecone client
+let pineconeClient: Pinecone | null = null
+
+async function getPineconeClient(): Promise<Pinecone> {
+  if (!pineconeClient) {
+    if (!PINECONE_API_KEY) {
+      throw new Error('VITE_PINECONE_API_KEY environment variable is required')
+    }
+
+    pineconeClient = new Pinecone({
+      apiKey: PINECONE_API_KEY,
+    })
   }
+  return pineconeClient
 }
-
-// Mock storage for vectors
-const mockVectorStore: { [namespace: string]: MockVector[] } = {}
-
-const createMockIndex = (): MockIndex => ({
-  namespace: (name: string) => ({
-    upsert: async (vectors: MockVector[]) => {
-      if (!mockVectorStore[name]) {
-        mockVectorStore[name] = []
-      }
-      // Simulate upsert by replacing existing or adding new
-      vectors.forEach(vector => {
-        const existingIndex = mockVectorStore[name].findIndex(
-          v => v.id === vector.id,
-        )
-        if (existingIndex >= 0) {
-          mockVectorStore[name][existingIndex] = vector
-        } else {
-          mockVectorStore[name].push(vector)
-        }
-      })
-      console.log(
-        `Mock: Upserted ${vectors.length} vectors to namespace ${name}`,
-      )
-    },
-    query: async params => {
-      const vectors = mockVectorStore[name] || []
-      // Simple mock similarity calculation (random for demo)
-      const matches = vectors
-        .map(vector => ({
-          id: vector.id,
-          score: Math.random() * 0.5 + 0.5, // Random score between 0.5-1.0
-          metadata: vector.metadata,
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, params.topK)
-
-      console.log(
-        `Mock: Queried namespace ${name}, found ${matches.length} matches`,
-      )
-      return { matches }
-    },
-  }),
-})
-
-const mockIndex = createMockIndex()
 
 async function getOrCreateIndex() {
-  // Mock implementation - just return the mock index
-  console.log('Mock: Using mock Pinecone index')
-  return mockIndex
+  const pc = await getPineconeClient()
+
+  try {
+    // Try to get existing index
+    const index = pc.index(PINECONE_INDEX_NAME)
+    return index
+  } catch (error) {
+    console.error('Error accessing Pinecone index:', error)
+    throw new Error(`Failed to access Pinecone index: ${PINECONE_INDEX_NAME}`)
+  }
 }
 
 export async function upsertEmbeddings(
@@ -83,13 +40,30 @@ export async function upsertEmbeddings(
   embeddings: number[][],
   metadatas?: Record<string, string | number | boolean>[],
 ) {
-  const index = await getOrCreateIndex()
-  const vectors = ids.map((id, i) => ({
-    id,
-    values: embeddings[i],
-    metadata: { ...metadatas?.[i], collection: collectionName },
-  }))
-  await index.namespace(collectionName).upsert(vectors)
+  try {
+    const index = await getOrCreateIndex()
+
+    // Prepare vectors for upsert
+    const vectors = ids.map((id, i) => ({
+      id,
+      values: embeddings[i],
+      metadata: {
+        ...metadatas?.[i],
+        collection: collectionName,
+        timestamp: Date.now(),
+      },
+    }))
+
+    // Upsert vectors to the specified namespace (collection)
+    await index.namespace(collectionName).upsert(vectors)
+
+    console.log(
+      `Successfully upserted ${vectors.length} vectors to Pinecone namespace: ${collectionName}`,
+    )
+  } catch (error) {
+    console.error('Error upserting embeddings to Pinecone:', error)
+    throw error
+  }
 }
 
 export async function queryEmbeddings(
@@ -97,23 +71,74 @@ export async function queryEmbeddings(
   queryEmbeddings: number[][],
   topK = 5,
 ) {
-  const index = await getOrCreateIndex()
+  try {
+    const index = await getOrCreateIndex()
 
-  const queryResponse = await index.namespace(collectionName).query({
-    vector: queryEmbeddings[0],
-    topK,
-    includeMetadata: true,
-    includeValues: false,
-  })
+    // Query the specific namespace (collection)
+    const queryResponse = await index.namespace(collectionName).query({
+      vector: queryEmbeddings[0],
+      topK,
+      includeMetadata: true,
+      includeValues: false,
+    })
 
-  const matches = queryResponse.matches || []
+    const matches = queryResponse.matches || []
 
-  const result = {
-    ids: [matches.map(m => m.id)],
-    documents: [matches.map(m => m.metadata?.content || '')],
-    metadatas: [matches.map(m => m.metadata || {})],
-    distances: [matches.map(m => 1 - (m.score || 0))],
+    console.log(
+      `Pinecone query returned ${matches.length} matches for namespace: ${collectionName}`,
+    )
+
+    // Transform the response to match the expected format
+    const result = {
+      ids: [matches.map(m => m.id)],
+      documents: [matches.map(m => (m.metadata?.content as string) || '')],
+      metadatas: [matches.map(m => m.metadata || {})],
+      distances: [matches.map(m => 1 - (m.score || 0))], // Convert similarity to distance
+    }
+
+    return result
+  } catch (error) {
+    console.error('Error querying embeddings from Pinecone:', error)
+    throw error
   }
+}
 
-  return result
+// Additional utility functions for Pinecone operations
+
+export async function deleteEmbeddings(collectionName: string, ids: string[]) {
+  try {
+    const index = await getOrCreateIndex()
+    await index.namespace(collectionName).deleteMany(ids)
+    console.log(
+      `Deleted ${ids.length} vectors from Pinecone namespace: ${collectionName}`,
+    )
+  } catch (error) {
+    console.error('Error deleting embeddings from Pinecone:', error)
+    throw error
+  }
+}
+
+export async function deleteNamespace(collectionName: string) {
+  try {
+    const index = await getOrCreateIndex()
+    await index.namespace(collectionName).deleteAll()
+    console.log(
+      `Deleted all vectors from Pinecone namespace: ${collectionName}`,
+    )
+  } catch (error) {
+    console.error('Error deleting namespace from Pinecone:', error)
+    throw error
+  }
+}
+
+export async function getIndexStats() {
+  try {
+    const index = await getOrCreateIndex()
+    const stats = await index.describeIndexStats()
+    console.log('Pinecone index stats:', stats)
+    return stats
+  } catch (error) {
+    console.error('Error getting Pinecone index stats:', error)
+    throw error
+  }
 }

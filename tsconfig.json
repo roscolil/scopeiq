@@ -1,9 +1,4 @@
 {
-  // "files": [],
-  // "references": [
-  //   { "path": "./tsconfig.app.json" },
-  //   { "path": "./tsconfig.node.json" }
-  // ],
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
@@ -28,6 +23,7 @@
   },
   "exclude": [
     "dist",
+    "public",
     "eslint.config.js",
     "postcss.config.js",
     "test-aws-config.js"
