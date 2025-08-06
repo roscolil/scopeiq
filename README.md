@@ -338,6 +338,4 @@ Need help? We're here for you!
 
 ---
 
-**Made with ❤️ by the ScopeIQ Team**
-
 </div>

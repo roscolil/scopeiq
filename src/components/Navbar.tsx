@@ -67,56 +67,65 @@ export const Navbar = () => {
   }
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container-2xl h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-transparent backdrop-blur-md">
+      <div className="container-2xl h-16 flex items-center justify-between">
         {/* Left side: Logo and menu items */}
         <div className="flex items-center gap-8">
           <Link
             to="/"
-            className="font-semibold text-lg flex items-center gap-2 text-primary"
+            className="font-bold text-xl flex items-center gap-3 text-slate-800 hover:text-primary transition-colors"
           >
-            <FilePlus className="h-5 w-5" />
-            <span>ScopeIQ</span>
+            <div className="relative">
+              <FilePlus className="h-6 w-6 text-primary" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full opacity-80" />
+            </div>
+            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              ScopeIQ
+            </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}
-          <div className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-1">
             {isAuthenticated &&
               menuItems.map(item => (
                 <Link
                   key={item.name}
                   to={item.path}
-                  className={`flex items-center text-sm font-medium transition-colors ${
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive(item.path)
-                      ? 'text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'text-primary bg-white/20 shadow-soft backdrop-blur-sm'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-white/10'
                   }`}
                 >
                   {item.name}
                 </Link>
               ))}
-          </div>
+          </nav>
         </div>
 
         {/* Right side: Sheet menu and user actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-10 w-10"
+              >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[240px] sm:w-[300px]">
-              <nav className="flex flex-col gap-4 mt-6">
+            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+              <nav className="flex flex-col gap-2 mt-8">
                 {isAuthenticated &&
                   menuItems.map(item => (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
+                      className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(item.path)
-                          ? 'bg-secondary text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                          ? 'bg-primary text-primary-foreground shadow-medium'
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-white/20'
                       }`}
                     >
                       {item.icon}
@@ -125,37 +134,37 @@ export const Navbar = () => {
                   ))}
 
                 {isAuthenticated ? (
-                  <>
+                  <div className="mt-4 pt-4 border-t border-border">
                     <Link
                       to="/profile"
-                      className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
+                      className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive('/settings')
-                          ? 'bg-secondary text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                          ? 'bg-white/20 text-slate-900 shadow-soft backdrop-blur-sm'
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-white/10'
                       }`}
                     >
-                      <Settings className="w-5 h-5 mr-2" />
+                      <Settings className="w-5 h-5 mr-3" />
                       Settings
                     </Link>
                     <Button
                       variant="ghost"
-                      className="flex items-center py-2 px-3 text-sm font-medium rounded-md"
+                      className="w-full justify-start mt-2 text-slate-700 hover:text-slate-900 hover:bg-white/10"
                       onClick={() => setShowLogoutModal(true)}
                     >
-                      <LogOut className="w-5 h-5 mr-2" />
+                      <LogOut className="w-5 h-5 mr-3" />
                       Sign Out
                     </Button>
-                  </>
+                  </div>
                 ) : (
                   <Link
                     to="/signin"
-                    className={`flex items-center py-2 px-3 text-sm font-medium rounded-md ${
+                    className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive('/signin')
-                        ? 'bg-secondary text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                        ? 'bg-primary text-primary-foreground shadow-medium'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-white/20'
                     }`}
                   >
-                    <LogIn className="w-5 h-5 mr-2" />
+                    <LogIn className="w-5 h-5 mr-3" />
                     Sign In
                   </Link>
                 )}
@@ -164,37 +173,17 @@ export const Navbar = () => {
           </Sheet>
 
           {isAuthenticated ? (
-            <>
+            <div className="hidden md:flex items-center gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full"
-                      asChild
-                    >
-                      {/* <Link to={`/${companyId.toLowerCase()}/settings`}>
-                        <Settings className="h-5 w-5" />
-                        <span className="sr-only">Settings</span>
-                      </Link> */}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span>Settings</span>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
+                      className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors"
                       onClick={() => setShowLogoutModal(true)}
                     >
-                      <LogOut className="h-5 w-5" />
+                      <LogOut className="h-4 w-4" />
                       <span className="sr-only">Sign Out</span>
                     </Button>
                   </TooltipTrigger>
@@ -203,16 +192,16 @@ export const Navbar = () => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </>
+            </div>
           ) : (
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
-              className="hidden md:flex"
+              className="hidden md:flex font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-soft"
               asChild
             >
               <Link to="/signin">
-                <LogIn className="h-4 w-4 mr-1" />
+                <LogIn className="h-4 w-4 mr-2" />
                 Sign In
               </Link>
             </Button>
@@ -221,16 +210,28 @@ export const Navbar = () => {
       </div>
       {/* Logout Confirmation Modal */}
       <Dialog open={showLogoutModal} onOpenChange={setShowLogoutModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Sign out</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">
+              Sign out
+            </DialogTitle>
           </DialogHeader>
-          <p>Are you sure you want to sign out?</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLogoutModal(false)}>
+          <p className="text-muted-foreground">
+            Are you sure you want to sign out of your account?
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowLogoutModal(false)}
+              className="hover:bg-secondary/80"
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleSignOut}>
+            <Button
+              variant="destructive"
+              onClick={handleSignOut}
+              className="bg-destructive hover:bg-destructive/90 shadow-soft"
+            >
               Sign Out
             </Button>
           </DialogFooter>

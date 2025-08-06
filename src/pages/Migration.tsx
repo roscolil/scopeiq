@@ -54,211 +54,230 @@ const Migration: React.FC = () => {
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">
-            Data Migration Center
-          </h1>
-          <p className="text-muted-foreground">
-            Migrate your data from S3 metadata to the hybrid database model
-          </p>
-        </div>
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced Stripe-inspired gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
 
-        {/* Connectivity Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              System Status
-            </CardTitle>
-            <CardDescription>
-              Check connectivity to both S3 and database systems
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span>Current Mode:</span>
-              <Badge
-                variant={currentMode === 'database' ? 'default' : 'secondary'}
-              >
-                {currentMode === 'database' ? 'Database' : 'S3'}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Database className="h-6 w-6 text-blue-500" />
-                    <div>
-                      <h4 className="font-semibold">Database</h4>
-                      <p className="text-sm text-muted-foreground">
-                        DynamoDB + GraphQL
-                      </p>
-                    </div>
-                  </div>
-                  {connectivity ? (
-                    connectivity.database.connected ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                    )
-                  ) : (
-                    <RefreshCw className="h-5 w-5 animate-spin" />
-                  )}
-                </div>
-                {connectivity?.database.error && (
-                  <Alert className="mt-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      {connectivity.database.error}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Cloud className="h-6 w-6 text-orange-500" />
-                    <div>
-                      <h4 className="font-semibold">S3 Storage</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Current metadata
-                      </p>
-                    </div>
-                  </div>
-                  {connectivity ? (
-                    connectivity.s3.connected ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                    )
-                  ) : (
-                    <RefreshCw className="h-5 w-5 animate-spin" />
-                  )}
-                </div>
-                {connectivity?.s3.error && (
-                  <Alert className="mt-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      {connectivity.s3.error}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </Card>
-            </div>
-
-            <div className="flex gap-2 justify-center">
-              <Button
-                variant="outline"
-                onClick={testConnectivity}
-                disabled={isTestingConnectivity}
-              >
-                {isTestingConnectivity ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Test Connectivity
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Mode Switching */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Service Mode</CardTitle>
-            <CardDescription>
-              Switch between database and S3 mode for your Projects page
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2 justify-center">
-              <Button
-                variant={currentMode === 'database' ? 'default' : 'outline'}
-                onClick={() => handleModeSwitch('database')}
-                disabled={!connectivity?.database.connected}
-              >
-                <Database className="h-4 w-4 mr-2" />
-                Use Database
-              </Button>
-              <Button
-                variant={currentMode === 's3' ? 'default' : 'outline'}
-                onClick={() => handleModeSwitch('s3')}
-                disabled={!connectivity?.s3.connected}
-              >
-                <Cloud className="h-4 w-4 mr-2" />
-                Use S3
-              </Button>
-            </div>
-            <p className="text-center text-sm text-muted-foreground mt-2">
-              This affects how your Projects page loads and saves data
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Migration Interface */}
-        <DataMigration />
-
-        {/* Instructions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>💡 Migration Instructions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm">
-              Follow these steps to complete your migration:
-            </p>
-            <ol className="list-decimal list-inside space-y-2 text-sm">
-              <li>
-                <strong>Test Connectivity:</strong> Ensure both systems are
-                accessible
-              </li>
-              <li>
-                <strong>Run Migration:</strong> Use the migration tool above to
-                transfer your S3 data
-              </li>
-              <li>
-                <strong>Switch Mode:</strong> Set your Projects page to use
-                Database mode
-              </li>
-              <li>
-                <strong>Verify Data:</strong> Check that your projects appear
-                correctly
-              </li>
-              <li>
-                <strong>Update Code:</strong> Replace S3 service calls with
-                hybrid service in your Projects.tsx
-              </li>
-            </ol>
-
-            <Alert className="mt-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Code Update Required:</strong> After migration, update
-                your Projects.tsx to use
-                <code className="mx-1 px-1 bg-muted rounded">
-                  hybridProjectService
-                </code>{' '}
-                instead of
-                <code className="mx-1 px-1 bg-muted rounded">
-                  projectService
-                </code>{' '}
-                for full database functionality.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
       </div>
-    </Layout>
+
+      <Layout>
+        <div className="space-y-6">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 bg-clip-text mb-4">
+              Data Migration Center
+            </h1>
+            <p className="text-slate-600">
+              Migrate your data from S3 metadata to the hybrid database model
+            </p>
+          </div>
+
+          {/* Connectivity Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                System Status
+              </CardTitle>
+              <CardDescription>
+                Check connectivity to both S3 and database systems
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span>Current Mode:</span>
+                <Badge
+                  variant={currentMode === 'database' ? 'default' : 'secondary'}
+                >
+                  {currentMode === 'database' ? 'Database' : 'S3'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className="h-6 w-6 text-blue-500" />
+                      <div>
+                        <h4 className="font-semibold">Database</h4>
+                        <p className="text-sm text-muted-foreground">
+                          DynamoDB + GraphQL
+                        </p>
+                      </div>
+                    </div>
+                    {connectivity ? (
+                      connectivity.database.connected ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                      )
+                    ) : (
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                    )}
+                  </div>
+                  {connectivity?.database.error && (
+                    <Alert className="mt-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        {connectivity.database.error}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Cloud className="h-6 w-6 text-orange-500" />
+                      <div>
+                        <h4 className="font-semibold">S3 Storage</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Current metadata
+                        </p>
+                      </div>
+                    </div>
+                    {connectivity ? (
+                      connectivity.s3.connected ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                      )
+                    ) : (
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                    )}
+                  </div>
+                  {connectivity?.s3.error && (
+                    <Alert className="mt-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        {connectivity.s3.error}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </Card>
+              </div>
+
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={testConnectivity}
+                  disabled={isTestingConnectivity}
+                >
+                  {isTestingConnectivity ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Test Connectivity
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mode Switching */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Service Mode</CardTitle>
+              <CardDescription>
+                Switch between database and S3 mode for your Projects page
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant={currentMode === 'database' ? 'default' : 'outline'}
+                  onClick={() => handleModeSwitch('database')}
+                  disabled={!connectivity?.database.connected}
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  Use Database
+                </Button>
+                <Button
+                  variant={currentMode === 's3' ? 'default' : 'outline'}
+                  onClick={() => handleModeSwitch('s3')}
+                  disabled={!connectivity?.s3.connected}
+                >
+                  <Cloud className="h-4 w-4 mr-2" />
+                  Use S3
+                </Button>
+              </div>
+              <p className="text-center text-sm text-muted-foreground mt-2">
+                This affects how your Projects page loads and saves data
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Migration Interface */}
+          <DataMigration />
+
+          {/* Instructions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>💡 Migration Instructions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm">
+                Follow these steps to complete your migration:
+              </p>
+              <ol className="list-decimal list-inside space-y-2 text-sm">
+                <li>
+                  <strong>Test Connectivity:</strong> Ensure both systems are
+                  accessible
+                </li>
+                <li>
+                  <strong>Run Migration:</strong> Use the migration tool above
+                  to transfer your S3 data
+                </li>
+                <li>
+                  <strong>Switch Mode:</strong> Set your Projects page to use
+                  Database mode
+                </li>
+                <li>
+                  <strong>Verify Data:</strong> Check that your projects appear
+                  correctly
+                </li>
+                <li>
+                  <strong>Update Code:</strong> Replace S3 service calls with
+                  hybrid service in your Projects.tsx
+                </li>
+              </ol>
+
+              <Alert className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Code Update Required:</strong> After migration, update
+                  your Projects.tsx to use
+                  <code className="mx-1 px-1 bg-muted rounded">
+                    hybridProjectService
+                  </code>{' '}
+                  instead of
+                  <code className="mx-1 px-1 bg-muted rounded">
+                    projectService
+                  </code>{' '}
+                  for full database functionality.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    </>
   )
 }
 

@@ -69,11 +69,54 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      fontFamily: {
+        sans: [
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Oxygen',
+          'Ubuntu',
+          'Cantarell',
+          'Fira Sans',
+          'Droid Sans',
+          'Helvetica Neue',
+          'sans-serif',
+        ],
+        mono: [
+          'JetBrains Mono',
+          'SF Mono',
+          'Monaco',
+          'Inconsolata',
+          'Roboto Mono',
+          'source-code-pro',
+          'Menlo',
+          'Consolas',
+          'monospace',
+        ],
+      },
+      fontSize: {
+        '2xs': ['0.625rem', { lineHeight: '0.75rem' }],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '92': '23rem',
+        '96': '24rem',
+        '104': '26rem',
+        '112': '28rem',
+        '128': '32rem',
+      },
       width: {
-        '18': '4.5rem', // 72px
+        '18': '4.5rem',
       },
       height: {
-        '18': '4.5rem', // 72px
+        '18': '4.5rem',
+      },
+      maxWidth: {
+        '8xl': '88rem',
+        '9xl': '96rem',
       },
       keyframes: {
         'accordion-down': {
@@ -100,11 +143,40 @@ export default {
             transform: 'rotate(-360deg)',
           },
         },
+        'fade-in': {
+          from: {
+            opacity: '0',
+            transform: 'translateY(10px)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translateY(0)',
+          },
+        },
+        'slide-in': {
+          from: {
+            transform: 'translateX(-100%)',
+          },
+          to: {
+            transform: 'translateX(0)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'spin-slow': 'spin-slow 3s linear infinite',
+        'fade-in': 'fade-in 0.5s ease-out',
+        'slide-in': 'slide-in 0.3s ease-out',
+      },
+      boxShadow: {
+        soft: '0 2px 8px 0 rgb(0 0 0 / 0.04)',
+        medium: '0 4px 16px 0 rgb(0 0 0 / 0.08)',
+        large: '0 8px 32px 0 rgb(0 0 0 / 0.12)',
+        'inner-soft': 'inset 0 1px 0 0 rgb(255 255 255 / 0.05)',
+      },
+      backdropBlur: {
+        xs: '2px',
       },
     },
   },

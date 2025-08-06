@@ -14,7 +14,7 @@ import SignUp from './pages/SignUp'
 import ForgotPassword from './pages/ForgotPassword'
 import ProfileSettings from './pages/ProfileSettings'
 // import { AuthProvider } from './hooks/use-auth'
-import ProfileHome from './pages/ProfileHome'
+import Dashboard from './pages/Dashboard'
 import { Authenticator } from '@aws-amplify/ui-react'
 import { Amplify } from 'aws-amplify'
 import outputs from '../amplify_outputs.json'
@@ -52,7 +52,7 @@ const App = () => (
             <Route element={<AuthenticatedLayout />}>
               {/* Company dashboard */}
               <Route path="/:companyId">
-                <Route index element={<ProfileHome />} />
+                <Route index element={<Dashboard />} />
                 <Route path="settings" element={<ProfileSettings />} />
 
                 {/* All documents view */}

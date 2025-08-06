@@ -325,80 +325,177 @@ const ProjectDetails = () => {
   }
 
   return (
-    <Layout>
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              navigate(routes.company.projects.list(companyId || ''))
-            }
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </div>
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced Stripe-inspired gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
 
-        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-              {project.name}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm md:text-base">
-              {project.description}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Created on {new Date(project.createdAt).toLocaleDateString()}
-            </p>
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
+      </div>
+
+      <Layout>
+        <div className="space-y-4 md:space-y-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                navigate(routes.company.projects.list(companyId || ''))
+              }
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
           </div>
 
-          {isMobile ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 bg-clip-text">
+                {project.name}
+              </h1>
+              <p className="text-slate-600 mt-2 text-sm md:text-base">
+                {project.description}
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Created on {new Date(project.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+
+            {isMobile ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full md:w-auto"
+                  >
+                    Actions <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setShowAITools(!showAITools)}
+                  >
+                    {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                    Edit Project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-destructive"
+                  >
+                    Delete Project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full md:w-auto"
+                  onClick={() => setShowAITools(!showAITools)}
                 >
-                  Actions <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowAITools(!showAITools)}>
                   {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-                  Edit Project
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                  className="text-destructive"
-                >
-                  Delete Project
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAITools(!showAITools)}
-              >
-                {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
-              </Button>
+                </Button>
 
+                <Dialog
+                  open={isEditDialogOpen}
+                  onOpenChange={setIsEditDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Edit Project</DialogTitle>
+                    </DialogHeader>
+                    <ProjectForm
+                      onSubmit={handleUpdateProject}
+                      defaultValues={{
+                        address: project.address || '',
+                        streetNumber: project.streetNumber || '',
+                        streetName: project.streetName || '',
+                        suburb: project.suburb || '',
+                        postcode: project.postcode || '',
+                        name: project.name,
+                        description: project.description,
+                      }}
+                    />
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog
+                  open={isDeleteDialogOpen}
+                  onOpenChange={setIsDeleteDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Project</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete this project? This
+                        action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsDeleteDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteProject}
+                      >
+                        Delete Project
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </div>
+
+          {showAITools && (
+            <div className="mb-2 md:mb-4">
+              <AIActions
+                documentId=""
+                projectId={project.id}
+                companyId={companyId || 'default-company'}
+              />
+            </div>
+          )}
+
+          {isMobile && (
+            <>
               <Dialog
                 open={isEditDialogOpen}
                 onOpenChange={setIsEditDialogOpen}
               >
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Edit Project</DialogTitle>
@@ -422,16 +519,6 @@ const ProjectDetails = () => {
                 open={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
               >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Delete Project</DialogTitle>
@@ -453,124 +540,64 @@ const ProjectDetails = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </div>
+            </>
           )}
-        </div>
 
-        {showAITools && (
-          <div className="mb-2 md:mb-4">
-            <AIActions
-              documentId=""
-              projectId={project.id}
-              companyId={companyId || 'default-company'}
-            />
-          </div>
-        )}
+          <div className="flex justify-between items-center border-b pb-4">
+            <h2 className="text-lg md:text-xl font-semibold">Documents</h2>
 
-        {isMobile && (
-          <>
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <Dialog
+              open={isUploadDialogOpen}
+              onOpenChange={setIsUploadDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Document
+                </Button>
+              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit Project</DialogTitle>
+                  <DialogTitle>Upload Document to Project</DialogTitle>
+                  <DialogDescription>
+                    Upload a document to {project.name}
+                  </DialogDescription>
                 </DialogHeader>
-                <ProjectForm
-                  onSubmit={handleUpdateProject}
-                  defaultValues={{
-                    address: project.address || '',
-                    streetNumber: project.streetNumber || '',
-                    streetName: project.streetName || '',
-                    suburb: project.suburb || '',
-                    postcode: project.postcode || '',
-                    name: project.name,
-                    description: project.description,
-                  }}
+
+                {/* Pass the required props to FileUploader */}
+                <FileUploader
+                  projectId={project.id}
+                  companyId={companyId || 'default-company'}
+                  onUploadComplete={handleUploadDocument}
                 />
               </DialogContent>
             </Dialog>
+          </div>
 
-            <Dialog
-              open={isDeleteDialogOpen}
-              onOpenChange={setIsDeleteDialogOpen}
-            >
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete Project</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete this project? This action
-                    cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDeleteDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteProject}>
-                    Delete Project
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-
-        <div className="flex justify-between items-center border-b pb-4">
-          <h2 className="text-lg md:text-xl font-semibold">Documents</h2>
-
-          <Dialog
-            open={isUploadDialogOpen}
-            onOpenChange={setIsUploadDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+          {/* Progressive loading for documents */}
+          {isDocumentsLoading ? (
+            <DocumentListSkeleton itemCount={3} />
+          ) : projectDocuments.length > 0 ? (
+            <DocumentList
+              documents={projectDocuments}
+              onDelete={handleDeleteDocument}
+              projectId={project.id}
+              companyId={companyId || 'default-company'}
+              projectName={project.name}
+            />
+          ) : (
+            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
+              <p className="text-muted-foreground mb-4">
+                No documents in this project yet
+              </p>
+              <Button onClick={() => setIsUploadDialogOpen(true)}>
                 Add Document
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Upload Document to Project</DialogTitle>
-                <DialogDescription>
-                  Upload a document to {project.name}
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Pass the required props to FileUploader */}
-              <FileUploader
-                projectId={project.id}
-                companyId={companyId || 'default-company'}
-                onUploadComplete={handleUploadDocument}
-              />
-            </DialogContent>
-          </Dialog>
+            </div>
+          )}
         </div>
-
-        {/* Progressive loading for documents */}
-        {isDocumentsLoading ? (
-          <DocumentListSkeleton itemCount={3} />
-        ) : projectDocuments.length > 0 ? (
-          <DocumentList
-            documents={projectDocuments}
-            onDelete={handleDeleteDocument}
-            projectId={project.id}
-            companyId={companyId || 'default-company'}
-            projectName={project.name}
-          />
-        ) : (
-          <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-            <p className="text-muted-foreground mb-4">
-              No documents in this project yet
-            </p>
-            <Button onClick={() => setIsUploadDialogOpen(true)}>
-              Add Document
-            </Button>
-          </div>
-        )}
-      </div>
-    </Layout>
+      </Layout>
+    </>
   )
 }
 export default ProjectDetails
