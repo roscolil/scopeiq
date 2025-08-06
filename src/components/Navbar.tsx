@@ -46,7 +46,7 @@ export const Navbar = () => {
 
   const menuItems = [
     {
-      name: 'Home',
+      name: 'Dashboard',
       path: companyId ? `/${companyId.toLowerCase()}` : '/',
       icon: <Home className="w-5 h-5 mr-2" />,
     },

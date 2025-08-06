@@ -34,6 +34,8 @@ export const FileUploader = (props: FileUploaderProps) => {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
       'text/plain',
+      'text/rtf',
+      'application/rtf',
       'image/jpeg',
       'image/png',
     ]
@@ -41,7 +43,7 @@ export const FileUploader = (props: FileUploaderProps) => {
       toast({
         title: 'Invalid File Type',
         description:
-          'Please upload PDF, Word (.doc/.docx), text (.txt), or image files only.',
+          'Please upload PDF, Word (.doc/.docx), text (.txt/.rtf), or image files only.',
         variant: 'destructive',
       })
       return

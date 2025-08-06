@@ -627,7 +627,7 @@ export const AIActions = ({
                     Search or Ask
                   </Badge>
                   <Badge variant="outline" className="text-2xs">
-                    Document Only
+                    {documentId ? 'Document scope' : 'Project scope'}
                   </Badge>
                 </div>
               </div>
@@ -635,13 +635,13 @@ export const AIActions = ({
 
             <div className="text-xs text-muted-foreground mb-4 bg-muted/30 p-3 rounded-lg border">
               <span className="font-medium">💡 Tip:</span> Enter keywords to
-              search this document, or ask a natural language question for AI
-              analysis.
+              search this {documentId ? 'document' : 'project'}, or ask a
+              natural language question for AI analysis.
             </div>
 
             <div className="mb-4">
               <Textarea
-                placeholder={`Search or ask questions about this document...`}
+                placeholder={`Search or ask questions about this ${documentId ? 'document' : 'project'}...`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200"
