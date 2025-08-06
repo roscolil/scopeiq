@@ -97,7 +97,7 @@ export const ProjectList = ({
             <div className="relative mb-8">
               <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-accent/30 blur-2xl rounded-full"></div>
               <div className="relative p-8 bg-gradient-to-br from-white/90 to-white/60 backdrop-blur-md rounded-3xl border border-white/60 shadow-2xl inline-block">
-                <Folder className="h-16 w-16 text-transparent bg-gradient-to-br from-primary via-blue-600 to-accent bg-clip-text mx-auto" />
+                <Folder className="h-16 w-16 text-primary mx-auto" />
               </div>
             </div>
 
@@ -169,7 +169,7 @@ export const ProjectList = ({
                       <div className="relative">
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 blur-lg rounded-xl"></div>
                         <div className="relative p-3 bg-gradient-to-br from-primary/10 via-blue-50 to-accent/10 rounded-xl border border-white/50 group-hover:from-primary/20 group-hover:to-accent/20 transition-all duration-500">
-                          <Folder className="h-6 w-6 text-transparent bg-gradient-to-br from-primary to-accent bg-clip-text" />
+                          <Folder className="h-6 w-6 text-primary" />
                         </div>
                       </div>
                       {/* Status indicator */}
@@ -255,7 +255,7 @@ export const ProjectList = ({
                   {/* Document count with enhanced styling */}
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-accent/10 to-blue-100/50 rounded-lg group-hover:from-accent/20 group-hover:to-blue-100 transition-all duration-300">
-                      <FileText className="h-4 w-4 text-transparent bg-gradient-to-br from-accent to-blue-600 bg-clip-text" />
+                      <FileText className="h-4 w-4 text-accent" />
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-slate-900">

@@ -128,13 +128,6 @@ const Dashboard = () => {
     loadData()
   }, [companyId, toast])
 
-  // Mock data for dashboard - keeping some for UI demonstration
-  const recentProjects = [
-    { id: 1, name: 'Kitchen Renovation', date: 'May 15, 2025', progress: 75 },
-    { id: 2, name: 'Office Building', date: 'May 10, 2025', progress: 30 },
-    { id: 3, name: 'Bathroom Remodel', date: 'May 3, 2025', progress: 100 },
-  ]
-
   const upcomingTasks = [
     {
       id: 1,
@@ -198,10 +191,10 @@ const Dashboard = () => {
                 <Settings className="h-5 w-5" />
                 <span className="sr-only">Settings</span>
               </Button>
-              <Avatar>
+              {/* <Avatar>
                 <AvatarImage src="/placeholder-avatar.png" />
                 <AvatarFallback>SC</AvatarFallback>
-              </Avatar>
+              </Avatar> */}
             </div>
           </div>
 
@@ -604,15 +597,23 @@ const Dashboard = () => {
                                 className="w-full"
                                 onClick={() => {
                                   if (project) {
-                                    navigate(
+                                    const route =
                                       routes.company.project.document(
                                         companyId.toLowerCase(),
                                         project.id,
                                         document.id,
                                         project.name,
                                         document.name,
-                                      ),
-                                    )
+                                      )
+                                    navigate(route)
+                                  } else {
+                                    // If project is not found, show error
+                                    toast({
+                                      title: 'Navigation Error',
+                                      description:
+                                        'Could not find the associated project for this document.',
+                                      variant: 'destructive',
+                                    })
                                   }
                                 }}
                               >

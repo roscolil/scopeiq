@@ -115,7 +115,10 @@ export const Navbar = () => {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+            <SheetContent
+              side="right"
+              className="w-[280px] sm:w-[320px] bg-white/95 backdrop-blur-md border-white/20"
+            >
               <nav className="flex flex-col gap-2 mt-8">
                 {isAuthenticated &&
                   menuItems.map(item => (
@@ -124,8 +127,8 @@ export const Navbar = () => {
                       to={item.path}
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(item.path)
-                          ? 'bg-primary text-primary-foreground shadow-medium'
-                          : 'text-slate-700 hover:text-slate-900 hover:bg-white/20'
+                          ? 'bg-primary text-white shadow-medium'
+                          : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
                       }`}
                     >
                       {item.icon}
@@ -134,13 +137,18 @@ export const Navbar = () => {
                   ))}
 
                 {isAuthenticated ? (
-                  <div className="mt-4 pt-4 border-t border-border">
+                  <div className="mt-4 pt-4 border-t border-slate-200">
                     <Link
-                      to="/profile"
+                      to={
+                        companyId
+                          ? `/${companyId.toLowerCase()}/settings`
+                          : '/settings'
+                      }
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
+                        isActive(`/${companyId?.toLowerCase()}/settings`) ||
                         isActive('/settings')
-                          ? 'bg-white/20 text-slate-900 shadow-soft backdrop-blur-sm'
-                          : 'text-slate-700 hover:text-slate-900 hover:bg-white/10'
+                          ? 'bg-primary/10 text-primary shadow-soft backdrop-blur-sm'
+                          : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
                       }`}
                     >
                       <Settings className="w-5 h-5 mr-3" />
@@ -148,7 +156,7 @@ export const Navbar = () => {
                     </Link>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start mt-2 text-slate-700 hover:text-slate-900 hover:bg-white/10"
+                      className="w-full justify-start mt-2 text-slate-800 hover:text-red-600 hover:bg-red-50"
                       onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="w-5 h-5 mr-3" />
@@ -160,8 +168,8 @@ export const Navbar = () => {
                     to="/signin"
                     className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive('/signin')
-                        ? 'bg-primary text-primary-foreground shadow-medium'
-                        : 'text-slate-700 hover:text-slate-900 hover:bg-white/20'
+                        ? 'bg-primary text-white shadow-medium'
+                        : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
                     }`}
                   >
                     <LogIn className="w-5 h-5 mr-3" />
