@@ -64,7 +64,7 @@ export const AIActions = ({
   } | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
-    'project',
+    'document', // Default to document scope for individual document page
   )
   const [isLoading, setIsLoading] = useState(false)
   const [document, setDocument] = useState<Document | null>(null)
@@ -308,6 +308,48 @@ export const AIActions = ({
       return
     }
 
+    // Check document status before proceeding
+    if (queryScope === 'document') {
+      if (!document) {
+        toast({
+          title: 'Document Not Found',
+          description: 'Unable to find document information.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (document.status === 'processing') {
+        toast({
+          title: 'Document Processing',
+          description:
+            'This document is still being processed. Please wait a moment and try again.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (document.status === 'failed') {
+        toast({
+          title: 'Document Processing Failed',
+          description:
+            'This document failed to process and cannot be analyzed. Please try uploading the document again.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (document.status !== 'processed') {
+        toast({
+          title: 'Document Not Ready',
+          description:
+            'This document is not ready for AI analysis. Please check the document status.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
     console.log('Starting query:', { query, projectId, queryScope })
     setIsLoading(true)
     setResults(null)
@@ -319,12 +361,13 @@ export const AIActions = ({
           projectId: projectId,
           query: query,
           topK: 3,
+          ...(queryScope === 'document' && { documentId }), // Add documentId filter for document-specific queries
         })
 
         // Build context from search results
         let context = `Project ID: ${projectId}\n`
         if (queryScope === 'document') {
-          context = `Document ID: ${documentId}\n`
+          context = `Document ID: ${documentId}\nDocument Name: ${document?.name || 'Unknown'}\n`
         }
 
         // Add relevant document content as context
@@ -345,7 +388,11 @@ export const AIActions = ({
 
           context += `\nRelevant Content:\n${relevantContent}`
         } else {
-          context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+          if (queryScope === 'document') {
+            context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
+          } else {
+            context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+          }
         }
 
         const response = await callOpenAI(query, context)
@@ -359,7 +406,7 @@ export const AIActions = ({
 
         toast({
           title: 'AI Analysis Complete',
-          description: 'Your question has been answered.',
+          description: `Your question about the ${queryScope === 'document' ? 'document' : 'project'} has been answered.`,
         })
       } else {
         // Handle as semantic search
@@ -480,274 +527,277 @@ export const AIActions = ({
 
   return (
     <>
-      <Card className="mb-32 md:mb-0">
-        <CardHeader className="pb-2" style={{ display: 'none' }}>
-          <div className="flex items-center gap-2">
-            <BrainCircuit className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">AI Tools</CardTitle>
+      <Card className="mb-32 md:mb-0 animate-fade-in">
+        <CardHeader className="pb-3" style={{ display: 'none' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <BrainCircuit className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">AI Analysis</CardTitle>
+              <CardDescription>
+                Intelligent insights from your{' '}
+                {queryScope === 'document' ? 'document' : 'project'}
+              </CardDescription>
+            </div>
           </div>
-          <CardDescription>
-            Leverage AI to analyze and extract insights from your{' '}
-            {queryScope === 'document' ? 'document' : 'project'}
-          </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          <div className="space-y-4 mt-4">
-            {/* Document Status Section */}
-            {document && (
-              <div className="border rounded-lg p-3 bg-secondary/20">
-                <div className="flex items-center gap-2 mb-2">
+        <CardContent className="space-y-6">
+          {/* Document Status Section */}
+          {document && (
+            <div className="border rounded-xl p-4 bg-gradient-to-r from-secondary/50 to-secondary/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-1.5 bg-primary/10 rounded-lg">
                   <FileSearch className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Document Status</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                    {document.name}
-                  </span>
-                  {getStatusBadge(document.status)}
+                <span className="text-sm font-medium text-foreground">
+                  Document Status
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground truncate max-w-[200px] font-medium">
+                  {document.name}
+                </span>
+                {getStatusBadge(document.status)}
+              </div>
+              {document.status === 'processing' && (
+                <div className="space-y-3 mt-3">
+                  <div className="text-xs text-muted-foreground">
+                    Document is being processed for AI analysis. This usually
+                    takes 1-2 minutes.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fixStuckDocument}
+                    disabled={isLoadingStatus}
+                    className="text-xs h-8 shadow-soft"
+                  >
+                    {isLoadingStatus ? (
+                      <div className="spinner mr-2" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                    )}
+                    Fix Stuck Processing
+                  </Button>
                 </div>
-                {document.status === 'processing' && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Document is being processed for AI search.
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fixStuckDocument}
-                      disabled={isLoadingStatus}
-                      className="text-xs h-7"
-                    >
-                      Fix Stuck Processing
-                    </Button>
+              )}
+              {document.status === 'failed' && (
+                <div className="space-y-3 mt-3">
+                  <div className="text-xs text-destructive">
+                    Document processing failed. Please try re-uploading the
+                    document.
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fixStuckDocument}
+                    disabled={isLoadingStatus}
+                    className="text-xs h-8 shadow-soft"
+                  >
+                    {isLoadingStatus ? (
+                      <div className="spinner mr-2" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                    )}
+                    Retry Processing
+                  </Button>
+                </div>
+              )}
+              {document.status === 'processed' && (
+                <div className="text-xs text-emerald-600 mt-2 font-medium">
+                  ✓ Document is ready for AI analysis and search
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-center mb-3 mt-8">
+              <div className="p-1.5 bg-primary/10 rounded-lg mr-3">
+                <BrainCircuit className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Smart AI Query
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="text-2xs">
+                    Search or Ask
+                  </Badge>
+                  <Badge variant="outline" className="text-2xs">
+                    Document Only
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground mb-4 bg-muted/30 p-3 rounded-lg border">
+              <span className="font-medium">💡 Tip:</span> Enter keywords to
+              search this document, or ask a natural language question for AI
+              analysis.
+            </div>
+
+            <div className="mb-4">
+              <Textarea
+                placeholder={`Search or ask questions about this document...`}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleQuery()
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex justify-between gap-3 mb-4">
+              <VoiceInput
+                onTranscript={handleTranscript}
+                isListening={isListening}
+                toggleListening={toggleListening}
+              />
+              <Button
+                onClick={handleQuery}
+                disabled={
+                  isLoading || !query.trim() || document?.status !== 'processed'
+                }
+                className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium"
+                size="default"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="spinner" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {isQuestion(query) ? (
+                      <>
+                        <MessageSquare className="w-4 h-4" />
+                        Ask AI
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4" />
+                        Search
+                      </>
+                    )}
+                  </>
                 )}
-                {document.status === 'failed' && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-red-600 mt-1">
-                      Document processing failed. Try re-uploading the document.
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={fixStuckDocument}
-                      disabled={isLoadingStatus}
-                      className="text-xs h-7"
-                    >
-                      Retry Processing
-                    </Button>
-                  </div>
-                )}
-                {document.status === 'processed' && (
-                  <div className="text-xs text-green-600 mt-1">
-                    Document is ready for AI search and questions.
-                  </div>
-                )}
+              </Button>
+            </div>
+
+            {searchError && (
+              <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                {searchError}
               </div>
             )}
 
-            <div
-              className="flex justify-between items-center"
-              style={{ display: 'none' }}
-            >
-              <span className="text-sm font-medium text-muted-foreground">
-                Query Scope:
-              </span>
-              <Select
-                value={queryScope}
-                onValueChange={(value: 'project' | 'document') =>
-                  setQueryScope(value)
-                }
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="project">
-                    <div className="flex items-center">
-                      <FileStack className="mr-2 h-4 w-4" />
-                      <span>Entire Project</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="document">
-                    <div className="flex items-center">
-                      <FileSearch className="mr-2 h-4 w-4" />
-                      <span>Current Document</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <div className="flex items-center mb-2 mt-10">
-                <BrainCircuit className="h-4 w-4 mr-2 text-primary" />
-                <h3 className="text-sm font-medium">Smart AI Query</h3>
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  Search or Ask
-                </Badge>
-              </div>
-
-              <div className="text-xs text-muted-foreground mb-3">
-                Enter keywords to search documents, or ask a question for AI
-                analysis
-              </div>
-
-              <div className="mb-3">
-                <Textarea
-                  placeholder={`Search documents or ask questions about your ${queryScope === 'document' ? 'document' : 'project'}...`}
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  className="w-full resize-none min-h-[60px]"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleQuery()
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="flex justify-between gap-2 mb-3">
-                <VoiceInput
-                  onTranscript={handleTranscript}
-                  isListening={isListening}
-                  toggleListening={toggleListening}
-                />
-                <Button
-                  onClick={handleQuery}
-                  disabled={isLoading || !query.trim()}
-                  className="flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      {isQuestion(query) ? (
-                        <>
-                          <MessageSquare className="w-4 h-4" />
-                          Ask AI
-                        </>
-                      ) : (
-                        <>
-                          <Search className="w-4 h-4" />
-                          Search
-                        </>
-                      )}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {searchError && (
-                <div className="text-red-600 text-sm mb-3">{searchError}</div>
-              )}
-
-              {/* Display Search Results */}
-              {results?.type === 'search' &&
-                results.searchResults &&
-                results.searchResults.ids &&
-                results.searchResults.ids[0] &&
-                results.searchResults.ids[0].length > 0 && (
-                  <div className="bg-secondary p-3 rounded-md text-sm space-y-2 mb-3">
-                    <div className="flex justify-between items-center">
-                      <Badge variant="outline" className="bg-secondary">
-                        <Search className="h-3 w-3 mr-1" />
-                        Search Results ({
-                          results.searchResults.ids[0].length
-                        }{' '}
-                        found)
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => {
-                          const resultsText = results
-                            .searchResults!.ids[0].map(
-                              (id: string, i: number) =>
-                                `Document: ${results.searchResults!.metadatas?.[0]?.[i]?.name || id}\n${results.searchResults!.documents?.[0]?.[i] || 'No content preview available'}`,
-                            )
-                            .join('\n\n')
-                          copyToClipboard(resultsText)
-                        }}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {results.searchResults.ids[0].map(
-                        (id: string, i: number) => (
-                          <div
-                            key={id}
-                            className="p-2 bg-white rounded shadow-sm text-xs"
-                          >
-                            <div className="font-medium text-blue-600 mb-1">
-                              Document:{' '}
-                              {results.searchResults!.metadatas?.[0]?.[i]
-                                ?.name || id}
-                            </div>
-                            <div className="text-gray-700 mb-1">
-                              {results.searchResults!.documents?.[0]?.[i] ||
-                                'No content preview available'}
-                            </div>
-                            <div className="text-xs text-gray-500 flex justify-between">
-                              <span>ID: {id}</span>
-                              <span>
-                                Score:{' '}
-                                {(
-                                  1 -
-                                  (results.searchResults!.distances?.[0]?.[i] ||
-                                    0)
-                                ).toFixed(3)}
-                              </span>
-                            </div>
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Display AI Answer */}
-              {results?.type === 'ai' && results.aiAnswer && (
-                <div className="bg-secondary p-3 rounded-md text-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <Badge variant="outline" className="bg-secondary">
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      AI Answer
+            {/* Display Search Results */}
+            {results?.type === 'search' &&
+              results.searchResults &&
+              results.searchResults.ids &&
+              results.searchResults.ids[0] &&
+              results.searchResults.ids[0].length > 0 && (
+                <div className="bg-gradient-to-r from-secondary/30 to-secondary/10 p-4 rounded-xl border text-sm space-y-3 mb-4 shadow-soft">
+                  <div className="flex justify-between items-center">
+                    <Badge variant="outline" className="shadow-soft">
+                      <Search className="h-3 w-3 mr-1" />
+                      Search Results ({results.searchResults.ids[0].length}{' '}
+                      found)
                     </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
-                      onClick={() => copyToClipboard(results.aiAnswer!)}
+                      className="h-7 w-7 hover:bg-secondary/80"
+                      onClick={() => {
+                        const resultsText = results
+                          .searchResults!.ids[0].map(
+                            (id: string, i: number) =>
+                              `Document: ${results.searchResults!.metadatas?.[0]?.[i]?.name || id}\n${results.searchResults!.documents?.[0]?.[i] || 'No content preview available'}`,
+                          )
+                          .join('\n\n')
+                        copyToClipboard(resultsText)
+                      }}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
                   </div>
-                  <p className="text-xs">{results.aiAnswer}</p>
+                  <div className="space-y-3">
+                    {results.searchResults.ids[0].map(
+                      (id: string, i: number) => (
+                        <div
+                          key={id}
+                          className="p-3 bg-background rounded-lg shadow-soft border text-xs"
+                        >
+                          <div className="font-medium text-primary mb-2">
+                            Document:{' '}
+                            {results.searchResults!.metadatas?.[0]?.[i]?.name ||
+                              id}
+                          </div>
+                          <div className="text-foreground mb-2 leading-relaxed">
+                            {results.searchResults!.documents?.[0]?.[i] ||
+                              'No content preview available'}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex justify-between">
+                            <span>ID: {id}</span>
+                            <span className="font-medium">
+                              Relevance:{' '}
+                              {(
+                                1 -
+                                (results.searchResults!.distances?.[0]?.[i] ||
+                                  0)
+                              ).toFixed(3)}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* No Results Message */}
-              {results?.type === 'search' &&
-                results.searchResults &&
-                (!results.searchResults.ids ||
-                  !results.searchResults.ids[0] ||
-                  results.searchResults.ids[0].length === 0) &&
-                !isLoading &&
-                query && (
-                  <div className="text-gray-500 text-sm mb-3">
-                    No results found for "{query}". Try different search terms
-                    or ask a question.
-                  </div>
-                )}
-            </div>
+            {/* Display AI Answer */}
+            {results?.type === 'ai' && results.aiAnswer && (
+              <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
+                <div className="flex justify-between items-center mb-3">
+                  <Badge variant="outline" className="shadow-soft">
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    AI Analysis
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:bg-secondary/80"
+                    onClick={() => copyToClipboard(results.aiAnswer!)}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+                  {results.aiAnswer}
+                </div>
+              </div>
+            )}
+
+            {/* No Results Message */}
+            {results?.type === 'search' &&
+              results.searchResults &&
+              (!results.searchResults.ids ||
+                !results.searchResults.ids[0] ||
+                results.searchResults.ids[0].length === 0) &&
+              !isLoading &&
+              query && (
+                <div className="text-muted-foreground text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
+                  No results found for "
+                  <span className="font-medium">{query}</span>". Try different
+                  search terms or ask a question for AI analysis.
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>
@@ -758,7 +808,7 @@ export const AIActions = ({
         toggleListening={toggleListening}
         showTranscript={isListening || query ? query : undefined}
         isProcessing={isLoading}
-        isMobileOnly={true} /* Only show on mobile devices */
+        isMobileOnly={true}
       />
     </>
   )

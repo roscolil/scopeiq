@@ -117,51 +117,70 @@ const Projects = () => {
   }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Projects for {companyId && `(${companyId})`}
-          </h1>
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced Stripe-inspired gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
 
-          <div className="flex gap-2">
-            {/* <Button variant="outline" size="sm">
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
+      </div>
+
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 bg-clip-text">
+              Projects for {companyId && `(${companyId})`}
+            </h1>
+
+            <div className="flex gap-2">
+              {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
               Filter
             </Button> */}
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Project</DialogTitle>
-                </DialogHeader>
-                <ProjectForm onSubmit={handleCreateProject} />
-              </DialogContent>
-            </Dialog>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Project
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                  </DialogHeader>
+                  <ProjectForm onSubmit={handleCreateProject} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
-        </div>
 
-        {loading ? (
-          <div className="space-y-6">
-            <PageHeaderSkeleton />
-            <ProjectListSkeleton itemCount={6} />
-          </div>
-        ) : (
-          <ProjectList
-            projects={projects}
-            companyId={(companyId || 'default-company').toLowerCase()}
-            onCreateProject={() => setIsDialogOpen(true)}
-            onProjectDeleted={handleProjectDeleted}
-          />
-        )}
-      </div>
-    </Layout>
+          {loading ? (
+            <div className="space-y-6">
+              <PageHeaderSkeleton />
+              <ProjectListSkeleton itemCount={6} />
+            </div>
+          ) : (
+            <ProjectList
+              projects={projects}
+              companyId={(companyId || 'default-company').toLowerCase()}
+              onCreateProject={() => setIsDialogOpen(true)}
+              onProjectDeleted={handleProjectDeleted}
+            />
+          )}
+        </div>
+      </Layout>
+    </>
   )
 }
 

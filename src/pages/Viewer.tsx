@@ -396,165 +396,184 @@ const Viewer = () => {
   }
 
   return (
-    <Layout>
-      <div className="space-y-4">
-        <div className="flex items-center space-x-4 mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (companyId && projectId) {
-                navigate(
-                  routes.company.project.details(
-                    companyId,
-                    projectId,
-                    projectName,
-                  ),
-                )
-              } else if (companyId) {
-                navigate(routes.company.projects.list(companyId))
-              } else {
-                navigate('/')
-              }
-            }}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>
-              {projectName ? `Back to ${projectName}` : 'Back to Project'}
-            </span>
-          </Button>
-        </div>
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced Stripe-inspired gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
 
-        {/* Improve the document header with more details */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold truncate max-w-lg">
-              {document?.name || 'Document'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {companyName && projectName ? (
-                <>
-                  <span className="font-medium">{companyName}</span> /{' '}
-                  <span>{projectName}</span>
-                </>
-              ) : (
-                'Loading project details...'
-              )}
-            </p>
-            {document?.size && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Size:{' '}
-                {typeof document.size === 'number'
-                  ? `${Math.round(document.size / 1024)} KB`
-                  : document.size}
-                {document.type &&
-                  ` • Type: ${document.type.split('/')[1] || document.type}`}
-              </p>
-            )}
-          </div>
-
-          <div className="flex space-x-2 mt-4 md:mt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="flex items-center space-x-2"
-            >
-              <Download className="h-4 w-4" />
-              <span>Download</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="flex items-center space-x-2"
-            >
-              <Share2 className="h-4 w-4" />
-              <span>Share</span>
-            </Button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2 text-destructive hover:text-destructive"
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Delete</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete "{document?.name}"? This
-                    action will permanently remove the document from your
-                    project and cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? 'Deleting...' : 'Delete Document'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-
-        {/* Update the view toggle to include document type info */}
-        <div className="bg-muted rounded-md p-1 mb-6">
-          <div className="flex space-x-1">
-            <button
-              className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                viewMode === 'ai' ? 'bg-background shadow-sm' : ''
-              }`}
-              onClick={() => setViewMode('ai')}
-            >
-              <BrainCircuit className="h-4 w-4" />
-              <span>AI Analysis</span>
-            </button>
-            <button
-              className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                viewMode === 'document' ? 'bg-background shadow-sm' : ''
-              }`}
-              onClick={() => setViewMode('document')}
-            >
-              <FileText className="h-4 w-4" />
-              <span>
-                {document?.type?.includes('pdf')
-                  ? 'PDF Document'
-                  : document?.type?.includes('image')
-                    ? 'Image'
-                    : document?.type?.includes('text')
-                      ? 'Text Document'
-                      : 'Document'}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-0">
-          <DocumentViewer
-            documentId={document?.id || documentId}
-            projectId={resolvedProject?.id || projectId}
-            companyId={companyId}
-            viewMode={viewMode}
-            document={document} // Pass the resolved document data
-          />
-        </div>
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
       </div>
-    </Layout>
+
+      <Layout>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-4 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (companyId && projectId) {
+                  navigate(
+                    routes.company.project.details(
+                      companyId,
+                      projectId,
+                      projectName,
+                    ),
+                  )
+                } else if (companyId) {
+                  navigate(routes.company.projects.list(companyId))
+                } else {
+                  navigate('/')
+                }
+              }}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>
+                {projectName ? `Back to ${projectName}` : 'Back to Project'}
+              </span>
+            </Button>
+          </div>
+
+          {/* Improve the document header with more details */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold truncate max-w-lg">
+                {document?.name || 'Document'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {companyName && projectName ? (
+                  <>
+                    <span className="font-medium">{companyName}</span> /{' '}
+                    <span>{projectName}</span>
+                  </>
+                ) : (
+                  'Loading project details...'
+                )}
+              </p>
+              {document?.size && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Size:{' '}
+                  {typeof document.size === 'number'
+                    ? `${Math.round(document.size / 1024)} KB`
+                    : document.size}
+                  {document.type &&
+                    ` • Type: ${document.type.split('/')[1] || document.type}`}
+                </p>
+              )}
+            </div>
+
+            <div className="flex space-x-2 mt-4 md:mt-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="flex items-center space-x-2"
+              >
+                <Download className="h-4 w-4" />
+                <span>Download</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="flex items-center space-x-2"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Share</span>
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2 text-destructive hover:text-destructive"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Document</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{document?.name}"? This
+                      action will permanently remove the document from your
+                      project and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete Document'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+
+          {/* Update the view toggle to include document type info */}
+          <div className="bg-muted rounded-md p-1 mb-6">
+            <div className="flex space-x-1">
+              <button
+                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
+                  viewMode === 'ai' ? 'bg-background shadow-sm' : ''
+                }`}
+                onClick={() => setViewMode('ai')}
+              >
+                <BrainCircuit className="h-4 w-4" />
+                <span>AI Analysis</span>
+              </button>
+              <button
+                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
+                  viewMode === 'document' ? 'bg-background shadow-sm' : ''
+                }`}
+                onClick={() => setViewMode('document')}
+              >
+                <FileText className="h-4 w-4" />
+                <span>
+                  {document?.type?.includes('pdf')
+                    ? 'PDF Document'
+                    : document?.type?.includes('image')
+                      ? 'Image'
+                      : document?.type?.includes('text')
+                        ? 'Text Document'
+                        : 'Document'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-0">
+            <DocumentViewer
+              documentId={document?.id || documentId}
+              projectId={resolvedProject?.id || projectId}
+              companyId={companyId}
+              viewMode={viewMode}
+              document={document} // Pass the resolved document data
+            />
+          </div>
+        </div>
+      </Layout>
+    </>
   )
 }
 

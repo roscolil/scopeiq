@@ -84,158 +84,179 @@ const Pricing = () => {
   }
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Simple, transparent pricing
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Choose the perfect plan for your construction document management
-            needs. All plans include a 14-day free trial.
-          </p>
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced Stripe-inspired gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <span
-              className={
-                billingCycle === 'monthly'
-                  ? 'font-medium'
-                  : 'text-muted-foreground'
-              }
-            >
-              Monthly
-            </span>
-            <button
-              onClick={() =>
-                setBillingCycle(
-                  billingCycle === 'monthly' ? 'yearly' : 'monthly',
-                )
-              }
-              className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              title="Toggle billing cycle"
-              aria-label="Toggle billing cycle"
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  billingCycle === 'yearly' ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span
-              className={
-                billingCycle === 'yearly'
-                  ? 'font-medium'
-                  : 'text-muted-foreground'
-              }
-            >
-              Yearly
-              <Badge variant="secondary" className="ml-2">
-                Save 20%
-              </Badge>
-            </span>
-          </div>
-        </div>
-
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {pricingPlans.map(plan => (
-            <Card
-              key={plan.name}
-              className={`relative ${
-                plan.popular
-                  ? 'border-primary shadow-lg scale-105'
-                  : 'border-border'
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground px-3 py-1">
-                    <Star className="w-4 h-4 mr-1" />
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <CardDescription className="mt-2">
-                  {plan.description}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">
-                    {billingCycle === 'yearly' && plan.price !== 'Custom'
-                      ? `$${Math.round(parseInt(plan.price.replace('$', '')) * 0.8)}`
-                      : plan.price}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {plan.period &&
-                      (billingCycle === 'yearly' ? '/year' : plan.period)}
-                  </span>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <ul className="space-y-3">
-                  {plan.features.map(feature => (
-                    <li key={feature} className="flex items-center">
-                      <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleGetStarted(plan.name)}
-                >
-                  {plan.buttonText}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mt-20 text-center">
-          <h2 className="text-3xl font-bold mb-8">
-            Frequently Asked Questions
-          </h2>
-          <div className="max-w-3xl mx-auto text-left space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">
-                Can I change plans anytime?
-              </h3>
-              <p className="text-muted-foreground">
-                Yes, you can upgrade or downgrade your plan at any time. Changes
-                will be prorated on your next billing cycle.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">
-                What happens during the free trial?
-              </h3>
-              <p className="text-muted-foreground">
-                You get full access to all features of your chosen plan for 14
-                days. No credit card required to start.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Is my data secure?</h3>
-              <p className="text-muted-foreground">
-                Absolutely. We use enterprise-grade security with encryption at
-                rest and in transit. Your data is regularly backed up and
-                secure.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
       </div>
-    </Layout>
+
+      <Layout>
+        <div className="container mx-auto px-4 py-16">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl font-bold tracking-tight mb-4">
+              Simple, transparent pricing
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Choose the perfect plan for your construction document management
+              needs. All plans include a 14-day free trial.
+            </p>
+
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <span
+                className={
+                  billingCycle === 'monthly'
+                    ? 'font-medium'
+                    : 'text-muted-foreground'
+                }
+              >
+                Monthly
+              </span>
+              <button
+                onClick={() =>
+                  setBillingCycle(
+                    billingCycle === 'monthly' ? 'yearly' : 'monthly',
+                  )
+                }
+                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                title="Toggle billing cycle"
+                aria-label="Toggle billing cycle"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    billingCycle === 'yearly'
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span
+                className={
+                  billingCycle === 'yearly'
+                    ? 'font-medium'
+                    : 'text-muted-foreground'
+                }
+              >
+                Yearly
+                <Badge variant="secondary" className="ml-2">
+                  Save 20%
+                </Badge>
+              </span>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {pricingPlans.map(plan => (
+              <Card
+                key={plan.name}
+                className={`relative ${
+                  plan.popular
+                    ? 'border-primary shadow-lg scale-105'
+                    : 'border-border'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground px-3 py-1">
+                      <Star className="w-4 h-4 mr-1" />
+                      Most Popular
+                    </Badge>
+                  </div>
+                )}
+
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <CardDescription className="mt-2">
+                    {plan.description}
+                  </CardDescription>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold">
+                      {billingCycle === 'yearly' && plan.price !== 'Custom'
+                        ? `$${Math.round(parseInt(plan.price.replace('$', '')) * 0.8)}`
+                        : plan.price}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {plan.period &&
+                        (billingCycle === 'yearly' ? '/year' : plan.period)}
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <ul className="space-y-3">
+                    {plan.features.map(feature => (
+                      <li key={feature} className="flex items-center">
+                        <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+
+                <CardFooter>
+                  <Button
+                    className="w-full"
+                    variant={plan.popular ? 'default' : 'outline'}
+                    onClick={() => handleGetStarted(plan.name)}
+                  >
+                    {plan.buttonText}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {/* FAQ Section */}
+          <div className="mt-20 text-center">
+            <h2 className="text-3xl font-bold mb-8">
+              Frequently Asked Questions
+            </h2>
+            <div className="max-w-3xl mx-auto text-left space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Can I change plans anytime?
+                </h3>
+                <p className="text-muted-foreground">
+                  Yes, you can upgrade or downgrade your plan at any time.
+                  Changes will be prorated on your next billing cycle.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">
+                  What happens during the free trial?
+                </h3>
+                <p className="text-muted-foreground">
+                  You get full access to all features of your chosen plan for 14
+                  days. No credit card required to start.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">
+                  Is my data secure?
+                </h3>
+                <p className="text-muted-foreground">
+                  Absolutely. We use enterprise-grade security with encryption
+                  at rest and in transit. Your data is regularly backed up and
+                  secure.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    </>
   )
 }
 
