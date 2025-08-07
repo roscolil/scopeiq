@@ -195,7 +195,7 @@ const ProfileSettings = () => {
 
   // Redirect to sign in if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/signin" />
+    return <Navigate to="/auth/signin" />
   }
 
   const onProfileSubmit = async (data: ProfileFormValues) => {

@@ -348,7 +348,7 @@ const ProjectDetails = () => {
         <div className="space-y-4 md:space-y-6">
           <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={() =>
                 navigate(routes.company.projects.list(companyId || ''))

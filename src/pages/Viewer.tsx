@@ -419,7 +419,7 @@ const Viewer = () => {
         <div className="space-y-4">
           <div className="flex items-center space-x-4 mb-4">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => {
                 if (companyId && projectId) {
@@ -448,7 +448,7 @@ const Viewer = () => {
           {/* Improve the document header with more details */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold truncate max-w-lg">
+              <h1 className="text-2xl font-bold truncate max-w-lg text-white">
                 {document?.name || 'Document'}
               </h1>
               <p className="text-sm text-gray-400">
@@ -532,11 +532,13 @@ const Viewer = () => {
           </div>
 
           {/* Update the view toggle to include document type info */}
-          <div className="bg-muted rounded-md p-1 mb-6">
-            <div className="flex space-x-1">
+          <div className="inline-flex h-12 items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm p-1.5 text-slate-600 border border-white/50 shadow-lg mb-6">
+            <div className="flex space-x-1 w-full">
               <button
-                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                  viewMode === 'ai' ? 'bg-background shadow-sm' : ''
+                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
+                  viewMode === 'ai'
+                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
+                    : 'hover:bg-white/60 hover:text-slate-800'
                 }`}
                 onClick={() => setViewMode('ai')}
               >
@@ -544,8 +546,10 @@ const Viewer = () => {
                 <span>AI Analysis</span>
               </button>
               <button
-                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                  viewMode === 'document' ? 'bg-background shadow-sm' : ''
+                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
+                  viewMode === 'document'
+                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
+                    : 'hover:bg-white/60 hover:text-slate-800'
                 }`}
                 onClick={() => setViewMode('document')}
               >

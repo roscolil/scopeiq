@@ -41,7 +41,7 @@ export const Navbar = () => {
   const handleSignOut = async () => {
     setShowLogoutModal(false)
     await authSignOut() // Use the auth context sign out method
-    navigate('/signin')
+    navigate('/auth/signin')
   }
 
   const menuItems = [
@@ -165,9 +165,9 @@ export const Navbar = () => {
                   </div>
                 ) : (
                   <Link
-                    to="/signin"
+                    to="/auth/signin"
                     className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isActive('/signin')
+                      isActive('/auth/signin')
                         ? 'bg-emerald-500 text-white shadow-medium'
                         : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
                     }`}
@@ -208,7 +208,7 @@ export const Navbar = () => {
               className="hidden md:flex font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white border-0 shadow-soft"
               asChild
             >
-              <Link to="/signin">
+              <Link to="/auth/signin">
                 <LogIn className="h-4 w-4 mr-2" />
                 Sign In
               </Link>

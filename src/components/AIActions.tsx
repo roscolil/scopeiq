@@ -630,9 +630,9 @@ export const AIActions = ({
                   Unlock insights with intelligent search & AI analysis
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-2xs">
+                  {/* <Badge variant="secondary" className="text-2xs">
                     Search or Ask
-                  </Badge>
+                  </Badge> */}
                   <Badge variant="outline" className="text-2xs">
                     {documentId ? 'Document scope' : 'Project scope'}
                   </Badge>
@@ -697,7 +697,7 @@ export const AIActions = ({
                     ) : (
                       <>
                         <Search className="w-4 h-4" />
-                        <span>Search 🔍</span>
+                        <span>Search</span>
                       </>
                     )}
                   </>

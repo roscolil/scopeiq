@@ -211,7 +211,7 @@ const SignUp = () => {
 
       <div className="mt-4 text-center text-sm">
         <span className="text-gray-400">Already have an account?</span>{' '}
-        <Link to="/signin" className="text-primary hover:underline">
+        <Link to="/auth/signin" className="text-primary hover:underline">
           Sign in
         </Link>
       </div>

@@ -101,11 +101,11 @@
       rgb(20, 40, 90) 75%,
       rgb(8, 12, 25) 100%
     );
-    min-height: 100vh;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-variation-settings: normal;
+    min-height: 100vh;
     text-rendering: optimizeLegibility;
   }
 

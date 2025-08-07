@@ -190,10 +190,10 @@ const Dashboard = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full"
+                className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors text-white hover:text-emerald-400"
                 onClick={() => navigate(`/${companyId.toLowerCase()}/settings`)}
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Button>
               {/* <Avatar>

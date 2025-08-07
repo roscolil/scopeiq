@@ -123,7 +123,7 @@ const Index = () => {
                   <Button
                     size="lg"
                     className="group relative px-12 py-6 h-16 text-lg font-bold overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-blue-600 to-accent hover:shadow-2xl hover:shadow-primary/25 transition-all duration-500 transform hover:scale-105 active:scale-95 border-0"
-                    onClick={() => navigate('/signin')}
+                    onClick={() => navigate('/auth/signin')}
                   >
                     <div className="absolute inset-0 w-0 bg-white/20 transition-all duration-500 ease-out group-hover:w-full"></div>
                     <div className="relative flex items-center gap-4">
