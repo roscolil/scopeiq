@@ -348,11 +348,12 @@ const ProjectDetails = () => {
         <div className="space-y-4 md:space-y-6">
           <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() =>
                 navigate(routes.company.projects.list(companyId || ''))
               }
+              className="hover:scale-105 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card'
 import {
   FileText,
-  BrainCircuit,
+  Brain,
   Search,
   Database,
   ArrowRight,
@@ -94,7 +94,7 @@ const Index = () => {
               {/* Enhanced badge */}
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-semibold mb-12 shadow-xl animate-fade-in">
                 <div className="p-1.5 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-full">
-                  <BrainCircuit className="h-4 w-4 text-emerald-400" />
+                  <Brain className="h-4 w-4 text-emerald-400" />
                 </div>
                 <span className="text-gray-200">
                   AI-Powered Document Intelligence
