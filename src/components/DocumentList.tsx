@@ -161,7 +161,7 @@ export const DocumentList = ({
       {documents.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground">No documents found</p>
+            <p className="text-gray-400">No documents found</p>
           </CardContent>
         </Card>
       ) : (

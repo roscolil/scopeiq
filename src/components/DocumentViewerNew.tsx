@@ -61,9 +61,7 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
   if (isLoading) {
     return (
       <div className="bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
-        <div className="text-muted-foreground italic">
-          Loading text content...
-        </div>
+        <div className="text-gray-400 italic">Loading text content...</div>
       </div>
     )
   }
@@ -79,7 +77,7 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
   return (
     <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm font-mono">
       {textContent || (
-        <div className="text-muted-foreground italic">
+        <div className="text-gray-400 italic">
           This text file appears to be empty.
         </div>
       )}
@@ -274,7 +272,7 @@ export const DocumentViewer = ({
         <p className="text-lg font-medium mb-2 text-red-600">
           Error Loading Document
         </p>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-gray-400">{error}</p>
       </div>
     )
   }
@@ -282,9 +280,9 @@ export const DocumentViewer = ({
   if (!document) {
     return (
       <div className="text-center p-8">
-        <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+        <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
         <p className="text-lg font-medium mb-2">Document Not Found</p>
-        <p className="text-muted-foreground">
+        <p className="text-gray-400">
           The requested document could not be found.
         </p>
       </div>
@@ -314,17 +312,17 @@ export const DocumentViewer = ({
               <CardContent className="pt-0">
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <div className="text-muted-foreground mb-1">File Name</div>
+                    <div className="text-gray-400 mb-1">File Name</div>
                     <div className="font-medium">{document.name}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">File Size</div>
+                    <div className="text-gray-400 mb-1">File Size</div>
                     <div className="font-medium">
                       {formatFileSize(document.size)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">Date</div>
+                    <div className="text-gray-400 mb-1">Date</div>
                     <div className="font-medium">
                       {document.createdAt
                         ? formatDate(document.createdAt)
@@ -332,7 +330,7 @@ export const DocumentViewer = ({
                     </div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">Status</div>
+                    <div className="text-gray-400 mb-1">Status</div>
                     <div className="font-medium capitalize">
                       {document.status}
                     </div>

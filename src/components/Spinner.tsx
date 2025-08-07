@@ -63,9 +63,7 @@ export const Spinner = ({
         </span>
       </div>
       {text && (
-        <p className={`text-muted-foreground ${textSizes[size]} text-center`}>
-          {text}
-        </p>
+        <p className={`text-gray-400 ${textSizes[size]} text-center`}>{text}</p>
       )}
     </div>
   )

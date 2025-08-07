@@ -12,14 +12,14 @@ export const Footer = () => {
           {/* Brand */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <FilePlus className="h-5 w-5 text-primary" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full opacity-80" />
+              <FilePlus className="h-5 w-5 text-emerald-400" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                 ScopeIQ
               </span>
-              <span className="text-xs text-slate-600 font-medium">
+              <span className="text-xs text-gray-400 font-medium">
                 © {currentYear}
               </span>
             </div>
@@ -29,19 +29,19 @@ export const Footer = () => {
           <div className="flex items-center gap-8">
             <Link
               to="/terms"
-              className="text-sm text-slate-600 hover:text-slate-800 transition-colors duration-200 font-medium"
+              className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
             >
               Terms
             </Link>
             <Link
               to="/privacy"
-              className="text-sm text-slate-600 hover:text-slate-800 transition-colors duration-200 font-medium"
+              className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
             >
               Privacy
             </Link>
             <Link
               to="/contact"
-              className="text-sm text-slate-600 hover:text-slate-800 transition-colors duration-200 font-medium"
+              className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
             >
               Contact
             </Link>

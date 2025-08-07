@@ -556,14 +556,14 @@ export const AIActions = ({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground truncate max-w-[200px] font-medium">
+                <span className="text-xs text-gray-400 truncate max-w-[200px] font-medium">
                   {document.name}
                 </span>
                 {getStatusBadge(document.status)}
               </div>
               {document.status === 'processing' && (
                 <div className="space-y-3 mt-3">
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-gray-400">
                     Document is being processed for AI analysis. This usually
                     takes 1-2 minutes.
                   </div>
@@ -615,13 +615,20 @@ export const AIActions = ({
 
           <div className="space-y-4">
             <div className="flex items-center mb-3 mt-8">
-              <div className="p-1.5 bg-primary/10 rounded-lg mr-3">
-                <BrainCircuit className="h-4 w-4 text-primary" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 blur-sm rounded-lg"></div>
+                <div className="relative p-1.5 bg-primary/10 rounded-lg mr-3">
+                  <BrainCircuit className="h-4 w-4 text-primary" />
+                </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   Smart AI Query
+                  <span className="text-xs text-primary animate-pulse">✨</span>
                 </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unlock insights with intelligent search & AI analysis
+                </p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="secondary" className="text-2xs">
                     Search or Ask
@@ -633,18 +640,25 @@ export const AIActions = ({
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground mb-4 bg-muted/30 p-3 rounded-lg border">
-              <span className="font-medium">💡 Tip:</span> Enter keywords to
-              search this {documentId ? 'document' : 'project'}, or ask a
-              natural language question for AI analysis.
+            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
+              <div className="flex items-start gap-2">
+                <span className="text-sm">🚀</span>
+                <div>
+                  <span className="font-medium text-foreground">Pro Tip:</span>{' '}
+                  Ask questions like "What are the key safety requirements?" or
+                  search for specific terms like "concrete specifications" to
+                  get instant, intelligent results from your{' '}
+                  {documentId ? 'document' : 'project'}.
+                </div>
+              </div>
             </div>
 
             <div className="mb-4">
               <Textarea
-                placeholder={`Search or ask questions about this ${documentId ? 'document' : 'project'}...`}
+                placeholder={`💬 Ask anything about this ${documentId ? 'document' : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200"
+                className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
@@ -665,25 +679,25 @@ export const AIActions = ({
                 disabled={
                   isLoading || !query.trim() || document?.status !== 'processed'
                 }
-                className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium"
+                className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-200"
                 size="default"
               >
                 {isLoading ? (
                   <>
                     <div className="spinner" />
-                    Processing...
+                    <span className="animate-pulse">Analyzing...</span>
                   </>
                 ) : (
                   <>
                     {isQuestion(query) ? (
                       <>
                         <MessageSquare className="w-4 h-4" />
-                        Ask AI
+                        <span>Ask AI ✨</span>
                       </>
                     ) : (
                       <>
                         <Search className="w-4 h-4" />
-                        Search
+                        <span>Search 🔍</span>
                       </>
                     )}
                   </>
@@ -743,7 +757,7 @@ export const AIActions = ({
                             {results.searchResults!.documents?.[0]?.[i] ||
                               'No content preview available'}
                           </div>
-                          <div className="text-xs text-muted-foreground flex justify-between">
+                          <div className="text-xs text-gray-400 flex justify-between">
                             <span>ID: {id}</span>
                             <span className="font-medium">
                               Relevance:{' '}
@@ -792,7 +806,7 @@ export const AIActions = ({
                 results.searchResults.ids[0].length === 0) &&
               !isLoading &&
               query && (
-                <div className="text-muted-foreground text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
+                <div className="text-gray-400 text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
                   No results found for "
                   <span className="font-medium">{query}</span>". Try different
                   search terms or ask a question for AI analysis.

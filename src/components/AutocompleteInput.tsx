@@ -47,7 +47,7 @@ export const AutocompleteInput = forwardRef<
     return (
       <div className="flex justify-center items-center py-4">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        <span className="text-sm text-muted-foreground">Loading maps...</span>
+        <span className="text-sm text-gray-400">Loading maps...</span>
       </div>
     )
 

@@ -324,8 +324,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   }
 
   const getFileIcon = () => {
-    if (!selectedFile)
-      return <Upload className="h-10 w-10 text-muted-foreground" />
+    if (!selectedFile) return <Upload className="h-10 w-10 text-gray-400" />
     if (selectedFile.type.includes('pdf')) {
       return <FileText className="h-10 w-10 text-red-500" />
     } else if (selectedFile.type.includes('image')) {
@@ -360,7 +359,7 @@ export const FileUploader = (props: FileUploaderProps) => {
           {selectedFile ? (
             <div className="flex flex-col items-center text-center">
               <p className="text-sm font-medium">{selectedFile.name}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-400">
                 {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
               </p>
               <div className="flex gap-2 mt-4">
@@ -384,7 +383,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                 <p className="text-sm font-medium">
                   Drag & drop your document here
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Support for PDF, DOCX, TXT, JPG, PNG (max 50MB)
                 </p>
               </div>
@@ -411,16 +410,16 @@ export const FileUploader = (props: FileUploaderProps) => {
             <span className="text-sm font-medium">
               {getUploadStatusText(uploadProgress)}
             </span>
-            <span className="text-sm text-muted-foreground font-mono">
+            <span className="text-sm text-gray-400 font-mono">
               {uploadProgress}%
             </span>
           </div>
           <Progress value={uploadProgress} className="w-full h-2" />
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-gray-400">
             {getUploadPhaseText(uploadProgress)}
           </div>
           {selectedFile && (
-            <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <div className="flex justify-between items-center text-xs text-gray-400">
               <div className="flex items-center gap-2">
                 <span className="truncate max-w-[200px]">
                   {selectedFile.name}

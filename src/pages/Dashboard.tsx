@@ -153,19 +153,24 @@ const Dashboard = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced Stripe-inspired gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
+        {/* Enhanced darker and more vivid blue gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-blue-950/95 to-indigo-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-blue-950/80 to-violet-950/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-blue-950/60 via-indigo-950/80 to-blue-950/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/15 to-indigo-400/25"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-blue-600/20"></div>
 
         {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-indigo-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-blue-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-indigo-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-indigo-500/6 to-blue-500/8 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-blue-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
+
+        {/* Extra floating orbs */}
+        <div className="absolute top-1/3 left-1/5 w-32 h-32 bg-gradient-to-tr from-blue-500/10 to-cyan-500/12 rounded-full blur-lg opacity-70"></div>
+        <div className="absolute bottom-1/3 right-1/5 w-40 h-40 bg-gradient-to-bl from-cyan-500/12 to-blue-500/15 rounded-full blur-lg opacity-60"></div>
       </div>
 
       <Layout>
@@ -173,10 +178,10 @@ const Dashboard = () => {
           {/* Dashboard Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 bg-clip-text">
+              <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
                 {companyId} Dashboard
               </h1>
-              <p className="text-slate-600 mt-2">
+              <p className="text-gray-400 mt-2">
                 Welcome back! Here's an overview of your projects and
                 activities.
               </p>
@@ -202,47 +207,49 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-slate-600">
                   Active Projects
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{projects.length}</div>
-                <p className="text-xs text-muted-foreground">Total projects</p>
+                <div className="text-2xl font-bold text-slate-900">
+                  {projects.length}
+                </div>
+                <p className="text-xs text-slate-600">Total projects</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-slate-600">
                   Documents
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{documents.length}</div>
-                <p className="text-xs text-muted-foreground">Total documents</p>
+                <div className="text-2xl font-bold text-slate-900">
+                  {documents.length}
+                </div>
+                <p className="text-xs text-slate-600">Total documents</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-slate-600">
                   Team Members
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-muted-foreground">
-                  +1 from last month
-                </p>
+                <div className="text-2xl font-bold text-slate-900">8</div>
+                <p className="text-xs text-slate-600">+1 from last month</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-slate-600">
                   Recent Documents
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-slate-900">
                   {
                     documents.filter(doc => {
                       const docDate = new Date(doc.createdAt || '')
@@ -252,7 +259,7 @@ const Dashboard = () => {
                     }).length
                   }
                 </div>
-                <p className="text-xs text-muted-foreground">This week</p>
+                <p className="text-xs text-slate-600">This week</p>
               </CardContent>
             </Card>
           </div>
@@ -289,15 +296,29 @@ const Dashboard = () => {
                       <ProjectRowsSkeleton itemCount={3} />
                     ) : projects.length > 0 ? (
                       projects.slice(0, 3).map(project => (
-                        <div key={project.id} className="space-y-2">
+                        <div
+                          key={project.id}
+                          className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
+                          onClick={() =>
+                            navigate(
+                              routes.company.project.details(
+                                companyId.toLowerCase(),
+                                project.id,
+                                project.name,
+                              ),
+                            )
+                          }
+                        >
                           <div className="flex justify-between items-center">
                             <div>
-                              <div className="font-medium">{project.name}</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="font-medium text-slate-800">
+                                {project.name}
+                              </div>
+                              <div className="text-xs text-slate-600">
                                 {project.documents?.length || 0} documents
                               </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-slate-600">
                               {project.createdAt
                                 ? new Date(
                                     project.createdAt,
@@ -312,7 +333,8 @@ const Dashboard = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
+                              onClick={e => {
+                                e.stopPropagation()
                                 navigate(
                                   routes.company.project.details(
                                     companyId.toLowerCase(),
@@ -320,7 +342,7 @@ const Dashboard = () => {
                                     project.name,
                                   ),
                                 )
-                              }
+                              }}
                             >
                               <Eye className="h-3 w-3 mr-1" />
                               View
@@ -330,10 +352,8 @@ const Dashboard = () => {
                       ))
                     ) : (
                       <div className="text-center py-8">
-                        <Folders className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          No projects yet
-                        </p>
+                        <Folders className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-400">No projects yet</p>
                       </div>
                     )}
                   </CardContent>
@@ -365,7 +385,7 @@ const Dashboard = () => {
                         >
                           <div className="space-y-1">
                             <div className="font-medium">{task.title}</div>
-                            <div className="flex items-center text-xs text-muted-foreground">
+                            <div className="flex items-center text-xs text-gray-400">
                               <Clock className="h-3 w-3 mr-1" /> {task.date}
                             </div>
                           </div>
@@ -456,7 +476,7 @@ const Dashboard = () => {
                             </CardDescription>
                           </CardHeader>
                           <CardContent className="pb-2">
-                            <div className="flex items-center text-sm text-muted-foreground">
+                            <div className="flex items-center text-sm text-gray-400">
                               <FileText className="h-4 w-4 mr-1" />
                               <span>
                                 {project.documents?.length || 0}{' '}
@@ -465,7 +485,7 @@ const Dashboard = () => {
                                   : 'documents'}
                               </span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
+                            <div className="text-xs text-gray-400 mt-1">
                               Created:{' '}
                               {project.createdAt
                                 ? new Date(
@@ -497,11 +517,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Folders className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-lg font-medium mb-2">
                         No projects yet
                       </p>
-                      <p className="text-muted-foreground mb-4">
+                      <p className="text-gray-400 mb-4">
                         Create your first project to get started.
                       </p>
                       <Button
@@ -572,7 +592,7 @@ const Dashboard = () => {
                               </div>
                             </CardHeader>
                             <CardContent className="pb-2">
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <div className="flex items-center justify-between text-xs text-gray-400">
                                 <span>
                                   {typeof document.size === 'number'
                                     ? `${Math.round(document.size / 1024)} KB`
@@ -582,7 +602,7 @@ const Dashboard = () => {
                                   {document.status}
                                 </Badge>
                               </div>
-                              <div className="text-xs text-muted-foreground mt-1">
+                              <div className="text-xs text-gray-400 mt-1">
                                 {document.createdAt
                                   ? new Date(
                                       document.createdAt,
@@ -627,11 +647,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                       <p className="text-lg font-medium mb-2">
                         No documents yet
                       </p>
-                      <p className="text-muted-foreground mb-4">
+                      <p className="text-gray-400 mb-4">
                         Upload documents to your projects to see them here.
                       </p>
                       <Button

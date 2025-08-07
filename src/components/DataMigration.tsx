@@ -327,7 +327,7 @@ export const DataMigration: React.FC = () => {
                 <div>
                   <h3 className="font-semibold">S3 Projects</h3>
                   <p className="text-2xl font-bold">{s3Projects.length}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-400">
                     {s3Projects.reduce(
                       (sum, p) => sum + (p.documents?.length || 0),
                       0,
@@ -335,7 +335,7 @@ export const DataMigration: React.FC = () => {
                     documents
                   </p>
                   {detailedScanResults && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Across {detailedScanResults.companies.length} companies
                     </p>
                   )}
@@ -349,9 +349,7 @@ export const DataMigration: React.FC = () => {
                 <div>
                   <h3 className="font-semibold">Database Projects</h3>
                   <p className="text-2xl font-bold">{dbProjects.length}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Already migrated
-                  </p>
+                  <p className="text-sm text-gray-400">Already migrated</p>
                 </div>
               </div>
             </Card>
@@ -362,7 +360,7 @@ export const DataMigration: React.FC = () => {
             <Card className="p-4">
               <h4 className="font-semibold mb-2">📊 S3 Scan Details</h4>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-400">
                   Found projects in {detailedScanResults.companies.length}{' '}
                   companies:
                 </p>
@@ -471,25 +469,25 @@ export const DataMigration: React.FC = () => {
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
                   <div className="text-lg font-bold">{stats.total}</div>
-                  <div className="text-sm text-muted-foreground">Total</div>
+                  <div className="text-sm text-gray-400">Total</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-green-600">
                     {stats.migrated}
                   </div>
-                  <div className="text-sm text-muted-foreground">Migrated</div>
+                  <div className="text-sm text-gray-400">Migrated</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-yellow-600">
                     {stats.skipped}
                   </div>
-                  <div className="text-sm text-muted-foreground">Skipped</div>
+                  <div className="text-sm text-gray-400">Skipped</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-red-600">
                     {stats.errors}
                   </div>
-                  <div className="text-sm text-muted-foreground">Errors</div>
+                  <div className="text-sm text-gray-400">Errors</div>
                 </div>
               </div>
             </div>

@@ -73,13 +73,13 @@ export const Navbar = () => {
         <div className="flex items-center gap-8">
           <Link
             to="/"
-            className="font-bold text-xl flex items-center gap-3 text-slate-800 hover:text-primary transition-colors"
+            className="font-bold text-xl flex items-center gap-3 text-white hover:text-emerald-400 transition-colors"
           >
             <div className="relative">
-              <FilePlus className="h-6 w-6 text-primary" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full opacity-80" />
+              <FilePlus className="h-6 w-6 text-emerald-400" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
             </div>
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
               ScopeIQ
             </span>
           </Link>
@@ -92,8 +92,8 @@ export const Navbar = () => {
                   to={item.path}
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive(item.path)
-                      ? 'text-primary bg-white/20 shadow-soft backdrop-blur-sm'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-white/10'
+                      ? 'text-emerald-400 bg-white/20 shadow-soft backdrop-blur-sm'
+                      : 'text-gray-200 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {item.name}
@@ -109,7 +109,7 @@ export const Navbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden h-10 w-10"
+                className="md:hidden h-10 w-10 text-white hover:text-emerald-400 hover:bg-white/10"
               >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
@@ -117,7 +117,7 @@ export const Navbar = () => {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-[280px] sm:w-[320px] bg-white/95 backdrop-blur-md border-white/20"
+              className="w-[280px] sm:w-[320px] bg-black/90 backdrop-blur-md border-white/20"
             >
               <nav className="flex flex-col gap-2 mt-8">
                 {isAuthenticated &&
@@ -127,8 +127,8 @@ export const Navbar = () => {
                       to={item.path}
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(item.path)
-                          ? 'bg-primary text-white shadow-medium'
-                          : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
+                          ? 'bg-emerald-500 text-white shadow-medium'
+                          : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
                       }`}
                     >
                       {item.icon}
@@ -137,7 +137,7 @@ export const Navbar = () => {
                   ))}
 
                 {isAuthenticated ? (
-                  <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="mt-4 pt-4 border-t border-gray-600">
                     <Link
                       to={
                         companyId
@@ -147,8 +147,8 @@ export const Navbar = () => {
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(`/${companyId?.toLowerCase()}/settings`) ||
                         isActive('/settings')
-                          ? 'bg-primary/10 text-primary shadow-soft backdrop-blur-sm'
-                          : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
+                          ? 'bg-emerald-500/20 text-emerald-300 shadow-soft backdrop-blur-sm'
+                          : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
                       }`}
                     >
                       <Settings className="w-5 h-5 mr-3" />
@@ -156,7 +156,7 @@ export const Navbar = () => {
                     </Link>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start mt-2 text-slate-800 hover:text-red-600 hover:bg-red-50"
+                      className="w-full justify-start mt-2 text-gray-200 hover:text-red-300 hover:bg-red-500/20"
                       onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="w-5 h-5 mr-3" />
@@ -168,8 +168,8 @@ export const Navbar = () => {
                     to="/signin"
                     className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive('/signin')
-                        ? 'bg-primary text-white shadow-medium'
-                        : 'text-slate-800 hover:text-slate-900 hover:bg-primary/10 hover:text-primary'
+                        ? 'bg-emerald-500 text-white shadow-medium'
+                        : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
                     }`}
                   >
                     <LogIn className="w-5 h-5 mr-3" />
@@ -188,7 +188,7 @@ export const Navbar = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors"
+                      className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors text-white hover:text-emerald-400"
                       onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="h-4 w-4" />
@@ -205,7 +205,7 @@ export const Navbar = () => {
             <Button
               variant="default"
               size="sm"
-              className="hidden md:flex font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-soft"
+              className="hidden md:flex font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white border-0 shadow-soft"
               asChild
             >
               <Link to="/signin">
@@ -224,7 +224,7 @@ export const Navbar = () => {
               Sign out
             </DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground">
+          <p className="text-gray-400">
             Are you sure you want to sign out of your account?
           </p>
           <DialogFooter className="gap-2 sm:gap-0">

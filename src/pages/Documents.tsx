@@ -320,7 +320,7 @@ const Documents = () => {
             />
           ) : (
             <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-              <p className="text-muted-foreground mb-4">
+              <p className="text-gray-400 mb-4">
                 No documents in this project yet
               </p>
               <Button onClick={() => setIsUploadDialogOpen(true)}>
@@ -338,19 +338,20 @@ const Documents = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced Stripe-inspired gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
+        {/* Enhanced darker and more vivid gradient background layers with more variation */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
 
         {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-slate-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-slate-500/6 to-violet-500/8 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-emerald-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
       </div>
 
       <Layout>
@@ -371,7 +372,7 @@ const Documents = () => {
           </div>
 
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
               All Documents
             </h1>
           </div>
@@ -392,15 +393,15 @@ const Documents = () => {
                     <div key={project.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-4">
                         <div>
-                          <h3 className="text-lg font-semibold">
+                          <h3 className="text-lg font-semibold text-white">
                             {project.name}
                           </h3>
                           {project.description && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-gray-400">
                               {project.description}
                             </p>
                           )}
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-gray-400">
                             {project.documents.length} document
                             {project.documents.length !== 1 ? 's' : ''}
                           </p>
@@ -432,7 +433,7 @@ const Documents = () => {
                         />
                       ) : (
                         <div className="text-center p-4 border rounded bg-secondary/10">
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-gray-400">
                             No documents in this project yet
                           </p>
                         </div>
@@ -442,9 +443,7 @@ const Documents = () => {
                 </div>
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-muted-foreground mb-4">
-                    No projects found
-                  </p>
+                  <p className="text-gray-400 mb-4">No projects found</p>
                   <Button
                     onClick={() =>
                       navigate(
@@ -474,9 +473,7 @@ const Documents = () => {
                 />
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-muted-foreground mb-4">
-                    No documents found
-                  </p>
+                  <p className="text-gray-400 mb-4">No documents found</p>
                   <Button
                     onClick={() =>
                       navigate(
