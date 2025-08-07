@@ -419,7 +419,7 @@ const Viewer = () => {
         <div className="space-y-4">
           <div className="flex items-center space-x-4 mb-4">
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => {
                 if (companyId && projectId) {
@@ -436,7 +436,7 @@ const Viewer = () => {
                   navigate('/')
                 }
               }}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 hover:scale-105 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>
