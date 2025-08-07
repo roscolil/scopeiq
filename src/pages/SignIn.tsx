@@ -50,14 +50,13 @@ const SignIn = () => {
       // Give a moment for the auth context to update
       setTimeout(() => {
         if (user) {
-          const role = user['cognito:groups'] || user.groups
           const companyId = user['custom:Company'] || user.company
 
-          if (Array.isArray(role) && role.includes('owner')) {
-            // Go to company dashboard
+          if (companyId) {
+            // Always redirect to company dashboard
             navigate(routes.company.home((companyId as string).toLowerCase()))
           } else {
-            // Go to home page
+            // Fallback to home if no company ID
             navigate(routes.home())
           }
         } else {
