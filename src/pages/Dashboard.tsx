@@ -473,41 +473,67 @@ const Dashboard = () => {
                       {projects.map(project => (
                         <Card
                           key={project.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
+                          className="cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-1"
+                          onClick={() =>
+                            navigate(
+                              routes.company.project.details(
+                                companyId.toLowerCase(),
+                                project.id,
+                                project.name,
+                              ),
+                            )
+                          }
                         >
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">
-                              {project.name}
-                            </CardTitle>
-                            <CardDescription className="line-clamp-2">
-                              {project.description || 'No description provided'}
-                            </CardDescription>
-                          </CardHeader>
-                          <CardContent className="pb-2">
-                            <div className="flex items-center text-sm text-gray-400">
-                              <FileText className="h-4 w-4 mr-1" />
-                              <span>
-                                {project.documents?.length || 0}{' '}
-                                {project.documents?.length === 1
-                                  ? 'document'
-                                  : 'documents'}
-                              </span>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                                  <Folders className="h-5 w-5 text-emerald-600" />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-lg">
+                                    {project.name}
+                                  </CardTitle>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span className="text-xs text-emerald-600">
+                                      Active
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                              Created:{' '}
-                              {project.createdAt
-                                ? new Date(
-                                    project.createdAt,
-                                  ).toLocaleDateString()
-                                : 'Unknown'}
+                          </CardHeader>
+                          <CardContent className="pb-3">
+                            {project.description && (
+                              <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                                {project.description}
+                              </p>
+                            )}
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-cyan-600" />
+                                <span className="text-sm text-slate-700">
+                                  {project.documents?.length || 0} documents
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                Created{' '}
+                                {project.createdAt
+                                  ? new Date(
+                                      project.createdAt,
+                                    ).toLocaleDateString()
+                                  : 'Unknown'}
+                              </div>
                             </div>
                           </CardContent>
-                          <CardFooter className="pt-2">
+                          <CardFooter>
                             <Button
                               variant="outline"
                               size="sm"
                               className="w-full"
-                              onClick={() =>
+                              onClick={e => {
+                                e.stopPropagation()
                                 navigate(
                                   routes.company.project.details(
                                     companyId.toLowerCase(),
@@ -515,7 +541,7 @@ const Dashboard = () => {
                                     project.name,
                                   ),
                                 )
-                              }
+                              }}
                             >
                               View Project
                             </Button>
@@ -565,78 +591,81 @@ const Dashboard = () => {
                   {isLoadingDocuments ? (
                     <DocumentListSkeleton itemCount={6} />
                   ) : documents.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-3">
                       {documents.slice(0, 6).map(document => {
                         const project = projects.find(
                           p => p.id === document.projectId,
                         )
                         const getFileIcon = (type: string) => {
                           if (type.includes('pdf')) {
-                            return <FileText className="h-6 w-6 text-red-500" />
+                            return <FileText className="h-8 w-8 text-red-500" />
                           } else if (type.includes('image')) {
                             return (
-                              <FileText className="h-6 w-6 text-blue-500" />
+                              <FileText className="h-8 w-8 text-blue-500" />
                             )
                           }
-                          return <FileText className="h-6 w-6 text-gray-500" />
+                          return <FileText className="h-8 w-8 text-green-500" />
+                        }
+
+                        const getStatusBadge = (status: Document['status']) => {
+                          switch (status) {
+                            case 'processed':
+                              return (
+                                <Badge
+                                  variant="default"
+                                  className="bg-green-500"
+                                >
+                                  AI Ready
+                                </Badge>
+                              )
+                            case 'processing':
+                              return (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-amber-500 flex items-center gap-1"
+                                >
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Processing
+                                </Badge>
+                              )
+                            case 'failed':
+                              return <Badge variant="destructive">Failed</Badge>
+                            default:
+                              return null
+                          }
                         }
 
                         return (
-                          <Card
-                            key={document.id}
-                            className="cursor-pointer hover:shadow-md transition-shadow"
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex items-start gap-3">
-                                {getFileIcon(document.type)}
-                                <div className="flex-1 min-w-0">
-                                  <CardTitle className="text-sm font-medium truncate">
-                                    {document.name}
-                                  </CardTitle>
-                                  <CardDescription className="text-xs">
-                                    {project?.name || 'Unknown Project'}
-                                  </CardDescription>
+                          <Card key={document.id} className="overflow-hidden">
+                            <CardHeader className="p-4 pb-0">
+                              <div className="flex justify-between items-start">
+                                <div className="flex gap-3">
+                                  {getFileIcon(document.type)}
+                                  <div>
+                                    <CardTitle className="text-base font-medium">
+                                      {document.name}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs">
+                                      {project?.name || 'Unknown Project'} •{' '}
+                                      {typeof document.size === 'number'
+                                        ? `${(document.size / 1024).toFixed(2)} KB`
+                                        : document.size}{' '}
+                                      •{' '}
+                                      {document.createdAt
+                                        ? new Date(
+                                            document.createdAt,
+                                          ).toLocaleDateString()
+                                        : 'Recently'}
+                                    </CardDescription>
+                                  </div>
                                 </div>
                               </div>
                             </CardHeader>
-                            <CardContent className="pb-2">
-                              <div className="flex items-center justify-between text-xs text-gray-400">
-                                <span>
-                                  {typeof document.size === 'number'
-                                    ? `${Math.round(document.size / 1024)} KB`
-                                    : document.size}
-                                </span>
-                                <Badge
-                                  variant={
-                                    document.status === 'processing'
-                                      ? 'secondary'
-                                      : 'outline'
-                                  }
-                                  className={`text-xs flex items-center gap-1 ${
-                                    document.status === 'processing'
-                                      ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                      : ''
-                                  }`}
-                                >
-                                  {document.status === 'processing' && (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  )}
-                                  {document.status}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-gray-400 mt-1">
-                                {document.createdAt
-                                  ? new Date(
-                                      document.createdAt,
-                                    ).toLocaleDateString()
-                                  : 'Recently'}
-                              </div>
-                            </CardContent>
-                            <CardFooter className="pt-2">
+                            <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                              {getStatusBadge(document.status)}
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="w-full"
                                 onClick={() => {
                                   if (project) {
                                     const route =
@@ -649,7 +678,6 @@ const Dashboard = () => {
                                       )
                                     navigate(route)
                                   } else {
-                                    // If project is not found, show error
                                     toast({
                                       title: 'Navigation Error',
                                       description:
@@ -659,7 +687,7 @@ const Dashboard = () => {
                                   }
                                 }}
                               >
-                                <Eye className="h-3 w-3 mr-1" />
+                                <Eye className="h-4 w-4 mr-1" />
                                 View
                               </Button>
                             </CardFooter>
