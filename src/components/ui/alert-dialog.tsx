@@ -16,7 +16,7 @@ const AlertDialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Overlay
     className={cn(
-      'fixed inset-0 z-50 bg-gradient-to-br from-black/95 via-slate-950/98 to-gray-900/95 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-gradient-to-br from-black/60 via-slate-950/70 to-gray-900/65 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -38,11 +38,7 @@ const AlertDialogContent = React.forwardRef<
         className,
       )}
       {...props}
-    >
-      {/* Decorative gradient orbs */}
-      <div className="absolute -top-8 -right-8 w-16 h-16 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-full blur-xl pointer-events-none"></div>
-      <div className="absolute -bottom-8 -left-8 w-14 h-14 bg-gradient-to-tr from-red-500/15 to-pink-500/15 rounded-full blur-lg pointer-events-none"></div>
-    </AlertDialogPrimitive.Content>
+    />
   </AlertDialogPortal>
 ))
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName

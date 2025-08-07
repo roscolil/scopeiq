@@ -164,17 +164,21 @@ export const ProjectList = ({
                         Delete Project
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
+                    <AlertDialogContent className="bg-white">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Project</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-gray-900">
+                          Delete Project
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-600">
                           Are you sure you want to delete "{project.name}"? This
                           action will permanently delete the project and all its
                           documents. This cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-gray-100 text-gray-900 hover:bg-gray-200">
+                          Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => handleDeleteProject(project)}
                           disabled={deletingProjectId === project.id}

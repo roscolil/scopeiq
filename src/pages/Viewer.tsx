@@ -505,17 +505,23 @@ const Viewer = () => {
                     <span>Delete</span>
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{document?.name}"? This
-                      action will permanently remove the document from your
-                      project and cannot be undone.
+                    <AlertDialogTitle className="text-gray-900">
+                      Delete Document
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-600">
+                      Are you sure you want to delete "
+                      {document?.name || 'this document'}"? This action will
+                      permanently remove the document from your project and
+                      cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>
+                    <AlertDialogCancel
+                      disabled={isDeleting}
+                      className="bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    >
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction

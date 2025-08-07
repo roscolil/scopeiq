@@ -30,6 +30,7 @@ import {
   Plus,
   FileUp,
   Eye,
+  Loader2,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
@@ -295,59 +296,66 @@ const Dashboard = () => {
                     {isLoadingProjects ? (
                       <ProjectRowsSkeleton itemCount={3} />
                     ) : projects.length > 0 ? (
-                      projects.slice(0, 3).map(project => (
-                        <div
-                          key={project.id}
-                          className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
-                          onClick={() =>
-                            navigate(
-                              routes.company.project.details(
-                                companyId.toLowerCase(),
-                                project.id,
-                                project.name,
-                              ),
-                            )
-                          }
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="font-medium text-slate-800">
-                                {project.name}
+                      projects.slice(0, 3).map((project, index) => (
+                        <div key={project.id}>
+                          <div
+                            className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
+                            onClick={() =>
+                              navigate(
+                                routes.company.project.details(
+                                  companyId.toLowerCase(),
+                                  project.id,
+                                  project.name,
+                                ),
+                              )
+                            }
+                          >
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="font-medium text-slate-800">
+                                  {project.name}
+                                </div>
+                                <div className="text-xs text-slate-600">
+                                  {project.documents?.length || 0} documents
+                                </div>
                               </div>
-                              <div className="text-xs text-slate-600">
-                                {project.documents?.length || 0} documents
+                              <div className="text-sm text-slate-600">
+                                {project.createdAt
+                                  ? new Date(
+                                      project.createdAt,
+                                    ).toLocaleDateString()
+                                  : 'Recently'}
                               </div>
                             </div>
-                            <div className="text-sm text-slate-600">
-                              {project.createdAt
-                                ? new Date(
-                                    project.createdAt,
-                                  ).toLocaleDateString()
-                                : 'Recently'}
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className="text-xs bg-blue-100 text-blue-700 border-blue-200"
+                              >
+                                {project.documents?.length || 0} files
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  navigate(
+                                    routes.company.project.details(
+                                      companyId.toLowerCase(),
+                                      project.id,
+                                      project.name,
+                                    ),
+                                  )
+                                }}
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {project.documents?.length || 0} files
-                            </Badge>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={e => {
-                                e.stopPropagation()
-                                navigate(
-                                  routes.company.project.details(
-                                    companyId.toLowerCase(),
-                                    project.id,
-                                    project.name,
-                                  ),
-                                )
-                              }}
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                          </div>
+                          {index < projects.slice(0, 3).length - 1 && (
+                            <div className="border-b border-gray-300 mx-3"></div>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -598,7 +606,21 @@ const Dashboard = () => {
                                     ? `${Math.round(document.size / 1024)} KB`
                                     : document.size}
                                 </span>
-                                <Badge variant="outline" className="text-xs">
+                                <Badge
+                                  variant={
+                                    document.status === 'processing'
+                                      ? 'secondary'
+                                      : 'outline'
+                                  }
+                                  className={`text-xs flex items-center gap-1 ${
+                                    document.status === 'processing'
+                                      ? 'bg-blue-100 text-blue-700 border-blue-200'
+                                      : ''
+                                  }`}
+                                >
+                                  {document.status === 'processing' && (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  )}
                                   {document.status}
                                 </Badge>
                               </div>
