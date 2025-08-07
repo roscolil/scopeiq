@@ -4,7 +4,7 @@ import {
   File,
   FileImage,
   Download,
-  BrainCircuit,
+  Brain,
   Loader2,
 } from 'lucide-react'
 import { AIActions } from './AIActions'
@@ -397,7 +397,7 @@ You can use the AI Analysis tab to analyze this document.`}
           <Card>
             <CardHeader className="pb-2" style={{ display: 'none' }}>
               <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <BrainCircuit className="h-5 w-5 text-primary" />
+                <Brain className="h-5 w-5 text-primary" />
                 AI Analysis
               </CardTitle>
               <CardDescription>

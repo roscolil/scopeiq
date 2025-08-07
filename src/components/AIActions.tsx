@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  BrainCircuit,
+  Brain,
   Search,
   FileSearch,
   Copy,
@@ -535,7 +535,7 @@ export const AIActions = ({
         <CardHeader className="pb-3" style={{ display: 'none' }}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <BrainCircuit className="h-5 w-5 text-primary" />
+              <Brain className="h-5 w-5 text-primary" />
             </div>
             <div>
               <CardTitle className="text-lg">AI Analysis</CardTitle>
@@ -550,7 +550,7 @@ export const AIActions = ({
         <CardContent className="space-y-6">
           {/* Document Status Section */}
           {document && (
-            <div className="border rounded-xl p-4 bg-gradient-to-r from-secondary/50 to-secondary/30 backdrop-blur-sm">
+            <div className="border rounded-xl p-4 mt-6 sm:mt-4 bg-gradient-to-r from-secondary/50 to-secondary/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-1.5 bg-primary/10 rounded-lg">
                   <FileSearch className="h-4 w-4 text-primary" />
@@ -622,7 +622,7 @@ export const AIActions = ({
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 blur-sm rounded-lg"></div>
                 <div className="relative p-1.5 bg-primary/10 rounded-lg mr-3">
-                  <BrainCircuit className="h-4 w-4 text-primary" />
+                  <Brain className="h-4 w-4 text-primary" />
                 </div>
               </div>
               <div>

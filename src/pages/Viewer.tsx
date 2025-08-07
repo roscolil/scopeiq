@@ -23,7 +23,7 @@ import {
   Download,
   Share2,
   FileText,
-  BrainCircuit,
+  Brain,
   Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
@@ -548,7 +548,7 @@ const Viewer = () => {
                 }`}
                 onClick={() => setViewMode('ai')}
               >
-                <BrainCircuit className="h-4 w-4" />
+                <Brain className="h-4 w-4" />
                 <span>AI Analysis</span>
               </button>
               <button
