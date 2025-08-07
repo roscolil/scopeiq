@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { FileText, File, FileImage, Download, BrainCircuit } from 'lucide-react'
+import {
+  FileText,
+  File,
+  FileImage,
+  Download,
+  BrainCircuit,
+  Loader2,
+} from 'lucide-react'
 import { AIActions } from './AIActions'
 import { DocumentViewerSkeleton } from './skeletons'
 import { PDFViewer } from './PDFViewer'
@@ -331,7 +338,10 @@ export const DocumentViewer = ({
                   </div>
                   <div>
                     <div className="text-gray-400 mb-1">Status</div>
-                    <div className="font-medium capitalize">
+                    <div className="font-medium capitalize flex items-center gap-1">
+                      {document.status === 'processing' && (
+                        <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                      )}
                       {document.status}
                     </div>
                   </div>
@@ -346,7 +356,7 @@ export const DocumentViewer = ({
                   {document?.name || 'Document'}
                 </h3>
                 {document?.type && (
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                  <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full">
                     {document.type.split('/')[1]?.toUpperCase() ||
                       document.type}
                   </span>

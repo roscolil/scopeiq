@@ -545,7 +545,9 @@ const ProjectDetails = () => {
           )}
 
           <div className="flex justify-between items-center border-b pb-4">
-            <h2 className="text-lg md:text-xl font-semibold">Documents</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-white">
+              Documents
+            </h2>
 
             <Dialog
               open={isUploadDialogOpen}

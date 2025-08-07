@@ -16,6 +16,7 @@ import {
   MessageSquare,
   FileStack,
   RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -161,8 +162,11 @@ export const AIActions = ({
         )
       case 'processing':
         return (
-          <Badge variant="secondary" className="bg-amber-500 text-white">
-            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+          <Badge
+            variant="secondary"
+            className="bg-amber-500 text-white flex items-center gap-1"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
             Processing
           </Badge>
         )

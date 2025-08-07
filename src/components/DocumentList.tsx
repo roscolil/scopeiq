@@ -29,6 +29,7 @@ import {
   Eye,
   Download,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -79,7 +80,11 @@ export const DocumentList = ({
         )
       case 'processing':
         return (
-          <Badge variant="secondary" className="bg-amber-500">
+          <Badge
+            variant="secondary"
+            className="bg-amber-500 flex items-center gap-1"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
             Processing
           </Badge>
         )
