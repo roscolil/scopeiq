@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { FileText, File, FileImage, Download, BrainCircuit } from 'lucide-react'
+import {
+  FileText,
+  File,
+  FileImage,
+  Download,
+  BrainCircuit,
+  Loader2,
+} from 'lucide-react'
 import { AIActions } from './AIActions'
 import { DocumentViewerSkeleton } from './skeletons'
 import { PDFViewer } from './PDFViewer'
@@ -13,6 +20,77 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card'
+
+// Text File Viewer Component
+const TextFileViewer = ({ document }: { document: DocumentType }) => {
+  const [textContent, setTextContent] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchTextContent = async () => {
+      if (!document?.url) {
+        setError('No file URL available')
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        setIsLoading(true)
+        setError(null)
+
+        // If we already have content, use it
+        if (document.content) {
+          setTextContent(document.content)
+          setIsLoading(false)
+          return
+        }
+
+        // Otherwise, fetch the file content directly
+        const response = await fetch(document.url)
+        if (!response.ok) {
+          throw new Error('Failed to fetch file content')
+        }
+
+        const text = await response.text()
+        setTextContent(text)
+      } catch (err) {
+        console.error('Error fetching text file:', err)
+        setError('Failed to load text file content')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchTextContent()
+  }, [document])
+
+  if (isLoading) {
+    return (
+      <div className="bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
+        <div className="text-gray-400 italic">Loading text content...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
+        <div className="text-destructive italic">{error}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm font-mono">
+      {textContent || (
+        <div className="text-gray-400 italic">
+          This text file appears to be empty.
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Utility functions
 const formatFileSize = (size: string | number): string => {
@@ -69,6 +147,14 @@ export const DocumentViewer = ({
         documentContent =
           preResolvedDocument.content ||
           'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+      } else if (
+        preResolvedDocument.type.includes('text') ||
+        preResolvedDocument.type.includes('txt') ||
+        preResolvedDocument.type.includes('rtf') ||
+        preResolvedDocument.type.includes('plain')
+      ) {
+        documentContent =
+          preResolvedDocument.content || 'Text content is being processed...'
       } else {
         documentContent =
           preResolvedDocument.content || 'Document content not available.'
@@ -124,7 +210,9 @@ export const DocumentViewer = ({
               'This is a spreadsheet that was uploaded. Content extraction is in progress.\n\nThe data will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
           } else if (
             documentData.type.includes('text') ||
-            documentData.type.includes('txt')
+            documentData.type.includes('txt') ||
+            documentData.type.includes('rtf') ||
+            documentData.type.includes('plain')
           ) {
             documentContent =
               documentData.content ||
@@ -170,7 +258,9 @@ export const DocumentViewer = ({
       return <FileText className="h-5 w-5 text-green-600" />
     } else if (
       document.type.includes('text') ||
-      document.type.includes('txt')
+      document.type.includes('txt') ||
+      document.type.includes('rtf') ||
+      document.type.includes('plain')
     ) {
       return <FileText className="h-5 w-5 text-gray-600" />
     } else {
@@ -189,7 +279,7 @@ export const DocumentViewer = ({
         <p className="text-lg font-medium mb-2 text-red-600">
           Error Loading Document
         </p>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-gray-400">{error}</p>
       </div>
     )
   }
@@ -197,9 +287,9 @@ export const DocumentViewer = ({
   if (!document) {
     return (
       <div className="text-center p-8">
-        <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+        <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
         <p className="text-lg font-medium mb-2">Document Not Found</p>
-        <p className="text-muted-foreground">
+        <p className="text-gray-400">
           The requested document could not be found.
         </p>
       </div>
@@ -229,17 +319,17 @@ export const DocumentViewer = ({
               <CardContent className="pt-0">
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <div className="text-muted-foreground mb-1">File Name</div>
+                    <div className="text-gray-400 mb-1">File Name</div>
                     <div className="font-medium">{document.name}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">File Size</div>
+                    <div className="text-gray-400 mb-1">File Size</div>
                     <div className="font-medium">
                       {formatFileSize(document.size)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">Date</div>
+                    <div className="text-gray-400 mb-1">Date</div>
                     <div className="font-medium">
                       {document.createdAt
                         ? formatDate(document.createdAt)
@@ -247,8 +337,11 @@ export const DocumentViewer = ({
                     </div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground mb-1">Status</div>
-                    <div className="font-medium capitalize">
+                    <div className="text-gray-400 mb-1">Status</div>
+                    <div className="font-medium capitalize flex items-center gap-1">
+                      {document.status === 'processing' && (
+                        <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                      )}
                       {document.status}
                     </div>
                   </div>
@@ -263,7 +356,7 @@ export const DocumentViewer = ({
                   {document?.name || 'Document'}
                 </h3>
                 {document?.type && (
-                  <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                  <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full">
                     {document.type.split('/')[1]?.toUpperCase() ||
                       document.type}
                   </span>
@@ -281,6 +374,11 @@ export const DocumentViewer = ({
                 </div>
               ) : document?.type?.includes('pdf') ? (
                 <PDFViewer document={document} />
+              ) : document?.type?.includes('text') ||
+                document?.type?.includes('txt') ||
+                document?.type?.includes('rtf') ||
+                document?.type?.includes('plain') ? (
+                <TextFileViewer document={document} />
               ) : (
                 <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
                   {document?.content ||

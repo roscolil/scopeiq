@@ -123,7 +123,7 @@ const ForgotPassword = () => {
             </Button>
             <div className="text-center">
               <Link
-                to="/signin"
+                to="/auth/signin"
                 className="text-primary hover:underline text-sm"
               >
                 Back to sign in
@@ -214,7 +214,7 @@ const ForgotPassword = () => {
             </AlertDescription>
           </Alert>
           <Button asChild className="w-full">
-            <Link to="/signin">Return to sign in</Link>
+            <Link to="/auth/signin">Return to sign in</Link>
           </Button>
         </div>
       )}

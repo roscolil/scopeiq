@@ -54,7 +54,7 @@ const VerifyEmail = () => {
         description:
           'Your email has been successfully verified. You can now sign in.',
       })
-      navigate('/signin')
+      navigate('/auth/signin')
     } catch (err) {
       setError('Invalid code or email. Please try again.')
     }
@@ -113,7 +113,7 @@ const VerifyEmail = () => {
             >
               {isResending ? 'Resending...' : 'Resend code'}
             </Button>
-            <Link to="/signin" className="text-primary hover:underline">
+            <Link to="/auth/signin" className="text-primary hover:underline">
               Back to sign in
             </Link>
           </div>

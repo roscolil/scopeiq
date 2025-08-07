@@ -85,29 +85,30 @@ const Pricing = () => {
 
   return (
     <>
-      {/* Full viewport gradient background */}
+      {/* Dark gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced Stripe-inspired gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
+        {/* Base dark gradient layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-gray-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-gray-900 to-black/95"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-cyan-500/5"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-violet-500/8 via-transparent to-rose-500/6"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/5 via-transparent to-transparent"></div>
 
         {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-rose-500/10 to-amber-500/8 rounded-full blur-2xl"></div>
       </div>
 
       <Layout>
         <div className="container mx-auto px-4 py-16">
           {/* Header */}
           <div className="text-center mb-16">
-            <h1 className="text-4xl font-bold tracking-tight mb-4">
+            <h1 className="text-4xl font-bold tracking-tight mb-4 text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text">
               Simple, transparent pricing
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
               Choose the perfect plan for your construction document management
               needs. All plans include a 14-day free trial.
             </p>
@@ -117,8 +118,8 @@ const Pricing = () => {
               <span
                 className={
                   billingCycle === 'monthly'
-                    ? 'font-medium'
-                    : 'text-muted-foreground'
+                    ? 'font-medium text-white'
+                    : 'text-gray-400'
                 }
               >
                 Monthly
@@ -129,7 +130,7 @@ const Pricing = () => {
                     billingCycle === 'monthly' ? 'yearly' : 'monthly',
                   )
                 }
-                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-black"
                 title="Toggle billing cycle"
                 aria-label="Toggle billing cycle"
               >
@@ -144,12 +145,15 @@ const Pricing = () => {
               <span
                 className={
                   billingCycle === 'yearly'
-                    ? 'font-medium'
-                    : 'text-muted-foreground'
+                    ? 'font-medium text-white'
+                    : 'text-gray-400'
                 }
               >
                 Yearly
-                <Badge variant="secondary" className="ml-2">
+                <Badge
+                  variant="secondary"
+                  className="ml-2 bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                >
                   Save 20%
                 </Badge>
               </span>
@@ -161,15 +165,15 @@ const Pricing = () => {
             {pricingPlans.map(plan => (
               <Card
                 key={plan.name}
-                className={`relative ${
+                className={`relative bg-black/40 backdrop-blur-sm border-white/10 ${
                   plan.popular
-                    ? 'border-primary shadow-lg scale-105'
-                    : 'border-border'
+                    ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/25 scale-105'
+                    : 'border-white/10'
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground px-3 py-1">
+                    <Badge className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white px-3 py-1 border-0">
                       <Star className="w-4 h-4 mr-1" />
                       Most Popular
                     </Badge>
@@ -177,17 +181,19 @@ const Pricing = () => {
                 )}
 
                 <CardHeader className="text-center">
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription className="mt-2">
+                  <CardTitle className="text-2xl text-white">
+                    {plan.name}
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-gray-400">
                     {plan.description}
                   </CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold">
+                    <span className="text-4xl font-bold text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text">
                       {billingCycle === 'yearly' && plan.price !== 'Custom'
                         ? `$${Math.round(parseInt(plan.price.replace('$', '')) * 0.8)}`
                         : plan.price}
                     </span>
-                    <span className="text-muted-foreground">
+                    <span className="text-gray-400">
                       {plan.period &&
                         (billingCycle === 'yearly' ? '/year' : plan.period)}
                     </span>
@@ -198,8 +204,8 @@ const Pricing = () => {
                   <ul className="space-y-3">
                     {plan.features.map(feature => (
                       <li key={feature} className="flex items-center">
-                        <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <Check className="w-5 h-5 text-emerald-400 mr-3 flex-shrink-0" />
+                        <span className="text-sm text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -207,7 +213,11 @@ const Pricing = () => {
 
                 <CardFooter>
                   <Button
-                    className="w-full"
+                    className={`w-full ${
+                      plan.popular
+                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white border-0'
+                        : 'bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20'
+                    }`}
                     variant={plan.popular ? 'default' : 'outline'}
                     onClick={() => handleGetStarted(plan.name)}
                   >
@@ -220,33 +230,33 @@ const Pricing = () => {
 
           {/* FAQ Section */}
           <div className="mt-20 text-center">
-            <h2 className="text-3xl font-bold mb-8">
+            <h2 className="text-3xl font-bold mb-8 text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text">
               Frequently Asked Questions
             </h2>
             <div className="max-w-3xl mx-auto text-left space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-lg font-semibold mb-2 text-white">
                   Can I change plans anytime?
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-gray-300">
                   Yes, you can upgrade or downgrade your plan at any time.
                   Changes will be prorated on your next billing cycle.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-lg font-semibold mb-2 text-white">
                   What happens during the free trial?
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-gray-300">
                   You get full access to all features of your chosen plan for 14
                   days. No credit card required to start.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-lg font-semibold mb-2 text-white">
                   Is my data secure?
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-gray-300">
                   Absolutely. We use enterprise-grade security with encryption
                   at rest and in transit. Your data is regularly backed up and
                   secure.

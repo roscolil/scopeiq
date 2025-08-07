@@ -29,6 +29,7 @@ import {
   Eye,
   Download,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -55,6 +56,9 @@ export const DocumentList = ({
   projectName,
 }: DocumentListProps) => {
   const navigate = useNavigate()
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [documentToDelete, setDocumentToDelete] =
+    React.useState<Document | null>(null)
 
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) {
@@ -76,7 +80,11 @@ export const DocumentList = ({
         )
       case 'processing':
         return (
-          <Badge variant="secondary" className="bg-amber-500">
+          <Badge
+            variant="secondary"
+            className="bg-amber-500 flex items-center gap-1"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
             Processing
           </Badge>
         )
@@ -154,104 +162,123 @@ export const DocumentList = ({
     if (onDelete) {
       onDelete(id)
     }
+    setDeleteDialogOpen(false)
+    setDocumentToDelete(null)
+  }
+
+  const handleDeleteClick = (document: Document) => {
+    setDocumentToDelete(document)
+    setDeleteDialogOpen(true)
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4">
-      {documents.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground">No documents found</p>
-          </CardContent>
-        </Card>
-      ) : (
-        documents.map(doc => (
-          <Card key={doc.id} className="overflow-hidden">
-            <CardHeader className="p-4 pb-0">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-3">
-                  {getFileIcon(doc.type)}
-                  <div>
-                    <CardTitle className="text-base font-medium">
-                      {doc.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {typeof doc.size === 'number'
-                        ? `${(doc.size / 1024).toFixed(2)} KB`
-                        : doc.size}{' '}
-                      •{' '}
-                      {doc.createdAt
-                        ? new Date(doc.createdAt).toLocaleDateString()
-                        : 'No date'}
-                    </CardDescription>
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">More options</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => viewDocument(doc.id, doc.name)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => downloadDocument(doc)}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </DropdownMenuItem>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onSelect={e => e.preventDefault()}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{doc.name}"? This
-                            action cannot be undone and the document will be
-                            permanently removed from your project.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteDocument(doc.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete Document
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-            <CardFooter className="p-4 pt-0 flex justify-between items-center">
-              {getStatusBadge(doc.status)}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => viewDocument(doc.id, doc.name)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                View
-              </Button>
-            </CardFooter>
+    <>
+      <div className="grid grid-cols-1 gap-4">
+        {documents.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="pt-6 text-center">
+              <p className="text-gray-400">No documents found</p>
+            </CardContent>
           </Card>
-        ))
-      )}
-    </div>
+        ) : (
+          documents.map(doc => (
+            <Card key={doc.id} className="overflow-hidden">
+              <CardHeader className="p-4 pb-0">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-3">
+                    {getFileIcon(doc.type)}
+                    <div>
+                      <CardTitle className="text-base font-medium">
+                        {doc.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {typeof doc.size === 'number'
+                          ? `${(doc.size / 1024).toFixed(2)} KB`
+                          : doc.size}{' '}
+                        •{' '}
+                        {doc.createdAt
+                          ? new Date(doc.createdAt).toLocaleDateString()
+                          : 'No date'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">More options</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => viewDocument(doc.id, doc.name)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => downloadDocument(doc)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDeleteClick(doc)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+              <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                {getStatusBadge(doc.status)}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => viewDocument(doc.id, doc.name)}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  View
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog - Outside of DropdownMenu to avoid portal conflicts */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-900">
+              Delete Document
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600">
+              {documentToDelete && (
+                <>
+                  Are you sure you want to delete "{documentToDelete.name}"?
+                  This action cannot be undone and the document will be
+                  permanently removed from your project.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-100 text-gray-900 hover:bg-gray-200">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                documentToDelete && deleteDocument(documentToDelete.id)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

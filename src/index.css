@@ -77,12 +77,35 @@
     @apply border-border;
   }
 
+  html {
+    /* Darker blue gradient background to prevent white flash */
+    background: linear-gradient(
+      135deg,
+      rgb(8, 12, 25) 0%,
+      rgb(20, 40, 90) 25%,
+      rgb(25, 70, 180) 50%,
+      rgb(20, 40, 90) 75%,
+      rgb(8, 12, 25) 100%
+    );
+    min-height: 100vh;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
+    /* Darker blue gradient background to prevent white flash */
+    background: linear-gradient(
+      135deg,
+      rgb(8, 12, 25) 0%,
+      rgb(20, 40, 90) 25%,
+      rgb(25, 70, 180) 50%,
+      rgb(20, 40, 90) 75%,
+      rgb(8, 12, 25) 100%
+    );
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-variation-settings: normal;
+    min-height: 100vh;
     text-rendering: optimizeLegibility;
   }
 

@@ -190,7 +190,7 @@ const Viewer = () => {
       <Layout>
         <div className="text-center">
           <p>Document not found - Missing parameters</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-400">
             Company: {companyName || companyId || 'missing'}, Project:{' '}
             {projectName || projectId || 'missing'}, Document:{' '}
             {document?.name || documentId || 'missing'}
@@ -399,26 +399,27 @@ const Viewer = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced Stripe-inspired gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-100/80 to-purple-50"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-50/70 via-blue-100/50 to-indigo-100/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-200/60 via-indigo-100/30 to-purple-200/50"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/50 via-transparent to-blue-200/40"></div>
+        {/* Enhanced darker and more vivid gradient background layers with more variation */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
 
         {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/15 to-accent/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-accent/15 to-primary/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-blue-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-violet-200/25 to-cyan-200/25 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-sky-200/20 to-indigo-200/30 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-purple-200/25 to-blue-200/20 rounded-full blur-xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-slate-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-slate-500/6 to-violet-500/8 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-emerald-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
       </div>
 
       <Layout>
         <div className="space-y-4">
           <div className="flex items-center space-x-4 mb-4">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => {
                 if (companyId && projectId) {
@@ -447,10 +448,10 @@ const Viewer = () => {
           {/* Improve the document header with more details */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold truncate max-w-lg">
+              <h1 className="text-2xl font-bold truncate max-w-lg text-white">
                 {document?.name || 'Document'}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-400">
                 {companyName && projectName ? (
                   <>
                     <span className="font-medium">{companyName}</span> /{' '}
@@ -461,7 +462,7 @@ const Viewer = () => {
                 )}
               </p>
               {document?.size && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Size:{' '}
                   {typeof document.size === 'number'
                     ? `${Math.round(document.size / 1024)} KB`
@@ -504,17 +505,23 @@ const Viewer = () => {
                     <span>Delete</span>
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{document?.name}"? This
-                      action will permanently remove the document from your
-                      project and cannot be undone.
+                    <AlertDialogTitle className="text-gray-900">
+                      Delete Document
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-600">
+                      Are you sure you want to delete "
+                      {document?.name || 'this document'}"? This action will
+                      permanently remove the document from your project and
+                      cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>
+                    <AlertDialogCancel
+                      disabled={isDeleting}
+                      className="bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    >
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
@@ -531,11 +538,13 @@ const Viewer = () => {
           </div>
 
           {/* Update the view toggle to include document type info */}
-          <div className="bg-muted rounded-md p-1 mb-6">
-            <div className="flex space-x-1">
+          <div className="inline-flex h-12 items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm p-1.5 text-slate-600 border border-white/50 shadow-lg mb-6">
+            <div className="flex space-x-1 w-full">
               <button
-                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                  viewMode === 'ai' ? 'bg-background shadow-sm' : ''
+                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
+                  viewMode === 'ai'
+                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
+                    : 'hover:bg-white/60 hover:text-slate-800'
                 }`}
                 onClick={() => setViewMode('ai')}
               >
@@ -543,8 +552,10 @@ const Viewer = () => {
                 <span>AI Analysis</span>
               </button>
               <button
-                className={`flex-1 px-3 py-2 text-sm rounded-sm flex items-center justify-center space-x-2 ${
-                  viewMode === 'document' ? 'bg-background shadow-sm' : ''
+                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
+                  viewMode === 'document'
+                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
+                    : 'hover:bg-white/60 hover:text-slate-800'
                 }`}
                 onClick={() => setViewMode('document')}
               >

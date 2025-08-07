@@ -34,6 +34,8 @@ export const FileUploader = (props: FileUploaderProps) => {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
       'text/plain',
+      'text/rtf',
+      'application/rtf',
       'image/jpeg',
       'image/png',
     ]
@@ -41,7 +43,7 @@ export const FileUploader = (props: FileUploaderProps) => {
       toast({
         title: 'Invalid File Type',
         description:
-          'Please upload PDF, Word (.doc/.docx), text (.txt), or image files only.',
+          'Please upload PDF, Word (.doc/.docx), text (.txt/.rtf), or image files only.',
         variant: 'destructive',
       })
       return
@@ -322,8 +324,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   }
 
   const getFileIcon = () => {
-    if (!selectedFile)
-      return <Upload className="h-10 w-10 text-muted-foreground" />
+    if (!selectedFile) return <Upload className="h-10 w-10 text-gray-400" />
     if (selectedFile.type.includes('pdf')) {
       return <FileText className="h-10 w-10 text-red-500" />
     } else if (selectedFile.type.includes('image')) {
@@ -339,30 +340,56 @@ export const FileUploader = (props: FileUploaderProps) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Upload Area */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'border-2 border-dashed rounded-lg p-4 md:p-6 transition-colors',
+          'border-2 border-dashed rounded-xl p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden',
           isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-muted-foreground/30',
-          selectedFile ? 'bg-secondary/50' : 'bg-transparent',
+            ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
+            : 'border-muted-foreground/20 hover:border-muted-foreground/40',
+          selectedFile
+            ? 'bg-gradient-to-br from-secondary/30 to-secondary/50 border-border/50'
+            : 'bg-gradient-to-br from-background/50 to-muted/20 hover:to-muted/30',
         )}
       >
-        <div className="flex flex-col items-center justify-center gap-4">
-          {getFileIcon()}
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+
+        <div className="relative flex flex-col items-center justify-center gap-4">
+          <div
+            className={cn(
+              'p-4 rounded-full transition-all duration-300',
+              isDragging
+                ? 'bg-primary/20 scale-110'
+                : selectedFile
+                  ? 'bg-green-100 dark:bg-green-900/30'
+                  : 'bg-muted/50 hover:bg-muted/70',
+            )}
+          >
+            {getFileIcon()}
+          </div>
+
           {selectedFile ? (
-            <div className="flex flex-col items-center text-center">
-              <p className="text-sm font-medium">{selectedFile.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium truncate max-w-[250px]">
+                  {selectedFile.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
               <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" onClick={removeFile}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={removeFile}
+                  className="hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
+                >
                   <X className="h-4 w-4 mr-1" />
                   Remove
                 </Button>
@@ -370,6 +397,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                   size="sm"
                   onClick={() => uploadFile(selectedFile)}
                   disabled={isUploading}
+                  className="bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-105"
                 >
                   <Upload className="h-4 w-4 mr-1" />
                   {isUploading ? 'Uploading...' : 'Upload'}
@@ -377,59 +405,69 @@ export const FileUploader = (props: FileUploaderProps) => {
               </div>
             </div>
           ) : (
-            <>
-              <div className="text-center">
-                <p className="text-sm font-medium">
+            <div className="space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm font-medium text-foreground">
                   Drag & drop your document here
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground">
                   Support for PDF, DOCX, TXT, JPG, PNG (max 50MB)
                 </p>
               </div>
-              <label htmlFor="file-upload">
+              <label htmlFor="file-upload" className="flex justify-center">
                 <Input
                   id="file-upload"
                   type="file"
                   className="hidden"
-                  onChange={handleFileChange} // Now defined
+                  onChange={handleFileChange}
                   accept=".pdf,.docx,.txt,.doc,.jpg,.jpeg,.png"
                 />
-                <Button variant="outline" size="sm" className="mt-2" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                  asChild
+                >
                   <span>Browse files</span>
                 </Button>
               </label>
-            </>
+            </div>
           )}
         </div>
       </div>
+
       {/* Enhanced Upload Progress */}
       {isUploading && (
-        <div className="space-y-3 p-4 bg-secondary/20 rounded-lg border">
+        <div className="space-y-4 p-6 bg-gradient-to-r from-secondary/20 to-secondary/30 rounded-xl border border-border/50 backdrop-blur-sm">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">
               {getUploadStatusText(uploadProgress)}
             </span>
-            <span className="text-sm text-muted-foreground font-mono">
+            <span className="text-sm text-muted-foreground font-mono bg-background/50 px-2 py-1 rounded-md">
               {uploadProgress}%
             </span>
           </div>
-          <Progress value={uploadProgress} className="w-full h-2" />
-          <div className="text-xs text-muted-foreground">
+          <Progress value={uploadProgress} className="w-full h-3 bg-muted/50" />
+          <div className="text-xs text-muted-foreground leading-relaxed">
             {getUploadPhaseText(uploadProgress)}
           </div>
           {selectedFile && (
-            <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <div className="flex justify-between items-center text-xs text-muted-foreground pt-2 border-t border-border/30">
               <div className="flex items-center gap-2">
-                <span className="truncate max-w-[200px]">
+                <span className="truncate max-w-[200px] font-medium">
                   {selectedFile.name}
                 </span>
-                <span>•</span>
+                <span className="text-border">•</span>
                 <span>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span>{getUploadStats().elapsedTime}</span>
-                <span>•</span>
-                <span>{getUploadStats().estimatedTime}</span>
+              <div className="flex items-center gap-2 font-mono">
+                <span className="bg-background/50 px-2 py-0.5 rounded">
+                  {getUploadStats().elapsedTime}
+                </span>
+                <span className="text-border">•</span>
+                <span className="bg-background/50 px-2 py-0.5 rounded">
+                  {getUploadStats().estimatedTime}
+                </span>
               </div>
             </div>
           )}

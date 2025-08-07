@@ -257,7 +257,7 @@ export const MultiSelect = React.forwardRef<
                 </div>
                 <div className="flex items-center justify-between">
                   <XIcon
-                    className="h-4 mx-2 cursor-pointer text-muted-foreground"
+                    className="h-4 mx-2 cursor-pointer text-gray-400"
                     onClick={event => {
                       event.stopPropagation()
                       handleClear()
@@ -267,15 +267,15 @@ export const MultiSelect = React.forwardRef<
                     orientation="vertical"
                     className="flex min-h-6 h-full"
                   />
-                  <ChevronDown className="h-4 mx-2 cursor-pointer text-muted-foreground" />
+                  <ChevronDown className="h-4 mx-2 cursor-pointer text-gray-400" />
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between w-full mx-auto">
-                <span className="text-sm text-muted-foreground mx-3">
+                <span className="text-sm text-gray-400 mx-3">
                   {placeholder}
                 </span>
-                <ChevronDown className="h-4 cursor-pointer text-muted-foreground mx-2" />
+                <ChevronDown className="h-4 cursor-pointer text-gray-400 mx-2" />
               </div>
             )}
           </Button>
@@ -329,7 +329,7 @@ export const MultiSelect = React.forwardRef<
                         <CheckIcon className="h-4 w-4" />
                       </div>
                       {option.icon && (
-                        <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <option.icon className="mr-2 h-4 w-4 text-gray-400" />
                       )}
                       <span>{option.label}</span>
                     </CommandItem>
@@ -368,7 +368,7 @@ export const MultiSelect = React.forwardRef<
           <WandSparkles
             className={cn(
               'cursor-pointer my-2 text-foreground bg-background w-3 h-3',
-              isAnimating ? '' : 'text-muted-foreground',
+              isAnimating ? '' : 'text-gray-400',
             )}
             onClick={() => setIsAnimating(!isAnimating)}
           />
