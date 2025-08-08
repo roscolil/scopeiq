@@ -1,5 +1,4 @@
-// Data Prefetching Utility for ScopeIQ
-// Prefetch API data to reduce loading states
+// Data caching utility
 
 interface PrefetchedData {
   [key: string]: {
@@ -9,7 +8,7 @@ interface PrefetchedData {
   }
 }
 
-// In-memory cache for prefetched data
+// In-memory cache for data
 const prefetchCache: PrefetchedData = {}
 
 // Cache expiry time (5 minutes default)
@@ -22,7 +21,7 @@ export interface PrefetchConfig {
   background?: boolean // Whether to fetch in background
 }
 
-// Prefetch data function
+// Cache data function
 export const prefetchData = async (config: PrefetchConfig): Promise<void> => {
   const {
     key,
@@ -33,16 +32,11 @@ export const prefetchData = async (config: PrefetchConfig): Promise<void> => {
 
   // Check if data is already cached and still valid
   if (isDataCached(key)) {
-    console.log(`Data already cached for key: ${key}`)
     return
   }
 
   try {
-    console.log(`Prefetching data for key: ${key}`)
-
-    const startTime = Date.now()
     const data = await fetcher()
-    const fetchTime = Date.now() - startTime
 
     // Cache the data
     prefetchCache[key] = {
@@ -50,10 +44,8 @@ export const prefetchData = async (config: PrefetchConfig): Promise<void> => {
       timestamp: Date.now(),
       expiry: expiry,
     }
-
-    console.log(`Successfully prefetched ${key} in ${fetchTime}ms`)
   } catch (error) {
-    console.error(`Failed to prefetch data for ${key}:`, error)
+    // Silent failure for prefetching
   }
 }
 
@@ -91,7 +83,7 @@ export const clearAllCache = (): void => {
   })
 }
 
-// Prefetch data based on user navigation patterns
+// Cache data based on user navigation patterns
 export const prefetchUserData = async (companyId: string): Promise<void> => {
   const prefetchConfigs: PrefetchConfig[] = [
     {

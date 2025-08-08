@@ -5,16 +5,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { Spinner } from '@/components/Spinner'
 import { AuthProvider } from './hooks/aws-auth'
-import {
-  prefetchForAuthenticatedUser,
-  prefetchOnIdle,
-  cleanupPrefetchObserver,
-} from './utils/route-prefetch'
-import {
-  DocumentListSkeleton,
-  PageHeaderSkeleton,
-  ProjectsWithDocumentsSkeleton,
-} from './components/skeletons'
+import { prefetchOnIdle, cleanupPrefetchObserver } from './utils/route-prefetch'
+import { PageHeaderSkeleton } from './components/skeletons'
 
 // Eagerly load critical components
 import Index from './pages/Index'
@@ -22,7 +14,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
 
-// Lazy load secondary pages with prefetching
+// Lazy load secondary pages
 const Documents = lazy(() => import('./pages/Documents'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
@@ -36,54 +28,66 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Migration = lazy(() => import('./pages/Migration'))
 
 // Enhanced loading fallback components with skeletons
-const PageLoadingFallback = ({
-  type,
-}: {
-  type?: 'documents' | 'projects' | 'default'
-}) => {
-  switch (type) {
-    case 'documents':
-      return (
-        <div className="container mx-auto p-6 space-y-6">
-          <PageHeaderSkeleton />
-          <DocumentListSkeleton />
-        </div>
-      )
-    case 'projects':
-      return (
-        <div className="container mx-auto p-6 space-y-6">
-          <PageHeaderSkeleton />
-          <ProjectsWithDocumentsSkeleton />
-        </div>
-      )
-    default:
-      return (
-        <div className="flex justify-center items-center h-64">
-          <Spinner />
-        </div>
-      )
-  }
-}
+// const PageLoadingFallback = ({
+//   type,
+// }: {
+//   type?: 'documents' | 'projects' | 'default'
+// }) => {
+//   switch (type) {
+//     case 'documents':
+//       return (
+//         <div className="container mx-auto p-6 space-y-6">
+//           <PageHeaderSkeleton />
+//           {/* <DocumentListSkeleton /> */}
+//         </div>
+//       )
+//     case 'projects':
+//       return (
+//         <div className="container mx-auto p-6 space-y-6">
+//           <PageHeaderSkeleton />
+//           {/* <ProjectsWithDocumentsSkeleton /> */}
+//         </div>
+//       )
+//     default:
+//       return (
+//         <div className="flex justify-center items-center h-64">
+//           <Spinner />
+//         </div>
+//       )
+//   }
+// }
 
 // Enhanced Suspense wrapper with smart fallbacks
 const EnhancedSuspense = ({
   children,
-  fallbackType,
+  // fallbackType,
 }: {
   children: React.ReactNode
   fallbackType?: 'documents' | 'projects' | 'default'
 }) => (
-  <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
-    {children}
-  </Suspense>
+  // <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
+  <Suspense>{children}</Suspense>
 )
 
 const App = () => {
   useEffect(() => {
-    // Initialize prefetching strategies
     prefetchOnIdle()
 
-    // Cleanup on unmount
+    // Add development-specific hot reload handling
+    if (process.env.NODE_ENV === 'development') {
+      // Handle React Fast Refresh issues
+      const handleBeforeUnload = () => {
+        // Clear any auth context issues during hot reload
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+
+      return () => {
+        cleanupPrefetchObserver()
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+      }
+    }
+
     return () => {
       cleanupPrefetchObserver()
     }
@@ -143,7 +147,7 @@ const App = () => {
                   <Route
                     index
                     element={
-                      <EnhancedSuspense fallbackType="projects">
+                      <EnhancedSuspense fallbackType="default">
                         <Dashboard />
                       </EnhancedSuspense>
                     }

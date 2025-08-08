@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/Layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -7,6 +7,7 @@ import {
   ProjectListSkeleton,
   ProjectRowsSkeleton,
   DocumentListSkeleton,
+  NumberSkeleton,
 } from '@/components/skeletons'
 import {
   Card,
@@ -51,65 +52,206 @@ const Dashboard = () => {
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
 
+  // Cache key for stats
+  const STATS_CACHE_KEY = `dashboardStats_${companyId}`
+  const CACHE_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
+
+  // Utility functions for stats caching
+  const getCachedStats = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(STATS_CACHE_KEY)
+      if (!cached) return null
+
+      const { data, timestamp } = JSON.parse(cached)
+      const isExpired = Date.now() - timestamp > CACHE_EXPIRY_MS
+
+      return isExpired ? null : data
+    } catch {
+      return null
+    }
+  }, [STATS_CACHE_KEY, CACHE_EXPIRY_MS])
+
+  const setCachedStatsData = useCallback(
+    (stats: {
+      projectCount: number
+      documentCount: number
+      recentDocumentCount: number
+    }) => {
+      if (typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          STATS_CACHE_KEY,
+          JSON.stringify({
+            data: stats,
+            timestamp: Date.now(),
+          }),
+        )
+      } catch {
+        // Silently fail if localStorage is unavailable
+      }
+    },
+    [STATS_CACHE_KEY],
+  )
+
+  // Cache key for company data
+  const COMPANY_CACHE_KEY = `companyData_${companyId}`
+
+  // Utility functions for company caching
+  const getCachedCompany = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(COMPANY_CACHE_KEY)
+      if (!cached) return null
+
+      const { data, timestamp } = JSON.parse(cached)
+      const isExpired = Date.now() - timestamp > CACHE_EXPIRY_MS
+
+      return isExpired ? null : data
+    } catch {
+      return null
+    }
+  }, [COMPANY_CACHE_KEY, CACHE_EXPIRY_MS])
+
+  const setCachedCompanyData = useCallback(
+    (companyData: Company) => {
+      if (typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          COMPANY_CACHE_KEY,
+          JSON.stringify({
+            data: companyData,
+            timestamp: Date.now(),
+          }),
+        )
+      } catch {
+        // Silently fail if localStorage is unavailable
+      }
+    },
+    [COMPANY_CACHE_KEY],
+  )
+
   // State for company and other data
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
   const [isLoadingCompany, setIsLoadingCompany] = useState(true)
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false)
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start as true
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start as true
+  const [isLoadingStats, setIsLoadingStats] = useState(true) // New loading state for stats
+  const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
+
+  // Cached stats state
+  const [cachedStats, setCachedStats] = useState({
+    projectCount: 0,
+    documentCount: 0,
+    recentDocumentCount: 0,
+  })
+
+  // Load cached project count from localStorage
+  useEffect(() => {
+    if (companyId && typeof window !== 'undefined') {
+      const cached = localStorage.getItem(`projectCount_${companyId}`)
+      if (cached) {
+        setExpectedProjectCount(parseInt(cached, 10))
+      }
+    }
+  }, [companyId])
+
+  // Load cached stats immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cached = getCachedStats()
+      if (cached) {
+        setCachedStats(cached)
+        setIsLoadingStats(false) // Show cached data immediately
+      } else {
+        setIsLoadingStats(true) // No cache, show loading
+      }
+    }
+  }, [companyId, getCachedStats])
+
+  // Load cached company data immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cached = getCachedCompany()
+      if (cached) {
+        setCompany(cached)
+        setIsLoadingCompany(false) // Show cached data immediately
+      } else {
+        setIsLoadingCompany(true) // No cache, show loading
+      }
+    }
+  }, [companyId, getCachedCompany])
 
   // Load company data
   useEffect(() => {
     const loadCompany = async () => {
       if (!companyId || companyId === 'default') {
-        setCompany({
+        const defaultCompany = {
           id: companyId,
           name: user?.name?.split("'s")[0] || 'Your Company',
           description: 'Default company',
-        })
+        }
+        setCompany(defaultCompany)
+        setCachedCompanyData(defaultCompany)
         setIsLoadingCompany(false)
         return
       }
 
+      // Check if we already have cached data and fresh data is loading in background
+      const cached = getCachedCompany()
+
       try {
-        setIsLoadingCompany(true)
+        // If no cache, show loading state
+        if (!cached) {
+          setIsLoadingCompany(true)
+        }
+
         const companyData = await companyService.getCompanyById(companyId)
 
         if (companyData) {
           setCompany(companyData)
+          setCachedCompanyData(companyData) // Cache the fresh data
         } else {
           // Fallback to derived name if company not found
-          setCompany({
+          const fallbackCompany = {
             id: companyId,
             name: user?.name?.split("'s")[0] || 'Your Company',
             description: 'Company details not found',
-          })
+          }
+          setCompany(fallbackCompany)
+          setCachedCompanyData(fallbackCompany)
         }
       } catch (error) {
         console.error('Error loading company:', error)
         // Fallback to derived name on error
-        setCompany({
+        const errorCompany = {
           id: companyId,
           name: user?.name?.split("'s")[0] || 'Your Company',
           description: 'Error loading company details',
-        })
+        }
+        setCompany(errorCompany)
+        setCachedCompanyData(errorCompany)
       } finally {
         setIsLoadingCompany(false)
       }
     }
 
     loadCompany()
-  }, [companyId, user?.name])
+  }, [companyId, user?.name, getCachedCompany, setCachedCompanyData])
 
   // Load projects and documents
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load projects with documents
-        setIsLoadingProjects(true)
-        setIsLoadingDocuments(true)
+        // If we don't have cached stats, show loading state
+        const cached = getCachedStats()
+        if (!cached) {
+          setIsLoadingStats(true)
+        }
 
+        // Load projects with documents - loading states already initialized as true
         const projectsData = await projectService.getAllProjectsWithDocuments()
 
         // Transform to our Project type
@@ -136,6 +278,18 @@ const Dashboard = () => {
 
         setProjects(transformedProjects)
 
+        // Store the project count for future skeleton display
+        const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
+        setExpectedProjectCount(projectCount)
+
+        // Cache the count in localStorage for next visit
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            `projectCount_${companyId}`,
+            projectCount.toString(),
+          )
+        }
+
         // Extract all documents from all projects
         const allDocuments: Document[] = []
         transformedProjects.forEach(project => {
@@ -150,6 +304,23 @@ const Dashboard = () => {
         })
 
         setDocuments(allDocuments)
+
+        // Calculate recent documents (last 7 days)
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const recentDocuments = allDocuments.filter(
+          doc => doc.createdAt && new Date(doc.createdAt) > sevenDaysAgo,
+        )
+
+        // Update stats and cache them
+        const newStats = {
+          projectCount: transformedProjects.length,
+          documentCount: allDocuments.length,
+          recentDocumentCount: recentDocuments.length,
+        }
+
+        setCachedStats(newStats)
+        setCachedStatsData(newStats)
       } catch (error) {
         // Check if it's a "no projects exist" scenario vs actual error
         const errorMessage =
@@ -172,11 +343,12 @@ const Dashboard = () => {
       } finally {
         setIsLoadingProjects(false)
         setIsLoadingDocuments(false)
+        setIsLoadingStats(false) // Finish loading stats
       }
     }
 
     loadData()
-  }, [companyId, toast])
+  }, [companyId, toast, setCachedStatsData, getCachedStats])
 
   const upcomingTasks = [
     {
@@ -266,6 +438,7 @@ const Dashboard = () => {
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Active Projects Card */}
             <Card className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -274,28 +447,46 @@ const Dashboard = () => {
                 <Folders className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                  {projects.length}
-                </div>
+                {isLoadingStats ? (
+                  <NumberSkeleton
+                    className="mb-1"
+                    color="bg-blue-200 dark:bg-blue-800"
+                  />
+                ) : (
+                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                    {cachedStats.projectCount}
+                  </div>
+                )}
                 <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
                   Total projects
                 </p>
               </CardContent>
             </Card>
+
+            {/* Documents Card */}
             <Card className="bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 border-green-200/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Documents</CardTitle>
                 <FileText className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-                  {documents.length}
-                </div>
+                {isLoadingStats ? (
+                  <NumberSkeleton
+                    className="mb-1"
+                    color="bg-green-200 dark:bg-green-800"
+                  />
+                ) : (
+                  <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                    {cachedStats.documentCount}
+                  </div>
+                )}
                 <p className="text-xs text-green-600/70 dark:text-green-400/70">
                   Total documents
                 </p>
               </CardContent>
             </Card>
+
+            {/* Team Members Card - Static for now */}
             <Card className="bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -312,6 +503,8 @@ const Dashboard = () => {
                 </p>
               </CardContent>
             </Card>
+
+            {/* Recent Documents Card */}
             <Card className="bg-gradient-to-br from-yellow-50/50 to-yellow-100/30 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -320,16 +513,16 @@ const Dashboard = () => {
                 <Clock className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
-                  {
-                    documents.filter(doc => {
-                      const docDate = new Date(doc.createdAt || '')
-                      const weekAgo = new Date()
-                      weekAgo.setDate(weekAgo.getDate() - 7)
-                      return docDate > weekAgo
-                    }).length
-                  }
-                </div>
+                {isLoadingStats ? (
+                  <NumberSkeleton
+                    className="mb-1"
+                    color="bg-yellow-200 dark:bg-yellow-800"
+                  />
+                ) : (
+                  <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {cachedStats.recentDocumentCount}
+                  </div>
+                )}
                 <p className="text-xs text-yellow-600/70 dark:text-yellow-400/70">
                   This week
                 </p>
@@ -563,7 +756,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   {isLoadingProjects ? (
-                    <ProjectListSkeleton itemCount={6} />
+                    <ProjectListSkeleton itemCount={expectedProjectCount} />
                   ) : projects.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {projects.map(project => (
@@ -598,12 +791,12 @@ const Dashboard = () => {
                                   <CardTitle className="text-lg">
                                     {project.name}
                                   </CardTitle>
-                                  <div className="flex items-center gap-2 mt-1">
+                                  {/* <div className="flex items-center gap-2 mt-1">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                                     <span className="text-xs text-emerald-600">
                                       Active
                                     </span>
-                                  </div>
+                                  </div> */}
                                 </div>
                               </div>
                             </div>

@@ -44,6 +44,8 @@ const Documents = () => {
   const [companyName, setCompanyName] = React.useState<string>('')
   const [isProjectLoading, setIsProjectLoading] = React.useState(true)
   const [isDocumentsLoading, setIsDocumentsLoading] = React.useState(true)
+  const [expectedDocumentCount, setExpectedDocumentCount] = React.useState(5) // Default for "All Documents" tab
+  const [expectedProjectCount, setExpectedProjectCount] = React.useState(2) // Default for "By Project" tab
   const [resolvedProject, setResolvedProject] = React.useState<{
     id: string
     name: string
@@ -51,6 +53,23 @@ const Documents = () => {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
+
+  // Load cached counts from localStorage
+  React.useEffect(() => {
+    if (companyId && typeof window !== 'undefined') {
+      const cachedDocuments = localStorage.getItem(`documentCount_${companyId}`)
+      const cachedProjects = localStorage.getItem(
+        `projectWithDocsCount_${companyId}`,
+      )
+
+      if (cachedDocuments) {
+        setExpectedDocumentCount(parseInt(cachedDocuments, 10))
+      }
+      if (cachedProjects) {
+        setExpectedProjectCount(parseInt(cachedProjects, 10))
+      }
+    }
+  }, [companyId])
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -92,10 +111,32 @@ const Documents = () => {
           setProjectsWithDocuments(allProjectsWithDocs)
           setIsProjectLoading(false) // Projects loaded first
 
+          // Cache the project count for future skeleton display
+          const projectCount = Math.max(allProjectsWithDocs.length, 1)
+          setExpectedProjectCount(projectCount)
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(
+              `projectWithDocsCount_${companyId}`,
+              projectCount.toString(),
+            )
+          }
+
           // Also set a flat list of all documents for the general documents tab
           const allDocuments = await documentService.getAllDocuments()
           setDocuments(allDocuments)
           setIsDocumentsLoading(false) // Documents loaded second
+
+          // Cache the document count for future skeleton display
+          const documentCount = Math.max(allDocuments.length, 1)
+          setExpectedDocumentCount(documentCount)
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(
+              `documentCount_${companyId}`,
+              documentCount.toString(),
+            )
+          }
         }
       } catch (error) {
         console.error('Error loading data:', error)
@@ -233,13 +274,13 @@ const Documents = () => {
   }
 
   if (isProjectLoading) {
-    return (
-      <Layout>
-        <div className="space-y-6">
-          <PageHeaderSkeleton />
-        </div>
-      </Layout>
-    )
+    // return (
+    //   <Layout>
+    //     <div className="space-y-6">
+    //       <PageHeaderSkeleton />
+    //     </div>
+    //   </Layout>
+    // )
   }
 
   // Single project view
@@ -387,7 +428,9 @@ const Documents = () => {
             <TabsContent value="by-project">
               {/* Progressive loading for projects */}
               {isDocumentsLoading ? (
-                <ProjectsWithDocumentsSkeleton itemCount={2} />
+                <ProjectsWithDocumentsSkeleton
+                  itemCount={expectedProjectCount}
+                />
               ) : projectsWithDocuments.length > 0 ? (
                 <div className="space-y-6">
                   {projectsWithDocuments.map(project => (
@@ -463,7 +506,7 @@ const Documents = () => {
             <TabsContent value="all-documents">
               {/* Progressive loading for all documents */}
               {isDocumentsLoading ? (
-                <DocumentListSkeleton itemCount={5} />
+                <DocumentListSkeleton itemCount={expectedDocumentCount} />
               ) : documents.length > 0 ? (
                 <DocumentList
                   documents={documents}

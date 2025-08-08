@@ -13,26 +13,32 @@ export const DocumentListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
           <CardHeader className="p-4 pb-0">
             <div className="flex justify-between items-start">
               <div className="flex gap-3">
+                {/* File icon skeleton */}
                 <Skeleton className="h-8 w-8 rounded" />
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-[220px]" />
-                  <Skeleton className="h-3 w-[140px]" />
+                  {/* Document title skeleton */}
+                  <Skeleton className="h-4 w-[200px]" />
+                  {/* Document metadata skeleton (size • date) */}
+                  <Skeleton className="h-3 w-[120px]" />
                 </div>
               </div>
+              {/* More options dropdown skeleton */}
               <Skeleton className="h-8 w-8 rounded" />
             </div>
           </CardHeader>
-          <CardContent className="p-4 pt-0 flex justify-between items-center">
+          <CardFooter className="p-4 pt-0 flex justify-between items-center">
+            {/* Status badge skeleton */}
             <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-8 w-16" />
-          </CardContent>
+            {/* View button skeleton */}
+            <Skeleton className="h-8 w-16 rounded" />
+          </CardFooter>
         </Card>
       ))}
     </div>
   )
 }
 
-export const ProjectListSkeleton = ({ itemCount = 6 }: SkeletonProps) => {
+export const ProjectListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {Array.from({ length: itemCount }).map((_, index) => (
@@ -298,5 +304,17 @@ export const TabsSkeleton = () => {
         <Skeleton className="h-4 w-[95%]" />
       </div>
     </div>
+  )
+}
+
+export const NumberSkeleton = ({
+  className = '',
+  color = 'bg-gray-200',
+}: {
+  className?: string
+  color?: string
+}) => {
+  return (
+    <div className={`h-8 w-12 rounded ${color} animate-pulse ${className}`} />
   )
 }

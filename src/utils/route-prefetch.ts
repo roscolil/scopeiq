@@ -53,17 +53,14 @@ export const prefetchRoute = async (routeKey: string): Promise<void> => {
 
   const config = ROUTE_PREFETCH_CONFIG[routeKey]
   if (!config) {
-    console.warn(`No prefetch config found for route: ${routeKey}`)
     return
   }
 
   try {
-    console.log(`Prefetching route: ${routeKey}`)
     await config.component()
     prefetchCache.add(routeKey)
-    console.log(`Successfully prefetched: ${routeKey}`)
   } catch (error) {
-    console.error(`Failed to prefetch ${routeKey}:`, error)
+    // Silent failure for prefetching
   }
 }
 
