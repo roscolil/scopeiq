@@ -1,14 +1,30 @@
 {
   "auth": {
-    "user_pool_id": "ap-southeast-2_1XuQydiVJ",
+    "user_pool_id": "ap-southeast-2_5YHqOMRto",
     "aws_region": "ap-southeast-2",
-    "user_pool_client_id": "o765u53g0j1dkann9nllasmr5",
-    "identity_pool_id": "ap-southeast-2:aec81434-7492-4e57-b165-5c5ff35980c6",
+    "user_pool_client_id": "5gnf5d270o0q15imkkmf0oishb",
+    "identity_pool_id": "ap-southeast-2:6f5efd7f-924e-4bdd-a266-13f7922524e9",
     "mfa_methods": [],
     "standard_required_attributes": ["email"],
     "username_attributes": ["email"],
     "user_verification_types": ["email"],
-    "groups": [],
+    "groups": [
+      {
+        "Admin": {
+          "precedence": 0
+        }
+      },
+      {
+        "Owner": {
+          "precedence": 1
+        }
+      },
+      {
+        "User": {
+          "precedence": 2
+        }
+      }
+    ],
     "mfa_configuration": "NONE",
     "password_policy": {
       "min_length": 8,
@@ -20,7 +36,7 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://pbpthii7t5gxhlywgog7cpoamy.appsync-api.ap-southeast-2.amazonaws.com/graphql",
+    "url": "https://o4oqwdchcbfynfzvnokwv2kouy.appsync-api.ap-southeast-2.amazonaws.com/graphql",
     "aws_region": "ap-southeast-2",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": ["AWS_IAM"],
@@ -83,7 +99,21 @@
               "name": "users",
               "isArray": true,
               "type": {
-                "model": "UserCompany"
+                "model": "User"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["companyId"]
+              }
+            },
+            "invitations": {
+              "name": "invitations",
+              "isArray": true,
+              "type": {
+                "model": "UserInvitation"
               },
               "isRequired": false,
               "attributes": [],
@@ -122,8 +152,8 @@
             "sortKeyFieldNames": []
           }
         },
-        "UserCompany": {
-          "name": "UserCompany",
+        "User": {
+          "name": "User",
           "fields": {
             "id": {
               "name": "id",
@@ -132,11 +162,27 @@
               "isRequired": true,
               "attributes": []
             },
-            "userId": {
-              "name": "userId",
+            "email": {
+              "name": "email",
               "isArray": false,
               "type": "String",
               "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "role": {
+              "name": "role",
+              "isArray": false,
+              "type": {
+                "enum": "UserRole"
+              },
+              "isRequired": false,
               "attributes": []
             },
             "companyId": {
@@ -146,12 +192,45 @@
               "isRequired": true,
               "attributes": []
             },
-            "role": {
-              "name": "role",
+            "isActive": {
+              "name": "isActive",
               "isArray": false,
-              "type": {
-                "enum": "UserCompanyRole"
-              },
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "lastLoginAt": {
+              "name": "lastLoginAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "invitedAt": {
+              "name": "invitedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "acceptedAt": {
+              "name": "acceptedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
               "isRequired": false,
               "attributes": []
             },
@@ -168,13 +247,156 @@
                 "targetNames": ["companyId"]
               }
             },
+            "projectAssignments": {
+              "name": "projectAssignments",
+              "isArray": true,
+              "type": {
+                "model": "UserProject"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["userId"]
+              }
+            },
+            "sentInvitations": {
+              "name": "sentInvitations",
+              "isArray": true,
+              "type": {
+                "model": "UserInvitation"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["invitedBy"]
+              }
+            }
+          },
+          "syncable": true,
+          "pluralName": "Users",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "usersByEmail",
+                "queryField": "userByEmail",
+                "fields": ["email"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "usersByCompanyIdAndRole",
+                "queryField": "usersByCompanyAndRole",
+                "fields": ["companyId", "role"]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": ["create", "update", "delete", "read"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read", "update"],
+                    "groups": ["Owner"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read"],
+                    "groups": ["User"]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "UserProject": {
+          "name": "UserProject",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "userId": {
+              "name": "userId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "projectId": {
+              "name": "projectId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
               "type": "AWSDateTime",
               "isRequired": false,
+              "attributes": []
+            },
+            "user": {
+              "name": "user",
+              "isArray": false,
+              "type": {
+                "model": "User"
+              },
+              "isRequired": false,
               "attributes": [],
-              "isReadOnly": true
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["userId"]
+              }
+            },
+            "project": {
+              "name": "project",
+              "isArray": false,
+              "type": {
+                "model": "Project"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["projectId"]
+              }
             },
             "updatedAt": {
               "name": "updatedAt",
@@ -186,7 +408,293 @@
             }
           },
           "syncable": true,
-          "pluralName": "UserCompanies",
+          "pluralName": "UserProjects",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "userProjectsByUserId",
+                "queryField": "projectsByUser",
+                "fields": ["userId"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "userProjectsByProjectId",
+                "queryField": "usersByProject",
+                "fields": ["projectId"]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": ["create", "update", "delete", "read"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "delete"],
+                    "groups": ["Owner"]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "UserInvitation": {
+          "name": "UserInvitation",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "role": {
+              "name": "role",
+              "isArray": false,
+              "type": {
+                "enum": "UserInvitationRole"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "companyId": {
+              "name": "companyId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "invitedBy": {
+              "name": "invitedBy",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "expiresAt": {
+              "name": "expiresAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": {
+                "enum": "UserInvitationStatus"
+              },
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company": {
+              "name": "company",
+              "isArray": false,
+              "type": {
+                "model": "Company"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["companyId"]
+              }
+            },
+            "inviter": {
+              "name": "inviter",
+              "isArray": false,
+              "type": {
+                "model": "User"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["invitedBy"]
+              }
+            },
+            "projectAssignments": {
+              "name": "projectAssignments",
+              "isArray": true,
+              "type": {
+                "model": "InvitationProject"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["invitationId"]
+              }
+            }
+          },
+          "syncable": true,
+          "pluralName": "UserInvitations",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "userInvitationsByEmail",
+                "queryField": "invitationByEmail",
+                "fields": ["email"]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "userInvitationsByCompanyIdAndStatus",
+                "queryField": "invitationsByCompanyAndStatus",
+                "fields": ["companyId", "status"]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": ["create", "update", "delete", "read"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "InvitationProject": {
+          "name": "InvitationProject",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "invitationId": {
+              "name": "invitationId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "projectId": {
+              "name": "projectId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "invitation": {
+              "name": "invitation",
+              "isArray": false,
+              "type": {
+                "model": "UserInvitation"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["invitationId"]
+              }
+            },
+            "project": {
+              "name": "project",
+              "isArray": false,
+              "type": {
+                "model": "Project"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "association": {
+                "connectionType": "BELONGS_TO",
+                "targetNames": ["projectId"]
+              }
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "InvitationProjects",
           "attributes": [
             {
               "type": "model",
@@ -202,6 +710,13 @@
                     "allow": "owner",
                     "identityClaim": "cognito:username",
                     "operations": ["create", "update", "delete", "read"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   }
                 ]
               }
@@ -283,6 +798,34 @@
               "isArray": true,
               "type": {
                 "model": "Document"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["projectId"]
+              }
+            },
+            "userAssignments": {
+              "name": "userAssignments",
+              "isArray": true,
+              "type": {
+                "model": "UserProject"
+              },
+              "isRequired": false,
+              "attributes": [],
+              "isArrayNullable": true,
+              "association": {
+                "connectionType": "HAS_MANY",
+                "associatedWith": ["projectId"]
+              }
+            },
+            "invitationAssignments": {
+              "name": "invitationAssignments",
+              "isArray": true,
+              "type": {
+                "model": "InvitationProject"
               },
               "isRequired": false,
               "attributes": [],
@@ -520,9 +1063,17 @@
         }
       },
       "enums": {
-        "UserCompanyRole": {
-          "name": "UserCompanyRole",
-          "values": ["admin", "member", "viewer"]
+        "UserRole": {
+          "name": "UserRole",
+          "values": ["Admin", "Owner", "User"]
+        },
+        "UserInvitationRole": {
+          "name": "UserInvitationRole",
+          "values": ["Admin", "Owner", "User"]
+        },
+        "UserInvitationStatus": {
+          "name": "UserInvitationStatus",
+          "values": ["pending", "accepted", "expired", "cancelled"]
         },
         "DocumentStatus": {
           "name": "DocumentStatus",
@@ -534,11 +1085,11 @@
   },
   "storage": {
     "aws_region": "ap-southeast-2",
-    "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-3sjth3rkm1cu",
+    "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-mn5w1ghb5oy9",
     "buckets": [
       {
         "name": "amplifyTeamDrive",
-        "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-3sjth3rkm1cu",
+        "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-mn5w1ghb5oy9",
         "aws_region": "ap-southeast-2",
         "paths": {
           "public/*": {

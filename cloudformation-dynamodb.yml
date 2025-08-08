@@ -1,0 +1,367 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DynamoDB tables for ScopeIQ RBAC system'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name
+
+Resources:
+  # Company Table
+  CompanyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-Company'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: Company
+
+  # User Table with GSIs
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-User'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: role
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UsersByCompanyAndRole
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+            - AttributeName: role
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserByEmail
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: User
+
+  # UserProject Junction Table
+  UserProjectTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-UserProject'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProjectsByUser
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UsersByProject
+          KeySchema:
+            - AttributeName: projectId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: UserProject
+
+  # UserInvitation Table
+  UserInvitationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-UserInvitation'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: InvitationsByCompanyAndStatus
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: InvitationByEmail
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: UserInvitation
+
+  # InvitationProject Junction Table
+  InvitationProjectTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-InvitationProject'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: invitationId
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProjectsByInvitation
+          KeySchema:
+            - AttributeName: invitationId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: InvitationsByProject
+          KeySchema:
+            - AttributeName: projectId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: InvitationProject
+
+  # Enhanced Project Table
+  ProjectTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-Project'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: companyId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ProjectsByCompany
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: ProjectsByCompanyAndName
+          KeySchema:
+            - AttributeName: companyId
+              KeyType: HASH
+            - AttributeName: name
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: Project
+
+  # Enhanced Document Table
+  DocumentTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${Environment}-scopeiq-Document'
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: projectId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: DocumentsByProject
+          KeySchema:
+            - AttributeName: projectId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: DocumentsByProjectAndName
+          KeySchema:
+            - AttributeName: projectId
+              KeyType: HASH
+            - AttributeName: name
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: DocumentsByStatus
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: ScopeIQ
+        - Key: TableType
+          Value: Document
+
+Outputs:
+  CompanyTableName:
+    Description: 'Company table name'
+    Value: !Ref CompanyTable
+    Export:
+      Name: !Sub '${Environment}-CompanyTable'
+
+  UserTableName:
+    Description: 'User table name'
+    Value: !Ref UserTable
+    Export:
+      Name: !Sub '${Environment}-UserTable'
+
+  UserProjectTableName:
+    Description: 'UserProject table name'
+    Value: !Ref UserProjectTable
+    Export:
+      Name: !Sub '${Environment}-UserProjectTable'
+
+  UserInvitationTableName:
+    Description: 'UserInvitation table name'
+    Value: !Ref UserInvitationTable
+    Export:
+      Name: !Sub '${Environment}-UserInvitationTable'
+
+  InvitationProjectTableName:
+    Description: 'InvitationProject table name'
+    Value: !Ref InvitationProjectTable
+    Export:
+      Name: !Sub '${Environment}-InvitationProjectTable'
+
+  ProjectTableName:
+    Description: 'Project table name'
+    Value: !Ref ProjectTable
+    Export:
+      Name: !Sub '${Environment}-ProjectTable'
+
+  DocumentTableName:
+    Description: 'Document table name'
+    Value: !Ref DocumentTable
+    Export:
+      Name: !Sub '${Environment}-DocumentTable'
+
+  CompanyTableArn:
+    Description: 'Company table ARN'
+    Value: !GetAtt CompanyTable.Arn
+    Export:
+      Name: !Sub '${Environment}-CompanyTableArn'
+
+  UserTableArn:
+    Description: 'User table ARN'
+    Value: !GetAtt UserTable.Arn
+    Export:
+      Name: !Sub '${Environment}-UserTableArn'
+
+  ProjectTableArn:
+    Description: 'Project table ARN'
+    Value: !GetAtt ProjectTable.Arn
+    Export:
+      Name: !Sub '${Environment}-ProjectTableArn'
+
+  DocumentTableArn:
+    Description: 'Document table ARN'
+    Value: !GetAtt DocumentTable.Arn
+    Export:
+      Name: !Sub '${Environment}-DocumentTableArn'

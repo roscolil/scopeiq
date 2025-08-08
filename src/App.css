@@ -8,6 +8,31 @@
   width: 100%;
 }
 
+/* Force white background for MultiSelect dropdown */
+[data-radix-popper-content-wrapper] [cmdk-root] {
+  background: white !important;
+  background-image: none !important;
+  color: black !important;
+}
+
+.multiselect-dropdown [cmdk-root] {
+  background: white !important;
+  background-image: none !important;
+  color: black !important;
+}
+
+.multiselect-dropdown [data-cmdk-root] {
+  background: white !important;
+  background-image: none !important;
+  color: black !important;
+}
+
+[data-multiselect='true'] {
+  background: white !important;
+  background-image: none !important;
+  color: black !important;
+}
+
 /* Enhanced focus and interaction styles */
 .focus-ring {
   @apply ring-2 ring-ring ring-offset-2 ring-offset-background;

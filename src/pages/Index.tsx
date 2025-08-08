@@ -103,7 +103,7 @@ const Index = () => {
 
               {/* Dramatic gradient heading */}
               <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-in">
-                <span className="text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text leading-tight">
+                <span className="text-transparent bg-gradient-to-br from-emerald-400 from-30% via-blue-400 via-60% to-violet-400 bg-clip-text leading-tight">
                   Document Intelligence
                 </span>
                 <br />

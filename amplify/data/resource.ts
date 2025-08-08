@@ -10,20 +10,101 @@ const schema = a.schema({
       updatedAt: a.datetime(),
       // Relations
       projects: a.hasMany('Project', 'companyId'),
-      users: a.hasMany('UserCompany', 'companyId'),
+      users: a.hasMany('User', 'companyId'),
+      invitations: a.hasMany('UserInvitation', 'companyId'),
     })
     .authorization(allow => [allow.owner()]),
 
-  // User-Company relationship for multi-tenant access
-  UserCompany: a
+  // Enhanced User model for RBAC
+  User: a
     .model({
-      userId: a.string().required(),
+      email: a.string().required(),
+      name: a.string().required(),
+      role: a.enum(['Admin', 'Owner', 'User']),
       companyId: a.id().required(),
-      role: a.enum(['admin', 'member', 'viewer']),
+      isActive: a.boolean().default(true),
+      lastLoginAt: a.datetime(),
+      invitedAt: a.datetime(),
+      acceptedAt: a.datetime(),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
       // Relations
       company: a.belongsTo('Company', 'companyId'),
+      projectAssignments: a.hasMany('UserProject', 'userId'),
+      sentInvitations: a.hasMany('UserInvitation', 'invitedBy'),
     })
-    .authorization(allow => [allow.owner()]),
+    .authorization(allow => [
+      allow.owner(),
+      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+      allow.groups(['Owner']).to(['read', 'update']),
+      allow.groups(['User']).to(['read']),
+    ])
+    .secondaryIndexes(index => [
+      index('companyId').sortKeys(['role']).queryField('usersByCompanyAndRole'),
+      index('email').queryField('userByEmail'),
+    ]),
+
+  // User-Project assignment for granular access control
+  UserProject: a
+    .model({
+      userId: a.id().required(),
+      projectId: a.id().required(),
+      createdAt: a.datetime(),
+      // Relations
+      user: a.belongsTo('User', 'userId'),
+      project: a.belongsTo('Project', 'projectId'),
+    })
+    .authorization(allow => [
+      allow.owner(),
+      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+      allow.groups(['Owner']).to(['create', 'read', 'delete']),
+    ])
+    .secondaryIndexes(index => [
+      index('userId').queryField('projectsByUser'),
+      index('projectId').queryField('usersByProject'),
+    ]),
+
+  // User invitation system
+  UserInvitation: a
+    .model({
+      email: a.string().required(),
+      role: a.enum(['Admin', 'Owner', 'User']),
+      companyId: a.id().required(),
+      invitedBy: a.id().required(),
+      expiresAt: a.datetime().required(),
+      status: a.enum(['pending', 'accepted', 'expired', 'cancelled']),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+      // Relations
+      company: a.belongsTo('Company', 'companyId'),
+      inviter: a.belongsTo('User', 'invitedBy'),
+      projectAssignments: a.hasMany('InvitationProject', 'invitationId'),
+    })
+    .authorization(allow => [
+      allow.owner(),
+      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+    ])
+    .secondaryIndexes(index => [
+      index('companyId')
+        .sortKeys(['status'])
+        .queryField('invitationsByCompanyAndStatus'),
+      index('email').queryField('invitationByEmail'),
+    ]),
+
+  // Invitation-Project assignment
+  InvitationProject: a
+    .model({
+      invitationId: a.id().required(),
+      projectId: a.id().required(),
+      createdAt: a.datetime(),
+      // Relations
+      invitation: a.belongsTo('UserInvitation', 'invitationId'),
+      project: a.belongsTo('Project', 'projectId'),
+    })
+    .authorization(allow => [
+      allow.owner(),
+      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+    ]),
 
   // Enhanced Project model
   Project: a
@@ -37,6 +118,8 @@ const schema = a.schema({
       // Relations
       company: a.belongsTo('Company', 'companyId'),
       documents: a.hasMany('Document', 'projectId'),
+      userAssignments: a.hasMany('UserProject', 'projectId'),
+      invitationAssignments: a.hasMany('InvitationProject', 'projectId'),
     })
     .authorization(allow => [allow.owner()])
     .secondaryIndexes(index => [

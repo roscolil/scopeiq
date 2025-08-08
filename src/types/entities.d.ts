@@ -114,6 +114,55 @@ export interface DatabaseCompany extends BaseEntity {
 }
 
 // ================================
+// User and Role Entity Types
+// ================================
+
+export type UserRole = 'Admin' | 'Owner' | 'User'
+
+export interface User extends BaseEntity {
+  email: string
+  name: string
+  role: UserRole
+  companyId: string
+  projectIds: string[] // Projects this user has access to
+  isActive: boolean
+  lastLoginAt?: string | null
+  invitedAt?: string | null
+  acceptedAt?: string | null
+}
+
+export interface UserInvitation extends BaseEntity {
+  email: string
+  role: UserRole
+  companyId: string
+  projectIds: string[]
+  invitedBy: string // User ID of who sent the invitation
+  expiresAt: string
+  status: 'pending' | 'accepted' | 'expired' | 'cancelled'
+}
+
+export interface RolePermissions {
+  role: UserRole
+  permissions: {
+    // Company level permissions
+    canManageCompany: boolean
+    canManageUsers: boolean
+    canViewAllProjects: boolean
+
+    // Project level permissions
+    canCreateProjects: boolean
+    canDeleteProjects: boolean
+    canEditProjects: boolean
+
+    // Document level permissions
+    canUploadDocuments: boolean
+    canDeleteDocuments: boolean
+    canViewDocuments: boolean
+    canDownloadDocuments: boolean
+  }
+}
+
+// ================================
 // Hybrid Service Entity Types
 // ================================
 

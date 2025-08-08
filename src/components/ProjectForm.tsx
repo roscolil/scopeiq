@@ -6,6 +6,7 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { createSlug } from '@/utils/navigation'
 import {
   Form,
   FormControl,
@@ -50,6 +51,7 @@ interface ProjectFormProps {
     address: string
     name: string
     description: string
+    slug?: string
   }) => Promise<void>
   defaultValues?: {
     address: string
@@ -96,6 +98,7 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
         address: formattedAddress,
         name: data.name,
         description: data.description || '',
+        slug: createSlug(data.name),
       })
 
       toast({

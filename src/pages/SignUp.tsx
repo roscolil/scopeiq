@@ -24,6 +24,7 @@ import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { signUp } from 'aws-amplify/auth'
+import { Eye, EyeOff } from 'lucide-react'
 
 const formSchema = z
   .object({
@@ -34,9 +35,18 @@ const formSchema = z
     email: z.string().email({ message: 'Please enter a valid email address' }),
     password: z
       .string()
-      .min(6, { message: 'Password must be at least 6 characters' }),
+      .min(8, { message: 'Password must be at least 8 characters' })
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+        {
+          message:
+            'Password must contain uppercase, lowercase, number, and special character',
+        },
+      ),
     confirmPassword: z.string(),
-    role: z.enum(['owner', 'user'], { required_error: 'Please select a role' }),
+    role: z.enum(['Admin', 'Owner', 'User'], {
+      required_error: 'Please select a role',
+    }),
   })
   .refine(data => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -48,6 +58,8 @@ type FormValues = z.infer<typeof formSchema>
 const SignUp = () => {
   const navigate = useNavigate()
   const [error, setError] = React.useState<string | null>(null)
+  const [showPassword, setShowPassword] = React.useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,29 +76,40 @@ const SignUp = () => {
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
+      console.log('Attempting to create account with:', {
+        email: data.email,
+        name: data.name,
+        company: data.company,
+        role: data.role,
+      })
+
       await signUp({
         username: data.email,
         password: data.password,
         options: {
           userAttributes: {
-            name: data.name,
+            given_name: data.name,
             email: data.email,
-            'custom:Company': data.company,
-            'custom:role': data.role, // Store the role as a custom attribute
+            'custom:companyId': data.company, // Fixed: should be companyId, not Company
+            'custom:role': data.role,
           },
         },
       })
+
       toast({
         title: 'Account created',
         description:
           'Your account has been successfully created. Please check your email for verification.',
       })
       // Navigate to verification page, passing email as state
-      navigate('/verify-email', { state: { email: data.email } })
-    } catch (err) {
-      setError(
-        'An error occurred while creating your account. Please try again.',
-      )
+      navigate('/auth/verify-email', { state: { email: data.email } })
+    } catch (err: unknown) {
+      console.error('Signup error:', err)
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while creating your account. Please try again.'
+      setError(errorMessage)
     }
   }
 
@@ -161,8 +184,9 @@ const SignUp = () => {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Owner</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Owner">Owner</SelectItem>
+                      <SelectItem value="User">User</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormControl>
@@ -178,7 +202,29 @@ const SignUp = () => {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="********" {...field} />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="********"
+                      {...field}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className="sr-only">
+                        {showPassword ? 'Hide password' : 'Show password'}
+                      </span>
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -192,7 +238,33 @@ const SignUp = () => {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="********" {...field} />
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="********"
+                      {...field}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className="sr-only">
+                        {showConfirmPassword
+                          ? 'Hide password'
+                          : 'Show password'}
+                      </span>
+                    </Button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -210,8 +282,13 @@ const SignUp = () => {
       </Form>
 
       <div className="mt-4 text-center text-sm">
-        <span className="text-gray-400">Already have an account?</span>{' '}
-        <Link to="/auth/signin" className="text-primary hover:underline">
+        <span className="text-gray-100 dark:text-gray-100 font-medium">
+          Already have an account?
+        </span>{' '}
+        <Link
+          to="/auth/signin"
+          className="text-blue-400 hover:text-blue-300 hover:underline font-bold text-base transition-colors"
+        >
           Sign in
         </Link>
       </div>

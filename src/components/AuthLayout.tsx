@@ -37,10 +37,15 @@ export const AuthLayout = ({
           <div className="text-center">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
+              className="font-bold text-2xl flex items-center justify-center gap-3 text-white hover:text-emerald-400 transition-colors"
             >
-              <FilePlus className="h-6 w-6" />
-              <span className="text-xl font-bold">ScopeIQ</span>
+              <div className="relative">
+                <FilePlus className="h-8 w-8 text-emerald-400" />
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+              </div>
+              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                ScopeIQ
+              </span>
             </Link>
             <h2 className="mt-6 text-3xl font-bold text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
               {title}

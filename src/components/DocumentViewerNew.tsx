@@ -1,18 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  FileText,
-  File,
-  FileImage,
-  Download,
-  Brain,
-  Loader2,
-} from 'lucide-react'
-import { AIActions } from './AIActions'
+import { FileText, File, FileImage, Loader2, Brain } from 'lucide-react'
 import { DocumentViewerSkeleton } from './skeletons'
 import { PDFViewer } from './PDFViewer'
+import { AIActions } from './AIActions'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/hybrid'
-import { Button } from './ui/button'
 import {
   Card,
   CardContent,
@@ -83,7 +75,9 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
 
   return (
     <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm font-mono">
-      {textContent || (
+      {textContent ? (
+        <div className="whitespace-pre-wrap">{textContent}</div>
+      ) : (
         <div className="text-gray-400 italic">
           This text file appears to be empty.
         </div>
@@ -116,7 +110,7 @@ interface DocumentViewerProps {
   projectId: string
   companyId: string
   viewMode?: 'document' | 'ai'
-  document?: DocumentType | null // Optional pre-resolved document
+  document?: DocumentType | null
 }
 
 export const DocumentViewer = ({
@@ -146,7 +140,7 @@ export const DocumentViewer = ({
       } else if (preResolvedDocument.type.includes('pdf')) {
         documentContent =
           preResolvedDocument.content ||
-          'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+          'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
       } else if (
         preResolvedDocument.type.includes('text') ||
         preResolvedDocument.type.includes('txt') ||
@@ -192,14 +186,14 @@ export const DocumentViewer = ({
           } else if (documentData.type.includes('pdf')) {
             documentContent =
               documentData.content ||
-              'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+              'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
           } else if (
             documentData.type.includes('word') ||
             documentData.type.includes('doc')
           ) {
             documentContent =
               documentData.content ||
-              'This is a Word document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+              'This is a Word document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
           } else if (
             documentData.type.includes('excel') ||
             documentData.type.includes('sheet') ||
@@ -207,7 +201,7 @@ export const DocumentViewer = ({
           ) {
             documentContent =
               documentData.content ||
-              'This is a spreadsheet that was uploaded. Content extraction is in progress.\n\nThe data will be available once processing is complete.\n\nYou can use the AI actions below to analyze this document.'
+              'This is a spreadsheet that was uploaded. Content extraction is in progress.\n\nThe data will be available once processing is complete.'
           } else if (
             documentData.type.includes('text') ||
             documentData.type.includes('txt') ||
@@ -216,7 +210,7 @@ export const DocumentViewer = ({
           ) {
             documentContent =
               documentData.content ||
-              'This is a text document that was uploaded. Content is being processed.\n\nYou can use the AI actions below to analyze this document.'
+              'This is a text document that was uploaded. Content is being processed.'
           } else {
             documentContent =
               documentData.content ||
@@ -352,15 +346,19 @@ export const DocumentViewer = ({
             {/* Document Preview */}
             <div className="p-4 bg-background rounded-md border">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-medium">
-                  {document?.name || 'Document'}
-                </h3>
-                {document?.type && (
-                  <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full">
-                    {document.type.split('/')[1]?.toUpperCase() ||
-                      document.type}
-                  </span>
-                )}
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium">
+                    {document?.name || 'Document'}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {document?.type && (
+                    <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full">
+                      {document.type.split('/')[1]?.toUpperCase() ||
+                        document.type}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Document content based on type */}
@@ -395,7 +393,7 @@ You can use the AI Analysis tab to analyze this document.`}
       ) : (
         <div className="space-y-4">
           <Card>
-            <CardHeader className="pb-2" style={{ display: 'none' }}>
+            <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <Brain className="h-5 w-5 text-primary" />
                 AI Analysis

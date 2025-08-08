@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
 import { PageHeaderSkeleton, ProjectListSkeleton } from '@/components/skeletons'
@@ -18,6 +18,7 @@ import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,7 +26,14 @@ const Projects = () => {
     companyId: string
   }>()
 
-  // Load projects from API
+  // Check if we should auto-open the new project dialog
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setIsDialogOpen(true)
+      // Clear the URL parameter
+      setSearchParams({})
+    }
+  }, [searchParams, setSearchParams])
   useEffect(() => {
     const loadProjects = async () => {
       try {
@@ -68,6 +76,7 @@ const Projects = () => {
     address: string
     name: string
     description: string
+    slug?: string
     streetNumber?: string
     streetName?: string
     suburb?: string
@@ -81,6 +90,7 @@ const Projects = () => {
       const newProject = await projectService.createProject(companyId!, {
         name: projectData.name,
         description: projectData.description || '',
+        slug: projectData.slug,
       })
 
       if (newProject) {

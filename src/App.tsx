@@ -15,17 +15,11 @@ import ForgotPassword from './pages/ForgotPassword'
 import ProfileSettings from './pages/ProfileSettings'
 // import { AuthProvider } from './hooks/use-auth'
 import Dashboard from './pages/Dashboard'
-import { Authenticator } from '@aws-amplify/ui-react'
-import { Amplify } from 'aws-amplify'
-import outputs from '../amplify_outputs.json'
-import '@aws-amplify/ui-react/styles.css'
 import VerifyEmail from './pages/VerifyEmail'
 import { AuthProvider } from './hooks/aws-auth'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
 import Pricing from './pages/Pricing'
 import Migration from './pages/Migration'
-
-Amplify.configure(outputs)
 
 // const queryClient = new QueryClient()
 

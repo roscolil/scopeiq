@@ -7,6 +7,7 @@ import {
 } from './database'
 import { s3DocumentService, s3ProjectService } from './s3-metadata'
 import { getSignedDownloadUrl } from './documentUpload'
+import { createSlug } from '@/utils/navigation'
 
 /**
  * Hybrid service that implements the migration strategy:
@@ -35,6 +36,7 @@ export interface HybridProject {
   id: string
   name: string
   description: string
+  slug?: string
   createdAt: string
   updatedAt?: string
   companyId: string
@@ -245,8 +247,6 @@ export const hybridDocumentService = {
 
         if (foundDocument) {
           return foundDocument
-        } else {
-          console.log('Hybrid: Document not found via fallback method either')
         }
       } catch (fallbackError) {
         console.error('Hybrid: Fallback method also failed:', fallbackError)
@@ -266,7 +266,6 @@ export const hybridDocumentService = {
       // Get the document to access its S3 key
       const dbDocument = await databaseDocumentService.getDocument(documentId)
       if (!dbDocument) {
-        console.log(`Document ${documentId} not found`)
         return null
       }
 
@@ -277,7 +276,6 @@ export const hybridDocumentService = {
 
       // Generate fresh pre-signed URL
       const newUrl = await getSignedDownloadUrl(dbDocument.s3Key)
-      console.log(`Generated fresh URL for document ${documentId}`)
 
       // Update the document with the new URL
       const updatedDocument = await databaseDocumentService.updateDocument(
@@ -638,6 +636,7 @@ export const hybridProjectService = {
         id: project.id,
         name: project.name,
         description: project.description || '',
+        slug: project.slug,
         createdAt: project.createdAt || new Date().toISOString(),
         updatedAt: project.updatedAt,
         companyId: project.companyId,
@@ -670,11 +669,11 @@ export const hybridProjectService = {
       const project = await databaseProjectService.getProject(slugOrId)
 
       if (project) {
-        console.log('Hybrid: Found project by direct ID')
         return {
           id: project.id,
           name: project.name,
           description: project.description || '',
+          slug: project.slug,
           createdAt: project.createdAt || new Date().toISOString(),
           updatedAt: project.updatedAt,
           companyId: project.companyId,
@@ -683,18 +682,37 @@ export const hybridProjectService = {
 
       // If not found by ID, search by slug
       const projects = await databaseProjectService.getProjects()
-      const projectBySlug = projects.find(p => p.slug === slugOrId)
 
+      // First try exact slug match
+      const projectBySlug = projects.find(p => p.slug === slugOrId)
       if (projectBySlug) {
         return {
           id: projectBySlug.id,
           name: projectBySlug.name,
           description: projectBySlug.description || '',
+          slug: projectBySlug.slug,
           createdAt: projectBySlug.createdAt || new Date().toISOString(),
           updatedAt: projectBySlug.updatedAt,
           companyId: projectBySlug.companyId,
         }
       }
+
+      // Fallback: try matching against generated slugs from project names
+      for (const p of projects) {
+        const generatedSlug = createSlug(p.name)
+        if (generatedSlug === slugOrId) {
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description || '',
+            slug: p.slug,
+            createdAt: p.createdAt || new Date().toISOString(),
+            updatedAt: p.updatedAt,
+            companyId: p.companyId,
+          }
+        }
+      }
+
       return null
     } catch (error) {
       console.error('Hybrid: Error resolving project:', error)

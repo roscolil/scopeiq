@@ -37,7 +37,6 @@ import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/document-recovery'
-// or import { callClaude } from '@/services/anthropic'
 
 interface AIActionsProps {
   documentId: string
@@ -65,7 +64,7 @@ export const AIActions = ({
   } | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
-    'document', // Default to document scope for individual document page
+    documentId ? 'document' : 'project', // Default to project scope if no documentId
   )
   const [isLoading, setIsLoading] = useState(false)
   const [document, setDocument] = useState<Document | null>(null)
@@ -85,7 +84,14 @@ export const AIActions = ({
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
     const fetchDocumentStatus = async () => {
-      if (!documentId || !projectId || !companyId) return
+      // Only fetch document status if we have all required IDs
+      if (!documentId || !projectId || !companyId) {
+        // If no documentId, we're in project scope mode
+        if (!documentId) {
+          setQueryScope('project')
+        }
+        return
+      }
 
       setIsLoadingStatus(true)
       try {
@@ -97,6 +103,8 @@ export const AIActions = ({
         setDocument(doc)
       } catch (error) {
         console.error('Error fetching document status:', error)
+        // If we can't fetch the document, fall back to project scope
+        setQueryScope('project')
       } finally {
         setIsLoadingStatus(false)
       }
@@ -105,10 +113,13 @@ export const AIActions = ({
     // Initial fetch
     fetchDocumentStatus()
 
-    // Set up adaptive polling with status-dependent intervals
+    // Set up adaptive polling with status-dependent intervals (only if we have a documentId)
     let intervalId: NodeJS.Timeout | null = null
 
     const startPolling = () => {
+      // Only start polling if we have a documentId
+      if (!documentId) return
+
       // Clear any existing interval
       if (intervalId) {
         clearInterval(intervalId)
@@ -131,8 +142,10 @@ export const AIActions = ({
       intervalId = setInterval(fetchDocumentStatus, pollInterval)
     }
 
-    // Start polling immediately
-    startPolling()
+    // Start polling immediately (only if we have a document)
+    if (documentId) {
+      startPolling()
+    }
 
     // Cleanup function
     return () => {
@@ -314,43 +327,39 @@ export const AIActions = ({
 
     // Check document status before proceeding
     if (queryScope === 'document') {
-      if (!document) {
+      // If no documentId but scope is document, switch to project
+      if (!documentId) {
+        setQueryScope('project')
         toast({
-          title: 'Document Not Found',
-          description: 'Unable to find document information.',
+          title: 'Switched to Project Scope',
+          description:
+            'No specific document selected, searching across the entire project.',
+        })
+        // Continue with project-wide search
+      } else if (!document) {
+        toast({
+          title: 'Document Loading',
+          description:
+            'Document information is still loading. Please wait a moment and try again.',
           variant: 'destructive',
         })
         return
-      }
-
-      if (document.status === 'processing') {
+      } else if (document.status === 'processing') {
         toast({
           title: 'Document Processing',
           description:
-            'This document is still being processed. Please wait a moment and try again.',
-          variant: 'destructive',
+            'This document is still being processed. Switching to project-wide search instead.',
         })
-        return
-      }
-
-      if (document.status === 'failed') {
+        // Switch to project scope instead of blocking
+        setQueryScope('project')
+      } else if (document.status === 'failed') {
         toast({
           title: 'Document Processing Failed',
           description:
-            'This document failed to process and cannot be analyzed. Please try uploading the document again.',
-          variant: 'destructive',
+            'This document failed to process. Switching to project-wide search instead.',
         })
-        return
-      }
-
-      if (document.status !== 'processed') {
-        toast({
-          title: 'Document Not Ready',
-          description:
-            'This document is not ready for AI analysis. Please check the document status.',
-          variant: 'destructive',
-        })
-        return
+        // Switch to project scope
+        setQueryScope('project')
       }
     }
 
@@ -361,17 +370,34 @@ export const AIActions = ({
     try {
       if (isQuestion(query)) {
         // Handle as AI question - first get relevant content via semantic search
-        const searchResponse = await semanticSearch({
+        const searchParams: {
+          projectId: string
+          query: string
+          topK: number
+          documentId?: string
+        } = {
           projectId: projectId,
           query: query,
           topK: 3,
-          ...(queryScope === 'document' && { documentId }), // Add documentId filter for document-specific queries
-        })
+        }
+
+        // Only add documentId filter for document-specific queries if we have a valid document
+        if (
+          queryScope === 'document' &&
+          documentId &&
+          document?.status === 'processed'
+        ) {
+          searchParams.documentId = documentId
+        }
+
+        const searchResponse = await semanticSearch(searchParams)
 
         // Build context from search results
-        let context = `Project ID: ${projectId}\n`
-        if (queryScope === 'document') {
-          context = `Document ID: ${documentId}\nDocument Name: ${document?.name || 'Unknown'}\n`
+        let context = ``
+        if (queryScope === 'document' && documentId && document) {
+          context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
+        } else {
+          context = `Project ID: ${projectId}\nSearching across entire project.\n`
         }
 
         // Add relevant document content as context
@@ -634,12 +660,27 @@ export const AIActions = ({
                   Unlock insights with intelligent search & AI analysis
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  {/* <Badge variant="secondary" className="text-2xs">
-                    Search or Ask
-                  </Badge> */}
                   <Badge variant="outline" className="text-2xs">
-                    {documentId ? 'Document scope' : 'Project scope'}
+                    {queryScope === 'document' && documentId
+                      ? 'Document scope'
+                      : 'Project scope'}
                   </Badge>
+                  {/* Show scope selector when we have both options */}
+                  {documentId && document && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-2xs h-5 px-2"
+                      onClick={() =>
+                        setQueryScope(
+                          queryScope === 'document' ? 'project' : 'document',
+                        )
+                      }
+                    >
+                      Switch to{' '}
+                      {queryScope === 'document' ? 'Project' : 'Document'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -652,14 +693,17 @@ export const AIActions = ({
                   Ask questions like "What are the key safety requirements?" or
                   search for specific terms like "concrete specifications" to
                   get instant, intelligent results from your{' '}
-                  {documentId ? 'document' : 'project'}.
+                  {queryScope === 'document' && documentId
+                    ? 'document'
+                    : 'project'}
+                  .
                 </div>
               </div>
             </div>
 
             <div className="mb-4">
               <Textarea
-                placeholder={`💬 Ask anything about this ${documentId ? 'document' : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
+                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
@@ -678,35 +722,41 @@ export const AIActions = ({
                 isListening={isListening}
                 toggleListening={toggleListening}
               />
-              <Button
-                onClick={handleQuery}
-                disabled={
-                  isLoading || !query.trim() || document?.status !== 'processed'
-                }
-                className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-200"
-                size="default"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="spinner" />
-                    <span className="animate-pulse">Analyzing...</span>
-                  </>
-                ) : (
-                  <>
-                    {isQuestion(query) ? (
-                      <>
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Ask AI ✨</span>
-                      </>
-                    ) : (
-                      <>
-                        <Search className="w-4 h-4" />
-                        <span>Search</span>
-                      </>
-                    )}
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleQuery}
+                  disabled={
+                    isLoading ||
+                    !query.trim() ||
+                    (queryScope === 'document' &&
+                      documentId &&
+                      document?.status === 'processing')
+                  }
+                  className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-200"
+                  size="default"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="spinner" />
+                      <span className="animate-pulse">Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      {isQuestion(query) ? (
+                        <>
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Ask AI ✨</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="w-4 h-4" />
+                          <span>Search</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
             {searchError && (

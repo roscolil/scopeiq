@@ -16,7 +16,7 @@ import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState } from 'react'
-import { confirmSignUp, resendSignUpCode } from 'aws-amplify/auth'
+import { confirmSignUp, resendSignUpCode, signIn } from 'aws-amplify/auth'
 
 const formSchema = z.object({
   code: z
@@ -49,12 +49,19 @@ const VerifyEmail = () => {
         username: emailFromState,
         confirmationCode: data.code,
       })
+
       toast({
-        title: 'Email verified',
-        description:
-          'Your email has been successfully verified. You can now sign in.',
+        title: 'Email verified successfully!',
+        description: 'Your account is now active. Please sign in to continue.',
       })
-      navigate('/auth/signin')
+
+      // Redirect to signin with a success indicator
+      navigate('/auth/signin', {
+        state: {
+          email: emailFromState,
+          fromVerification: true,
+        },
+      })
     } catch (err) {
       setError('Invalid code or email. Please try again.')
     }
@@ -107,13 +114,16 @@ const VerifyEmail = () => {
             <Button
               type="button"
               variant="link"
-              className="px-0"
+              className="px-0 text-blue-400 hover:text-blue-300 font-bold"
               onClick={handleResend}
               disabled={isResending}
             >
               {isResending ? 'Resending...' : 'Resend code'}
             </Button>
-            <Link to="/auth/signin" className="text-primary hover:underline">
+            <Link
+              to="/auth/signin"
+              className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
+            >
               Back to sign in
             </Link>
           </div>

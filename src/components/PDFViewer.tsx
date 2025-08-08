@@ -11,6 +11,7 @@ interface PDFViewerProps {
     url?: string | null
     s3Url?: string | null
     type: string
+    content?: string | null
   }
 }
 

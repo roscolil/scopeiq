@@ -281,22 +281,34 @@ export const MultiSelect = React.forwardRef<
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto p-0"
+          className="w-auto p-0 !bg-white border border-gray-200 text-black multiselect-dropdown"
           align="start"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
+          style={{ backgroundColor: 'white', color: 'black' }}
         >
-          <Command>
+          <Command
+            className="!bg-white !text-black border-0 !from-white !via-white !to-white"
+            data-multiselect="true"
+            style={{
+              backgroundColor: 'white !important',
+              color: 'black !important',
+              backgroundImage: 'none !important',
+            }}
+          >
             <CommandInput
               placeholder="Search..."
               onKeyDown={handleInputKeyDown}
+              className="text-black placeholder:text-gray-500 bg-white border-0"
             />
-            <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup>
+            <CommandList className="bg-white">
+              <CommandEmpty className="text-gray-500">
+                No results found.
+              </CommandEmpty>
+              <CommandGroup className="bg-white">
                 <CommandItem
                   key="all"
                   onSelect={toggleAll}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-black hover:bg-gray-100"
                 >
                   <div
                     className={cn(
@@ -316,7 +328,7 @@ export const MultiSelect = React.forwardRef<
                     <CommandItem
                       key={option.value}
                       onSelect={() => toggleOption(option.value)}
-                      className="cursor-pointer"
+                      className="cursor-pointer text-black hover:bg-gray-100"
                     >
                       <div
                         className={cn(
@@ -336,14 +348,14 @@ export const MultiSelect = React.forwardRef<
                   )
                 })}
               </CommandGroup>
-              <CommandSeparator />
-              <CommandGroup>
+              <CommandSeparator className="bg-gray-200" />
+              <CommandGroup className="bg-white">
                 <div className="flex items-center justify-between">
                   {selectedValues.length > 0 && (
                     <>
                       <CommandItem
                         onSelect={handleClear}
-                        className="flex-1 justify-center cursor-pointer"
+                        className="flex-1 justify-center cursor-pointer text-black hover:bg-gray-100"
                       >
                         Clear
                       </CommandItem>
@@ -355,7 +367,7 @@ export const MultiSelect = React.forwardRef<
                   )}
                   <CommandItem
                     onSelect={() => setIsPopoverOpen(false)}
-                    className="flex-1 justify-center cursor-pointer max-w-full"
+                    className="flex-1 justify-center cursor-pointer max-w-full text-black hover:bg-gray-100"
                   >
                     Close
                   </CommandItem>

@@ -39,16 +39,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Project, Document } from '@/types'
 import { projectService, documentService } from '@/services/hybrid'
-import { routes } from '@/utils/navigation'
+import { routes, createSlug } from '@/utils/navigation'
+import { useAuth } from '@/hooks/aws-auth'
 
 const Dashboard = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { user } = useAuth()
 
-  let companyId = decodeURIComponent(
-    window.location.pathname.split('/')[1] || 'Your Company',
-  )
-  companyId = companyId.charAt(0).toUpperCase() + companyId.slice(1)
+  // Get company ID from authenticated user
+  const companyId = user?.companyId || 'default'
+  const companyName =
+    user?.name?.split("'s")[0] || user?.companyId || 'Your Company'
 
   // State for real data
   const [projects, setProjects] = useState<Project[]>([])
@@ -68,21 +70,24 @@ const Dashboard = () => {
 
         // Transform to our Project type
         const transformedProjects: Project[] = (projectsData || []).map(
-          project => ({
-            id: project.id,
-            name: project.name || 'Untitled Project',
-            description: project.description || '',
-            createdAt: project.createdAt,
-            updatedAt: project.updatedAt,
-            documents: project.documents || [],
-            address: '',
-            companyId: companyId.toLowerCase(),
-            streetNumber: '',
-            streetName: '',
-            suburb: '',
-            state: '',
-            postcode: '',
-          }),
+          project => {
+            return {
+              id: project.id,
+              name: project.name || 'Untitled Project',
+              description: project.description || '',
+              slug: project.slug,
+              createdAt: project.createdAt,
+              updatedAt: project.updatedAt,
+              documents: project.documents || [],
+              address: '',
+              companyId: companyId,
+              streetNumber: '',
+              streetName: '',
+              suburb: '',
+              state: '',
+              postcode: '',
+            }
+          },
         )
 
         setProjects(transformedProjects)
@@ -180,7 +185,7 @@ const Dashboard = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-                {companyId} Dashboard
+                {companyName} Dashboard
               </h1>
               <p className="text-gray-400 mt-2">
                 Welcome back! Here's an overview of your projects and
@@ -192,7 +197,7 @@ const Dashboard = () => {
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors text-white hover:text-emerald-400"
-                onClick={() => navigate(`/${companyId.toLowerCase()}/settings`)}
+                onClick={() => navigate(routes.company.settings(companyId))}
               >
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
@@ -206,51 +211,61 @@ const Dashboard = () => {
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
+            <Card className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
                   Active Projects
                 </CardTitle>
+                <Folders className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
                   {projects.length}
                 </div>
-                <p className="text-xs text-slate-600">Total projects</p>
+                <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
+                  Total projects
+                </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
-                  Documents
-                </CardTitle>
+            <Card className="bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 border-green-200/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Documents</CardTitle>
+                <FileText className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">
                   {documents.length}
                 </div>
-                <p className="text-xs text-slate-600">Total documents</p>
+                <p className="text-xs text-green-600/70 dark:text-green-400/70">
+                  Total documents
+                </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
+            <Card className="bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
                   Team Members
                 </CardTitle>
+                <Users className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">8</div>
-                <p className="text-xs text-slate-600">+1 from last month</p>
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                  8
+                </div>
+                <p className="text-xs text-purple-600/70 dark:text-purple-400/70">
+                  +1 from last month
+                </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
+            <Card className="bg-gradient-to-br from-yellow-50/50 to-yellow-100/30 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
                   Recent Documents
                 </CardTitle>
+                <Clock className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">
+                <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
                   {
                     documents.filter(doc => {
                       const docDate = new Date(doc.createdAt || '')
@@ -260,7 +275,9 @@ const Dashboard = () => {
                     }).length
                   }
                 </div>
-                <p className="text-xs text-slate-600">This week</p>
+                <p className="text-xs text-yellow-600/70 dark:text-yellow-400/70">
+                  This week
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -286,7 +303,9 @@ const Dashboard = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate(`/${companyId}/projects`)}
+                        onClick={() =>
+                          navigate(routes.company.projects.list(companyId))
+                        }
                       >
                         View all
                       </Button>
@@ -300,15 +319,23 @@ const Dashboard = () => {
                         <div key={project.id}>
                           <div
                             className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
-                            onClick={() =>
+                            onClick={() => {
+                              // Use existing slug or generate from name
+                              const projectSlug =
+                                project.slug ||
+                                createSlug(
+                                  project.name ||
+                                    `project-${project.id.slice(0, 8)}`,
+                                )
+
                               navigate(
                                 routes.company.project.details(
-                                  companyId.toLowerCase(),
+                                  companyId,
                                   project.id,
-                                  project.name,
+                                  projectSlug,
                                 ),
                               )
-                            }
+                            }}
                           >
                             <div className="flex justify-between items-center">
                               <div>
@@ -339,11 +366,19 @@ const Dashboard = () => {
                                 variant="ghost"
                                 onClick={e => {
                                   e.stopPropagation()
+                                  // Use existing slug or generate from name
+                                  const projectSlug =
+                                    project.slug ||
+                                    createSlug(
+                                      project.name ||
+                                        `project-${project.id.slice(0, 8)}`,
+                                    )
+
                                   navigate(
                                     routes.company.project.details(
-                                      companyId.toLowerCase(),
+                                      companyId,
                                       project.id,
-                                      project.name,
+                                      projectSlug,
                                     ),
                                   )
                                 }}
@@ -368,7 +403,11 @@ const Dashboard = () => {
                   <CardFooter>
                     <Button
                       className="w-full"
-                      onClick={() => navigate(`/${companyId}/projects/new`)}
+                      onClick={() =>
+                        navigate(
+                          `${routes.company.projects.list(companyId)}?new=true`,
+                        )
+                      }
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       New Project
@@ -426,7 +465,7 @@ const Dashboard = () => {
               <Button
                 variant="outline"
                 className="h-24 flex flex-col"
-                onClick={() => navigate(`/${companyId}/projects/new`)}
+                onClick={() => navigate(`${routes.company.projects.list(companyId)}?new=true`)}
               >
                 <FolderPlus className="h-6 w-6 mb-2" />
                 New Project
@@ -442,7 +481,7 @@ const Dashboard = () => {
               <Button
                 variant="outline"
                 className="h-24 flex flex-col"
-                onClick={() => navigate(`/${companyId}/settings`)}
+                onClick={() => navigate(routes.company.settings(companyId))}
               >
                 <Settings className="h-6 w-6 mb-2" />
                 Settings
@@ -457,7 +496,9 @@ const Dashboard = () => {
                     <CardTitle>All Projects</CardTitle>
                     <Button
                       onClick={() =>
-                        navigate(`/${companyId.toLowerCase()}/projects`)
+                        navigate(
+                          `${routes.company.projects.list(companyId)}?new=true`,
+                        )
                       }
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -474,15 +515,23 @@ const Dashboard = () => {
                         <Card
                           key={project.id}
                           className="cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-1"
-                          onClick={() =>
+                          onClick={() => {
+                            // Use existing slug or generate from name
+                            const projectSlug =
+                              project.slug ||
+                              createSlug(
+                                project.name ||
+                                  `project-${project.id.slice(0, 8)}`,
+                              )
+
                             navigate(
                               routes.company.project.details(
-                                companyId.toLowerCase(),
+                                companyId,
                                 project.id,
-                                project.name,
+                                projectSlug,
                               ),
                             )
-                          }
+                          }}
                         >
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
@@ -534,11 +583,19 @@ const Dashboard = () => {
                               className="w-full"
                               onClick={e => {
                                 e.stopPropagation()
+                                // Use existing slug or generate from name
+                                const projectSlug =
+                                  project.slug ||
+                                  createSlug(
+                                    project.name ||
+                                      `project-${project.id.slice(0, 8)}`,
+                                  )
+
                                 navigate(
                                   routes.company.project.details(
-                                    companyId.toLowerCase(),
+                                    companyId,
                                     project.id,
-                                    project.name,
+                                    projectSlug,
                                   ),
                                 )
                               }}
@@ -560,7 +617,9 @@ const Dashboard = () => {
                       </p>
                       <Button
                         onClick={() =>
-                          navigate(`/${companyId.toLowerCase()}/projects`)
+                          navigate(
+                            `${routes.company.projects.list(companyId)}?new=true`,
+                          )
                         }
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -579,7 +638,7 @@ const Dashboard = () => {
                     <CardTitle>Recent Documents</CardTitle>
                     <Button
                       onClick={() =>
-                        navigate(`/${companyId.toLowerCase()}/documents`)
+                        navigate(routes.company.documents.all(companyId))
                       }
                     >
                       <Eye className="h-4 w-4 mr-2" />
@@ -670,7 +729,7 @@ const Dashboard = () => {
                                   if (project) {
                                     const route =
                                       routes.company.project.document(
-                                        companyId.toLowerCase(),
+                                        companyId,
                                         project.id,
                                         document.id,
                                         project.name,
@@ -706,7 +765,7 @@ const Dashboard = () => {
                       </p>
                       <Button
                         onClick={() =>
-                          navigate(`/${companyId.toLowerCase()}/projects`)
+                          navigate(routes.company.projects.list(companyId))
                         }
                       >
                         <Plus className="h-4 w-4 mr-2" />

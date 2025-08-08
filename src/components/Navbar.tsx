@@ -33,10 +33,8 @@ export const Navbar = () => {
   const { isAuthenticated, user, signOut: authSignOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
-  // Extract company ID from user attributes
-  const companyId = (user?.['custom:Company'] || user?.company || null) as
-    | string
-    | null
+  // Extract company ID from user object
+  const companyId = user?.companyId
 
   const handleSignOut = async () => {
     setShowLogoutModal(false)
