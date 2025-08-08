@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
 import { FileUploader } from '@/components/FileUploader'
 import {
-  PageHeaderSkeleton,
+  ProjectDetailsSkeleton,
   DocumentListSkeleton,
   AIActionsSkeleton,
 } from '@/components/skeletons'
@@ -52,13 +52,93 @@ const ProjectDetails = () => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
 
+  // Cache keys
+  const PROJECT_CACHE_KEY = `project_${projectId}`
+  const DOCUMENTS_CACHE_KEY = `documents_${projectId}`
+
+  // Caching utilities
+  const getCachedProject = useCallback(() => {
+    const cached = localStorage.getItem(PROJECT_CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      const isStale = Date.now() - timestamp > 5 * 60 * 1000 // 5 minutes
+      return { data: data as Project, isStale }
+    }
+    return null
+  }, [PROJECT_CACHE_KEY])
+
+  const setCachedProjectData = useCallback(
+    (projectData: Project) => {
+      localStorage.setItem(
+        PROJECT_CACHE_KEY,
+        JSON.stringify({
+          data: projectData,
+          timestamp: Date.now(),
+        }),
+      )
+    },
+    [PROJECT_CACHE_KEY],
+  )
+
+  const getCachedDocuments = useCallback(() => {
+    const cached = localStorage.getItem(DOCUMENTS_CACHE_KEY)
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached)
+      const isStale = Date.now() - timestamp > 5 * 60 * 1000 // 5 minutes
+      return { data: data as Document[], isStale }
+    }
+    return null
+  }, [DOCUMENTS_CACHE_KEY])
+
+  const setCachedDocumentsData = useCallback(
+    (documentsData: Document[]) => {
+      localStorage.setItem(
+        DOCUMENTS_CACHE_KEY,
+        JSON.stringify({
+          data: documentsData,
+          timestamp: Date.now(),
+        }),
+      )
+    },
+    [DOCUMENTS_CACHE_KEY],
+  )
+
+  // Load cached data immediately on mount
+  useEffect(() => {
+    const cachedProject = getCachedProject()
+    if (cachedProject) {
+      setProject(cachedProject.data)
+      setIsProjectLoading(false)
+    }
+
+    const cachedDocuments = getCachedDocuments()
+    if (cachedDocuments) {
+      setProjectDocuments(cachedDocuments.data)
+      setIsDocumentsLoading(false)
+    }
+  }, [getCachedProject, getCachedDocuments])
+
   useEffect(() => {
     const fetchProjectData = async () => {
       if (!projectId || !companyId) return
 
+      // Check if we need to refresh cached data
+      const cachedProject = getCachedProject()
+      const cachedDocuments = getCachedDocuments()
+      const shouldRefreshProject = !cachedProject || cachedProject.isStale
+      const shouldRefreshDocuments = !cachedDocuments || cachedDocuments.isStale
+
+      if (!shouldRefreshProject && !shouldRefreshDocuments) {
+        return // No need to refresh
+      }
+
       try {
-        setIsProjectLoading(true)
-        setIsDocumentsLoading(true)
+        if (shouldRefreshProject) {
+          setIsProjectLoading(true)
+        }
+        if (shouldRefreshDocuments) {
+          setIsDocumentsLoading(true)
+        }
 
         const projectData = await projectService.resolveProject(projectId)
 
@@ -72,8 +152,11 @@ const ProjectDetails = () => {
             updatedAt: projectData.updatedAt,
             companyId: companyId || projectData.companyId,
           }
+
+          // Cache and update project data
+          setCachedProjectData(transformedProject)
           setProject(transformedProject)
-          setIsProjectLoading(false) // Project loaded first
+          setIsProjectLoading(false)
 
           const documents = await documentService.getDocumentsByProject(
             projectData.id,
@@ -96,8 +179,11 @@ const ProjectDetails = () => {
               updatedAt: doc.updatedAt,
             }),
           )
+
+          // Cache and update documents data
+          setCachedDocumentsData(transformedDocuments)
           setProjectDocuments(transformedDocuments)
-          setIsDocumentsLoading(false) // Documents loaded second
+          setIsDocumentsLoading(false)
         } else {
           // Set project to null or show error state
           setProject(null)
@@ -118,7 +204,15 @@ const ProjectDetails = () => {
     }
 
     fetchProjectData()
-  }, [projectId, companyId, toast])
+  }, [
+    projectId,
+    companyId,
+    toast,
+    getCachedProject,
+    getCachedDocuments,
+    setCachedProjectData,
+    setCachedDocumentsData,
+  ])
 
   // Add live document status polling
   useEffect(() => {
@@ -152,7 +246,12 @@ const ProjectDetails = () => {
             const newDoc = transformedDocuments.find(d => d.id === prevDoc.id)
             return newDoc && newDoc.status !== prevDoc.status
           })
-          return hasChanges ? transformedDocuments : prev
+          if (hasChanges) {
+            // Update cache when document statuses change
+            setCachedDocumentsData(transformedDocuments)
+            return transformedDocuments
+          }
+          return prev
         })
       } catch (error) {
         console.error('Error polling document statuses:', error)
@@ -179,7 +278,7 @@ const ProjectDetails = () => {
     return () => {
       clearInterval(intervalId)
     }
-  }, [project?.id, projectDocuments])
+  }, [project?.id, projectDocuments, setCachedDocumentsData])
 
   const handleUpdateProject = async (data: {
     address: string
@@ -298,11 +397,11 @@ const ProjectDetails = () => {
   }
 
   if (isProjectLoading) {
-    // Show only the essential page structure with project header skeleton
+    // Show the complete project layout skeleton
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <PageHeaderSkeleton showBackButton={true} showActions={2} />
+          <ProjectDetailsSkeleton />
         </div>
       </Layout>
     )

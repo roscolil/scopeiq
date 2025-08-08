@@ -307,6 +307,72 @@ export const TabsSkeleton = () => {
   )
 }
 
+export const ProjectDetailsSkeleton = () => {
+  return (
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced darker and more vivid gradient background layers with more variation */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
+
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-slate-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-slate-500/6 to-violet-500/8 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-emerald-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
+      </div>
+
+      <div className="space-y-4 md:space-y-6">
+        {/* Back button skeleton */}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-16" />
+        </div>
+
+        {/* Project header skeleton */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+          <div>
+            <Skeleton className="h-10 w-[300px] mb-2" />
+            <Skeleton className="h-5 w-[200px] mb-2" />
+            <Skeleton className="h-4 w-[150px]" />
+          </div>
+
+          {/* Actions skeleton - desktop */}
+          <div className="hidden md:flex gap-2">
+            <Skeleton className="h-9 w-[120px]" />
+            <Skeleton className="h-9 w-[80px]" />
+            <Skeleton className="h-9 w-[80px]" />
+          </div>
+
+          {/* Actions skeleton - mobile dropdown */}
+          <div className="md:hidden">
+            <Skeleton className="h-9 w-full" />
+          </div>
+        </div>
+
+        {/* AI Tools section skeleton */}
+        <div className="mb-2 md:mb-4">
+          <AIActionsSkeleton />
+        </div>
+
+        {/* Documents section header skeleton */}
+        <div className="flex justify-between items-center border-b pb-4">
+          <Skeleton className="h-6 w-[120px]" />
+          <Skeleton className="h-9 w-[140px]" />
+        </div>
+
+        {/* Documents list skeleton */}
+        <DocumentListSkeleton itemCount={3} />
+      </div>
+    </>
+  )
+}
+
 export const NumberSkeleton = ({
   className = '',
   color = 'bg-gray-200',
