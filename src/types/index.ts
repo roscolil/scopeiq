@@ -25,6 +25,10 @@ export type {
   FileType,
   CreateInput,
   UpdateInput,
+  User,
+  UserRole,
+  UserInvitation,
+  RolePermissions,
 } from './entities'
 
 export type {

@@ -17,11 +17,14 @@ import {
   confirmResetPassword,
   updateUserAttributes,
 } from 'aws-amplify/auth'
+import { userService } from '@/services/user'
 
 interface User {
   id: string
   email: string
   name?: string
+  role?: 'Admin' | 'Owner' | 'User'
+  companyId: string
   [key: string]: unknown
 }
 
@@ -29,7 +32,7 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<User>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
@@ -81,18 +84,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Fresh auth check
         const amplifyUser = await getCurrentUser()
         const attrs = await fetchUserAttributes()
-        const userData = {
-          id: amplifyUser.userId,
-          email: attrs.email,
-          name: attrs.name,
-          ...attrs,
+
+        // Try to get user data from DynamoDB
+        try {
+          const dbUser = await userService.getCurrentDatabaseUser()
+          if (dbUser) {
+            const userData: User = {
+              id: amplifyUser.userId,
+              email: attrs.email || '',
+              name: attrs.name || '',
+              role: dbUser.role,
+              companyId: dbUser.companyId,
+              ...attrs,
+            }
+            setUser(userData)
+
+            // Cache the auth state
+            sessionStorage.setItem('authState', JSON.stringify(userData))
+            sessionStorage.setItem('authTimestamp', Date.now().toString())
+          } else {
+            // No DynamoDB user found, create one
+            const dbUser = await userService.createOrSyncUser()
+            const userData: User = {
+              id: amplifyUser.userId,
+              email: attrs.email || '',
+              name: attrs.name || '',
+              role: dbUser.role,
+              companyId: dbUser.companyId,
+              ...attrs,
+            }
+            setUser(userData)
+
+            // Cache the auth state
+            sessionStorage.setItem('authState', JSON.stringify(userData))
+            sessionStorage.setItem('authTimestamp', Date.now().toString())
+          }
+        } catch (dbError) {
+          console.warn('Failed to load DynamoDB user data:', dbError)
+          // For backward compatibility, create basic user data
+          const userData: User = {
+            id: amplifyUser.userId,
+            email: attrs.email || '',
+            name: attrs.name || '',
+            companyId: 'default', // Fallback company ID
+            ...attrs,
+          }
+          setUser(userData)
+
+          // Cache the auth state
+          sessionStorage.setItem('authState', JSON.stringify(userData))
+          sessionStorage.setItem('authTimestamp', Date.now().toString())
         }
-
-        setUser(userData)
-
-        // Cache the auth state
-        sessionStorage.setItem('authState', JSON.stringify(userData))
-        sessionStorage.setItem('authTimestamp', Date.now().toString())
       } catch {
         setUser(null)
         // Clear any stale cache
@@ -108,18 +150,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const amplifyUser = await getCurrentUser()
         const attrs = await fetchUserAttributes()
-        const userData = {
-          id: amplifyUser.userId,
-          email: attrs.email,
-          name: attrs.name,
-          ...attrs,
+
+        // Try to get user data from DynamoDB
+        const dbUser = await userService.getCurrentDatabaseUser()
+        if (dbUser) {
+          const userData: User = {
+            id: amplifyUser.userId,
+            email: attrs.email || '',
+            name: attrs.name || '',
+            role: dbUser.role,
+            companyId: dbUser.companyId,
+            ...attrs,
+          }
+          setUser(userData)
+
+          // Update cache
+          sessionStorage.setItem('authState', JSON.stringify(userData))
+          sessionStorage.setItem('authTimestamp', Date.now().toString())
         }
-
-        setUser(userData)
-
-        // Update cache
-        sessionStorage.setItem('authState', JSON.stringify(userData))
-        sessionStorage.setItem('authTimestamp', Date.now().toString())
       } catch {
         // Silent failure for background refresh
       }
@@ -128,24 +176,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loadUser()
   }, [isInitialized])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<User> => {
     setIsLoading(true)
     try {
-      await amplifySignIn({ username: email, password })
-      const amplifyUser = await getCurrentUser()
-      const attrs = await fetchUserAttributes()
-      const userData = {
-        id: amplifyUser.userId,
-        email: attrs.email,
-        name: attrs.name,
-        ...attrs,
+      console.log('Attempting sign in for:', email)
+
+      // Clear any existing auth state first
+      sessionStorage.removeItem('authState')
+      sessionStorage.removeItem('authTimestamp')
+
+      // First, try to sign in
+      const result = await amplifySignIn({ username: email, password })
+      console.log('Sign in result:', result)
+
+      // Check if the sign in was successful
+      if (result.isSignedIn) {
+        console.log('Sign in successful, loading full user data')
+
+        // Get full user data including DynamoDB sync
+        const amplifyUser = await getCurrentUser()
+        const attrs = await fetchUserAttributes()
+
+        // Sync with DynamoDB and get role/company info
+        const dbUser = await userService.createOrSyncUser()
+
+        const fullUserData: User = {
+          id: amplifyUser.userId,
+          email: attrs.email || email,
+          name: attrs.given_name || attrs.name || email.split('@')[0],
+          role: dbUser.role,
+          companyId: dbUser.companyId,
+          ...attrs,
+        }
+
+        setUser(fullUserData)
+        sessionStorage.setItem('authState', JSON.stringify(fullUserData))
+        sessionStorage.setItem('authTimestamp', Date.now().toString())
+
+        console.log('Full user data loaded with DynamoDB sync:', fullUserData)
+        return fullUserData
+      } else {
+        console.log('Sign in not complete, next step:', result.nextStep)
+
+        // Handle different next steps
+        if (
+          result.nextStep &&
+          result.nextStep.signInStep === 'CONFIRM_SIGN_UP'
+        ) {
+          throw new Error('UNVERIFIED_EMAIL')
+        } else if (result.nextStep) {
+          throw new Error(
+            `Sign in requires additional steps: ${result.nextStep.signInStep}`,
+          )
+        } else {
+          throw new Error(
+            'Sign in requires additional steps. Please check your email for verification.',
+          )
+        }
       }
-
-      setUser(userData)
-
-      // Update cache
-      sessionStorage.setItem('authState', JSON.stringify(userData))
-      sessionStorage.setItem('authTimestamp', Date.now().toString())
+    } catch (error: unknown) {
+      console.error('Sign in error:', error)
+      setUser(null)
+      // Clear any stale cache
+      sessionStorage.removeItem('authState')
+      sessionStorage.removeItem('authTimestamp')
+      throw error
     } finally {
       setIsLoading(false)
     }
@@ -208,7 +303,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       userAttributes: data as Partial<Record<string, string>>,
     })
     const attrs = await fetchUserAttributes()
-    const updatedUser = { ...user, ...attrs }
+    const updatedUser: User = {
+      ...user,
+      ...attrs,
+      companyId: user.companyId, // Preserve companyId
+    }
     setUser(updatedUser)
 
     // Update cache

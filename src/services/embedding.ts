@@ -1,11 +1,17 @@
 import * as pdfjs from 'pdfjs-dist'
 import mammoth from 'mammoth'
+import {
+  processConstructionImage,
+  extractTextForEmbedding,
+} from './image-processing'
 
 // Use local worker file served from public directory
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 export async function extractTextFromFile(file: File): Promise<string> {
   let text = ''
+  console.log(`Starting extraction for: ${file.name} (${file.type})`)
+
   try {
     if (file.type === 'text/plain') {
       text = await file.text()
@@ -15,13 +21,18 @@ export async function extractTextFromFile(file: File): Promise<string> {
         'characters',
       )
     } else if (file.type.includes('pdf')) {
+      // Enhanced PDF processing with image detection
       const fileArrayBuffer = await file.arrayBuffer()
       const pdf = await pdfjs.getDocument({ data: fileArrayBuffer }).promise
       let pdfText = ''
+      let hasImages = false
+
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
+
+        // Extract text content
         const content = await page.getTextContent()
-        pdfText += content.items
+        const pageText = content.items
           .map(item => {
             if ('str' in item) {
               return item.str
@@ -29,12 +40,44 @@ export async function extractTextFromFile(file: File): Promise<string> {
             return ''
           })
           .join(' ')
+        pdfText += pageText + ' '
+
+        // Check for images on this page
+        try {
+          const operatorList = await page.getOperatorList()
+          // Simple check for image operations in the PDF
+          const hasPageImages = operatorList.fnArray.some(
+            (fn: number) =>
+              fn === pdfjs.OPS.paintImageXObject ||
+              fn === pdfjs.OPS.paintInlineImageXObject ||
+              fn === pdfjs.OPS.paintImageMaskXObject,
+          )
+          if (hasPageImages) {
+            hasImages = true
+            pdfText += `
+[IMAGE DETECTED ON PAGE ${i} - This PDF contains embedded images that may contain additional construction information] `
+          }
+        } catch (imageCheckError) {
+          console.warn(
+            `Could not check for images on page ${i}:`,
+            imageCheckError,
+          )
+        }
       }
+
       text = pdfText
+
+      if (hasImages) {
+        text += `
+
+NOTE: This PDF contains embedded images. For complete analysis of technical drawings, blueprints, or diagrams in this document, the images should be extracted and analyzed separately with computer vision.`
+      }
+
       console.log(
         'PDF extraction complete, extracted',
         text.length,
         'characters',
+        hasImages ? '(contains images)' : '(text only)',
       )
     } else if (
       file.type ===
@@ -90,8 +133,49 @@ export async function extractTextFromFile(file: File): Promise<string> {
         'characters',
       )
     } else if (file.type.includes('image')) {
-      text = ''
-      console.log('Image file detected, skipping text extraction')
+      // Process standalone image files with GPT-4 Turbo Vision
+      try {
+        console.log(
+          'Processing standalone image file with GPT-4 Turbo Vision analysis...',
+        )
+        const processedImage = await processConstructionImage(file)
+
+        // Extract searchable text content
+        text = extractTextForEmbedding(processedImage)
+
+        // Add metadata to indicate this is a standalone image analysis
+        text = `STANDALONE IMAGE ANALYSIS (${file.type}):
+${text}
+
+Source: Direct image file upload (${file.name})
+Analysis Method: GPT-4 Turbo Vision computer vision analysis
+Image Type: ${processedImage.analysis.documentType}
+Confidence: ${processedImage.analysis.confidence}%`
+
+        console.log('Standalone image processing complete:', {
+          fileName: file.name,
+          fileType: file.type,
+          documentType: processedImage.analysis.documentType,
+          textLength: text.length,
+          keyElements: processedImage.analysis.keyElements.length,
+          confidence: processedImage.analysis.confidence,
+        })
+
+        // Store analysis results for potential use in UI
+        if (typeof window !== 'undefined') {
+          // Store analysis results for potential use in UI
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ;(window as any).lastImageAnalysis = {
+            ...processedImage.analysis,
+            isStandaloneImage: true,
+            originalFileName: file.name,
+            processingMethod: 'GPT-4 Turbo Vision',
+          }
+        }
+      } catch (error) {
+        console.warn('Image analysis failed, using fallback:', error)
+        text = `Image file: ${file.name}` // Fallback to basic filename
+      }
     } else {
       text = ''
       console.log('Unknown file type, skipping text extraction')

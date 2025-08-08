@@ -26,6 +26,8 @@
     "public",
     "eslint.config.js",
     "postcss.config.js",
-    "test-aws-config.js"
+    "test-aws-config.js",
+    "**/*.yml",
+    "**/*.yaml"
   ]
 }

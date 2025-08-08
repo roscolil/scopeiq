@@ -135,7 +135,16 @@ Visit `http://localhost:8080` to see your application! 🎉
 
 ---
 
-## 📖 **Usage Guide**
+## 📖 **Documentation**
+
+### **Core Documentation**
+
+- [**User Management & Authentication**](USER_MANAGEMENT.md) - Complete guide to our hybrid auth system
+- [**Deployment Checklist**](DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment verification
+- [**Data Structure Guide**](DATA_STRUCTURE.md) - Database schema and relationships
+- [**Security Guide**](SECURITY.md) - Security best practices and compliance
+
+### **Usage Guide**
 
 ### **1. Project Creation**
 

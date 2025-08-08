@@ -7,11 +7,13 @@
  * Convert a name to a URL-safe slug
  */
 export const createSlug = (name: string): string => {
-  return name
+  const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
     .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
     .substring(0, 50) // Limit length
+
+  return slug
 }
 
 /**
@@ -45,8 +47,17 @@ export const routes = {
     // Direct routes for project and document - now with optional readable names
     project: {
       details: (companyId: string, projectId: string, projectName?: string) => {
-        const slug = projectName ? createSlug(projectName) : projectId
-        return `/${companyId}/${slug}`
+        if (
+          !projectName ||
+          projectName.trim() === '' ||
+          projectName === 'Untitled Project'
+        ) {
+          return `/${companyId}/${projectId}`
+        }
+
+        const slug = createSlug(projectName)
+        const route = `/${companyId}/${slug}`
+        return route
       },
       documents: (
         companyId: string,

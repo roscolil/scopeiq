@@ -124,7 +124,7 @@ const ForgotPassword = () => {
             <div className="text-center">
               <Link
                 to="/auth/signin"
-                className="text-primary hover:underline text-sm"
+                className="text-blue-500 hover:text-blue-400 hover:underline font-bold transition-colors"
               >
                 Back to sign in
               </Link>
@@ -195,7 +195,7 @@ const ForgotPassword = () => {
               <Button
                 type="button"
                 variant="link"
-                className="text-sm px-0"
+                className="text-blue-500 hover:text-blue-400 font-bold px-0 transition-colors"
                 onClick={() => setStep('request')}
               >
                 Back to email entry

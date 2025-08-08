@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useUserManagement } from '../hooks/use-user-management'
+// TODO: Switch to real service after sandbox deployment
+// import { userManagementService } from '../services/user-management-real'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,7 +30,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { Navigate } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MultiSelect } from '@/components/MultiSelect'
 import {
   Dialog,
   DialogContent,
@@ -36,12 +38,11 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { MoreHorizontal } from 'lucide-react'
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover'
+import { UserForm } from '@/components/UserForm'
+import { UserTable } from '@/components/UserTable'
+import { UserStats } from '@/components/UserStats'
+import { User, UserRole, Project } from '@/types'
+import { Plus, UserPlus, Mail } from 'lucide-react'
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -67,78 +68,56 @@ const passwordFormSchema = z
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>
 
-const companyProjects = [
-  { id: '1', name: 'Kitchen Renovation' },
-  { id: '2', name: 'Office Building' },
-  { id: '3', name: 'Bathroom Remodel' },
+// Mock projects data - in real app this would come from a service
+const mockProjects: Project[] = [
+  {
+    id: '1',
+    name: 'Kitchen Renovation',
+    description: 'Modern kitchen upgrade',
+    companyId: 'company-1',
+    createdAt: '2024-01-15',
+  },
+  {
+    id: '2',
+    name: 'Office Building',
+    description: 'Commercial office development',
+    companyId: 'company-1',
+    createdAt: '2024-02-01',
+  },
+  {
+    id: '3',
+    name: 'Bathroom Remodel',
+    description: 'Luxury bathroom renovation',
+    companyId: 'company-1',
+    createdAt: '2024-02-15',
+  },
 ]
 
-const manageUserFormSchema = z.object({
-  companyName: z.string().min(2, { message: 'Company name is required' }),
-  contactName: z.string().min(2, { message: 'Contact name is required' }),
-  contactNumber: z.string().min(6, { message: 'Contact number is required' }),
-  projects: z
-    .array(z.string())
-    .min(1, { message: 'Select at least one project' }),
-})
-
-type ManageUserFormValues = z.infer<typeof manageUserFormSchema>
-
-// Add this type for user table rows
-type ManagedUser = {
-  companyName: string
-  contactName: string
-  contactNumber: string
-  projects: string[]
+interface UserFormData {
+  email?: string
+  name?: string
+  role?: UserRole
+  projectIds?: string[]
+  isActive?: boolean
 }
-
-const initialUsers: ManagedUser[] = [
-  {
-    companyName: 'Corp 1',
-    contactName: 'Alice Johnson',
-    contactNumber: '555-1234',
-    projects: ['1', '2'],
-  },
-  {
-    companyName: 'Corp 2',
-    contactName: 'Bob Smith',
-    contactNumber: '555-5678',
-    projects: ['2'],
-  },
-  {
-    companyName: 'Corp 3',
-    contactName: 'Carol Lee',
-    contactNumber: '555-8765',
-    projects: ['1', '3'],
-  },
-  {
-    companyName: 'Corp 4',
-    contactName: 'David Kim',
-    contactNumber: '555-4321',
-    projects: ['3'],
-  },
-  {
-    companyName: 'Corp 5',
-    contactName: 'Eva Brown',
-    contactNumber: '555-2468',
-    projects: ['1', '2', '3'],
-  },
-]
 
 const ProfileSettings = () => {
   const { user, isAuthenticated, updateProfile, signOut } = useAuth()
   const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [pendingUserData, setPendingUserData] =
-    useState<ManageUserFormValues | null>(null)
-  const [userList, setUserList] = useState<ManagedUser[]>(initialUsers)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [userToDeleteIdx, setUserToDeleteIdx] = useState<number | null>(null)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [userToEditIdx, setUserToEditIdx] = useState<number | null>(null)
-  const [editFormValues, setEditFormValues] =
-    useState<ManageUserFormValues | null>(null)
+
+  // User management state
+  const companyId = 'company-1' // In real app, get from user context
+  const userManagement = useUserManagement(companyId)
+  const currentUserRole: UserRole = 'Admin' // In real app, get from user context
+
+  // Dialog states
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
+  const [inviteUserDialogOpen, setInviteUserDialogOpen] = useState(false)
+  const [editUserDialogOpen, setEditUserDialogOpen] = useState(false)
+  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -157,41 +136,11 @@ const ProfileSettings = () => {
     },
   })
 
-  const manageUserForm = useForm<ManageUserFormValues>({
-    resolver: zodResolver(manageUserFormSchema),
-    defaultValues: {
-      companyName: '',
-      contactName: '',
-      contactNumber: '',
-      projects: [],
-    },
-  })
-
-  const editUserForm = useForm<ManageUserFormValues>({
-    resolver: zodResolver(manageUserFormSchema),
-    defaultValues: {
-      companyName: '',
-      contactName: '',
-      contactNumber: '',
-      projects: [],
-    },
-  })
-
-  // When a user is selected for editing, populate the form
-  useEffect(() => {
-    if (userToEditIdx !== null) {
-      const user = userList[userToEditIdx]
-      if (user) {
-        setEditFormValues(user)
-        editUserForm.reset({
-          companyName: user.companyName,
-          contactName: user.contactName,
-          contactNumber: user.contactNumber,
-          projects: user.projects,
-        })
-      }
-    }
-  }, [userToEditIdx, userList, editUserForm])
+  // Check permissions
+  const canManageUsers = userManagement.canUserPerformAction(
+    currentUserRole,
+    'canManageUsers',
+  )
 
   // Redirect to sign in if not authenticated
   if (!isAuthenticated) {
@@ -239,38 +188,6 @@ const ProfileSettings = () => {
     }
   }
 
-  // Show dialog instead of submitting immediately
-  const handleManageUserSubmit = (data: ManageUserFormValues) => {
-    setPendingUserData(data)
-    setShowConfirmDialog(true)
-  }
-
-  // Called when user confirms in dialog
-  const confirmAddUser = () => {
-    if (pendingUserData) {
-      toast({
-        title: 'User added',
-        description: `User ${pendingUserData.contactName} added and assigned to selected projects.`,
-      })
-      // Add user to managed users table
-      setUserList(prev => [...prev, pendingUserData as ManagedUser])
-      manageUserForm.reset({
-        companyName: '',
-        contactName: '',
-        contactNumber: '',
-        projects: [],
-      })
-      setPendingUserData(null)
-      setShowConfirmDialog(false)
-    }
-  }
-
-  // Called when user cancels in dialog
-  const cancelAddUser = () => {
-    setPendingUserData(null)
-    setShowConfirmDialog(false)
-  }
-
   const handleSignOut = async () => {
     await signOut()
     toast({
@@ -279,52 +196,104 @@ const ProfileSettings = () => {
     })
   }
 
-  const handleDeleteUserClick = (idx: number) => {
-    setUserToDeleteIdx(idx)
-    setDeleteDialogOpen(true)
-  }
-
-  const confirmDeleteUser = () => {
-    if (userToDeleteIdx !== null) {
-      setUserList(prev => prev.filter((_, i) => i !== userToDeleteIdx))
-      setUserToDeleteIdx(null)
-      setDeleteDialogOpen(false)
+  // User management handlers
+  const handleAddUser = async (data: UserFormData) => {
+    if (!data.email || !data.name || !data.role) {
       toast({
-        title: 'User deleted',
-        description: 'The user has been removed.',
+        title: 'Error',
+        description: 'Email, name, and role are required.',
+        variant: 'destructive',
       })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await userManagement.createUser({
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        companyId,
+        projectIds: data.projectIds || [],
+      })
+      setAddUserDialogOpen(false)
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const cancelDeleteUser = () => {
-    setUserToDeleteIdx(null)
-    setDeleteDialogOpen(false)
-  }
-
-  const handleEditUserClick = (idx: number) => {
-    setUserToEditIdx(idx)
-    setEditDialogOpen(true)
-  }
-
-  const cancelEditUser = () => {
-    setUserToEditIdx(null)
-    setEditDialogOpen(false)
-  }
-
-  const confirmEditUser = (data: ManageUserFormValues) => {
-    if (userToEditIdx !== null) {
-      setUserList(prev =>
-        prev.map((user, idx) =>
-          idx === userToEditIdx ? { ...user, ...data } : user,
-        ),
-      )
-      setUserToEditIdx(null)
-      setEditDialogOpen(false)
+  const handleInviteUser = async (data: UserFormData) => {
+    if (!data.email || !data.name || !data.role) {
       toast({
-        title: 'User updated',
-        description: 'The user details have been updated.',
+        title: 'Error',
+        description: 'Email, name, and role are required.',
+        variant: 'destructive',
       })
+      return
     }
+
+    setIsSubmitting(true)
+    try {
+      await userManagement.inviteUser({
+        email: data.email,
+        role: data.role,
+        companyId,
+        projectIds: [], // Projects will be assigned after invitation acceptance
+        invitedBy: 'current-user-id', // In real app, get from current user context
+      })
+      setInviteUserDialogOpen(false)
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEditUser = async (data: UserFormData) => {
+    if (!selectedUser) return
+
+    setIsSubmitting(true)
+    try {
+      await userManagement.updateUser(selectedUser.id, {
+        name: data.name,
+        role: data.role,
+        projectIds: data.projectIds,
+        isActive: data.isActive,
+      })
+      setEditUserDialogOpen(false)
+      setSelectedUser(null)
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return
+
+    setIsSubmitting(true)
+    try {
+      await userManagement.deleteUser(selectedUser.id)
+      setDeleteUserDialogOpen(false)
+      setSelectedUser(null)
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const openEditDialog = (user: User) => {
+    setSelectedUser(user)
+    setEditUserDialogOpen(true)
+  }
+
+  const openDeleteDialog = (user: User) => {
+    setSelectedUser(user)
+    setDeleteUserDialogOpen(true)
   }
 
   return (
@@ -359,8 +328,14 @@ const ProfileSettings = () => {
           <Tabs defaultValue="profile" className="w-full">
             <TabsList>
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="addUsers">Add Users</TabsTrigger>
-              <TabsTrigger value="manageUsers">Manage Users</TabsTrigger>
+              {canManageUsers && (
+                <>
+                  <TabsTrigger value="userManagement">
+                    User Management
+                  </TabsTrigger>
+                  <TabsTrigger value="invitations">Invitations</TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             <TabsContent value="profile">
@@ -530,346 +505,277 @@ const ProfileSettings = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="addUsers">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add Users</CardTitle>
-                  <CardDescription>
-                    Add users and assign them to projects.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...manageUserForm}>
-                    <form
-                      onSubmit={manageUserForm.handleSubmit(
-                        handleManageUserSubmit,
-                      )}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={manageUserForm.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Company Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+            {canManageUsers && (
+              <TabsContent value="userManagement">
+                <div className="space-y-6">
+                  {/* User Stats */}
+                  <UserStats stats={userManagement.stats} />
 
-                      <FormField
-                        control={manageUserForm.control}
-                        name="contactName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contact Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Contact Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={manageUserForm.control}
-                        name="contactNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contact Number</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Contact Number" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <Controller
-                        control={manageUserForm.control}
-                        name="projects"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Assign to Projects</FormLabel>
-                            <MultiSelect
-                              onValueChange={field.onChange}
-                              placeholder="Select projects"
-                              variant="inverted"
-                              animation={2}
-                              options={companyProjects.map(p => ({
-                                label: p.name,
-                                value: p.id,
-                              }))}
-                              value={field.value}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <Button type="submit" className="w-full">
-                        Add User
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-
-              {/* Confirm Dialog */}
-              <Dialog
-                open={showConfirmDialog}
-                onOpenChange={setShowConfirmDialog}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Add User</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to add{' '}
-                      <span className="font-semibold">
-                        {pendingUserData?.contactName}
-                      </span>{' '}
-                      to company{' '}
-                      <span className="font-semibold">
-                        {pendingUserData?.companyName}
-                      </span>{' '}
-                      and assign to selected projects?
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={cancelAddUser}>
-                      Cancel
-                    </Button>
-                    <Button onClick={confirmAddUser}>Confirm</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </TabsContent>
-
-            <TabsContent value="manageUsers">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Manage Users</CardTitle>
-                  <CardDescription>
-                    List of all users added and their assigned projects.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {userList.length === 0 ? (
-                    <div className="text-gray-400">No users added yet.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm border-separate border-spacing-y-2">
-                        <thead>
-                          <tr className="bg-muted/50">
-                            <th className="px-4 py-2 text-left font-semibold text-xs text-gray-400 rounded-tl-lg">
-                              Company
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs text-gray-400">
-                              Contact Name
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs text-gray-400">
-                              Contact Number
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs text-gray-400">
-                              Projects
-                            </th>
-                            <th className="px-4 py-2 text-center font-semibold text-xs text-gray-400 rounded-tr-lg">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {userList.map((user, idx) => (
-                            <tr
-                              key={idx}
-                              className="bg-white dark:bg-zinc-900 shadow-sm rounded-lg transition hover:shadow-md"
-                            >
-                              <td className="px-4 py-3 rounded-l-lg border border-zinc-100 dark:border-zinc-800">
-                                <span className="font-medium">
-                                  {user.companyName}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 border border-zinc-100 dark:border-zinc-800">
-                                {user.contactName}
-                              </td>
-                              <td className="px-4 py-3 border border-zinc-100 dark:border-zinc-800">
-                                {user.contactNumber}
-                              </td>
-                              <td className="px-4 py-3 border border-zinc-100 dark:border-zinc-800">
-                                <div className="flex flex-wrap gap-1">
-                                  {user.projects.map(pid => {
-                                    const project = companyProjects.find(
-                                      p => p.id === pid,
-                                    )
-                                    return (
-                                      <span
-                                        key={pid}
-                                        className="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium"
-                                      >
-                                        {project?.name || pid}
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 rounded-r-lg border border-zinc-100 dark:border-zinc-800 text-center">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 p-0"
-                                      aria-label="Open actions"
-                                    >
-                                      <MoreHorizontal className="w-5 h-5" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    align="end"
-                                    className="w-32 p-1"
-                                  >
-                                    <button
-                                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded transition"
-                                      onClick={() => handleEditUserClick(idx)}
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-muted rounded transition"
-                                      onClick={() => handleDeleteUserClick(idx)}
-                                    >
-                                      Delete
-                                    </button>
-                                  </PopoverContent>
-                                </Popover>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {/* Add User Button */}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        Manage Users
+                      </h3>
+                      <p className="text-sm text-slate-300">
+                        Add, edit, and manage user accounts and permissions.
+                      </p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-              {/* Delete Confirm Dialog */}
-              <Dialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-              >
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Delete User</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to delete this user? This action
-                      cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={cancelDeleteUser}>
-                      Cancel
-                    </Button>
-                    <Button variant="destructive" onClick={confirmDeleteUser}>
-                      Delete
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Edit User Dialog */}
-              <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit User</DialogTitle>
-                    <DialogDescription>
-                      Update the user details and assigned projects.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Form {...editUserForm}>
-                    <form
-                      onSubmit={editUserForm.handleSubmit(confirmEditUser)}
-                      className="space-y-4"
+                    <Button
+                      onClick={() => setAddUserDialogOpen(true)}
+                      className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700"
                     >
-                      <FormField
-                        control={editUserForm.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Company Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={editUserForm.control}
-                        name="contactName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contact Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Contact Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={editUserForm.control}
-                        name="contactNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contact Number</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Contact Number" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Controller
-                        control={editUserForm.control}
-                        name="projects"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Assign to Projects</FormLabel>
-                            <MultiSelect
-                              onValueChange={field.onChange}
-                              placeholder="Select projects"
-                              variant="inverted"
-                              animation={2}
-                              options={companyProjects.map(p => ({
-                                label: p.name,
-                                value: p.id,
-                              }))}
-                              value={field.value}
-                            />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={cancelEditUser}
-                          type="button"
-                        >
-                          Cancel
-                        </Button>
-                        <Button type="submit">Save Changes</Button>
-                      </DialogFooter>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            </TabsContent>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </div>
+
+                  {/* User Table */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>All Users</CardTitle>
+                      <CardDescription>
+                        Manage user accounts, roles, and project assignments.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {userManagement.loading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-muted-foreground">
+                            Loading users...
+                          </div>
+                        </div>
+                      ) : userManagement.error ? (
+                        <Alert variant="destructive">
+                          <AlertDescription>
+                            {userManagement.error}
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <UserTable
+                          users={userManagement.users}
+                          projects={mockProjects}
+                          onEditUser={openEditDialog}
+                          onDeleteUser={openDeleteDialog}
+                          canManageUsers={canManageUsers}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            )}
+
+            {canManageUsers && (
+              <TabsContent value="invitations">
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        Pending Invitations
+                      </h3>
+                      <p className="text-sm text-slate-300">
+                        Track and manage user invitations.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setInviteUserDialogOpen(true)}
+                      variant="outline"
+                      className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Send Invitation
+                    </Button>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Invitation Status</CardTitle>
+                      <CardDescription>
+                        Monitor invitation delivery and acceptance status.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {userManagement.getPendingInvitations().length === 0 ? (
+                        <div className="text-center py-8">
+                          <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h4 className="text-lg font-medium mb-2">
+                            No pending invitations
+                          </h4>
+                          <p className="text-muted-foreground mb-4">
+                            All invitations have been accepted or expired.
+                          </p>
+                          <Button
+                            onClick={() => setInviteUserDialogOpen(true)}
+                            variant="outline"
+                          >
+                            Send New Invitation
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {userManagement
+                            .getPendingInvitations()
+                            .map(invitation => (
+                              <div
+                                key={invitation.id}
+                                className="flex items-center justify-between p-4 border rounded-lg"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">
+                                        {invitation.email}
+                                      </span>
+                                      <span className="text-sm text-muted-foreground">
+                                        Role: {invitation.role} • Projects:{' '}
+                                        {invitation.projectIds.length} assigned
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <div className="text-sm font-medium">
+                                      Expires:{' '}
+                                      {new Date(
+                                        invitation.expiresAt,
+                                      ).toLocaleDateString()}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Sent:{' '}
+                                      {new Date(
+                                        invitation.createdAt!,
+                                      ).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      userManagement.cancelInvitation(
+                                        invitation.id,
+                                      )
+                                    }
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </Layout>
+
+      {/* Add/Edit User Dialog */}
+      <Dialog
+        open={addUserDialogOpen || editUserDialogOpen}
+        onOpenChange={open => {
+          if (!open) {
+            setAddUserDialogOpen(false)
+            setEditUserDialogOpen(false)
+            setSelectedUser(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editUserDialogOpen ? 'Edit User' : 'Add New User'}
+            </DialogTitle>
+            <DialogDescription>
+              {editUserDialogOpen
+                ? 'Update user information, role, and project assignments.'
+                : 'Create a new user account with role-based permissions and project access.'}
+            </DialogDescription>
+          </DialogHeader>
+          <UserForm
+            user={selectedUser || undefined}
+            projects={mockProjects}
+            onSubmit={editUserDialogOpen ? handleEditUser : handleAddUser}
+            onCancel={() => {
+              setAddUserDialogOpen(false)
+              setEditUserDialogOpen(false)
+              setSelectedUser(null)
+            }}
+            submitLabel={editUserDialogOpen ? 'Update User' : 'Create User'}
+            isLoading={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invitation Dialog */}
+      <Dialog
+        open={inviteUserDialogOpen}
+        onOpenChange={open => {
+          if (!open) {
+            setInviteUserDialogOpen(false)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Send User Invitation</DialogTitle>
+            <DialogDescription>
+              Send an email invitation to a new user. They will receive an email
+              with a link to create their account and join your company.
+            </DialogDescription>
+          </DialogHeader>
+          <UserForm
+            projects={mockProjects}
+            onSubmit={handleInviteUser}
+            onCancel={() => {
+              setInviteUserDialogOpen(false)
+            }}
+            submitLabel="Send Invitation"
+            isLoading={isSubmitting}
+            isInvitation={true}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog
+        open={deleteUserDialogOpen}
+        onOpenChange={setDeleteUserDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">{selectedUser?.name}</span>? This
+              action cannot be undone and will remove all access to projects and
+              documents.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteUserDialogOpen(false)
+                setSelectedUser(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

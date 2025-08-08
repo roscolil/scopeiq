@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 
 interface SkeletonProps {
   itemCount?: number
@@ -9,18 +9,23 @@ export const DocumentListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
   return (
     <div className="grid grid-cols-1 gap-4">
       {Array.from({ length: itemCount }).map((_, index) => (
-        <Card key={index} className="p-4">
-          <div className="flex items-center space-x-4">
-            <Skeleton className="h-8 w-8 rounded" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-3 w-[150px]" />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Skeleton className="h-6 w-16" />
+        <Card key={index} className="overflow-hidden">
+          <CardHeader className="p-4 pb-0">
+            <div className="flex justify-between items-start">
+              <div className="flex gap-3">
+                <Skeleton className="h-8 w-8 rounded" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[220px]" />
+                  <Skeleton className="h-3 w-[140px]" />
+                </div>
+              </div>
               <Skeleton className="h-8 w-8 rounded" />
             </div>
-          </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 flex justify-between items-center">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-8 w-16" />
+          </CardContent>
         </Card>
       ))}
     </div>
@@ -29,24 +34,44 @@ export const DocumentListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
 
 export const ProjectListSkeleton = ({ itemCount = 6 }: SkeletonProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {Array.from({ length: itemCount }).map((_, index) => (
-        <Card key={index}>
-          <CardHeader className="pb-2">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-[200px]" />
-              <Skeleton className="h-3 w-[150px]" />
+        <Card
+          key={index}
+          className="cursor-pointer hover:shadow-md transition-shadow"
+        >
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-[160px]" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 w-2 rounded-full" />
+                    <Skeleton className="h-3 w-[50px]" />
+                  </div>
+                </div>
+              </div>
+              <Skeleton className="h-8 w-8 rounded" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-[100px]" />
-              <div className="flex justify-between items-center">
-                <Skeleton className="h-3 w-[80px]" />
-                <Skeleton className="h-8 w-20" />
+
+          <CardContent className="pb-3">
+            <Skeleton className="h-3 w-full mb-2" />
+            <Skeleton className="h-3 w-[80%] mb-4" />
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-[100px]" />
               </div>
+              <Skeleton className="h-3 w-[120px]" />
             </div>
           </CardContent>
+
+          <CardFooter>
+            <Skeleton className="h-8 w-full rounded" />
+          </CardFooter>
         </Card>
       ))}
     </div>
@@ -210,6 +235,67 @@ export const PageHeaderSkeleton = ({
             <Skeleton key={index} className="h-9 w-[100px]" />
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+export const ProjectsWithDocumentsSkeleton = ({
+  itemCount = 2,
+}: SkeletonProps) => {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: itemCount }).map((_, index) => (
+        <div key={index} className="border rounded-lg p-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-[200px]" />
+              <Skeleton className="h-4 w-[160px]" />
+              <Skeleton className="h-3 w-[100px]" />
+            </div>
+            <Skeleton className="h-8 w-[100px]" />
+          </div>
+
+          {/* Documents list within project */}
+          <div className="space-y-3">
+            {Array.from({ length: 2 }).map((_, docIndex) => (
+              <Card key={docIndex} className="overflow-hidden">
+                <CardHeader className="p-4 pb-0">
+                  <div className="flex justify-between items-start">
+                    <div className="flex gap-3">
+                      <Skeleton className="h-8 w-8 rounded" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[180px]" />
+                        <Skeleton className="h-3 w-[120px]" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 flex justify-between items-center">
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export const TabsSkeleton = () => {
+  return (
+    <div className="w-full">
+      <div className="flex mb-4">
+        <Skeleton className="h-10 w-32 rounded-l-md" />
+        <Skeleton className="h-10 w-32 rounded-r-md" />
+      </div>
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-[90%]" />
+        <Skeleton className="h-4 w-[95%]" />
       </div>
     </div>
   )

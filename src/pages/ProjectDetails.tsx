@@ -189,6 +189,7 @@ const ProjectDetails = () => {
     postcode?: string
     name: string
     description: string
+    slug?: string
   }) => {
     if (!project) return
 
@@ -199,6 +200,7 @@ const ProjectDetails = () => {
         {
           name: data.name,
           description: data.description,
+          slug: data.slug,
         },
       )
 

@@ -124,6 +124,7 @@ export const FileUploader = (props: FileUploaderProps) => {
 
       // Extract text from file and process embedding directly (client-side)
       if (newDocument?.id) {
+        let fileText = '' // Declare fileText outside try block for access in catch
         try {
           console.log('Extracting text from file for embedding...')
 
@@ -147,7 +148,7 @@ export const FileUploader = (props: FileUploaderProps) => {
             }
           }
 
-          const fileText = await extractTextFromFile(file)
+          fileText = await extractTextFromFile(file)
           if (fileText && fileText.trim().length > 0) {
             console.log(`Extracted ${fileText.length} characters of text`)
             // Process embedding directly without database status updates
@@ -160,7 +161,7 @@ export const FileUploader = (props: FileUploaderProps) => {
               size: result.size,
             })
 
-            // Update document status to 'processed' after successful embedding
+            // Update document status and content after successful embedding
             try {
               await documentService.updateDocument(
                 companyId,
@@ -168,9 +169,12 @@ export const FileUploader = (props: FileUploaderProps) => {
                 newDocument.id,
                 {
                   status: 'processed',
+                  content: fileText, // Save the extracted content for display in DocumentViewer
                 },
               )
-              console.log('Document status updated to processed')
+              console.log(
+                'Document status updated to processed and content saved',
+              )
             } catch (statusError) {
               console.warn(
                 'Could not update document status to processed:',
@@ -191,6 +195,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                 newDocument.id,
                 {
                   status: 'failed',
+                  content: fileText || '', // Save any partial content that was extracted
                 },
               )
               console.log('Document status updated to failed (no text content)')
@@ -218,6 +223,7 @@ export const FileUploader = (props: FileUploaderProps) => {
               newDocument.id,
               {
                 status: 'failed',
+                content: fileText || '', // Save any content that was extracted before the error
               },
             )
             console.log('Document status updated to failed (embedding error)')
