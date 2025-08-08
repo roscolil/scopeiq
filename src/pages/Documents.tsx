@@ -6,6 +6,7 @@ import { FileUploader } from '@/components/FileUploader'
 import {
   DocumentListSkeleton,
   PageHeaderSkeleton,
+  ProjectsWithDocumentsSkeleton,
 } from '@/components/skeletons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -358,7 +359,7 @@ const Documents = () => {
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-4">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() =>
                 navigate(
@@ -386,7 +387,7 @@ const Documents = () => {
             <TabsContent value="by-project">
               {/* Progressive loading for projects */}
               {isDocumentsLoading ? (
-                <DocumentListSkeleton itemCount={3} />
+                <ProjectsWithDocumentsSkeleton itemCount={2} />
               ) : projectsWithDocuments.length > 0 ? (
                 <div className="space-y-6">
                   {projectsWithDocuments.map(project => (

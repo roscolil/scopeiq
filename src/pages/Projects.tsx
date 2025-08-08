@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
 import { PageHeaderSkeleton, ProjectListSkeleton } from '@/components/skeletons'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter } from 'lucide-react'
 import { Project } from '@/types'
@@ -178,7 +179,10 @@ const Projects = () => {
 
           {loading ? (
             <div className="space-y-6">
-              <PageHeaderSkeleton />
+              <div className="flex justify-between items-center">
+                <Skeleton className="h-10 w-[400px]" />
+                <Skeleton className="h-9 w-[130px]" />
+              </div>
               <ProjectListSkeleton itemCount={6} />
             </div>
           ) : (

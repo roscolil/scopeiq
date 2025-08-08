@@ -105,11 +105,25 @@ export function UserTable({
 
   const getStatusBadge = (user: User) => {
     if (!user.isActive) {
-      return <Badge variant="secondary">Inactive</Badge>
+      return (
+        <Badge
+          variant="secondary"
+          className="hover:!bg-secondary hover:!text-secondary-foreground hover:!shadow-none"
+        >
+          Inactive
+        </Badge>
+      )
     }
 
     if (!user.lastLoginAt) {
-      return <Badge variant="outline">Never signed in</Badge>
+      return (
+        <Badge
+          variant="outline"
+          className="hover:!bg-transparent hover:!text-foreground hover:!shadow-none"
+        >
+          Never signed in
+        </Badge>
+      )
     }
 
     const daysSinceLogin = Math.floor(
@@ -118,11 +132,29 @@ export function UserTable({
     )
 
     if (daysSinceLogin === 0) {
-      return <Badge className="bg-green-100 text-green-800">Active today</Badge>
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:!bg-green-100 hover:!text-green-800 hover:!shadow-none">
+          Active today
+        </Badge>
+      )
     } else if (daysSinceLogin <= 7) {
-      return <Badge variant="outline">Active this week</Badge>
+      return (
+        <Badge
+          variant="outline"
+          className="hover:!bg-transparent hover:!text-foreground hover:!shadow-none"
+        >
+          Active this week
+        </Badge>
+      )
     } else {
-      return <Badge variant="secondary">Inactive</Badge>
+      return (
+        <Badge
+          variant="secondary"
+          className="hover:!bg-secondary hover:!text-secondary-foreground hover:!shadow-none"
+        >
+          Inactive
+        </Badge>
+      )
     }
   }
 
@@ -224,7 +256,15 @@ export function UserTable({
                     </TableCell>
 
                     <TableCell>
-                      <Badge className={roleColors[user.role]}>
+                      <Badge
+                        className={`${roleColors[user.role]} ${
+                          user.role === 'Admin'
+                            ? 'hover:!bg-red-100 hover:!text-red-800 dark:hover:!bg-red-900/30 dark:hover:!text-red-300'
+                            : user.role === 'Owner'
+                              ? 'hover:!bg-blue-100 hover:!text-blue-800 dark:hover:!bg-blue-900/30 dark:hover:!text-blue-300'
+                              : 'hover:!bg-green-100 hover:!text-green-800 dark:hover:!bg-green-900/30 dark:hover:!text-green-300'
+                        } hover:!shadow-none`}
+                      >
                         <RoleIcon className="h-3 w-3 mr-1" />
                         {user.role}
                       </Badge>
