@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { FileText, File, FileImage, Loader2, Brain } from 'lucide-react'
+import {
+  FileText,
+  File,
+  FileImage,
+  Loader2,
+  Brain,
+  AlertCircle,
+} from 'lucide-react'
 import { DocumentViewerSkeleton } from './skeletons'
 import { PDFViewer } from './PDFViewer'
 import { AIActions } from './AIActions'
@@ -12,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card'
+import { Badge } from './ui/badge'
 
 // Text File Viewer Component
 const TextFileViewer = ({ document }: { document: DocumentType }) => {
@@ -363,15 +371,99 @@ export const DocumentViewer = ({
 
               {/* Document content based on type */}
               {document?.type?.includes('image') ? (
-                <div className="flex justify-center">
-                  <img
-                    src={document.url}
-                    alt={document.name || 'Document image'}
-                    className="max-w-full max-h-[600px] object-contain"
-                  />
+                <div className="space-y-6">
+                  <div className="flex justify-center">
+                    <img
+                      src={document.url}
+                      alt={document.name || 'Document image'}
+                      className="max-w-full max-h-[600px] object-contain rounded-lg shadow-lg"
+                    />
+                  </div>
+
+                  {/* AI Analysis Results for Images */}
+                  {document.content && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                          AI Image Analysis
+                        </h3>
+                        <Badge variant="secondary" className="text-xs">
+                          GPT-4 Turbo Vision
+                        </Badge>
+                        {document.content.includes(
+                          'STANDALONE IMAGE ANALYSIS',
+                        ) && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-green-50 text-green-700 border-green-200"
+                          >
+                            Standalone Image
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300">
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {document.content}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing status for images */}
+                  {!document.content && document.status === 'processing' && (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                        <span className="font-medium text-amber-900 dark:text-amber-100">
+                          Analyzing Image with AI
+                        </span>
+                      </div>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        GPT-4 Turbo Vision is processing this image to extract
+                        text, identify objects, and provide
+                        construction-specific insights. This usually takes 1-2
+                        minutes.
+                      </p>
+                    </div>
+                  )}
+
+                  {!document.content && document.status === 'failed' && (
+                    <div className="bg-red-50 dark:bg-red-950/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <span className="font-medium text-red-900 dark:text-red-100">
+                          Image Analysis Failed
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-700 dark:text-red-300">
+                        Failed to analyze this image. Please try re-uploading
+                        the image or contact support if the issue persists.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : document?.type?.includes('pdf') ? (
-                <PDFViewer document={document} />
+                <div className="space-y-4">
+                  <PDFViewer document={document} />
+
+                  {/* PDF Image Detection Notice */}
+                  {document.content?.includes('IMAGE DETECTED ON PAGE') && (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileImage className="h-4 w-4 text-amber-600" />
+                        <span className="font-medium text-amber-900 dark:text-amber-100">
+                          Images Detected in PDF
+                        </span>
+                      </div>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        This PDF contains embedded images (blueprints, diagrams,
+                        or photos). For complete analysis of visual content,
+                        consider extracting and uploading images separately.
+                      </p>
+                    </div>
+                  )}
+                </div>
               ) : document?.type?.includes('text') ||
                 document?.type?.includes('txt') ||
                 document?.type?.includes('rtf') ||
