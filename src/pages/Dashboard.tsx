@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Project, Document } from '@/types'
 import { projectService, documentService } from '@/services/hybrid'
+import { companyService, Company } from '@/services/company'
 import { routes, createSlug } from '@/utils/navigation'
 import { useAuth } from '@/hooks/aws-auth'
 
@@ -49,14 +50,57 @@ const Dashboard = () => {
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
-  const companyName =
-    user?.name?.split("'s")[0] || user?.companyId || 'Your Company'
 
-  // State for real data
+  // State for company and other data
+  const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true)
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
+
+  // Load company data
+  useEffect(() => {
+    const loadCompany = async () => {
+      if (!companyId || companyId === 'default') {
+        setCompany({
+          id: companyId,
+          name: user?.name?.split("'s")[0] || 'Your Company',
+          description: 'Default company',
+        })
+        setIsLoadingCompany(false)
+        return
+      }
+
+      try {
+        setIsLoadingCompany(true)
+        const companyData = await companyService.getCompanyById(companyId)
+
+        if (companyData) {
+          setCompany(companyData)
+        } else {
+          // Fallback to derived name if company not found
+          setCompany({
+            id: companyId,
+            name: user?.name?.split("'s")[0] || 'Your Company',
+            description: 'Company details not found',
+          })
+        }
+      } catch (error) {
+        console.error('Error loading company:', error)
+        // Fallback to derived name on error
+        setCompany({
+          id: companyId,
+          name: user?.name?.split("'s")[0] || 'Your Company',
+          description: 'Error loading company details',
+        })
+      } finally {
+        setIsLoadingCompany(false)
+      }
+    }
+
+    loadCompany()
+  }, [companyId, user?.name])
 
   // Load projects and documents
   useEffect(() => {
@@ -184,13 +228,24 @@ const Dashboard = () => {
           {/* Dashboard Header */}
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-                {companyName} Dashboard
-              </h1>
-              <p className="text-gray-400 mt-2">
-                Welcome back! Here's an overview of your projects and
-                activities.
-              </p>
+              {isLoadingCompany ? (
+                <PageHeaderSkeleton />
+              ) : (
+                <>
+                  <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                    {company?.id || 'Your Company'} Dashboard
+                    {/* {company?.id && company.id !== 'default' && (
+                      <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
+                        ({company.id.slice(0, 8)}...)
+                      </span>
+                    )} */}
+                  </h1>
+                  <p className="text-gray-400 mt-2">
+                    Welcome back! Here's an overview of your projects and
+                    activities.
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <Button
