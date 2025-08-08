@@ -55,6 +55,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  // Add safety guard for development hot reloads
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Reset state on hot reload to prevent stale context issues
+      const handleBeforeUnload = () => {
+        setIsInitialized(false)
+        setIsLoading(true)
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () =>
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [])
+
   useEffect(() => {
     const loadUser = async () => {
       // Skip if already initialized to prevent duplicate calls
@@ -353,6 +368,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
+    // Better error message for development
+    if (process.env.NODE_ENV === 'development') {
+      console.error(
+        'useAuth hook called outside of AuthProvider context. Make sure your component is wrapped with AuthProvider.',
+      )
+      console.trace('Call stack:')
+    }
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context

@@ -6,14 +6,14 @@ import { Suspense, lazy, useEffect } from 'react'
 import { Spinner } from '@/components/Spinner'
 import { AuthProvider } from './hooks/aws-auth'
 import {
-  prefetchForAuthenticatedUser,
+  // prefetchForAuthenticatedUser,
   prefetchOnIdle,
   cleanupPrefetchObserver,
 } from './utils/route-prefetch'
 import {
-  DocumentListSkeleton,
+  // DocumentListSkeleton,
   PageHeaderSkeleton,
-  ProjectsWithDocumentsSkeleton,
+  // ProjectsWithDocumentsSkeleton,
 } from './components/skeletons'
 
 // Eagerly load critical components
@@ -36,52 +36,67 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Migration = lazy(() => import('./pages/Migration'))
 
 // Enhanced loading fallback components with skeletons
-const PageLoadingFallback = ({
-  type,
-}: {
-  type?: 'documents' | 'projects' | 'default'
-}) => {
-  switch (type) {
-    case 'documents':
-      return (
-        <div className="container mx-auto p-6 space-y-6">
-          <PageHeaderSkeleton />
-          <DocumentListSkeleton />
-        </div>
-      )
-    case 'projects':
-      return (
-        <div className="container mx-auto p-6 space-y-6">
-          <PageHeaderSkeleton />
-          <ProjectsWithDocumentsSkeleton />
-        </div>
-      )
-    default:
-      return (
-        <div className="flex justify-center items-center h-64">
-          <Spinner />
-        </div>
-      )
-  }
-}
+// const PageLoadingFallback = ({
+//   type,
+// }: {
+//   type?: 'documents' | 'projects' | 'default'
+// }) => {
+//   switch (type) {
+//     case 'documents':
+//       return (
+//         <div className="container mx-auto p-6 space-y-6">
+//           <PageHeaderSkeleton />
+//           {/* <DocumentListSkeleton /> */}
+//         </div>
+//       )
+//     case 'projects':
+//       return (
+//         <div className="container mx-auto p-6 space-y-6">
+//           <PageHeaderSkeleton />
+//           {/* <ProjectsWithDocumentsSkeleton /> */}
+//         </div>
+//       )
+//     default:
+//       return (
+//         <div className="flex justify-center items-center h-64">
+//           <Spinner />
+//         </div>
+//       )
+//   }
+// }
 
 // Enhanced Suspense wrapper with smart fallbacks
 const EnhancedSuspense = ({
   children,
-  fallbackType,
+  // fallbackType,
 }: {
   children: React.ReactNode
   fallbackType?: 'documents' | 'projects' | 'default'
 }) => (
-  <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
-    {children}
-  </Suspense>
+  // <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
+  <Suspense>{children}</Suspense>
 )
 
 const App = () => {
   useEffect(() => {
     // Initialize prefetching strategies
     prefetchOnIdle()
+
+    // Add development-specific hot reload handling
+    if (process.env.NODE_ENV === 'development') {
+      // Handle React Fast Refresh issues
+      const handleBeforeUnload = () => {
+        // Clear any auth context issues during hot reload
+        console.log('Page unloading, clearing auth state for clean reload')
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+
+      return () => {
+        cleanupPrefetchObserver()
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+      }
+    }
 
     // Cleanup on unmount
     return () => {
@@ -143,7 +158,7 @@ const App = () => {
                   <Route
                     index
                     element={
-                      <EnhancedSuspense fallbackType="projects">
+                      <EnhancedSuspense fallbackType="default">
                         <Dashboard />
                       </EnhancedSuspense>
                     }

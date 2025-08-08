@@ -20,12 +20,24 @@ import { projectService } from '@/services/hybrid'
 const Projects = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
   const { companyId } = useParams<{
     companyId: string
   }>()
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
+
+  // Load cached project count from localStorage
+  useEffect(() => {
+    if (companyId && typeof window !== 'undefined') {
+      const cached = localStorage.getItem(`projectCount_${companyId}`)
+      if (cached) {
+        setExpectedProjectCount(parseInt(cached, 10))
+      }
+    }
+  }, [companyId])
 
   // Check if we should auto-open the new project dialog
   useEffect(() => {
@@ -62,6 +74,18 @@ const Projects = () => {
         )
 
         setProjects(transformedProjects)
+
+        // Store the project count for future skeleton display
+        const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
+        setExpectedProjectCount(projectCount)
+
+        // Cache the count in localStorage for next visit
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            `projectCount_${companyId}`,
+            projectCount.toString(),
+          )
+        }
       } catch (error) {
         console.error('Projects page: Error loading projects:', error)
         // Fallback to empty array
@@ -178,13 +202,7 @@ const Projects = () => {
           </div>
 
           {loading ? (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <Skeleton className="h-10 w-[400px]" />
-                <Skeleton className="h-9 w-[130px]" />
-              </div>
-              <ProjectListSkeleton itemCount={6} />
-            </div>
+            <ProjectListSkeleton itemCount={expectedProjectCount} />
           ) : (
             <ProjectList
               projects={projects}
