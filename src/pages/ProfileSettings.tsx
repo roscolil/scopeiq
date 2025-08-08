@@ -113,6 +113,7 @@ const ProfileSettings = () => {
 
   // Dialog states
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
+  const [inviteUserDialogOpen, setInviteUserDialogOpen] = useState(false)
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false)
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
@@ -216,6 +217,33 @@ const ProfileSettings = () => {
         projectIds: data.projectIds || [],
       })
       setAddUserDialogOpen(false)
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleInviteUser = async (data: UserFormData) => {
+    if (!data.email || !data.name || !data.role) {
+      toast({
+        title: 'Error',
+        description: 'Email, name, and role are required.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await userManagement.inviteUser({
+        email: data.email,
+        role: data.role,
+        companyId,
+        projectIds: [], // Projects will be assigned after invitation acceptance
+        invitedBy: 'current-user-id', // In real app, get from current user context
+      })
+      setInviteUserDialogOpen(false)
     } catch (error) {
       // Error handled in hook
     } finally {
@@ -551,7 +579,7 @@ const ProfileSettings = () => {
                       </p>
                     </div>
                     <Button
-                      onClick={() => setAddUserDialogOpen(true)}
+                      onClick={() => setInviteUserDialogOpen(true)}
                       variant="outline"
                       className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white"
                     >
@@ -578,7 +606,7 @@ const ProfileSettings = () => {
                             All invitations have been accepted or expired.
                           </p>
                           <Button
-                            onClick={() => setAddUserDialogOpen(true)}
+                            onClick={() => setInviteUserDialogOpen(true)}
                             variant="outline"
                           >
                             Send New Invitation
@@ -679,6 +707,36 @@ const ProfileSettings = () => {
             }}
             submitLabel={editUserDialogOpen ? 'Update User' : 'Create User'}
             isLoading={isSubmitting}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invitation Dialog */}
+      <Dialog
+        open={inviteUserDialogOpen}
+        onOpenChange={open => {
+          if (!open) {
+            setInviteUserDialogOpen(false)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Send User Invitation</DialogTitle>
+            <DialogDescription>
+              Send an email invitation to a new user. They will receive an email
+              with a link to create their account and join your company.
+            </DialogDescription>
+          </DialogHeader>
+          <UserForm
+            projects={mockProjects}
+            onSubmit={handleInviteUser}
+            onCancel={() => {
+              setInviteUserDialogOpen(false)
+            }}
+            submitLabel="Send Invitation"
+            isLoading={isSubmitting}
+            isInvitation={true}
           />
         </DialogContent>
       </Dialog>

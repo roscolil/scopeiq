@@ -46,6 +46,7 @@ interface UserFormProps {
   onCancel: () => void
   submitLabel?: string
   isLoading?: boolean
+  isInvitation?: boolean
 }
 
 export function UserForm({
@@ -55,6 +56,7 @@ export function UserForm({
   onCancel,
   submitLabel = 'Save User',
   isLoading = false,
+  isInvitation = false,
 }: UserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -164,7 +166,7 @@ export function UserForm({
         />
 
         {/* Project assignment - hide for Admin role as they have access to all */}
-        {selectedRole !== 'Admin' && (
+        {selectedRole !== 'Admin' && !isInvitation && (
           <Controller
             control={form.control}
             name="projectIds"
@@ -191,6 +193,16 @@ export function UserForm({
               </FormItem>
             )}
           />
+        )}
+
+        {/* Info message for invitations */}
+        {isInvitation && selectedRole !== 'Admin' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <p className="text-sm text-blue-700">
+              <strong>Note:</strong> Project assignments can be configured after
+              the user accepts the invitation and creates their account.
+            </p>
+          </div>
         )}
 
         {/* Active status - only show for existing users */}
