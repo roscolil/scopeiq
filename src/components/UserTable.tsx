@@ -74,6 +74,7 @@ export function UserTable({
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'active' | 'inactive'
   >('all')
+  const [projectFilter, setProjectFilter] = useState<string>('all')
 
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
@@ -88,7 +89,12 @@ export function UserTable({
       (statusFilter === 'active' && user.isActive) ||
       (statusFilter === 'inactive' && !user.isActive)
 
-    return matchesSearch && matchesRole && matchesStatus
+    const matchesProject =
+      projectFilter === 'all' ||
+      user.role === 'Admin' || // Admins have access to all projects
+      user.projectIds.includes(projectFilter)
+
+    return matchesSearch && matchesRole && matchesStatus && matchesProject
   })
 
   const getProjectNames = (projectIds: string[]) => {
@@ -202,6 +208,23 @@ export function UserTable({
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={projectFilter}
+            onValueChange={(value: string) => setProjectFilter(value)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {projects.map(project => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
