@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ScopeIQ</title>
 
-    <!-- Modern fonts -->
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/main.tsx" as="script" />
+    <link rel="preload" href="/src/App.tsx" as="script" />
+    <link rel="modulepreload" href="/src/hooks/aws-auth.tsx" />
+
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+
+    <!-- Modern fonts with display=swap for better performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,29 +22,36 @@
       rel="stylesheet"
     />
 
-    <!-- <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" /> -->
+    <!-- Preload PDF worker for when needed -->
+    <link rel="prefetch" href="/pdf.worker.min.mjs" />
 
-    <!-- <meta property="og:title" content="text-vault-mobile" />
-    <meta property="og:description" content="Lovable Generated Project" />
-    <meta property="og:type" content="website" /> -->
-    <!-- <meta
-      property="og:image"
-      content="https://lovable.dev/opengraph-image-p98pqg.png"
-    /> -->
-
-    <!-- <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
+    <!-- Meta tags for better SEO and social sharing -->
     <meta
-      name="twitter:image"
-      content="https://lovable.dev/opengraph-image-p98pqg.png"
-    /> -->
+      name="description"
+      content="ScopeIQ - AI-powered construction document management and analysis platform"
+    />
+    <meta name="author" content="ScopeIQ" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- Open Graph tags -->
+    <meta
+      property="og:title"
+      content="ScopeIQ - Construction Document Management"
+    />
+    <meta
+      property="og:description"
+      content="AI-powered construction document management and analysis platform"
+    />
+    <meta property="og:type" content="website" />
+
+    <!-- Performance optimizations -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="format-detection" content="telephone=no" />
   </head>
 
   <body>
     <div id="root"></div>
-    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
-    <!-- <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script> -->
+    <!-- Performance monitoring script (add if needed) -->
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if (typeof global === 'undefined') {

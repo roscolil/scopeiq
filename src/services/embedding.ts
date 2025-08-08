@@ -252,12 +252,19 @@ export async function semanticSearch({
   projectId,
   query,
   topK = 5,
+  documentId,
 }: {
   projectId: string
   query: string
   topK?: number
+  documentId?: string
 }) {
   const embedding = await generateEmbedding(query)
-  const results = await queryEmbeddings(projectId, [embedding], topK)
+  const results = await queryEmbeddings(
+    projectId,
+    [embedding],
+    topK,
+    documentId,
+  )
   return results
 }

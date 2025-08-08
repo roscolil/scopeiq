@@ -439,11 +439,41 @@ export const AIActions = ({
           description: `Your question about the ${queryScope === 'document' ? 'document' : 'project'} has been answered.`,
         })
       } else {
-        // Handle as semantic search
-        await search(query)
+        // Handle as semantic search with proper document scoping
+        const searchParams: {
+          projectId: string
+          query: string
+          topK: number
+          documentId?: string
+        } = {
+          projectId: projectId,
+          query: query,
+          topK: 10, // More results for search than AI context
+        }
+
+        // Only add documentId filter for document-specific queries if we have a valid document
+        if (
+          queryScope === 'document' &&
+          documentId &&
+          document?.status === 'processed'
+        ) {
+          searchParams.documentId = documentId
+        }
+
+        const searchResponse = await semanticSearch(searchParams)
+
+        setResults({
+          type: 'search',
+          searchResults: searchResponse as typeof searchResults,
+        })
+
         // Clear the query field after successful search
         setQuery('')
-        // The search results will be handled by the useEffect below
+
+        toast({
+          title: 'Search Complete',
+          description: `Found results ${queryScope === 'document' ? 'in this document' : 'across the project'}.`,
+        })
       }
     } catch (error) {
       console.error('Query Error:', error)

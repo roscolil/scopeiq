@@ -70,17 +70,28 @@ export async function queryEmbeddings(
   collectionName: string,
   queryEmbeddings: number[][],
   topK = 5,
+  documentId?: string,
 ) {
   try {
     const index = await getOrCreateIndex()
 
-    // Query the specific namespace (collection)
-    const queryResponse = await index.namespace(collectionName).query({
+    // Build query parameters
+    const queryParams = {
       vector: queryEmbeddings[0],
       topK,
       includeMetadata: true,
       includeValues: false,
-    })
+      ...(documentId && {
+        filter: {
+          document_id: { $eq: documentId },
+        },
+      }),
+    }
+
+    // Query the specific namespace (collection)
+    const queryResponse = await index
+      .namespace(collectionName)
+      .query(queryParams)
 
     const matches = queryResponse.matches || []
 

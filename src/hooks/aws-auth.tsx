@@ -18,6 +18,8 @@ import {
   updateUserAttributes,
 } from 'aws-amplify/auth'
 import { userService } from '@/services/user'
+import { prefetchForAuthenticatedUser } from '@/utils/route-prefetch'
+import { prefetchUserData } from '@/utils/data-prefetch'
 
 interface User {
   id: string
@@ -102,6 +104,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Cache the auth state
             sessionStorage.setItem('authState', JSON.stringify(userData))
             sessionStorage.setItem('authTimestamp', Date.now().toString())
+
+            // Prefetch user data and routes for authenticated users
+            Promise.allSettled([
+              prefetchForAuthenticatedUser(),
+              prefetchUserData(userData.companyId),
+            ])
+              .then(() => {
+                console.log('User data and routes prefetched successfully')
+              })
+              .catch(error => {
+                console.warn('Failed to prefetch user data:', error)
+              })
           } else {
             // No DynamoDB user found, create one
             const dbUser = await userService.createOrSyncUser()
