@@ -94,6 +94,43 @@ const Dashboard = () => {
     [STATS_CACHE_KEY],
   )
 
+  // Cache key for company data
+  const COMPANY_CACHE_KEY = `companyData_${companyId}`
+
+  // Utility functions for company caching
+  const getCachedCompany = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(COMPANY_CACHE_KEY)
+      if (!cached) return null
+
+      const { data, timestamp } = JSON.parse(cached)
+      const isExpired = Date.now() - timestamp > CACHE_EXPIRY_MS
+
+      return isExpired ? null : data
+    } catch {
+      return null
+    }
+  }, [COMPANY_CACHE_KEY, CACHE_EXPIRY_MS])
+
+  const setCachedCompanyData = useCallback(
+    (companyData: Company) => {
+      if (typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          COMPANY_CACHE_KEY,
+          JSON.stringify({
+            data: companyData,
+            timestamp: Date.now(),
+          }),
+        )
+      } catch {
+        // Silently fail if localStorage is unavailable
+      }
+    },
+    [COMPANY_CACHE_KEY],
+  )
+
   // State for company and other data
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
@@ -134,48 +171,75 @@ const Dashboard = () => {
     }
   }, [companyId, getCachedStats])
 
+  // Load cached company data immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cached = getCachedCompany()
+      if (cached) {
+        setCompany(cached)
+        setIsLoadingCompany(false) // Show cached data immediately
+      } else {
+        setIsLoadingCompany(true) // No cache, show loading
+      }
+    }
+  }, [companyId, getCachedCompany])
+
   // Load company data
   useEffect(() => {
     const loadCompany = async () => {
       if (!companyId || companyId === 'default') {
-        setCompany({
+        const defaultCompany = {
           id: companyId,
           name: user?.name?.split("'s")[0] || 'Your Company',
           description: 'Default company',
-        })
+        }
+        setCompany(defaultCompany)
+        setCachedCompanyData(defaultCompany)
         setIsLoadingCompany(false)
         return
       }
 
+      // Check if we already have cached data and fresh data is loading in background
+      const cached = getCachedCompany()
+
       try {
-        setIsLoadingCompany(true)
+        // If no cache, show loading state
+        if (!cached) {
+          setIsLoadingCompany(true)
+        }
+
         const companyData = await companyService.getCompanyById(companyId)
 
         if (companyData) {
           setCompany(companyData)
+          setCachedCompanyData(companyData) // Cache the fresh data
         } else {
           // Fallback to derived name if company not found
-          setCompany({
+          const fallbackCompany = {
             id: companyId,
             name: user?.name?.split("'s")[0] || 'Your Company',
             description: 'Company details not found',
-          })
+          }
+          setCompany(fallbackCompany)
+          setCachedCompanyData(fallbackCompany)
         }
       } catch (error) {
         console.error('Error loading company:', error)
         // Fallback to derived name on error
-        setCompany({
+        const errorCompany = {
           id: companyId,
           name: user?.name?.split("'s")[0] || 'Your Company',
           description: 'Error loading company details',
-        })
+        }
+        setCompany(errorCompany)
+        setCachedCompanyData(errorCompany)
       } finally {
         setIsLoadingCompany(false)
       }
     }
 
     loadCompany()
-  }, [companyId, user?.name])
+  }, [companyId, user?.name, getCachedCompany, setCachedCompanyData])
 
   // Load projects and documents
   useEffect(() => {
