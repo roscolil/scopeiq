@@ -5,16 +5,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { Spinner } from '@/components/Spinner'
 import { AuthProvider } from './hooks/aws-auth'
-import {
-  // prefetchForAuthenticatedUser,
-  prefetchOnIdle,
-  cleanupPrefetchObserver,
-} from './utils/route-prefetch'
-import {
-  // DocumentListSkeleton,
-  PageHeaderSkeleton,
-  // ProjectsWithDocumentsSkeleton,
-} from './components/skeletons'
+import { prefetchOnIdle, cleanupPrefetchObserver } from './utils/route-prefetch'
+import { PageHeaderSkeleton } from './components/skeletons'
 
 // Eagerly load critical components
 import Index from './pages/Index'
@@ -22,7 +14,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
 
-// Lazy load secondary pages with prefetching
+// Lazy load secondary pages
 const Documents = lazy(() => import('./pages/Documents'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
@@ -79,7 +71,6 @@ const EnhancedSuspense = ({
 
 const App = () => {
   useEffect(() => {
-    // Initialize prefetching strategies
     prefetchOnIdle()
 
     // Add development-specific hot reload handling
@@ -87,7 +78,6 @@ const App = () => {
       // Handle React Fast Refresh issues
       const handleBeforeUnload = () => {
         // Clear any auth context issues during hot reload
-        console.log('Page unloading, clearing auth state for clean reload')
       }
 
       window.addEventListener('beforeunload', handleBeforeUnload)
@@ -98,7 +88,6 @@ const App = () => {
       }
     }
 
-    // Cleanup on unmount
     return () => {
       cleanupPrefetchObserver()
     }

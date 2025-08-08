@@ -120,17 +120,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             sessionStorage.setItem('authState', JSON.stringify(userData))
             sessionStorage.setItem('authTimestamp', Date.now().toString())
 
-            // Prefetch user data and routes for authenticated users
+            // Initialize user data and routes for authenticated users
             Promise.allSettled([
               prefetchForAuthenticatedUser(),
               prefetchUserData(userData.companyId),
             ])
-              .then(() => {
-                console.log('User data and routes prefetched successfully')
-              })
-              .catch(error => {
-                console.warn('Failed to prefetch user data:', error)
-              })
           } else {
             // No DynamoDB user found, create one
             const dbUser = await userService.createOrSyncUser()

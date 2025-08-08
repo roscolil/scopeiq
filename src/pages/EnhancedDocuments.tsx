@@ -1,4 +1,4 @@
-// Enhanced Documents page with prefetching and skeleton loading
+// Enhanced Documents page with skeleton loading
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
@@ -104,9 +104,9 @@ const EnhancedDocuments = () => {
                 setResolvedProject(project)
                 setIsProjectLoading(false)
 
-                // Prefetch related data for next navigation
+                // Cache related data for next navigation
                 if (companyId) {
-                  prefetchProjectData(companyId, project.id).catch(console.warn)
+                  prefetchProjectData(companyId, project.id).catch(() => {})
                 }
               }
             }
@@ -181,11 +181,11 @@ const EnhancedDocuments = () => {
     loadData()
   }, [companyId, projectId, toast, resolvedProject])
 
-  // Prefetch document data on hover
+  // Cache document data on hover
   const handleDocumentHover = (documentId: string) => {
     if (companyId && resolvedProject) {
       prefetchDocumentData(companyId, resolvedProject.id, documentId).catch(
-        console.warn,
+        () => {},
       )
     }
   }
@@ -212,14 +212,11 @@ const EnhancedDocuments = () => {
   return (
     <Layout>
       <div className="container mx-auto p-6 space-y-6">
-        {/* Enhanced with prefetch hints */}
         <div className="space-y-4">
-          {/* Existing component JSX with onMouseEnter prefetching */}
-          <p>Enhanced Documents Component with Prefetching</p>
+          <p>Enhanced Documents Component</p>
           <p>Project: {projectName || 'All Projects'}</p>
           <p>Documents: {documents.length} items</p>
 
-          {/* Add onMouseEnter handlers to document items for prefetching */}
           <div className="grid gap-4">
             {documents.map(doc => (
               <div
