@@ -107,9 +107,9 @@ export const Navbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden h-10 w-10 text-white hover:text-emerald-400 hover:bg-white/10"
+                className="md:hidden h-12 w-12 text-white hover:text-emerald-400 hover:bg-white/10 active:bg-white/20 touch-manipulation"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>

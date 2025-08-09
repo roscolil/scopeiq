@@ -398,66 +398,65 @@ const Dashboard = () => {
       <Layout>
         <div className="space-y-6">
           {/* Dashboard Header */}
-          <div className="flex justify-between items-center">
-            <div>
-              {isLoadingCompany ? (
-                <PageHeaderSkeleton />
-              ) : (
-                <>
-                  <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-                    {company?.id || 'Your Company'} Dashboard
-                    {/* {company?.id && company.id !== 'default' && (
-                      <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
-                        ({company.id.slice(0, 8)}...)
-                      </span>
-                    )} */}
-                  </h1>
-                  <p className="text-gray-400 mt-2">
-                    Welcome back! Here's an overview of your projects and
-                    activities.
-                  </p>
-                </>
-              )}
+          <div className="space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                {isLoadingCompany ? (
+                  <PageHeaderSkeleton />
+                ) : (
+                  <>
+                    <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                      {company?.id || 'Your Company'} Dashboard
+                      {/* {company?.id && company.id !== 'default' && (
+                        <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
+                          ({company.id.slice(0, 8)}...)
+                        </span>
+                      )} */}
+                    </h1>
+                    <p className="text-gray-400 mt-2">
+                      Welcome back! Here's an overview of your projects and
+                      activities.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            {/* Settings Button */}
+            <div className="flex justify-start">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors text-white hover:text-emerald-400"
+                className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
                 onClick={() => navigate(routes.company.settings(companyId))}
               >
-                <Settings className="h-4 w-4" />
-                <span className="sr-only">Settings</span>
+                <Settings className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">Settings</span>
               </Button>
-              {/* <Avatar>
-                <AvatarImage src="/placeholder-avatar.png" />
-                <AvatarFallback>SC</AvatarFallback>
-              </Avatar> */}
             </div>
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Active Projects Card */}
             <Card className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Active Projects
                 </CardTitle>
-                <Folders className="h-4 w-4 text-blue-600" />
+                <Folders className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 {isLoadingStats ? (
                   <NumberSkeleton
                     className="mb-1"
                     color="bg-blue-200 dark:bg-blue-800"
                   />
                 ) : (
-                  <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-300">
                     {cachedStats.projectCount}
                   </div>
                 )}
-                <p className="text-xs text-blue-600/70 dark:text-blue-400/70">
+                <p className="text-[10px] sm:text-xs text-blue-600/70 dark:text-blue-400/70">
                   Total projects
                 </p>
               </CardContent>
@@ -465,22 +464,24 @@ const Dashboard = () => {
 
             {/* Documents Card */}
             <Card className="bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/20 dark:to-green-900/10 border-green-200/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Documents</CardTitle>
-                <FileText className="h-4 w-4 text-green-600" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">
+                  Documents
+                </CardTitle>
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 {isLoadingStats ? (
                   <NumberSkeleton
                     className="mb-1"
                     color="bg-green-200 dark:bg-green-800"
                   />
                 ) : (
-                  <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                  <div className="text-lg sm:text-2xl font-bold text-green-700 dark:text-green-300">
                     {cachedStats.documentCount}
                   </div>
                 )}
-                <p className="text-xs text-green-600/70 dark:text-green-400/70">
+                <p className="text-[10px] sm:text-xs text-green-600/70 dark:text-green-400/70">
                   Total documents
                 </p>
               </CardContent>
@@ -488,17 +489,17 @@ const Dashboard = () => {
 
             {/* Team Members Card - Static for now */}
             <Card className="bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Team Members
                 </CardTitle>
-                <Users className="h-4 w-4 text-purple-600" />
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold text-purple-700 dark:text-purple-300">
                   8
                 </div>
-                <p className="text-xs text-purple-600/70 dark:text-purple-400/70">
+                <p className="text-[10px] sm:text-xs text-purple-600/70 dark:text-purple-400/70">
                   +1 from last month
                 </p>
               </CardContent>
@@ -506,24 +507,24 @@ const Dashboard = () => {
 
             {/* Recent Documents Card */}
             <Card className="bg-gradient-to-br from-yellow-50/50 to-yellow-100/30 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200/20">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Recent Documents
                 </CardTitle>
-                <Clock className="h-4 w-4 text-yellow-600" />
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 {isLoadingStats ? (
                   <NumberSkeleton
                     className="mb-1"
                     color="bg-yellow-200 dark:bg-yellow-800"
                   />
                 ) : (
-                  <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
+                  <div className="text-lg sm:text-2xl font-bold text-yellow-700 dark:text-yellow-300">
                     {cachedStats.recentDocumentCount}
                   </div>
                 )}
-                <p className="text-xs text-yellow-600/70 dark:text-yellow-400/70">
+                <p className="text-[10px] sm:text-xs text-yellow-600/70 dark:text-yellow-400/70">
                   This week
                 </p>
               </CardContent>
