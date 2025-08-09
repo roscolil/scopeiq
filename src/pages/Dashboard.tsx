@@ -37,7 +37,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Project, Document } from '@/types'
 import { projectService, documentService } from '@/services/hybrid'
 import { companyService, Company } from '@/services/company'
@@ -48,6 +55,7 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user } = useAuth()
+  const isMobile = useIsMobile()
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
@@ -420,19 +428,54 @@ const Dashboard = () => {
                   </>
                 )}
               </div>
+
+              {/* Settings Button - Desktop only (inline with heading) */}
+              {!isMobile && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-10 w-10 p-0 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
+                        onClick={() =>
+                          navigate(routes.company.settings(companyId))
+                        }
+                      >
+                        <Settings className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
-            {/* Settings Button */}
-            <div className="flex justify-start">
-              <Button
-                variant="ghost"
-                className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
-                onClick={() => navigate(routes.company.settings(companyId))}
-              >
-                <Settings className="h-5 w-5 mr-2" />
-                <span className="text-sm font-medium">Settings</span>
-              </Button>
-            </div>
+            {/* Settings Button - Mobile only (below heading) */}
+            {isMobile && (
+              <div className="flex justify-start">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
+                        onClick={() =>
+                          navigate(routes.company.settings(companyId))
+                        }
+                      >
+                        <Settings className="h-5 w-5 mr-2" />
+                        <span className="text-sm font-medium">Settings</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Go to Settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
 
           {/* Stats Overview */}
