@@ -111,16 +111,8 @@ export const contactService = {
   // Send email notification via AWS SES
   async sendEmailNotification(submission: ContactSubmission): Promise<void> {
     try {
-      console.log(
-        'Sending email notification via AWS SES for submission:',
-        submission.id,
-      )
-
       // Check if the sendContactEmail mutation is available
       if (!publicClient.mutations?.sendContactEmail) {
-        console.warn(
-          'sendContactEmail mutation not available yet. Using fallback email logging.',
-        )
         throw new Error('Email mutation not deployed yet')
       }
 
@@ -138,7 +130,6 @@ export const contactService = {
 
       // Call the GraphQL mutation
       const result = await publicClient.mutations.sendContactEmail(emailRequest)
-      console.log('Raw mutation response:', result)
 
       // Handle different response formats
       let emailResult: {
@@ -177,41 +168,20 @@ export const contactService = {
 
       // If we don't have a valid result, throw an error
       if (!emailResult) {
-        console.error('Invalid mutation response format:', result)
         throw new Error(
           'Email sending failed: Invalid response format from mutation',
         )
       }
 
-      console.log('Processed email result:', emailResult)
-
       if (emailResult.success === false) {
-        console.error('Email result indicates failure:', emailResult)
         throw new Error(
           `Email sending failed: ${emailResult.error || 'Unknown error'}`,
-        )
-      }
-
-      console.log(
-        '✅ Email sent successfully via AWS SES:',
-        emailResult.messageId,
-      )
-
-      if (emailResult.confirmationMessageId) {
-        console.log(
-          '✅ Confirmation email sent successfully:',
-          emailResult.confirmationMessageId,
         )
       }
 
       // Explicitly return here to avoid any subsequent error handling
       return
     } catch (error) {
-      console.error('❌ Caught error in sendEmailNotification:', error)
-      console.error('Error type:', typeof error)
-      console.error('Error instanceof Error:', error instanceof Error)
-      console.error('Error sending email notification:', error)
-
       // Fallback: Log the email content for manual review
       console.warn(
         '📧 SES email failed, logging content for manual processing:',

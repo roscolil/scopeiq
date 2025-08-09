@@ -26,8 +26,6 @@ export const handler: AppSyncResolverHandler<
   ContactEmailArgs,
   ContactEmailResponse
 > = async event => {
-  console.log('Received contact email request:', event)
-
   try {
     const { submissionId, name, email, company, message, submittedAt } =
       event.arguments
@@ -224,19 +222,7 @@ Reply to this email to respond to the inquiry.
     })
 
     // Send the notification email to admin
-    console.log(`Sending notification email from ${fromEmail} to ${toEmail}`)
-    console.log('Notification email command details:', {
-      Source: fromEmail,
-      ToAddresses: [toEmail],
-      ReplyToAddresses: [email],
-      Subject: subject,
-    })
-
     const notificationResult = await sesClient.send(emailCommand)
-    console.log(
-      'Notification email sent successfully:',
-      notificationResult.MessageId,
-    )
 
     // Send confirmation email to the form submitter
     const confirmationSubject = `Thank you for contacting ScopeIQ - We'll be in touch soon!`
@@ -415,17 +401,8 @@ Reference ID: ${submissionId}
 
     // Note: In SES sandbox mode, confirmation emails can only be sent to verified addresses
     // For production, request SES production access or use alternative email service
-    console.log(`Attempting to send confirmation email to ${email}`)
-    console.log(
-      'Note: Confirmation email may fail in SES sandbox mode for unverified recipients',
-    )
-
     try {
       const confirmationResult = await sesClient.send(confirmationCommand)
-      console.log(
-        'Confirmation email sent successfully:',
-        confirmationResult.MessageId,
-      )
 
       return {
         success: true,
@@ -433,16 +410,8 @@ Reference ID: ${submissionId}
         confirmationMessageId: confirmationResult.MessageId,
       }
     } catch (confirmationError) {
-      console.warn(
-        'Confirmation email failed (this is expected in SES sandbox mode for unverified emails):',
-        confirmationError,
-      )
-
       // Always return success - the important notification email to admin worked
       // Confirmation emails are a nice-to-have, not essential
-      console.log(
-        '✅ Contact form submission successful (notification sent, confirmation skipped)',
-      )
       return {
         success: true,
         messageId: notificationResult.MessageId,
@@ -450,27 +419,6 @@ Reference ID: ${submissionId}
       }
     }
   } catch (error) {
-    console.error('Error sending email:', error)
-
-    // Type-safe error logging
-    const errorDetails: Record<string, unknown> = {}
-
-    if (error && typeof error === 'object') {
-      const err = error as Record<string, unknown>
-      errorDetails.name = err.name
-      errorDetails.message = err.message
-      errorDetails.code = err.code
-
-      // Handle AWS SDK metadata
-      const metadata = err.$metadata as Record<string, unknown> | undefined
-      if (metadata) {
-        errorDetails.statusCode = metadata.httpStatusCode
-        errorDetails.requestId = metadata.requestId
-      }
-    }
-
-    console.error('Error details:', errorDetails)
-
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
