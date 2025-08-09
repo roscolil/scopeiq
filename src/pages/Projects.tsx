@@ -184,25 +184,24 @@ const Projects = () => {
               Filter
             </Button> */}
 
-              {projects.length > 0 && (
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New Project
-                  </Button>
-                </DialogTrigger>
-              )}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                {projects.length > 0 && (
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                )}
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                  </DialogHeader>
+                  <ProjectForm onSubmit={handleCreateProject} />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
-
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Project</DialogTitle>
-              </DialogHeader>
-              <ProjectForm onSubmit={handleCreateProject} />
-            </DialogContent>
-          </Dialog>
 
           {loading ? (
             <ProjectListSkeleton itemCount={expectedProjectCount} />

@@ -143,10 +143,10 @@ const Dashboard = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoadingCompany, setIsLoadingCompany] = useState(false) // Changed to false
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false) // Changed to false
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false) // Changed to false
-  const [isLoadingStats, setIsLoadingStats] = useState(false) // Changed to false
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true) // Start with true for initial load
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start with true for initial load
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start with true for initial load
+  const [isLoadingStats, setIsLoadingStats] = useState(true) // Start with true for initial load
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
 
   // Cached stats state
@@ -252,16 +252,12 @@ const Dashboard = () => {
   // Load projects and documents
   useEffect(() => {
     const loadData = async () => {
-      try {
-        // Only show loading if we don't have cached data
-        const cached = getCachedStats()
-        if (!cached) {
-          setIsLoadingStats(true)
-          setIsLoadingProjects(true)
-          setIsLoadingDocuments(true)
-        }
+      // Ensure skeleton shows for at least 500ms for better UX
+      const startTime = Date.now()
+      const minLoadingTime = 500
 
-        // Load projects with documents - loading states already initialized as true
+      try {
+        // Load projects with documents
         const projectsData = await projectService.getAllProjectsWithDocuments()
 
         // Transform to our Project type
@@ -351,9 +347,15 @@ const Dashboard = () => {
           })
         }
       } finally {
-        setIsLoadingProjects(false)
-        setIsLoadingDocuments(false)
-        setIsLoadingStats(false) // Finish loading stats
+        // Ensure minimum loading time for skeleton visibility
+        const elapsedTime = Date.now() - startTime
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime)
+
+        setTimeout(() => {
+          setIsLoadingProjects(false)
+          setIsLoadingDocuments(false)
+          setIsLoadingStats(false)
+        }, remainingTime)
       }
     }
 
@@ -425,8 +427,10 @@ const Dashboard = () => {
                     </h1>
                     <p className="text-gray-400 mt-2">
                       Welcome back
-                      {user?.given_name ? `, ${user.given_name}` : ''}! Here's
-                      an overview of your projects and activities.
+                      {user?.given_name && typeof user.given_name === 'string'
+                        ? `, ${user.given_name.split(' ')[0]}`
+                        : ''}
+                      ! Here's an overview of your projects and activities.
                     </p>
                   </>
                 )}

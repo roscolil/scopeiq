@@ -160,11 +160,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('Attempting sign in for:', email)
 
+      // Check if user is already authenticated
+      try {
+        const currentUser = await getCurrentUser()
+        if (currentUser) {
+          console.log('User already authenticated, signing out first')
+          await amplifySignOut()
+          // Clear any existing state
+          setUser(null)
+          sessionStorage.removeItem('authState')
+          sessionStorage.removeItem('authTimestamp')
+        }
+      } catch {
+        // No user authenticated, continue with sign in
+      }
+
       // Clear any existing auth state first
       sessionStorage.removeItem('authState')
       sessionStorage.removeItem('authTimestamp')
 
-      // First, try to sign in
+      // Now try to sign in
       const result = await amplifySignIn({ username: email, password })
       console.log('Sign in result:', result)
 
