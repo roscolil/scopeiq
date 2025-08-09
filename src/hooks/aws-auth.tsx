@@ -181,7 +181,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Now try to sign in
       const result = await amplifySignIn({ username: email, password })
-      console.log('Sign in result:', result)
 
       // Check if the sign in was successful
       if (result.isSignedIn) {

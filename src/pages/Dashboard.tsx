@@ -96,10 +96,90 @@ const Dashboard = () => {
           }),
         )
       } catch {
-        // Silently fail if localStorage is unavailable
+        // Ignore cache write errors
       }
     },
     [STATS_CACHE_KEY],
+  )
+
+  // Caching utilities for projects data
+  const getCachedDashboardProjects = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`dashboard_projects_${companyId}`)
+      const timestamp = localStorage.getItem(
+        `dashboard_projects_timestamp_${companyId}`,
+      )
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < CACHE_EXPIRY_MS) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached dashboard projects:', error)
+    }
+    return null
+  }, [companyId, CACHE_EXPIRY_MS])
+
+  const setCachedDashboardProjects = useCallback(
+    (projectsData: Project[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `dashboard_projects_${companyId}`,
+          JSON.stringify(projectsData),
+        )
+        localStorage.setItem(
+          `dashboard_projects_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching dashboard projects:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Caching utilities for documents data
+  const getCachedDashboardDocuments = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`dashboard_documents_${companyId}`)
+      const timestamp = localStorage.getItem(
+        `dashboard_documents_timestamp_${companyId}`,
+      )
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < CACHE_EXPIRY_MS) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached dashboard documents:', error)
+    }
+    return null
+  }, [companyId, CACHE_EXPIRY_MS])
+
+  const setCachedDashboardDocuments = useCallback(
+    (documentsData: Document[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `dashboard_documents_${companyId}`,
+          JSON.stringify(documentsData),
+        )
+        localStorage.setItem(
+          `dashboard_documents_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching dashboard documents:', error)
+      }
+    },
+    [companyId],
   )
 
   // Cache key for company data
@@ -179,6 +259,25 @@ const Dashboard = () => {
     }
   }, [companyId, getCachedStats])
 
+  // Load cached projects and documents immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cachedProjects = getCachedDashboardProjects()
+      const cachedDocuments = getCachedDashboardDocuments()
+
+      if (cachedProjects) {
+        setProjects(cachedProjects)
+        setIsLoadingProjects(false)
+        setExpectedProjectCount(Math.max(cachedProjects.length, 1))
+      }
+
+      if (cachedDocuments) {
+        setDocuments(cachedDocuments)
+        setIsLoadingDocuments(false)
+      }
+    }
+  }, [companyId, getCachedDashboardProjects, getCachedDashboardDocuments])
+
   // Load cached company data immediately on mount
   useEffect(() => {
     if (companyId) {
@@ -252,11 +351,23 @@ const Dashboard = () => {
   // Load projects and documents
   useEffect(() => {
     const loadData = async () => {
-      // Ensure skeleton shows for at least 500ms for better UX
+      // Ensure skeleton shows for at least 500ms for better UX when no cache
       const startTime = Date.now()
       const minLoadingTime = 500
 
       try {
+        // Check if we need to show loading states
+        const cachedProjects = getCachedDashboardProjects()
+        const cachedDocuments = getCachedDashboardDocuments()
+
+        // Only show loading if no cache available
+        if (!cachedProjects) {
+          setIsLoadingProjects(true)
+        }
+        if (!cachedDocuments) {
+          setIsLoadingDocuments(true)
+        }
+
         // Load projects with documents
         const projectsData = await projectService.getAllProjectsWithDocuments()
 
@@ -283,6 +394,7 @@ const Dashboard = () => {
         )
 
         setProjects(transformedProjects)
+        setCachedDashboardProjects(transformedProjects) // Cache the fresh data
 
         // Store the project count for future skeleton display
         const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
@@ -310,6 +422,7 @@ const Dashboard = () => {
         })
 
         setDocuments(allDocuments)
+        setCachedDashboardDocuments(allDocuments) // Cache the fresh data
 
         // Calculate recent documents (last 7 days)
         const sevenDaysAgo = new Date()
@@ -339,7 +452,17 @@ const Dashboard = () => {
           setProjects([])
           setDocuments([])
         } else {
-          // This is an actual error
+          // This is an actual error - preserve cached data if available
+          const cachedProjects = getCachedDashboardProjects()
+          const cachedDocuments = getCachedDashboardDocuments()
+
+          if (!cachedProjects) {
+            setProjects([])
+          }
+          if (!cachedDocuments) {
+            setDocuments([])
+          }
+
           toast({
             title: 'Loading Error',
             description: 'Failed to load dashboard data. Please try again.',
@@ -360,7 +483,16 @@ const Dashboard = () => {
     }
 
     loadData()
-  }, [companyId, toast, setCachedStatsData, getCachedStats])
+  }, [
+    companyId,
+    toast,
+    setCachedStatsData,
+    getCachedStats,
+    getCachedDashboardProjects,
+    getCachedDashboardDocuments,
+    setCachedDashboardProjects,
+    setCachedDashboardDocuments,
+  ])
 
   const upcomingTasks = [
     {
