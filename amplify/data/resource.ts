@@ -1,6 +1,22 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
+import { sendContactEmail } from '../functions/send-contact-email/resource'
 
 const schema = a.schema({
+  // Custom operation for sending contact emails
+  sendContactEmail: a
+    .mutation()
+    .arguments({
+      submissionId: a.string().required(),
+      name: a.string().required(),
+      email: a.string().required(),
+      company: a.string(),
+      message: a.string().required(),
+      submittedAt: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [allow.publicApiKey(), allow.guest()])
+    .handler(a.handler.function(sendContactEmail)),
+
   // Company model for multi-tenancy
   Company: a
     .model({
@@ -166,6 +182,26 @@ const schema = a.schema({
         .queryField('documentsByProjectAndName'),
       index('status').queryField('documentsByStatus'),
     ]),
+
+  // Contact form submissions - Public access only
+  ContactSubmission: a
+    .model({
+      name: a.string().required(),
+      company: a.string(),
+      email: a.string().required(),
+      message: a.string().required(),
+      status: a.enum(['new', 'contacted', 'resolved']),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+    })
+    .authorization(allow => [
+      allow.publicApiKey().to(['create']), // Only allow public creation
+      allow.guest().to(['create']), // Allow guest users to create
+    ])
+    .secondaryIndexes(index => [
+      index('status').sortKeys(['createdAt']).queryField('submissionsByStatus'),
+      index('email').queryField('submissionsByEmail'),
+    ]),
 })
 
 export type Schema = ClientSchema<typeof schema>
@@ -174,5 +210,8 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+    },
   },
 })

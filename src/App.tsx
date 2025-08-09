@@ -26,6 +26,9 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Migration = lazy(() => import('./pages/Migration'))
+const Terms = lazy(() => import('./pages/Terms'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Contact = lazy(() => import('./pages/Contact'))
 
 // Enhanced loading fallback components with skeletons
 // const PageLoadingFallback = ({
@@ -136,6 +139,30 @@ const App = () => {
                 element={
                   <EnhancedSuspense>
                     <Migration />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <EnhancedSuspense>
+                    <Terms />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/privacy"
+                element={
+                  <EnhancedSuspense>
+                    <Privacy />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/contact"
+                element={
+                  <EnhancedSuspense>
+                    <Contact />
                   </EnhancedSuspense>
                 }
               />
