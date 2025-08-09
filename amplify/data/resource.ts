@@ -166,6 +166,28 @@ const schema = a.schema({
         .queryField('documentsByProjectAndName'),
       index('status').queryField('documentsByStatus'),
     ]),
+
+  // Contact form submissions
+  ContactSubmission: a
+    .model({
+      name: a.string().required(),
+      company: a.string(),
+      email: a.string().required(),
+      message: a.string().required(),
+      status: a.enum(['new', 'contacted', 'resolved']),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+    })
+    .authorization(allow => [
+      allow.publicApiKey().to(['create']), // Allow public to create submissions
+      allow.groups(['Admin']).to(['read', 'update', 'delete']), // Only admins can manage
+    ])
+    .secondaryIndexes(index => [
+      index('status')
+        .sortKeys(['createdAt'])
+        .queryField('submissionsByStatus'),
+      index('email').queryField('submissionsByEmail'),
+    ]),
 })
 
 export type Schema = ClientSchema<typeof schema>
@@ -174,5 +196,8 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+    },
   },
 })
