@@ -69,6 +69,7 @@ export const AIActions = ({
   const [isLoading, setIsLoading] = useState(false)
   const [document, setDocument] = useState<Document | null>(null)
   const [isLoadingStatus, setIsLoadingStatus] = useState(false)
+  const [hideShazamButton, setHideShazamButton] = useState(false)
   const { toast } = useToast()
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
@@ -901,13 +902,29 @@ export const AIActions = ({
       </Card>
 
       {/* Shazam-style voice button - only appears on mobile */}
-      <VoiceShazamButton
-        isListening={isListening}
-        toggleListening={toggleListening}
-        showTranscript={isListening || query ? query : undefined}
-        isProcessing={isLoading}
-        isMobileOnly={true}
-      />
+      {!hideShazamButton && (
+        <VoiceShazamButton
+          isListening={isListening}
+          toggleListening={toggleListening}
+          showTranscript={isListening || query ? query : undefined}
+          isProcessing={isLoading}
+          isMobileOnly={true}
+          onHide={() => setHideShazamButton(true)}
+        />
+      )}
+
+      {/* Show voice button when hidden - small floating button */}
+      {hideShazamButton && (
+        <div className="fixed bottom-4 right-4 z-[99]">
+          <Button
+            onClick={() => setHideShazamButton(false)}
+            className="h-12 w-12 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            title="Show voice button"
+          >
+            🎤
+          </Button>
+        </div>
+      )}
     </>
   )
 }

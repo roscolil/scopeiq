@@ -2,7 +2,6 @@ import { MultiSelect } from './MultiSelect'
 
 export * as Layout from './Layout'
 export * as FaqAccordion from './FaqAccordion'
-export * as AddToHomeScreen from './AddToHomeScreen'
 export * as Spinner from './Spinner'
 export * as Navbar from './Navbar'
 export * as Footer from './Footer'

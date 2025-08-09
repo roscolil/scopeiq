@@ -26,13 +26,21 @@ import {
 } from '@/components/ui/select'
 import { MultiSelect } from '@/components/MultiSelect'
 import { Switch } from '@/components/ui/switch'
-import { User, UserRole, Project } from '@/types'
-import { ROLE_PERMISSIONS } from '@/services/user-management'
+import {
+  User as EntityUser,
+  UserRole as EntityUserRole,
+  Project,
+} from '@/types'
+import {
+  ROLE_PERMISSIONS,
+  UserRole as ServiceUserRole,
+  User as ServiceUser,
+} from '@/services/user-management'
 
 const userFormSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['Admin', 'Owner', 'User'] as const),
+  role: z.enum(['Owner', 'Admin', 'User'] as const),
   projectIds: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
 })
@@ -40,7 +48,7 @@ const userFormSchema = z.object({
 type UserFormValues = z.infer<typeof userFormSchema>
 
 interface UserFormProps {
-  user?: User
+  user?: ServiceUser
   projects: Project[]
   onSubmit: (data: UserFormValues) => Promise<void>
   onCancel: () => void
@@ -134,19 +142,19 @@ export function UserForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="Admin">
-                    <div className="flex flex-col items-start">
-                      <span className="font-medium">Admin</span>
-                      <span className="text-xs text-muted-foreground">
-                        Full company access and user management
-                      </span>
-                    </div>
-                  </SelectItem>
                   <SelectItem value="Owner">
                     <div className="flex flex-col items-start">
                       <span className="font-medium">Owner</span>
                       <span className="text-xs text-muted-foreground">
-                        Project-level control and management
+                        Full company control and user management
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Admin">
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">Admin</span>
+                      <span className="text-xs text-muted-foreground">
+                        Company access and user management
                       </span>
                     </div>
                   </SelectItem>
@@ -165,45 +173,49 @@ export function UserForm({
           )}
         />
 
-        {/* Project assignment - hide for Admin role as they have access to all */}
-        {selectedRole !== 'Admin' && !isInvitation && (
-          <Controller
-            control={form.control}
-            name="projectIds"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Assign to Projects</FormLabel>
-                <MultiSelect
-                  onValueChange={field.onChange}
-                  placeholder="Select projects"
-                  variant="inverted"
-                  animation={2}
-                  options={projects.map(p => ({
-                    label: p.name,
-                    value: p.id,
-                  }))}
-                  value={field.value || []}
-                />
-                <FormDescription>
-                  {selectedRole === 'Owner'
-                    ? 'Project Owners can manage selected projects and their documents.'
-                    : 'Users can only view documents in selected projects.'}
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        {/* Project assignment - hide for Owner and Admin roles as they have broader access */}
+        {selectedRole !== 'Owner' &&
+          selectedRole !== 'Admin' &&
+          !isInvitation && (
+            <Controller
+              control={form.control}
+              name="projectIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assign to Projects</FormLabel>
+                  <MultiSelect
+                    onValueChange={field.onChange}
+                    placeholder="Select projects"
+                    variant="inverted"
+                    animation={2}
+                    options={projects.map(p => ({
+                      label: p.name,
+                      value: p.id,
+                    }))}
+                    value={field.value || []}
+                  />
+                  <FormDescription>
+                    {selectedRole === 'User'
+                      ? 'Users can only view documents in selected projects.'
+                      : 'Owners and Admins can manage selected projects and their documents.'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
         {/* Info message for invitations */}
-        {isInvitation && selectedRole !== 'Admin' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-            <p className="text-sm text-blue-700">
-              <strong>Note:</strong> Project assignments can be configured after
-              the user accepts the invitation and creates their account.
-            </p>
-          </div>
-        )}
+        {isInvitation &&
+          selectedRole !== 'Owner' &&
+          selectedRole !== 'Admin' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Project assignments can be configured
+                after the user accepts the invitation and creates their account.
+              </p>
+            </div>
+          )}
 
         {/* Active status - only show for existing users */}
         {user && (
@@ -240,13 +252,13 @@ export function UserForm({
               <ul className="space-y-1">
                 <li className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${permissions.canManageCompany ? 'bg-green-500' : 'bg-red-500'}`}
+                    className={`w-2 h-2 rounded-full ${permissions.canManageSettings ? 'bg-green-500' : 'bg-red-500'}`}
                   />
                   <span>Manage Company</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${permissions.canManageUsers ? 'bg-green-500' : 'bg-red-500'}`}
+                    className={`w-2 h-2 rounded-full ${permissions.canInviteUsers ? 'bg-green-500' : 'bg-red-500'}`}
                   />
                   <span>Manage Users</span>
                 </li>
@@ -265,19 +277,19 @@ export function UserForm({
               <ul className="space-y-1">
                 <li className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${permissions.canCreateProjects ? 'bg-green-500' : 'bg-red-500'}`}
+                    className={`w-2 h-2 rounded-full ${permissions.canManageProjects ? 'bg-green-500' : 'bg-red-500'}`}
                   />
                   <span>Create Projects</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${permissions.canUploadDocuments ? 'bg-green-500' : 'bg-red-500'}`}
+                    className={`w-2 h-2 rounded-full ${permissions.canEditProjects ? 'bg-green-500' : 'bg-red-500'}`}
                   />
                   <span>Upload Documents</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${permissions.canDeleteDocuments ? 'bg-green-500' : 'bg-red-500'}`}
+                    className={`w-2 h-2 rounded-full ${permissions.canDeleteProjects ? 'bg-green-500' : 'bg-red-500'}`}
                   />
                   <span>Delete Documents</span>
                 </li>

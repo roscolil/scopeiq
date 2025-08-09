@@ -3,12 +3,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { User, UserRole, UserInvitation } from '@/types'
 import {
   userManagementService,
-  CreateUserInput,
-  UpdateUserInput,
-  InviteUserInput,
+  type User,
+  type UserInvitation,
+  type UserRole,
+  type CreateUserInput,
+  type UpdateUserInput,
+  type InviteUserInput,
   ROLE_PERMISSIONS,
 } from '@/services/user-management'
 import { useToast } from '@/hooks/use-toast'
@@ -49,14 +51,18 @@ export function useUserManagement(companyId: string) {
   const createUser = async (input: CreateUserInput) => {
     try {
       const newUser = await userManagementService.createUser(input)
-      setUsers(prev => [...prev, newUser])
+      if (newUser) {
+        setUsers(prev => [...prev, newUser])
 
-      toast({
-        title: 'User created',
-        description: `${newUser.name} has been added successfully.`,
-      })
+        toast({
+          title: 'User created',
+          description: `${newUser.name} has been added successfully.`,
+        })
 
-      return newUser
+        return newUser
+      } else {
+        throw new Error('Failed to create user')
+      }
     } catch (err) {
       toast({
         title: 'Error',
@@ -82,6 +88,8 @@ export function useUserManagement(companyId: string) {
         })
 
         return updatedUser
+      } else {
+        throw new Error('Failed to update user')
       }
     } catch (err) {
       toast({
@@ -119,14 +127,16 @@ export function useUserManagement(companyId: string) {
   const inviteUser = async (input: InviteUserInput) => {
     try {
       const invitation = await userManagementService.inviteUser(input)
-      setInvitations(prev => [...prev, invitation])
+      if (invitation) {
+        setInvitations(prev => [...prev, invitation])
 
-      toast({
-        title: 'Invitation sent',
-        description: `Invitation sent to ${invitation.email}.`,
-      })
+        toast({
+          title: 'Invitation sent',
+          description: `Invitation sent to ${invitation.email}.`,
+        })
 
-      return invitation
+        return invitation
+      }
     } catch (err) {
       toast({
         title: 'Error',

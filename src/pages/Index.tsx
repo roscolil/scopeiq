@@ -21,7 +21,6 @@ import {
   Shield,
 } from 'lucide-react'
 import { FaqAccordion } from '@/components/FaqAccordion'
-import { AddToHomeScreen } from '@/components/AddToHomeScreen'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/aws-auth'
 
@@ -309,8 +308,6 @@ const Index = () => {
             </div>
           </div>
         </div>
-
-        <AddToHomeScreen />
       </Layout>
     </>
   )
