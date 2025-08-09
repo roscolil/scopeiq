@@ -1239,6 +1239,56 @@
               "isRequired": true
             }
           }
+        },
+        "sendInvitationEmail": {
+          "name": "sendInvitationEmail",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "invitationId": {
+              "name": "invitationId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "recipientEmail": {
+              "name": "recipientEmail",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "recipientName": {
+              "name": "recipientName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "inviterName": {
+              "name": "inviterName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "companyName": {
+              "name": "companyName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "role": {
+              "name": "role",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "acceptUrl": {
+              "name": "acceptUrl",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
         }
       }
     }

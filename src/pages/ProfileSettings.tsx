@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useUserManagement } from '../hooks/use-user-management'
-// TODO: Switch to real service after sandbox deployment
-// import { userManagementService } from '../services/user-management-real'
+import {
+  userManagementService,
+  type User as ServiceUser,
+  type UserInvitation as ServiceUserInvitation,
+  type UserRole as ServiceUserRole,
+} from '../services/user-management'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -41,7 +45,7 @@ import {
 import { UserForm } from '@/components/UserForm'
 import { UserTable } from '@/components/UserTable'
 import { UserStats } from '@/components/UserStats'
-import { User, UserRole, Project } from '@/types'
+import { Project } from '@/types'
 import { Plus, UserPlus, Mail } from 'lucide-react'
 
 const profileFormSchema = z.object({
@@ -96,7 +100,7 @@ const mockProjects: Project[] = [
 interface UserFormData {
   email?: string
   name?: string
-  role?: UserRole
+  role?: ServiceUserRole
   projectIds?: string[]
   isActive?: boolean
 }
@@ -109,14 +113,14 @@ const ProfileSettings = () => {
   // User management state
   const companyId = 'company-1' // In real app, get from user context
   const userManagement = useUserManagement(companyId)
-  const currentUserRole: UserRole = 'Admin' // In real app, get from user context
+  const currentUserRole: ServiceUserRole = 'Admin' // In real app, get from user context
 
   // Dialog states
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
   const [inviteUserDialogOpen, setInviteUserDialogOpen] = useState(false)
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false)
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedUser, setSelectedUser] = useState<ServiceUser | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const profileForm = useForm<ProfileFormValues>({
@@ -137,10 +141,15 @@ const ProfileSettings = () => {
   })
 
   // Check permissions
-  const canManageUsers = userManagement.canUserPerformAction(
-    currentUserRole,
-    'canManageUsers',
-  )
+  // Get current user info for permission checking
+  const currentUser = { role: currentUserRole }
+
+  const canManageUsers =
+    currentUser &&
+    userManagementService.canUserPerformAction(
+      currentUser.role as ServiceUserRole,
+      'canInviteUsers',
+    )
 
   // Redirect to sign in if not authenticated
   if (!isAuthenticated) {
@@ -237,11 +246,13 @@ const ProfileSettings = () => {
     setIsSubmitting(true)
     try {
       await userManagement.inviteUser({
-        email: data.email,
-        role: data.role,
+        email: data.email || '',
+        role: data.role || 'User',
         companyId,
-        projectIds: [], // Projects will be assigned after invitation acceptance
         invitedBy: 'current-user-id', // In real app, get from current user context
+        projectIds: data.projectIds || [], // Projects will be assigned after invitation acceptance
+        inviterName: 'Current User', // In real app, get from current user context
+        companyName: 'Your Company', // In real app, get from user's company
       })
       setInviteUserDialogOpen(false)
     } catch (error) {
@@ -286,12 +297,12 @@ const ProfileSettings = () => {
     }
   }
 
-  const openEditDialog = (user: User) => {
+  const openEditDialog = (user: ServiceUser) => {
     setSelectedUser(user)
     setEditUserDialogOpen(true)
   }
 
-  const openDeleteDialog = (user: User) => {
+  const openDeleteDialog = (user: ServiceUser) => {
     setSelectedUser(user)
     setDeleteUserDialogOpen(true)
   }
@@ -629,7 +640,8 @@ const ProfileSettings = () => {
                                       </span>
                                       <span className="text-sm text-muted-foreground">
                                         Role: {invitation.role} • Projects:{' '}
-                                        {invitation.projectIds.length} assigned
+                                        {invitation.projectIds?.length || 0}{' '}
+                                        assigned
                                       </span>
                                     </div>
                                   </div>

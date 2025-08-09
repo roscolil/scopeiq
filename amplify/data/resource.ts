@@ -1,5 +1,6 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
 import { sendContactEmail } from '../functions/send-contact-email/resource'
+import { sendInvitationEmail } from '../functions/send-invitation-email/resource'
 
 const schema = a.schema({
   // Custom operation for sending contact emails
@@ -16,6 +17,22 @@ const schema = a.schema({
     .returns(a.json())
     .authorization(allow => [allow.publicApiKey(), allow.guest()])
     .handler(a.handler.function(sendContactEmail)),
+
+  // Custom operation for sending invitation emails
+  sendInvitationEmail: a
+    .mutation()
+    .arguments({
+      invitationId: a.string().required(),
+      recipientEmail: a.string().required(),
+      recipientName: a.string(),
+      inviterName: a.string().required(),
+      companyName: a.string().required(),
+      role: a.string().required(),
+      acceptUrl: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(sendInvitationEmail)),
 
   // Company model for multi-tenancy
   Company: a

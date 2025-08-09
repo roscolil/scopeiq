@@ -38,14 +38,22 @@ import {
   Calendar,
   Filter,
 } from 'lucide-react'
-import { User, UserRole, Project } from '@/types'
+import {
+  User as EntityUser,
+  UserRole as EntityUserRole,
+  Project,
+} from '@/types'
+import {
+  User as ServiceUser,
+  UserRole as ServiceUserRole,
+} from '@/services/user-management'
 
 interface UserTableProps {
-  users: User[]
+  users: ServiceUser[]
   projects: Project[]
-  onEditUser: (user: User) => void
-  onDeleteUser: (user: User) => void
-  onResendInvitation?: (user: User) => void
+  onEditUser: (user: ServiceUser) => void
+  onDeleteUser: (user: ServiceUser) => void
+  onResendInvitation?: (user: ServiceUser) => void
   canManageUsers: boolean
 }
 
@@ -70,7 +78,7 @@ export function UserTable({
   canManageUsers,
 }: UserTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
+  const [roleFilter, setRoleFilter] = useState<ServiceUserRole | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'active' | 'inactive'
   >('all')
@@ -78,21 +86,24 @@ export function UserTable({
 
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
+    // Filter out null/undefined users
+    if (!user) return false
+
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesRole = roleFilter === 'all' || user.role === roleFilter
 
     const matchesStatus =
       statusFilter === 'all' ||
-      (statusFilter === 'active' && user.isActive) ||
-      (statusFilter === 'inactive' && !user.isActive)
+      (statusFilter === 'active' && user.isActive === true) ||
+      (statusFilter === 'inactive' && user.isActive === false)
 
     const matchesProject =
       projectFilter === 'all' ||
       user.role === 'Admin' || // Admins have access to all projects
-      user.projectIds.includes(projectFilter)
+      (user.projectIds && user.projectIds.includes(projectFilter))
 
     return matchesSearch && matchesRole && matchesStatus && matchesProject
   })
@@ -109,8 +120,8 @@ export function UserTable({
     return new Date(dateString).toLocaleDateString()
   }
 
-  const getStatusBadge = (user: User) => {
-    if (!user.isActive) {
+  const getStatusBadge = (user: ServiceUser) => {
+    if (!user || user.isActive === false) {
       return (
         <Badge
           variant="secondary"
@@ -181,15 +192,17 @@ export function UserTable({
         <div className="flex gap-2">
           <Select
             value={roleFilter}
-            onValueChange={(value: UserRole | 'all') => setRoleFilter(value)}
+            onValueChange={(value: ServiceUserRole | 'all') =>
+              setRoleFilter(value)
+            }
           >
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="Admin">Admin</SelectItem>
               <SelectItem value="Owner">Owner</SelectItem>
+              <SelectItem value="Admin">Admin</SelectItem>
               <SelectItem value="User">User</SelectItem>
             </SelectContent>
           </Select>
