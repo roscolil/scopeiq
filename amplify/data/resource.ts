@@ -1,6 +1,22 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
+import { sendContactEmail } from '../functions/send-contact-email/resource'
 
 const schema = a.schema({
+  // Custom operation for sending contact emails
+  sendContactEmail: a
+    .mutation()
+    .arguments({
+      submissionId: a.string().required(),
+      name: a.string().required(),
+      email: a.string().required(),
+      company: a.string(),
+      message: a.string().required(),
+      submittedAt: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [allow.publicApiKey(), allow.guest()])
+    .handler(a.handler.function(sendContactEmail)),
+
   // Company model for multi-tenancy
   Company: a
     .model({
@@ -167,7 +183,7 @@ const schema = a.schema({
       index('status').queryField('documentsByStatus'),
     ]),
 
-  // Contact form submissions
+  // Contact form submissions - Public access only
   ContactSubmission: a
     .model({
       name: a.string().required(),
@@ -179,13 +195,11 @@ const schema = a.schema({
       updatedAt: a.datetime(),
     })
     .authorization(allow => [
-      allow.publicApiKey().to(['create']), // Allow public to create submissions
-      allow.groups(['Admin']).to(['read', 'update', 'delete']), // Only admins can manage
+      allow.publicApiKey().to(['create']), // Only allow public creation
+      allow.guest().to(['create']), // Allow guest users to create
     ])
     .secondaryIndexes(index => [
-      index('status')
-        .sortKeys(['createdAt'])
-        .queryField('submissionsByStatus'),
+      index('status').sortKeys(['createdAt']).queryField('submissionsByStatus'),
       index('email').queryField('submissionsByEmail'),
     ]),
 })

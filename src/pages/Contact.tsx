@@ -5,7 +5,16 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, MapPin, Phone, Mail, Clock, Send, CheckCircle, XCircle } from 'lucide-react'
+import {
+  ArrowLeft,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Send,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { contactService, type ContactFormData } from '@/services/contact'
 
@@ -24,7 +33,7 @@ const Contact = () => {
   })
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -35,20 +44,20 @@ const Contact = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Clear previous status
     setSubmitStatus({ type: null, message: '' })
-    
+
     if (!formData.name || !formData.email || !formData.message) {
       setSubmitStatus({
         type: 'error',
-        message: 'Please fill in your name, email, and message.'
+        message: 'Please fill in your name, email, and message.',
       })
       return
     }
 
     setIsSubmitting(true)
-    
+
     try {
       await contactService.submitContactForm({
         name: formData.name,
@@ -59,7 +68,8 @@ const Contact = () => {
 
       setSubmitStatus({
         type: 'success',
-        message: "Thank you for contacting us! We've received your message and will get back to you soon."
+        message:
+          "Thank you for contacting us! We've received your message and will get back to you soon.",
       })
 
       // Reset form
@@ -73,7 +83,7 @@ const Contact = () => {
       console.error('Error submitting contact form:', error)
       setSubmitStatus({
         type: 'error',
-        message: 'There was an error sending your message. Please try again.'
+        message: 'There was an error sending your message. Please try again.',
       })
     } finally {
       setIsSubmitting(false)
@@ -115,7 +125,8 @@ const Contact = () => {
                 Contact Us
               </h1>
               <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-                Get in touch with our team. We'd love to hear from you and help with any questions about ScopeIQ.
+                Get in touch with our team. We'd love to hear from you and help
+                with any questions about ScopeIQ.
               </p>
             </div>
           </div>
@@ -200,11 +211,13 @@ const Contact = () => {
               <CardContent>
                 {/* Success/Error Message */}
                 {submitStatus.type && (
-                  <div className={`mb-6 p-4 rounded-lg border flex items-center gap-3 ${
-                    submitStatus.type === 'success' 
-                      ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200' 
-                      : 'bg-red-950/30 border-red-500/30 text-red-200'
-                  }`}>
+                  <div
+                    className={`mb-6 p-4 rounded-lg border flex items-center gap-3 ${
+                      submitStatus.type === 'success'
+                        ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                        : 'bg-red-950/30 border-red-500/30 text-red-200'
+                    }`}
+                  >
                     {submitStatus.type === 'success' ? (
                       <CheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
                     ) : (
@@ -308,16 +321,17 @@ const Contact = () => {
               Need Immediate Help?
             </h3>
             <p className="text-slate-300 max-w-2xl mx-auto">
-              For urgent technical support or sales inquiries, you can reach us directly at{' '}
-              <a 
-                href="tel:+61291234567" 
+              For urgent technical support or sales inquiries, you can reach us
+              directly at{' '}
+              <a
+                href="tel:+61291234567"
                 className="text-emerald-400 hover:text-emerald-300 transition-colors"
               >
                 +61 2 9123 4567
               </a>{' '}
               or email{' '}
-              <a 
-                href="mailto:support@scopeiq.com" 
+              <a
+                href="mailto:support@scopeiq.com"
                 className="text-emerald-400 hover:text-emerald-300 transition-colors"
               >
                 support@scopeiq.com

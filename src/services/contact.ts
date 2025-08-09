@@ -2,8 +2,8 @@ import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
 
 // Generate the Amplify client with API key for public access
-const client = generateClient<Schema>({
-  authMode: 'apiKey'
+const publicClient = generateClient<Schema>({
+  authMode: 'apiKey',
 })
 
 export interface ContactSubmission {
@@ -25,13 +25,17 @@ export interface ContactFormData {
 }
 
 export const contactService = {
-  // Submit a new contact form using Amplify
-  async submitContactForm(formData: ContactFormData): Promise<ContactSubmission> {
+  // Submit a new contact form - Public access only
+  async submitContactForm(
+    formData: ContactFormData,
+  ): Promise<ContactSubmission> {
     try {
       // Check if the model is available
-      if (!client.models?.ContactSubmission) {
-        console.warn('ContactSubmission model not available. Using fallback storage. Available models:', Object.keys(client.models || {}))
-        
+      if (!publicClient.models?.ContactSubmission) {
+        console.warn(
+          'ContactSubmission model not available. Using fallback storage.',
+        )
+
         // Fallback: Store locally and simulate successful submission
         const submission: ContactSubmission = {
           id: crypto.randomUUID(),
@@ -45,32 +49,40 @@ export const contactService = {
         }
 
         // Store in localStorage as fallback
-        const existingSubmissions = JSON.parse(localStorage.getItem('contactSubmissions') || '[]')
+        const existingSubmissions = JSON.parse(
+          localStorage.getItem('contactSubmissions') || '[]',
+        )
         existingSubmissions.push(submission)
-        localStorage.setItem('contactSubmissions', JSON.stringify(existingSubmissions))
+        localStorage.setItem(
+          'contactSubmissions',
+          JSON.stringify(existingSubmissions),
+        )
 
         console.log('Contact submission stored locally (fallback):', submission)
-        
+
         // Still attempt to send email notification
         await this.sendEmailNotification(submission)
-        
+
         return submission
       }
 
       console.log('Submitting contact form with data:', formData)
-      
-      // Temporary workaround for Amplify type generation bug
-      const { data: submission, errors } = await client.models.ContactSubmission.create({
-        name: formData.name as string & string[],
-        company: (formData.company || null) as string & string[],
-        email: formData.email as string & string[],
-        message: formData.message as string & string[],
-        status: 'new' as string & string[],
-      })
+
+      // Create the submission using public API key
+      const { data: submission, errors } =
+        await publicClient.models.ContactSubmission.create({
+          name: formData.name as string & string[],
+          company: (formData.company || null) as string & string[],
+          email: formData.email as string & string[],
+          message: formData.message as string & string[],
+          status: 'new' as string & string[],
+        })
 
       if (errors) {
         console.error('Error creating contact submission:', errors)
-        throw new Error(`Database error: ${errors.map(e => e.message).join(', ')}`)
+        throw new Error(
+          `Database error: ${errors.map(e => e.message).join(', ')}`,
+        )
       }
 
       console.log('Contact submission created successfully:', submission)
@@ -96,107 +108,159 @@ export const contactService = {
     }
   },
 
-  // Send email notification (placeholder for now)
+  // Send email notification via AWS SES
   async sendEmailNotification(submission: ContactSubmission): Promise<void> {
     try {
-      console.log('Sending email notification for submission:', submission.id)
-      
-      // For now, just log the email content
-      // In production, you'd integrate with AWS SES or another email service
+      console.log(
+        'Sending email notification via AWS SES for submission:',
+        submission.id,
+      )
+
+      // Check if the sendContactEmail mutation is available
+      if (!publicClient.mutations?.sendContactEmail) {
+        console.warn(
+          'sendContactEmail mutation not available yet. Using fallback email logging.',
+        )
+        throw new Error('Email mutation not deployed yet')
+      }
+
+      // Prepare the email request
+      const emailRequest = {
+        submissionId: submission.id,
+        name: submission.name,
+        email: submission.email,
+        company: submission.company || null,
+        message: submission.message,
+        submittedAt: submission.createdAt,
+      }
+
+      console.log('Calling sendContactEmail mutation with:', emailRequest)
+
+      // Call the GraphQL mutation
+      const result = await publicClient.mutations.sendContactEmail(emailRequest)
+      console.log('Raw mutation response:', result)
+
+      // Handle different response formats
+      let emailResult: {
+        success: boolean
+        messageId?: string
+        confirmationMessageId?: string
+        error?: string
+      } | null = null
+
+      if (result && typeof result === 'object') {
+        // Check if result has data property (standard GraphQL response)
+        if ('data' in result && result.data) {
+          emailResult = result.data as {
+            success: boolean
+            messageId?: string
+            error?: string
+          }
+        }
+        // Check if result is the direct response
+        else if ('success' in result) {
+          emailResult = result as {
+            success: boolean
+            messageId?: string
+            error?: string
+          }
+        }
+        // Handle errors in the response
+        else if ('errors' in result && result.errors) {
+          const errors = result.errors as Array<{ message: string }>
+          console.error('Email mutation errors:', errors)
+          throw new Error(
+            `Email sending failed: ${errors.map(e => e.message).join(', ')}`,
+          )
+        }
+      }
+
+      // If we don't have a valid result, throw an error
+      if (!emailResult) {
+        console.error('Invalid mutation response format:', result)
+        throw new Error(
+          'Email sending failed: Invalid response format from mutation',
+        )
+      }
+
+      console.log('Processed email result:', emailResult)
+
+      if (emailResult.success === false) {
+        console.error('Email result indicates failure:', emailResult)
+        throw new Error(
+          `Email sending failed: ${emailResult.error || 'Unknown error'}`,
+        )
+      }
+
+      console.log(
+        '✅ Email sent successfully via AWS SES:',
+        emailResult.messageId,
+      )
+
+      if (emailResult.confirmationMessageId) {
+        console.log(
+          '✅ Confirmation email sent successfully:',
+          emailResult.confirmationMessageId,
+        )
+      }
+
+      // Explicitly return here to avoid any subsequent error handling
+      return
+    } catch (error) {
+      console.error('❌ Caught error in sendEmailNotification:', error)
+      console.error('Error type:', typeof error)
+      console.error('Error instanceof Error:', error instanceof Error)
+      console.error('Error sending email notification:', error)
+
+      // Fallback: Log the email content for manual review
+      console.warn(
+        '📧 SES email failed, logging content for manual processing:',
+      )
       const emailData = {
         to: 'ross@exelion.ai',
-        subject: `New Contact Form Submission from ${submission.name}`,
-        html: `
-          <h2>New Contact Form Submission</h2>
-          <p><strong>Name:</strong> ${submission.name}</p>
-          <p><strong>Company:</strong> ${submission.company || 'Not provided'}</p>
-          <p><strong>Email:</strong> ${submission.email}</p>
-          <p><strong>Message:</strong></p>
-          <p>${submission.message.replace(/\n/g, '<br>')}</p>
-          <p><strong>Submitted:</strong> ${new Date(submission.createdAt).toLocaleString()}</p>
+        replyTo: submission.email,
+        subject: `🚀 New Contact Form Submission from ${submission.name}`,
+        timestamp: new Date().toLocaleString('en-AU', {
+          timeZone: 'Australia/Sydney',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+        body: `
+NEW CONTACT FORM SUBMISSION - ScopeIQ
+=====================================
+
+👤 Name: ${submission.name}
+🏢 Company: ${submission.company || 'Not provided'}
+📧 Email: ${submission.email}
+🕐 Submitted: ${new Date(submission.createdAt).toLocaleString('en-AU', {
+          timeZone: 'Australia/Sydney',
+        })}
+🆔 Submission ID: ${submission.id}
+
+💬 Message:
+${submission.message}
+
+=====================================
+Reply to: ${submission.email}
         `,
       }
 
-      console.log('Email notification would be sent:', emailData)
-      
-      // TODO: Implement actual email sending with AWS SES
-      // This could be done via a Lambda function or direct SES integration
-    } catch (error) {
-      console.error('Error sending email notification:', error)
+      console.log('📧 EMAIL CONTENT FOR MANUAL REVIEW:')
+      console.log('='.repeat(50))
+      console.log(`To: ${emailData.to}`)
+      console.log(`Reply-To: ${emailData.replyTo}`)
+      console.log(`Subject: ${emailData.subject}`)
+      console.log(`Timestamp: ${emailData.timestamp}`)
+      console.log('='.repeat(50))
+      console.log(emailData.body)
+      console.log('='.repeat(50))
+
       // Don't throw here - we don't want email failures to block form submission
-    }
-  },
-
-  // Get all contact submissions (admin only)
-  async getContactSubmissions(): Promise<ContactSubmission[]> {
-    try {
-      if (!client.models?.ContactSubmission) {
-        console.warn('ContactSubmission model not available. Using fallback storage.')
-        // Fallback: Return locally stored submissions
-        const localSubmissions = JSON.parse(localStorage.getItem('contactSubmissions') || '[]')
-        return localSubmissions
-      }
-
-      const { data: submissions, errors } = await client.models.ContactSubmission.list()
-      
-      if (errors) {
-        console.error('Error fetching contact submissions:', errors)
-        throw new Error(`Database error: ${errors.map(e => e.message).join(', ')}`)
-      }
-
-      return submissions.map(submission => ({
-        id: submission.id,
-        name: submission.name,
-        company: submission.company || undefined,
-        email: submission.email,
-        message: submission.message,
-        status: submission.status as 'new' | 'contacted' | 'resolved',
-        createdAt: submission.createdAt || new Date().toISOString(),
-        updatedAt: submission.updatedAt || new Date().toISOString(),
-      }))
-    } catch (error) {
-      console.error('Error fetching contact submissions:', error)
-      throw error
-    }
-  },
-
-  // Update contact submission status (admin only)
-  async updateContactStatus(
-    id: string, 
-    status: 'new' | 'contacted' | 'resolved'
-  ): Promise<ContactSubmission> {
-    try {
-      // Temporary workaround for Amplify type generation bug
-      // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const updateData: any = {
-        id,
-        status,
-      }
-      const { data: submission, errors } = await client.models.ContactSubmission.update(updateData)
-
-      if (errors) {
-        console.error('Error updating contact status:', errors)
-        throw new Error(`Database error: ${errors.map(e => e.message).join(', ')}`)
-      }
-
-      if (!submission) {
-        throw new Error('Contact submission not found')
-      }
-
-      return {
-        id: submission.id,
-        name: submission.name,
-        company: submission.company || undefined,
-        email: submission.email,
-        message: submission.message,
-        status: submission.status as 'new' | 'contacted' | 'resolved',
-        createdAt: submission.createdAt || new Date().toISOString(),
-        updatedAt: submission.updatedAt || new Date().toISOString(),
-      }
-    } catch (error) {
-      console.error('Error updating contact status:', error)
-      throw error
+      // The form submission should succeed even if email fails
     }
   },
 }
