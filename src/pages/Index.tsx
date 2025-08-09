@@ -44,8 +44,15 @@ const Index = () => {
       })
       localStorage.setItem('hasWelcomed', 'true')
       setHasShownWelcome(true)
+
+      // Redirect to dashboard after showing welcome (only on fresh sign-in)
+      setTimeout(() => {
+        navigate(`/${user.companyId?.toLowerCase() || 'default'}`)
+      }, 1500) // 1.5 second delay to show the welcome message
     }
-  }, [isAuthenticated, user, hasShownWelcome])
+  }, [isAuthenticated, user, hasShownWelcome, navigate])
+
+  // Remove the separate redirect effect since it's now handled above
 
   // Don't redirect on loading anymore - let users see the homepage content
   // This improves perceived performance
@@ -138,6 +145,28 @@ const Index = () => {
                   >
                     <span className="text-gray-200">View Pricing</span>
                   </Button>
+                </div>
+              )}
+
+              {/* Show subtle loading indicator when checking auth */}
+              {isLoading && (
+                <div className="mt-12 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-100"></div>
+                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-200"></div>
+                  <span className="ml-3 text-sm">
+                    Checking authentication...
+                  </span>
+                </div>
+              )}
+
+              {/* Show redirection message only when redirecting after sign-in */}
+              {hasShownWelcome && (
+                <div className="mt-12 flex items-center justify-center gap-3 text-emerald-400 animate-fade-in">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+                  <span className="text-sm">
+                    Redirecting to your dashboard...
+                  </span>
                 </div>
               )}
             </div>

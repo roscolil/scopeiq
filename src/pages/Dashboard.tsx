@@ -143,10 +143,10 @@ const Dashboard = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoadingCompany, setIsLoadingCompany] = useState(true)
-  const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start as true
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start as true
-  const [isLoadingStats, setIsLoadingStats] = useState(true) // New loading state for stats
+  const [isLoadingCompany, setIsLoadingCompany] = useState(false) // Changed to false
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false) // Changed to false
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false) // Changed to false
+  const [isLoadingStats, setIsLoadingStats] = useState(false) // Changed to false
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
 
   // Cached stats state
@@ -172,9 +172,9 @@ const Dashboard = () => {
       const cached = getCachedStats()
       if (cached) {
         setCachedStats(cached)
-        setIsLoadingStats(false) // Show cached data immediately
+        // Don't show loading if we have cached data
       } else {
-        setIsLoadingStats(true) // No cache, show loading
+        setIsLoadingStats(true) // Only show loading if no cache
       }
     }
   }, [companyId, getCachedStats])
@@ -185,9 +185,9 @@ const Dashboard = () => {
       const cached = getCachedCompany()
       if (cached) {
         setCompany(cached)
-        setIsLoadingCompany(false) // Show cached data immediately
+        // Don't show loading if we have cached data
       } else {
-        setIsLoadingCompany(true) // No cache, show loading
+        setIsLoadingCompany(true) // Only show loading if no cache
       }
     }
   }, [companyId, getCachedCompany])
@@ -253,10 +253,12 @@ const Dashboard = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // If we don't have cached stats, show loading state
+        // Only show loading if we don't have cached data
         const cached = getCachedStats()
         if (!cached) {
           setIsLoadingStats(true)
+          setIsLoadingProjects(true)
+          setIsLoadingDocuments(true)
         }
 
         // Load projects with documents - loading states already initialized as true
@@ -422,8 +424,9 @@ const Dashboard = () => {
                       )} */}
                     </h1>
                     <p className="text-gray-400 mt-2">
-                      Welcome back! Here's an overview of your projects and
-                      activities.
+                      Welcome back
+                      {user?.given_name ? `, ${user.given_name}` : ''}! Here's
+                      an overview of your projects and activities.
                     </p>
                   </>
                 )}

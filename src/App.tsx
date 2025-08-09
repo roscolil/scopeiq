@@ -13,6 +13,7 @@ import Index from './pages/Index'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import AuthenticatedLayout from './pages/AuthenticatedLayout'
+import Dashboard from './pages/Dashboard' // Load Dashboard eagerly
 
 // Lazy load secondary pages
 const Documents = lazy(() => import('./pages/Documents'))
@@ -22,7 +23,6 @@ const Viewer = lazy(() => import('./pages/Viewer'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ProfileSettings = lazy(() => import('./pages/ProfileSettings'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Migration = lazy(() => import('./pages/Migration'))
@@ -173,11 +173,7 @@ const App = () => {
                 <Route path="/:companyId">
                   <Route
                     index
-                    element={
-                      <EnhancedSuspense fallbackType="default">
-                        <Dashboard />
-                      </EnhancedSuspense>
-                    }
+                    element={<Dashboard />} // No Suspense needed for eagerly loaded component
                   />
                   <Route
                     path="settings"

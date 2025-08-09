@@ -52,8 +52,93 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Start optimistically as false
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // Quick initial auth check to reduce perceived loading time
+  useEffect(() => {
+    const quickAuthCheck = async () => {
+      // Quick cache check first
+      const cachedAuthState = sessionStorage.getItem('authState')
+      const cachedTimestamp = sessionStorage.getItem('authTimestamp')
+
+      if (cachedAuthState && cachedTimestamp) {
+        const age = Date.now() - parseInt(cachedTimestamp)
+        if (age < 5 * 60 * 1000) {
+          // 5 minutes
+          try {
+            const cachedUser = JSON.parse(cachedAuthState)
+            if (cachedUser) {
+              setUser(cachedUser)
+              setIsInitialized(true)
+              return // Skip further checks
+            }
+          } catch {
+            // Invalid cache, continue
+          }
+        }
+      }
+
+      // If no valid cache, do a quick auth check with minimal loading
+      setIsLoading(true)
+
+      try {
+        // Use a very aggressive timeout for the initial check
+        const quickTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Quick auth timeout')), 1500) // 1.5 second timeout
+        })
+
+        const quickPromise = Promise.all([
+          getCurrentUser(),
+          fetchUserAttributes(),
+        ])
+        const result = await Promise.race([quickPromise, quickTimeout])
+
+        const [amplifyUser, attrs] = result as Awaited<typeof quickPromise>
+
+        // Create minimal user data immediately
+        const quickUser: User = {
+          id: amplifyUser.userId,
+          email: attrs.email || '',
+          name:
+            attrs.given_name || attrs.name || attrs.email?.split('@')[0] || '',
+          role: 'User', // Default role
+          companyId: 'default', // Will be updated
+          ...attrs,
+        }
+
+        setUser(quickUser)
+        setIsLoading(false)
+        setIsInitialized(true)
+
+        // Sync with DynamoDB in background without affecting UI
+        userService
+          .getCurrentDatabaseUser()
+          .then(dbUser => {
+            if (dbUser) {
+              const fullUser: User = {
+                ...quickUser,
+                role: dbUser.role,
+                companyId: dbUser.companyId,
+              }
+              setUser(fullUser)
+
+              // Update cache
+              sessionStorage.setItem('authState', JSON.stringify(fullUser))
+              sessionStorage.setItem('authTimestamp', Date.now().toString())
+            }
+          })
+          .catch(console.warn)
+      } catch (error) {
+        // If quick check fails, user is not authenticated
+        setUser(null)
+        setIsLoading(false)
+        setIsInitialized(true)
+      }
+    }
+
+    quickAuthCheck()
+  }, [])
 
   // Add safety guard for development hot reloads
   useEffect(() => {
@@ -69,135 +154,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [])
-
-  useEffect(() => {
-    const loadUser = async () => {
-      // Skip if already initialized to prevent duplicate calls
-      if (isInitialized) return
-
-      try {
-        // Check for cached auth state first
-        const cachedAuthState = sessionStorage.getItem('authState')
-        const cachedTimestamp = sessionStorage.getItem('authTimestamp')
-
-        // If we have recent cached data (less than 5 minutes old), use it
-        if (cachedAuthState && cachedTimestamp) {
-          const age = Date.now() - parseInt(cachedTimestamp)
-          if (age < 5 * 60 * 1000) {
-            // 5 minutes
-            const cachedUser = JSON.parse(cachedAuthState)
-            if (cachedUser) {
-              setUser(cachedUser)
-              setIsLoading(false)
-              setIsInitialized(true)
-
-              // Optionally refresh in background
-              refreshUserInBackground()
-              return
-            }
-          }
-        }
-
-        // Fresh auth check
-        const amplifyUser = await getCurrentUser()
-        const attrs = await fetchUserAttributes()
-
-        // Try to get user data from DynamoDB
-        try {
-          const dbUser = await userService.getCurrentDatabaseUser()
-          if (dbUser) {
-            const userData: User = {
-              id: amplifyUser.userId,
-              email: attrs.email || '',
-              name: attrs.name || '',
-              role: dbUser.role,
-              companyId: dbUser.companyId,
-              ...attrs,
-            }
-            setUser(userData)
-
-            // Cache the auth state
-            sessionStorage.setItem('authState', JSON.stringify(userData))
-            sessionStorage.setItem('authTimestamp', Date.now().toString())
-
-            // Initialize user data and routes for authenticated users
-            Promise.allSettled([
-              prefetchForAuthenticatedUser(),
-              prefetchUserData(userData.companyId),
-            ])
-          } else {
-            // No DynamoDB user found, create one
-            const dbUser = await userService.createOrSyncUser()
-            const userData: User = {
-              id: amplifyUser.userId,
-              email: attrs.email || '',
-              name: attrs.name || '',
-              role: dbUser.role,
-              companyId: dbUser.companyId,
-              ...attrs,
-            }
-            setUser(userData)
-
-            // Cache the auth state
-            sessionStorage.setItem('authState', JSON.stringify(userData))
-            sessionStorage.setItem('authTimestamp', Date.now().toString())
-          }
-        } catch (dbError) {
-          console.warn('Failed to load DynamoDB user data:', dbError)
-          // For backward compatibility, create basic user data
-          const userData: User = {
-            id: amplifyUser.userId,
-            email: attrs.email || '',
-            name: attrs.name || '',
-            companyId: 'default', // Fallback company ID
-            ...attrs,
-          }
-          setUser(userData)
-
-          // Cache the auth state
-          sessionStorage.setItem('authState', JSON.stringify(userData))
-          sessionStorage.setItem('authTimestamp', Date.now().toString())
-        }
-      } catch {
-        setUser(null)
-        // Clear any stale cache
-        sessionStorage.removeItem('authState')
-        sessionStorage.removeItem('authTimestamp')
-      } finally {
-        setIsLoading(false)
-        setIsInitialized(true)
-      }
-    }
-
-    const refreshUserInBackground = async () => {
-      try {
-        const amplifyUser = await getCurrentUser()
-        const attrs = await fetchUserAttributes()
-
-        // Try to get user data from DynamoDB
-        const dbUser = await userService.getCurrentDatabaseUser()
-        if (dbUser) {
-          const userData: User = {
-            id: amplifyUser.userId,
-            email: attrs.email || '',
-            name: attrs.name || '',
-            role: dbUser.role,
-            companyId: dbUser.companyId,
-            ...attrs,
-          }
-          setUser(userData)
-
-          // Update cache
-          sessionStorage.setItem('authState', JSON.stringify(userData))
-          sessionStorage.setItem('authTimestamp', Date.now().toString())
-        }
-      } catch {
-        // Silent failure for background refresh
-      }
-    }
-
-    loadUser()
-  }, [isInitialized])
 
   const signIn = async (email: string, password: string): Promise<User> => {
     setIsLoading(true)
