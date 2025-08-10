@@ -78,35 +78,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Quick initial auth check to reduce perceived loading time
   useEffect(() => {
     const quickAuthCheck = async () => {
-      console.log('🔐 Starting auth check...')
-
       // Quick cache check first (sessionStorage)
       const cachedAuthState = sessionStorage.getItem('authState')
       const cachedTimestamp = sessionStorage.getItem('authTimestamp')
 
       if (cachedAuthState && cachedTimestamp) {
         const age = Date.now() - parseInt(cachedTimestamp)
-        console.log(
-          '⏰ SessionStorage cache age (hours):',
-          age / (1000 * 60 * 60),
-        )
 
         if (age < 24 * 60 * 60 * 1000) {
           // 24 hours
           try {
             const cachedUser = JSON.parse(cachedAuthState)
             if (cachedUser) {
-              console.log(
-                '✅ Using sessionStorage cached user:',
-                cachedUser.email,
-              )
               setUser(cachedUser)
               setIsLoading(false)
               setIsInitialized(true)
               return // Skip further checks
             }
           } catch {
-            console.warn('❌ Invalid sessionStorage cache')
+            // Invalid sessionStorage cache
           }
         }
       }
@@ -117,20 +107,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (backupAuthState && backupTimestamp) {
         const age = Date.now() - parseInt(backupTimestamp)
-        console.log(
-          '⏰ LocalStorage backup cache age (hours):',
-          age / (1000 * 60 * 60),
-        )
 
         if (age < 24 * 60 * 60 * 1000) {
           // 24 hours
           try {
             const backupUser = JSON.parse(backupAuthState)
             if (backupUser) {
-              console.log(
-                '✅ Using localStorage backup user:',
-                backupUser.email,
-              )
               setUser(backupUser)
               // Restore to sessionStorage too
               sessionStorage.setItem('authState', backupAuthState)
@@ -140,13 +122,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               return // Skip further checks
             }
           } catch {
-            console.warn('❌ Invalid localStorage backup cache')
+            // Invalid localStorage backup cache
           }
         }
       }
 
       // If no valid cache, do a network auth check
-      console.log('🌐 No valid cache found, trying network auth check...')
       setIsLoading(true)
 
       try {
@@ -161,8 +142,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ])
         const result = await Promise.race([quickPromise, quickTimeout])
 
-        console.log('✅ Network auth check successful')
-
         const [amplifyUser, attrs] = result as Awaited<typeof quickPromise>
 
         // Create minimal user data immediately
@@ -175,8 +154,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           companyId: 'default', // Will be updated
           ...attrs,
         }
-
-        console.log('📦 Created quick user:', quickUser.email)
 
         setUser(quickUser)
         setIsLoading(false)
@@ -195,7 +172,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 role: dbUser.role,
                 companyId: dbUser.companyId,
               }
-              console.log('🔄 Updated with DB data:', fullUser)
               setUser(fullUser)
 
               // Update cache with full user data
@@ -204,29 +180,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           })
           .catch(console.warn)
       } catch (error) {
-        console.warn('❌ Auth check failed on refresh:', error)
+        console.warn('Auth check failed on refresh:', error)
         // Don't immediately sign out on refresh - could be a network issue
         setIsLoading(false)
         setIsInitialized(true)
 
         // Only set user to null if we don't have any cached data at all
         if (!cachedAuthState && !backupAuthState) {
-          console.log('🚫 No cached auth data found, user not authenticated')
           setUser(null)
         } else {
-          console.log('⚠️ Auth check failed but trying to use cached data')
           // Try to use cached data even if it's slightly expired
           const fallbackData = cachedAuthState || backupAuthState
           if (fallbackData) {
             try {
               const fallbackUser = JSON.parse(fallbackData)
-              console.log(
-                '🔄 Using fallback cached user despite network failure:',
-                fallbackUser.email,
-              )
               setUser(fallbackUser)
             } catch {
-              console.warn('❌ Could not parse fallback data')
+              console.warn('Could not parse fallback data')
               setUser(null)
             }
           }
@@ -255,13 +225,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string): Promise<User> => {
     setIsLoading(true)
     try {
-      console.log('Attempting sign in for:', email)
-
       // Check if user is already authenticated
       try {
         const currentUser = await getCurrentUser()
         if (currentUser) {
-          console.log('User already authenticated, signing out first')
           await amplifySignOut()
           // Clear any existing state
           setUser(null)
@@ -281,8 +248,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Check if the sign in was successful
       if (result.isSignedIn) {
-        console.log('Sign in successful, loading full user data')
-
         // Get full user data including DynamoDB sync
         const amplifyUser = await getCurrentUser()
         const attrs = await fetchUserAttributes()
@@ -302,11 +267,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(fullUserData)
         storeAuthState(fullUserData)
 
-        console.log('Full user data loaded with DynamoDB sync:', fullUserData)
         return fullUserData
       } else {
-        console.log('Sign in not complete, next step:', result.nextStep)
-
         // Handle different next steps
         if (
           result.nextStep &&
