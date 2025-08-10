@@ -166,12 +166,12 @@ const SignIn = () => {
           />
 
           <div className="flex justify-between text-sm">
-            <Link
+            {/* <Link
               to="/auth/verify-email"
               className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
             >
               Verify email
-            </Link>
+            </Link> */}
             <Link
               to="/forgot-password"
               className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
