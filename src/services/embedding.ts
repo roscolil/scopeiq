@@ -244,7 +244,9 @@ export async function upsertDocumentEmbedding({
     projectId,
     [documentId],
     [embedding],
-    metadata ? [{ ...metadata, content }] : [{ content }],
+    metadata
+      ? [{ ...metadata, content, document_id: documentId }]
+      : [{ content, document_id: documentId }],
   )
 }
 

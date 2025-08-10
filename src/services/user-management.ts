@@ -510,7 +510,32 @@ ScopeIQ Team
   }
 
   async cancelInvitation(invitationId: string): Promise<boolean> {
-    return true
+    try {
+      // Update the invitation status to 'cancelled'
+      const { data: updatedInvitation, errors } =
+        await client.models.UserInvitation.update({
+          id: invitationId as string & string[],
+          status: 'cancelled' as string & string[],
+          updatedAt: new Date().toISOString() as string & string[],
+        })
+
+      if (errors) {
+        console.error('Error cancelling invitation:', errors)
+        throw new Error(
+          `Database error: ${errors.map(e => e.message).join(', ')}`,
+        )
+      }
+
+      if (!updatedInvitation) {
+        throw new Error('Failed to cancel invitation - invitation not found')
+      }
+
+      console.log('Invitation cancelled successfully:', invitationId)
+      return true
+    } catch (error) {
+      console.error('Error cancelling invitation:', error)
+      return false
+    }
   }
 
   async canUserAccessProject(
