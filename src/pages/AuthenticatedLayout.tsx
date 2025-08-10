@@ -58,7 +58,13 @@ class AuthErrorBoundary extends Component<
 const AuthenticatedLayoutInner = () => {
   const { isAuthenticated, isLoading } = useAuth()
 
+  console.log('🔒 AuthenticatedLayout state:', {
+    isAuthenticated,
+    isLoading,
+  })
+
   if (isLoading) {
+    console.log('⏳ Showing loading spinner')
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner />
@@ -67,9 +73,11 @@ const AuthenticatedLayoutInner = () => {
   }
 
   if (!isAuthenticated) {
+    console.log('⚠️ User not authenticated, redirecting to sign in')
     return <Navigate to="/auth/signin" replace />
   }
 
+  console.log('✅ User authenticated, rendering content')
   return <Outlet />
 }
 
