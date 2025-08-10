@@ -47,6 +47,7 @@ import { UserTable } from '@/components/UserTable'
 import { UserStats } from '@/components/UserStats'
 import { Project } from '@/types'
 import { Plus, UserPlus, Mail } from 'lucide-react'
+import { projectService } from '@/services/hybrid'
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -72,41 +73,36 @@ const passwordFormSchema = z
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>
 
-// Mock projects data - in real app this would come from a service
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    name: 'Kitchen Renovation',
-    description: 'Modern kitchen upgrade',
-    companyId: 'company-1',
-    createdAt: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'Office Building',
-    description: 'Commercial office development',
-    companyId: 'company-1',
-    createdAt: '2024-02-01',
-  },
-  {
-    id: '3',
-    name: 'Bathroom Remodel',
-    description: 'Luxury bathroom renovation',
-    companyId: 'company-1',
-    createdAt: '2024-02-15',
-  },
-]
-
-interface UserFormData {
-  email?: string
-  name?: string
-  role?: ServiceUserRole
-  projectIds?: string[]
-  isActive?: boolean
-}
-
 const ProfileSettings = () => {
   const { user, isAuthenticated, updateProfile, signOut } = useAuth()
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
+
+  // Load projects on component mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setProjectsLoading(true)
+        const projectsData = await projectService.getProjects()
+        setProjects(projectsData)
+      } catch (error) {
+        console.error('Failed to load projects:', error)
+        setProjects([])
+      } finally {
+        setProjectsLoading(false)
+      }
+    }
+
+    loadProjects()
+  }, [])
+
+  interface UserFormData {
+    email?: string
+    name?: string
+    role?: ServiceUserRole
+    projectIds?: string[]
+    isActive?: boolean
+  }
   const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
@@ -565,7 +561,7 @@ const ProfileSettings = () => {
                       ) : (
                         <UserTable
                           users={userManagement.users}
-                          projects={mockProjects}
+                          projects={projects}
                           onEditUser={openEditDialog}
                           onDeleteUser={openDeleteDialog}
                           canManageUsers={canManageUsers}
@@ -710,7 +706,7 @@ const ProfileSettings = () => {
           </DialogHeader>
           <UserForm
             user={selectedUser || undefined}
-            projects={mockProjects}
+            projects={projects}
             onSubmit={editUserDialogOpen ? handleEditUser : handleAddUser}
             onCancel={() => {
               setAddUserDialogOpen(false)
@@ -741,7 +737,7 @@ const ProfileSettings = () => {
             </DialogDescription>
           </DialogHeader>
           <UserForm
-            projects={mockProjects}
+            projects={projects}
             onSubmit={handleInviteUser}
             onCancel={() => {
               setInviteUserDialogOpen(false)
