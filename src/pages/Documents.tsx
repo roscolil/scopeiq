@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { DocumentList } from '@/components/DocumentList'
@@ -52,6 +52,114 @@ const Documents = () => {
   } | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
+
+  // Caching utilities for documents
+  const getCachedDocuments = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`documents_${companyId}`)
+      const timestamp = localStorage.getItem(`documents_timestamp_${companyId}`)
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < 5 * 60 * 1000) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached documents:', error)
+    }
+    return null
+  }, [companyId])
+
+  const setCachedDocuments = useCallback(
+    (documentsData: Document[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `documents_${companyId}`,
+          JSON.stringify(documentsData),
+        )
+        localStorage.setItem(
+          `documents_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching documents:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Caching utilities for projects with documents
+  const getCachedProjectsWithDocs = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`projectsWithDocs_${companyId}`)
+      const timestamp = localStorage.getItem(
+        `projectsWithDocs_timestamp_${companyId}`,
+      )
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < 5 * 60 * 1000) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached projects with docs:', error)
+    }
+    return null
+  }, [companyId])
+
+  const setCachedProjectsWithDocs = useCallback(
+    (
+      projectsData: Array<{
+        id: string
+        name: string
+        description?: string
+        createdAt: string
+        updatedAt?: string
+        companyId: string
+        documents: Document[]
+      }>,
+    ) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `projectsWithDocs_${companyId}`,
+          JSON.stringify(projectsData),
+        )
+        localStorage.setItem(
+          `projectsWithDocs_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching projects with docs:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Load cached data immediately on mount
+  React.useEffect(() => {
+    if (companyId) {
+      const cachedDocs = getCachedDocuments()
+      const cachedProjects = getCachedProjectsWithDocs()
+
+      if (cachedDocs) {
+        setDocuments(cachedDocs)
+        setIsDocumentsLoading(false)
+        setExpectedDocumentCount(Math.max(cachedDocs.length, 1))
+      }
+
+      if (cachedProjects) {
+        setProjectsWithDocuments(cachedProjects)
+        setIsProjectLoading(false)
+        setExpectedProjectCount(Math.max(cachedProjects.length, 1))
+      }
+    }
+  }, [companyId, getCachedDocuments, getCachedProjectsWithDocs])
   const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
 
   // Load cached counts from localStorage
@@ -76,8 +184,16 @@ const Documents = () => {
       if (!companyId) return
 
       try {
-        setIsProjectLoading(true)
-        setIsDocumentsLoading(true)
+        // Check if we need to show loading state
+        const cachedDocs = getCachedDocuments()
+        const cachedProjects = getCachedProjectsWithDocs()
+
+        if (!cachedDocs) {
+          setIsDocumentsLoading(true)
+        }
+        if (!cachedProjects) {
+          setIsProjectLoading(true)
+        }
 
         // Set company name (using companyId as name for now)
         setCompanyName(companyId)
@@ -109,6 +225,7 @@ const Documents = () => {
           const allProjectsWithDocs =
             await projectService.getAllProjectsWithDocuments()
           setProjectsWithDocuments(allProjectsWithDocs)
+          setCachedProjectsWithDocs(allProjectsWithDocs) // Cache the fresh data
           setIsProjectLoading(false) // Projects loaded first
 
           // Cache the project count for future skeleton display
@@ -125,6 +242,7 @@ const Documents = () => {
           // Also set a flat list of all documents for the general documents tab
           const allDocuments = await documentService.getAllDocuments()
           setDocuments(allDocuments)
+          setCachedDocuments(allDocuments) // Cache the fresh data
           setIsDocumentsLoading(false) // Documents loaded second
 
           // Cache the document count for future skeleton display
@@ -151,7 +269,15 @@ const Documents = () => {
     }
 
     loadData()
-  }, [projectId, companyId, toast])
+  }, [
+    projectId,
+    companyId,
+    toast,
+    getCachedDocuments,
+    getCachedProjectsWithDocs,
+    setCachedDocuments,
+    setCachedProjectsWithDocs,
+  ])
 
   // Add live document status polling
   React.useEffect(() => {

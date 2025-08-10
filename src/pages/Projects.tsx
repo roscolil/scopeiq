@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Layout } from '@/components/Layout'
 import { ProjectList } from '@/components/ProjectList'
@@ -29,6 +29,63 @@ const Projects = () => {
   const [loading, setLoading] = useState(true)
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
 
+  // Caching utilities
+  const getCachedProjects = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`projects_${companyId}`)
+      const timestamp = localStorage.getItem(`projects_timestamp_${companyId}`)
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < 5 * 60 * 1000) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached projects:', error)
+    }
+    return null
+  }, [companyId])
+
+  const setCachedProjects = useCallback(
+    (projectsData: Project[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `projects_${companyId}`,
+          JSON.stringify(projectsData),
+        )
+        localStorage.setItem(
+          `projects_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching projects:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Clear cache utility
+  const clearProjectsCache = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return
+    localStorage.removeItem(`projects_${companyId}`)
+    localStorage.removeItem(`projects_timestamp_${companyId}`)
+  }, [companyId])
+
+  // Load cached projects immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cached = getCachedProjects()
+      if (cached) {
+        setProjects(cached)
+        setLoading(false)
+        setExpectedProjectCount(Math.max(cached.length, 1))
+      }
+    }
+  }, [companyId, getCachedProjects])
+
   // Load cached project count from localStorage
   useEffect(() => {
     if (companyId && typeof window !== 'undefined') {
@@ -47,10 +104,16 @@ const Projects = () => {
       setSearchParams({})
     }
   }, [searchParams, setSearchParams])
+  // Load projects data (fresh or background refresh)
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        setLoading(true)
+        // Check if we need to show loading state
+        const cached = getCachedProjects()
+        if (!cached) {
+          setLoading(true)
+        }
+
         const projectsData = await projectService.getAllProjectsWithDocuments()
 
         // Transform API data to our Project type
@@ -75,6 +138,9 @@ const Projects = () => {
 
         setProjects(transformedProjects)
 
+        // Cache the fresh data
+        setCachedProjects(transformedProjects)
+
         // Store the project count for future skeleton display
         const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
         setExpectedProjectCount(projectCount)
@@ -88,14 +154,16 @@ const Projects = () => {
         }
       } catch (error) {
         console.error('Projects page: Error loading projects:', error)
-        // Fallback to empty array
-        setProjects([])
+        // Fallback to empty array if no cache available
+        if (!getCachedProjects()) {
+          setProjects([])
+        }
       } finally {
         setLoading(false)
       }
     }
     loadProjects()
-  }, [companyId])
+  }, [companyId, getCachedProjects, setCachedProjects])
 
   const handleCreateProject = async (projectData: {
     address: string
@@ -139,6 +207,10 @@ const Projects = () => {
         }
 
         setProjects(prev => [...prev, transformedProject])
+
+        // Clear cache to force fresh data on next visit
+        clearProjectsCache()
+
         setIsDialogOpen(false)
       }
     } catch (error) {
@@ -149,6 +221,9 @@ const Projects = () => {
 
   const handleProjectDeleted = (projectId: string) => {
     setProjects(prev => prev.filter(project => project.id !== projectId))
+
+    // Clear cache to force fresh data on next visit
+    clearProjectsCache()
   }
 
   return (
@@ -185,12 +260,14 @@ const Projects = () => {
             </Button> */}
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    New Project
-                  </Button>
-                </DialogTrigger>
+                {projects.length > 0 && (
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                )}
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create New Project</DialogTitle>

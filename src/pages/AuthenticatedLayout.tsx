@@ -21,14 +21,14 @@ class AuthErrorBoundary extends Component<
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Auth error boundary caught an error:', error, errorInfo)
 
-    // If it's an auth context error and we're in development, reload after delay
+    // If it's an auth context error and we're in development, reload after shorter delay
     if (
       error.message?.includes('useAuth must be used within an AuthProvider') &&
       process.env.NODE_ENV === 'development'
     ) {
       setTimeout(() => {
         window.location.reload()
-      }, 2000)
+      }, 500) // Reduced from 2000ms to 500ms
     }
   }
 
@@ -58,7 +58,13 @@ class AuthErrorBoundary extends Component<
 const AuthenticatedLayoutInner = () => {
   const { isAuthenticated, isLoading } = useAuth()
 
+  console.log('🔒 AuthenticatedLayout state:', {
+    isAuthenticated,
+    isLoading,
+  })
+
   if (isLoading) {
+    console.log('⏳ Showing loading spinner')
     return (
       <div className="flex justify-center items-center h-screen">
         <Spinner />
@@ -67,9 +73,11 @@ const AuthenticatedLayoutInner = () => {
   }
 
   if (!isAuthenticated) {
+    console.log('⚠️ User not authenticated, redirecting to sign in')
     return <Navigate to="/auth/signin" replace />
   }
 
+  console.log('✅ User authenticated, rendering content')
   return <Outlet />
 }
 

@@ -37,7 +37,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useToast } from '@/hooks/use-toast'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Project, Document } from '@/types'
 import { projectService, documentService } from '@/services/hybrid'
 import { companyService, Company } from '@/services/company'
@@ -48,6 +55,7 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user } = useAuth()
+  const isMobile = useIsMobile()
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
@@ -88,10 +96,90 @@ const Dashboard = () => {
           }),
         )
       } catch {
-        // Silently fail if localStorage is unavailable
+        // Ignore cache write errors
       }
     },
     [STATS_CACHE_KEY],
+  )
+
+  // Caching utilities for projects data
+  const getCachedDashboardProjects = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`dashboard_projects_${companyId}`)
+      const timestamp = localStorage.getItem(
+        `dashboard_projects_timestamp_${companyId}`,
+      )
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < CACHE_EXPIRY_MS) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached dashboard projects:', error)
+    }
+    return null
+  }, [companyId, CACHE_EXPIRY_MS])
+
+  const setCachedDashboardProjects = useCallback(
+    (projectsData: Project[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `dashboard_projects_${companyId}`,
+          JSON.stringify(projectsData),
+        )
+        localStorage.setItem(
+          `dashboard_projects_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching dashboard projects:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Caching utilities for documents data
+  const getCachedDashboardDocuments = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`dashboard_documents_${companyId}`)
+      const timestamp = localStorage.getItem(
+        `dashboard_documents_timestamp_${companyId}`,
+      )
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < CACHE_EXPIRY_MS) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached dashboard documents:', error)
+    }
+    return null
+  }, [companyId, CACHE_EXPIRY_MS])
+
+  const setCachedDashboardDocuments = useCallback(
+    (documentsData: Document[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `dashboard_documents_${companyId}`,
+          JSON.stringify(documentsData),
+        )
+        localStorage.setItem(
+          `dashboard_documents_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching dashboard documents:', error)
+      }
+    },
+    [companyId],
   )
 
   // Cache key for company data
@@ -135,10 +223,10 @@ const Dashboard = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
-  const [isLoadingCompany, setIsLoadingCompany] = useState(true)
-  const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start as true
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start as true
-  const [isLoadingStats, setIsLoadingStats] = useState(true) // New loading state for stats
+  const [isLoadingCompany, setIsLoadingCompany] = useState(true) // Start with true for initial load
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start with true for initial load
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start with true for initial load
+  const [isLoadingStats, setIsLoadingStats] = useState(true) // Start with true for initial load
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
 
   // Cached stats state
@@ -164,12 +252,31 @@ const Dashboard = () => {
       const cached = getCachedStats()
       if (cached) {
         setCachedStats(cached)
-        setIsLoadingStats(false) // Show cached data immediately
+        // Don't show loading if we have cached data
       } else {
-        setIsLoadingStats(true) // No cache, show loading
+        setIsLoadingStats(true) // Only show loading if no cache
       }
     }
   }, [companyId, getCachedStats])
+
+  // Load cached projects and documents immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cachedProjects = getCachedDashboardProjects()
+      const cachedDocuments = getCachedDashboardDocuments()
+
+      if (cachedProjects) {
+        setProjects(cachedProjects)
+        setIsLoadingProjects(false)
+        setExpectedProjectCount(Math.max(cachedProjects.length, 1))
+      }
+
+      if (cachedDocuments) {
+        setDocuments(cachedDocuments)
+        setIsLoadingDocuments(false)
+      }
+    }
+  }, [companyId, getCachedDashboardProjects, getCachedDashboardDocuments])
 
   // Load cached company data immediately on mount
   useEffect(() => {
@@ -177,9 +284,9 @@ const Dashboard = () => {
       const cached = getCachedCompany()
       if (cached) {
         setCompany(cached)
-        setIsLoadingCompany(false) // Show cached data immediately
+        // Don't show loading if we have cached data
       } else {
-        setIsLoadingCompany(true) // No cache, show loading
+        setIsLoadingCompany(true) // Only show loading if no cache
       }
     }
   }, [companyId, getCachedCompany])
@@ -244,14 +351,24 @@ const Dashboard = () => {
   // Load projects and documents
   useEffect(() => {
     const loadData = async () => {
+      // Ensure skeleton shows for at least 500ms for better UX when no cache
+      const startTime = Date.now()
+      const minLoadingTime = 500
+
       try {
-        // If we don't have cached stats, show loading state
-        const cached = getCachedStats()
-        if (!cached) {
-          setIsLoadingStats(true)
+        // Check if we need to show loading states
+        const cachedProjects = getCachedDashboardProjects()
+        const cachedDocuments = getCachedDashboardDocuments()
+
+        // Only show loading if no cache available
+        if (!cachedProjects) {
+          setIsLoadingProjects(true)
+        }
+        if (!cachedDocuments) {
+          setIsLoadingDocuments(true)
         }
 
-        // Load projects with documents - loading states already initialized as true
+        // Load projects with documents
         const projectsData = await projectService.getAllProjectsWithDocuments()
 
         // Transform to our Project type
@@ -277,6 +394,7 @@ const Dashboard = () => {
         )
 
         setProjects(transformedProjects)
+        setCachedDashboardProjects(transformedProjects) // Cache the fresh data
 
         // Store the project count for future skeleton display
         const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
@@ -304,6 +422,7 @@ const Dashboard = () => {
         })
 
         setDocuments(allDocuments)
+        setCachedDashboardDocuments(allDocuments) // Cache the fresh data
 
         // Calculate recent documents (last 7 days)
         const sevenDaysAgo = new Date()
@@ -333,7 +452,17 @@ const Dashboard = () => {
           setProjects([])
           setDocuments([])
         } else {
-          // This is an actual error
+          // This is an actual error - preserve cached data if available
+          const cachedProjects = getCachedDashboardProjects()
+          const cachedDocuments = getCachedDashboardDocuments()
+
+          if (!cachedProjects) {
+            setProjects([])
+          }
+          if (!cachedDocuments) {
+            setDocuments([])
+          }
+
           toast({
             title: 'Loading Error',
             description: 'Failed to load dashboard data. Please try again.',
@@ -341,14 +470,29 @@ const Dashboard = () => {
           })
         }
       } finally {
-        setIsLoadingProjects(false)
-        setIsLoadingDocuments(false)
-        setIsLoadingStats(false) // Finish loading stats
+        // Ensure minimum loading time for skeleton visibility
+        const elapsedTime = Date.now() - startTime
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime)
+
+        setTimeout(() => {
+          setIsLoadingProjects(false)
+          setIsLoadingDocuments(false)
+          setIsLoadingStats(false)
+        }, remainingTime)
       }
     }
 
     loadData()
-  }, [companyId, toast, setCachedStatsData, getCachedStats])
+  }, [
+    companyId,
+    toast,
+    setCachedStatsData,
+    getCachedStats,
+    getCachedDashboardProjects,
+    getCachedDashboardDocuments,
+    setCachedDashboardProjects,
+    setCachedDashboardDocuments,
+  ])
 
   const upcomingTasks = [
     {
@@ -414,25 +558,63 @@ const Dashboard = () => {
                       )} */}
                     </h1>
                     <p className="text-gray-400 mt-2">
-                      Welcome back! Here's an overview of your projects and
-                      activities.
+                      Welcome back
+                      {user?.given_name && typeof user.given_name === 'string'
+                        ? `, ${user.given_name.split(' ')[0]}`
+                        : ''}
+                      ! Here's an overview of your projects and activities.
                     </p>
                   </>
                 )}
               </div>
+
+              {/* Settings Button - Desktop only (inline with heading) */}
+              {!isMobile && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-10 w-10 p-0 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
+                        onClick={() =>
+                          navigate(routes.company.settings(companyId))
+                        }
+                      >
+                        <Settings className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
-            {/* Settings Button */}
-            <div className="flex justify-start">
-              <Button
-                variant="ghost"
-                className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
-                onClick={() => navigate(routes.company.settings(companyId))}
-              >
-                <Settings className="h-5 w-5 mr-2" />
-                <span className="text-sm font-medium">Settings</span>
-              </Button>
-            </div>
+            {/* Settings Button - Mobile only (below heading) */}
+            {isMobile && (
+              <div className="flex justify-start">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
+                        onClick={() =>
+                          navigate(routes.company.settings(companyId))
+                        }
+                      >
+                        <Settings className="h-5 w-5 mr-2" />
+                        <span className="text-sm font-medium">Settings</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Go to Settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
 
           {/* Stats Overview */}
