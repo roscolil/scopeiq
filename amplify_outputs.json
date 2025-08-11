@@ -1050,7 +1050,7 @@
                   },
                   {
                     "allow": "private",
-                    "operations": ["read", "update"]
+                    "operations": ["read", "update", "delete"]
                   }
                 ]
               }

@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast'
 import { AIActions } from '@/components/AIActions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ProjectSelector } from '@/components/ProjectSelector'
+import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,36 @@ const ProjectDetails = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
+
+  // Handle document status updates for real-time feedback
+  const handleDocumentStatusUpdate = useCallback(
+    (updatedDocument: Document) => {
+      setProjectDocuments(prev =>
+        prev.map(doc =>
+          doc.id === updatedDocument.id ? updatedDocument : doc,
+        ),
+      )
+
+      // Show subtle notification for status changes
+      if (updatedDocument.status === 'processed') {
+        toast({
+          title: 'Document Ready',
+          description: `${updatedDocument.name} is now available for AI search.`,
+          duration: 3000,
+        })
+      }
+    },
+    [toast],
+  )
+
+  // Poll for document status updates
+  useDocumentStatusPolling({
+    documents: projectDocuments,
+    projectId: projectId || '',
+    companyId: companyId || '',
+    onDocumentUpdate: handleDocumentStatusUpdate,
+    enabled: projectDocuments.some(doc => doc.status === 'processing'),
+  })
 
   // Cache keys
   const PROJECT_CACHE_KEY = `project_${projectId}`
@@ -396,6 +427,45 @@ const ProjectDetails = () => {
     }
   }
 
+  const handleCancelProcessing = async (documentId: string) => {
+    try {
+      // For now, we'll just update the status to failed to stop the processing indicators
+      // In a real implementation, you'd want to actually cancel the background processing
+      const documentToCancel = projectDocuments.find(
+        doc => doc.id === documentId,
+      )
+
+      if (!documentToCancel || !companyId || !project) {
+        throw new Error('Document, company, or project information not found')
+      }
+
+      // Update document status to failed (cancelled)
+      await documentService.updateDocument(companyId, project.id, documentId, {
+        status: 'failed',
+      })
+
+      // Update local state
+      setProjectDocuments(prev =>
+        prev.map(doc =>
+          doc.id === documentId ? { ...doc, status: 'failed' as const } : doc,
+        ),
+      )
+
+      toast({
+        title: 'Processing cancelled',
+        description: 'Document processing has been cancelled.',
+      })
+    } catch (error) {
+      console.error('Error cancelling processing:', error)
+      toast({
+        title: 'Cancel failed',
+        description:
+          'There was an error cancelling the processing. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (isProjectLoading) {
     // Show the complete project layout skeleton
     return (
@@ -686,6 +756,7 @@ const ProjectDetails = () => {
             <DocumentList
               documents={projectDocuments}
               onDelete={handleDeleteDocument}
+              onCancelProcessing={handleCancelProcessing}
               projectId={project.id}
               companyId={companyId || 'default-company'}
               projectName={project.name}

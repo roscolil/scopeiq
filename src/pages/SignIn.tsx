@@ -62,7 +62,6 @@ const SignIn = () => {
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
-      console.log('Starting sign in process...')
 
       const user = await signIn(data.email, data.password)
 
