@@ -1,0 +1,12 @@
+{
+  "name": "send-contact-email",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.590.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,92 +1,297 @@
-
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
-import { ProjectList } from "@/components/ProjectList";
-import { Button } from "@/components/ui/button";
-import { Plus, Filter } from "lucide-react";
-import { Project } from "@/types";
-import { 
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Layout } from '@/components/Layout'
+import { ProjectList } from '@/components/ProjectList'
+import { PageHeaderSkeleton, ProjectListSkeleton } from '@/components/skeletons'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Plus, Filter } from 'lucide-react'
+import { Project } from '@/types'
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { ProjectForm } from "@/components/ProjectForm";
+} from '@/components/ui/dialog'
+import { ProjectForm } from '@/components/ProjectForm'
+import { projectService } from '@/services/hybrid'
 
 const Projects = () => {
-  const navigate = useNavigate();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "project-1",
-      name: "Construction Site A",
-      description: "Main construction project for Site A including all blueprints and specifications.",
-      createdAt: new Date(2025, 3, 8).toISOString(),
-      documentIds: ["doc-1", "doc-3"]
-    },
-    {
-      id: "project-2",
-      name: "Renovation Plan B",
-      description: "Renovation project for existing building B.",
-      createdAt: new Date(2025, 3, 5).toISOString(),
-      documentIds: ["doc-2"]
-    },
-    {
-      id: "project-3",
-      name: "Maintenance Schedule",
-      description: "Regular maintenance schedule and documentation for all sites.",
-      createdAt: new Date(2025, 3, 1).toISOString(),
-      documentIds: ["doc-4"]
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { companyId } = useParams<{
+    companyId: string
+  }>()
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
+
+  // Caching utilities
+  const getCachedProjects = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return null
+    try {
+      const cached = localStorage.getItem(`projects_${companyId}`)
+      const timestamp = localStorage.getItem(`projects_timestamp_${companyId}`)
+      if (cached && timestamp) {
+        const age = Date.now() - parseInt(timestamp)
+        // Cache valid for 5 minutes
+        if (age < 5 * 60 * 1000) {
+          return JSON.parse(cached)
+        }
+      }
+    } catch (error) {
+      console.warn('Error reading cached projects:', error)
     }
-  ]);
-  
-  const handleCreateProject = (projectData: Omit<Project, "id" | "createdAt" | "documentIds">) => {
-    const newProject: Project = {
-      ...projectData,
-      id: `project-${projects.length + 1}`,
-      createdAt: new Date().toISOString(),
-      documentIds: []
-    };
-    
-    setProjects([...projects, newProject]);
-    setIsDialogOpen(false);
-  };
+    return null
+  }, [companyId])
+
+  const setCachedProjects = useCallback(
+    (projectsData: Project[]) => {
+      if (!companyId || typeof window === 'undefined') return
+      try {
+        localStorage.setItem(
+          `projects_${companyId}`,
+          JSON.stringify(projectsData),
+        )
+        localStorage.setItem(
+          `projects_timestamp_${companyId}`,
+          Date.now().toString(),
+        )
+      } catch (error) {
+        console.warn('Error caching projects:', error)
+      }
+    },
+    [companyId],
+  )
+
+  // Clear cache utility
+  const clearProjectsCache = useCallback(() => {
+    if (!companyId || typeof window === 'undefined') return
+    localStorage.removeItem(`projects_${companyId}`)
+    localStorage.removeItem(`projects_timestamp_${companyId}`)
+  }, [companyId])
+
+  // Load cached projects immediately on mount
+  useEffect(() => {
+    if (companyId) {
+      const cached = getCachedProjects()
+      if (cached) {
+        setProjects(cached)
+        setLoading(false)
+        setExpectedProjectCount(Math.max(cached.length, 1))
+      }
+    }
+  }, [companyId, getCachedProjects])
+
+  // Load cached project count from localStorage
+  useEffect(() => {
+    if (companyId && typeof window !== 'undefined') {
+      const cached = localStorage.getItem(`projectCount_${companyId}`)
+      if (cached) {
+        setExpectedProjectCount(parseInt(cached, 10))
+      }
+    }
+  }, [companyId])
+
+  // Check if we should auto-open the new project dialog
+  useEffect(() => {
+    if (searchParams.get('new') === 'true') {
+      setIsDialogOpen(true)
+      // Clear the URL parameter
+      setSearchParams({})
+    }
+  }, [searchParams, setSearchParams])
+  // Load projects data (fresh or background refresh)
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        // Check if we need to show loading state
+        const cached = getCachedProjects()
+        if (!cached) {
+          setLoading(true)
+        }
+
+        const projectsData = await projectService.getAllProjectsWithDocuments()
+
+        // Transform API data to our Project type
+        const transformedProjects: Project[] = (projectsData || []).map(
+          project => ({
+            id: project.id,
+            name: project.name || 'Untitled Project',
+            description: project.description || '',
+            createdAt: project.createdAt,
+            updatedAt: project.updatedAt,
+            documents: project.documents || [], // Include the documents array
+            // Add any required fields from our Project type
+            address: '',
+            companyId: companyId || 'default-company',
+            streetNumber: '',
+            streetName: '',
+            suburb: '',
+            state: '',
+            postcode: '',
+          }),
+        )
+
+        setProjects(transformedProjects)
+
+        // Cache the fresh data
+        setCachedProjects(transformedProjects)
+
+        // Store the project count for future skeleton display
+        const projectCount = Math.max(transformedProjects.length, 1) // At least 1 to show something
+        setExpectedProjectCount(projectCount)
+
+        // Cache the count in localStorage for next visit
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            `projectCount_${companyId}`,
+            projectCount.toString(),
+          )
+        }
+      } catch (error) {
+        console.error('Projects page: Error loading projects:', error)
+        // Fallback to empty array if no cache available
+        if (!getCachedProjects()) {
+          setProjects([])
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProjects()
+  }, [companyId, getCachedProjects, setCachedProjects])
+
+  const handleCreateProject = async (projectData: {
+    address: string
+    name: string
+    description: string
+    slug?: string
+    streetNumber?: string
+    streetName?: string
+    suburb?: string
+    state?: string
+    postcode?: string
+  }) => {
+    console.log('Projects: Creating project with data:', projectData)
+
+    try {
+      // Create project using API
+      const newProject = await projectService.createProject(companyId!, {
+        name: projectData.name,
+        description: projectData.description || '',
+        slug: projectData.slug,
+      })
+
+      if (newProject) {
+        console.log('Projects: Project created successfully:', newProject)
+
+        // Transform and add to local state
+        const transformedProject: Project = {
+          id: newProject.id,
+          name: newProject.name || 'Untitled Project',
+          description: newProject.description || '',
+          createdAt: newProject.createdAt,
+          updatedAt: newProject.updatedAt,
+          documents: [], // New projects start with no documents
+          address: projectData.address,
+          companyId: companyId || 'default-company',
+          streetNumber: projectData.streetNumber || '',
+          streetName: projectData.streetName || '',
+          suburb: projectData.suburb || '',
+          state: projectData.state || '',
+          postcode: projectData.postcode || '',
+        }
+
+        setProjects(prev => [...prev, transformedProject])
+
+        // Clear cache to force fresh data on next visit
+        clearProjectsCache()
+
+        setIsDialogOpen(false)
+      }
+    } catch (error) {
+      console.error('Projects: Error creating project:', error)
+      throw error // Re-throw to let ProjectForm handle the error display
+    }
+  }
+
+  const handleProjectDeleted = (projectId: string) => {
+    setProjects(prev => prev.filter(project => project.id !== projectId))
+
+    // Clear cache to force fresh data on next visit
+    clearProjectsCache()
+  }
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">My Projects</h1>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+    <>
+      {/* Full viewport gradient background */}
+      <div className="fixed inset-0 -z-10">
+        {/* Enhanced darker and more vivid blue gradient background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-blue-950/95 to-indigo-900"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-blue-950/80 to-violet-950/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-blue-950/60 via-indigo-950/80 to-blue-950/70"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/15 to-indigo-400/25"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-blue-600/20"></div>
+
+        {/* Multiple floating gradient orbs for dramatic effect */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-indigo-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-blue-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-indigo-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-indigo-500/6 to-blue-500/8 rounded-full blur-xl"></div>
+        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-blue-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
+      </div>
+
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+              Projects for {companyId && `(${companyId})`}
+            </h1>
+
+            <div className="flex gap-2">
+              {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
               Filter
-            </Button>
-            
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  New Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New Project</DialogTitle>
-                </DialogHeader>
-                <ProjectForm onSubmit={handleCreateProject} />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-        
-        <ProjectList projects={projects} />
-      </div>
-    </Layout>
-  );
-};
+            </Button> */}
 
-export default Projects;
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                {projects.length > 0 && (
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      New Project
+                    </Button>
+                  </DialogTrigger>
+                )}
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                  </DialogHeader>
+                  <ProjectForm onSubmit={handleCreateProject} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {loading ? (
+            <ProjectListSkeleton itemCount={expectedProjectCount} />
+          ) : (
+            <ProjectList
+              projects={projects}
+              companyId={(companyId || 'default-company').toLowerCase()}
+              onCreateProject={() => setIsDialogOpen(true)}
+              onProjectDeleted={handleProjectDeleted}
+            />
+          )}
+        </div>
+      </Layout>
+    </>
+  )
+}
+
+export default Projects

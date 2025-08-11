@@ -1,19 +1,33 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
   "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "baseUrl": ".",
+    "jsx": "react-jsx", // or "react" for older versions
+    "lib": ["DOM", "ESNext"],
+    "types": ["react", "react-dom", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
     "noUnusedLocals": false,
-    "strictNullChecks": false
-  }
+    "strictNullChecks": false,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true
+  },
+  "exclude": [
+    "dist",
+    "public",
+    "eslint.config.js",
+    "postcss.config.js",
+    "test-aws-config.js",
+    "**/*.yml",
+    "**/*.yaml"
+  ]
 }

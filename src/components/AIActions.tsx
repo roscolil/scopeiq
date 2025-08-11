@@ -1,323 +1,930 @@
-
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { BrainCircuit, Search, FileSearch, ScrollText, Copy, MessageSquare, FileStack } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { VoiceInput } from "./VoiceInput";
-import { answerQuestionWithBedrock } from "@/utils/aws";
-import { Textarea } from "@/components/ui/textarea";
-import { 
+import { useState, useRef, useEffect } from 'react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Brain,
+  Search,
+  FileSearch,
+  Copy,
+  MessageSquare,
+  FileStack,
+  RefreshCw,
+  Loader2,
+} from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { useToast } from '@/hooks/use-toast'
+import { VoiceInput } from './VoiceInput'
+import { VoiceShazamButton } from './VoiceShazamButton'
+import { answerQuestionWithBedrock } from '@/utils/aws'
+import { Textarea } from '@/components/ui/textarea'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select'
+import { callOpenAI } from '@/services/openai'
+import { useSemanticSearch } from '@/hooks/useSemanticSearch'
+import { semanticSearch } from '@/services/embedding'
+import { documentService } from '@/services/hybrid'
+import { Document } from '@/types'
+import { retryDocumentProcessing } from '@/utils/document-recovery'
 
 interface AIActionsProps {
-  documentId: string;
-  projectId?: string;
+  documentId: string
+  projectId?: string
+  companyId?: string
 }
 
-export const AIActions = ({ documentId, projectId }: AIActionsProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<string[]>([]);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [isAnswering, setIsAnswering] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [queryScope, setQueryScope] = useState<"document" | "project">("document");
-  const { toast } = useToast();
-  
-  const handleSearch = () => {
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    
-    // Simulate AI-powered search with AWS Bedrock and Pinecone
-    // In a real app, we would use different search parameters based on queryScope
-    setTimeout(() => {
-      const results = queryScope === "document" 
-        ? [
-            "The results found in paragraph 2 match your query about document processing.",
-            "Additional information about AWS services can be found in section 3.2."
-          ]
-        : [
-            "Results found in document 'Business Proposal.pdf' match your query.",
-            "Additional information found in 'Financial Report.docx', section 2.1.",
-            "Related content in 'Contract Agreement.pdf', paragraphs 5-7."
-          ];
-      
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 1500);
-  };
-  
-  const generateSummary = () => {
-    setIsSummarizing(true);
-    setSummary(null);
-    
-    // Simulate LLM summary generation using AWS SageMaker
-    // In a real app, we would generate different summaries based on queryScope
-    setTimeout(() => {
-      const summaryText = queryScope === "document"
-        ? "This document describes a cloud-based document processing system that utilizes AWS services for storage and AI capabilities. It outlines the architecture using S3 for storage, Textract for text extraction, and integration with vector databases for semantic search functionality."
-        : "This project contains multiple documents related to a cloud-based document processing system. The Business Proposal outlines the system architecture, the Financial Report details cost implications, and the Contract Agreement provides legal frameworks for implementation. All documents together form a comprehensive implementation plan for an AWS-powered document management solution.";
-      
-      setSummary(summaryText);
-      setIsSummarizing(false);
-    }, 2000);
-  };
-  
-  const askQuestion = async () => {
-    if (!question.trim()) return;
-    
-    setIsAnswering(true);
-    setAnswer(null);
-    
-    try {
-      // Get the document text - in a real app, this would be fetched from the database
-      // We would use different content based on queryScope
-      const content = queryScope === "document"
-        ? "This is the document text that would be retrieved from the database. It contains information about our document processing system."
-        : "This is combined text from all documents in the project. It includes information from the Business Proposal, Financial Report, and Contract Agreement documents, providing a comprehensive view of the project.";
-      
-      // Use AWS Bedrock to answer the question
-      const response = await answerQuestionWithBedrock(question, content);
-      setAnswer(response);
-    } catch (error) {
-      console.error("Error answering question:", error);
-      toast({
-        title: "Error",
-        description: "Failed to answer your question. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnswering(false);
+export const AIActions = ({
+  documentId,
+  projectId,
+  companyId,
+}: AIActionsProps) => {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<{
+    type: 'search' | 'ai'
+    searchResults?: {
+      ids: string[][]
+      distances?: number[][]
+      metadatas?: Array<
+        Array<{ name?: string } & Record<string, string | number | boolean>>
+      >
+      documents?: string[][]
     }
-  };
-  
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied to clipboard",
-      description: "The text has been copied to your clipboard.",
-    });
-  };
-  
-  const toggleListening = () => {
-    setIsListening(!isListening);
-    
-    if (isListening) {
+    aiAnswer?: string
+  } | null>(null)
+  const [isListening, setIsListening] = useState(false)
+  const [queryScope, setQueryScope] = useState<'document' | 'project'>(
+    documentId ? 'document' : 'project', // Default to project scope if no documentId
+  )
+  const [isLoading, setIsLoading] = useState(false)
+  const [document, setDocument] = useState<Document | null>(null)
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false)
+  const [hideShazamButton, setHideShazamButton] = useState(false)
+  const { toast } = useToast()
+  const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
+  const hasTranscriptRef = useRef(false)
+
+  // Use semantic search hook for real search functionality
+  const {
+    results: searchResults,
+    loading: isSearching,
+    error: searchError,
+    search,
+  } = useSemanticSearch(projectId || '')
+
+  // Fetch document status on component mount and set up live polling
+  useEffect(() => {
+    const fetchDocumentStatus = async () => {
+      // Only fetch document status if we have all required IDs
+      if (!documentId || !projectId || !companyId) {
+        // If no documentId, we're in project scope mode
+        if (!documentId) {
+          setQueryScope('project')
+        }
+        return
+      }
+
+      setIsLoadingStatus(true)
+      try {
+        const doc = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
+        setDocument(doc)
+      } catch (error) {
+        console.error('Error fetching document status:', error)
+        // If we can't fetch the document, fall back to project scope
+        setQueryScope('project')
+      } finally {
+        setIsLoadingStatus(false)
+      }
+    }
+
+    // Initial fetch
+    fetchDocumentStatus()
+
+    // Set up adaptive polling with status-dependent intervals (only if we have a documentId)
+    let intervalId: NodeJS.Timeout | null = null
+
+    const startPolling = () => {
+      // Only start polling if we have a documentId
+      if (!documentId) return
+
+      // Clear any existing interval
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+
+      // Determine polling frequency based on current document status
+      const currentStatus = document?.status
+      let pollInterval: number
+
+      if (currentStatus === 'processing') {
+        pollInterval = 3000 // Poll every 3 seconds for processing documents
+      } else if (currentStatus === 'failed') {
+        pollInterval = 10000 // Poll every 10 seconds for failed documents
+      } else if (currentStatus === 'processed') {
+        pollInterval = 30000 // Poll every 30 seconds for completed documents
+      } else {
+        pollInterval = 5000 // Default 5 seconds for other states
+      }
+
+      intervalId = setInterval(fetchDocumentStatus, pollInterval)
+    }
+
+    // Start polling immediately (only if we have a document)
+    if (documentId) {
+      startPolling()
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [documentId, projectId, companyId, document?.status])
+
+  // Add debugging info on component mount
+  useEffect(() => {
+    return () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+      }
+    }
+  }, [documentId, projectId, companyId, silenceTimer])
+
+  // Get status badge component similar to DocumentList
+  const getStatusBadge = (status: Document['status']) => {
+    switch (status) {
+      case 'processed':
+        return (
+          <Badge variant="default" className="bg-green-500 text-white">
+            AI Ready
+          </Badge>
+        )
+      case 'processing':
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-amber-500 text-white flex items-center gap-1"
+          >
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Processing
+          </Badge>
+        )
+      case 'failed':
+        return <Badge variant="destructive">Failed</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
+  }
+
+  // Enhanced manual refresh function with better feedback
+  const refreshDocumentStatus = async () => {
+    if (!documentId || !projectId || !companyId) return
+
+    setIsLoadingStatus(true)
+    try {
+      const doc = await documentService.getDocument(
+        companyId,
+        projectId,
+        documentId,
+      )
+      const previousStatus = document?.status
+      setDocument(doc)
+
+      // Provide more detailed feedback based on status change
+      if (previousStatus !== doc?.status) {
+        toast({
+          title: 'Status Updated',
+          description: `Document status changed from ${previousStatus || 'unknown'} to ${doc?.status || 'unknown'}`,
+        })
+      } else {
+        toast({
+          title: 'Status Refreshed',
+          description: `Document status: ${doc?.status || 'unknown'} (no change)`,
+        })
+      }
+    } catch (error) {
+      console.error('Error refreshing document status:', error)
       toast({
-        title: "Voice input stopped",
-        description: "Voice recording has been stopped.",
-      });
+        title: 'Refresh Failed',
+        description: 'Could not update document status. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }
+
+  // Fix stuck processing documents
+  const fixStuckDocument = async () => {
+    if (!documentId || !projectId || !companyId) return
+
+    setIsLoadingStatus(true)
+    try {
+      const success = await retryDocumentProcessing(
+        companyId,
+        projectId,
+        documentId,
+      )
+
+      if (success) {
+        // Refresh the document status
+        const doc = await documentService.getDocument(
+          companyId,
+          projectId,
+          documentId,
+        )
+        setDocument(doc)
+
+        toast({
+          title: 'Document Fixed',
+          description:
+            'Document processing has been retried and completed successfully.',
+        })
+      } else {
+        toast({
+          title: 'Fix Failed',
+          description:
+            'Could not fix the document. It has been marked as failed.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('Error fixing stuck document:', error)
+      toast({
+        title: 'Fix Failed',
+        description: 'An error occurred while trying to fix the document.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoadingStatus(false)
+    }
+  }
+
+  // Smart query detection - determines if it's a search or AI question
+  const isQuestion = (text: string): boolean => {
+    const questionWords = [
+      'what',
+      'how',
+      'why',
+      'when',
+      'where',
+      'who',
+      'which',
+      'can',
+      'does',
+      'is',
+      'are',
+      'will',
+      'should',
+      'could',
+      'would',
+    ]
+    const questionMarkers = [
+      '?',
+      'explain',
+      'tell me',
+      'show me',
+      'help me',
+      'find out',
+    ]
+
+    const lowerText = text.toLowerCase()
+    const startsWithQuestionWord = questionWords.some(word =>
+      lowerText.startsWith(word + ' '),
+    )
+    const hasQuestionMarker = questionMarkers.some(marker =>
+      lowerText.includes(marker),
+    )
+
+    return startsWithQuestionWord || hasQuestionMarker
+  }
+
+  const handleQuery = async () => {
+    if (!query.trim()) return
+
+    if (!projectId) {
+      toast({
+        title: 'Project Required',
+        description: 'Project ID is required for search and AI functionality.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Check document status before proceeding
+    if (queryScope === 'document') {
+      // If no documentId but scope is document, switch to project
+      if (!documentId) {
+        setQueryScope('project')
+        toast({
+          title: 'Switched to Project Scope',
+          description:
+            'No specific document selected, searching across the entire project.',
+        })
+        // Continue with project-wide search
+      } else if (!document) {
+        toast({
+          title: 'Document Loading',
+          description:
+            'Document information is still loading. Please wait a moment and try again.',
+          variant: 'destructive',
+        })
+        return
+      } else if (document.status === 'processing') {
+        toast({
+          title: 'Document Processing',
+          description:
+            'This document is still being processed. Switching to project-wide search instead.',
+        })
+        // Switch to project scope instead of blocking
+        setQueryScope('project')
+      } else if (document.status === 'failed') {
+        toast({
+          title: 'Document Processing Failed',
+          description:
+            'This document failed to process. Switching to project-wide search instead.',
+        })
+        // Switch to project scope
+        setQueryScope('project')
+      }
+    }
+
+    console.log('Starting query:', { query, projectId, queryScope })
+    setIsLoading(true)
+    setResults(null)
+
+    try {
+      if (isQuestion(query)) {
+        // Handle as AI question - first get relevant content via semantic search
+        const searchParams: {
+          projectId: string
+          query: string
+          topK: number
+          documentId?: string
+        } = {
+          projectId: projectId,
+          query: query,
+          topK: 3,
+        }
+
+        // Only add documentId filter for document-specific queries if we have a valid document
+        if (
+          queryScope === 'document' &&
+          documentId &&
+          document?.status === 'processed'
+        ) {
+          searchParams.documentId = documentId
+        }
+
+        const searchResponse = await semanticSearch(searchParams)
+
+        // Build context from search results
+        let context = ``
+        if (queryScope === 'document' && documentId && document) {
+          context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
+        } else {
+          context = `Project ID: ${projectId}\nSearching across entire project.\n`
+        }
+
+        // Add relevant document content as context
+        if (
+          searchResponse &&
+          searchResponse.documents &&
+          searchResponse.documents[0] &&
+          searchResponse.documents[0].length > 0
+        ) {
+          const relevantContent = searchResponse.documents[0]
+            .slice(0, 3) // Use top 3 results
+            .map((doc, i) => {
+              const metadata = searchResponse.metadatas?.[0]?.[i]
+              const docName = metadata?.name || `Document ${i + 1}`
+              return `Document: ${docName}\nContent: ${doc}`
+            })
+            .join('\n\n')
+
+          context += `\nRelevant Content:\n${relevantContent}`
+        } else {
+          if (queryScope === 'document') {
+            context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
+          } else {
+            context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+          }
+        }
+
+        const response = await callOpenAI(query, context)
+        setResults({
+          type: 'ai',
+          aiAnswer: response,
+        })
+
+        // Clear the query field after successful AI response
+        setQuery('')
+
+        toast({
+          title: 'AI Analysis Complete',
+          description: `Your question about the ${queryScope === 'document' ? 'document' : 'project'} has been answered.`,
+        })
+      } else {
+        // Handle as semantic search with proper document scoping
+        const searchParams: {
+          projectId: string
+          query: string
+          topK: number
+          documentId?: string
+        } = {
+          projectId: projectId,
+          query: query,
+          topK: 10, // More results for search than AI context
+        }
+
+        // Only add documentId filter for document-specific queries if we have a valid document
+        if (
+          queryScope === 'document' &&
+          documentId &&
+          document?.status === 'processed'
+        ) {
+          searchParams.documentId = documentId
+        }
+
+        const searchResponse = await semanticSearch(searchParams)
+
+        setResults({
+          type: 'search',
+          searchResults: searchResponse as typeof searchResults,
+        })
+
+        // Clear the query field after successful search
+        setQuery('')
+
+        toast({
+          title: 'Search Complete',
+          description: `Found results ${queryScope === 'document' ? 'in this document' : 'across the project'}.`,
+        })
+      }
+    } catch (error) {
+      console.error('Query Error:', error)
+
+      let title = 'Query Failed'
+      let description =
+        'Please try again or contact support if the problem persists.'
+
+      if (error instanceof Error) {
+        const errorMessage = error.message
+        if (errorMessage.includes('API key is not configured')) {
+          title = 'Configuration Error'
+          description = 'OpenAI API key is missing from environment variables.'
+        } else if (errorMessage.includes('OpenAI API error')) {
+          title = 'AI Service Error'
+          description = errorMessage.replace('OpenAI API error: ', '')
+        }
+      }
+
+      toast({
+        title,
+        description,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle search results from the hook
+  useEffect(() => {
+    if (
+      searchResults &&
+      searchResults.ids &&
+      searchResults.ids[0] &&
+      searchResults.ids[0].length > 0
+    ) {
+      setResults({
+        type: 'search',
+        searchResults: searchResults,
+      })
+    }
+  }, [searchResults])
+
+  const handleSearch = () => {
+    handleQuery()
+  }
+
+  // Legacy method - redirecting to the newer handleQuery method
+  const askQuestion = async () => {
+    await handleQuery()
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: 'Copied to clipboard',
+      description: 'The text has been copied to your clipboard.',
+    })
+  }
+
+  const toggleListening = () => {
+    const newListeningState = !isListening
+    setIsListening(newListeningState)
+
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+      setSilenceTimer(null)
+    }
+
+    if (isListening) {
+      hasTranscriptRef.current = false
+      toast({
+        title: 'Voice input stopped',
+        description: 'Voice recording has been stopped.',
+      })
     } else {
       toast({
-        title: "Voice input started",
-        description: "Speak your question clearly...",
-      });
+        title: 'Voice input started',
+        description:
+          'Speak your query... Will auto-submit after 2s of silence.',
+      })
     }
-  };
-  
+  }
+
   const handleTranscript = (text: string) => {
-    setQuestion(text);
-  };
-  
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+    }
+
+    setQuery(text)
+    hasTranscriptRef.current = true
+
+    const timer = setTimeout(() => {
+      if (isListening && text.trim() && hasTranscriptRef.current) {
+        toggleListening()
+        setTimeout(() => {
+          if (text.trim()) {
+            handleQuery()
+          }
+        }, 100)
+      }
+    }, 2000)
+
+    setSilenceTimer(timer)
+  }
+
+  const handleAskAI = async () => {
+    await handleQuery()
+  }
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <BrainCircuit className="h-5 w-5 text-primary" />
-          <CardTitle className="text-lg">AI Tools</CardTitle>
-        </div>
-        <CardDescription>
-          Leverage AI to analyze and extract insights from your {queryScope === "document" ? "document" : "project"}
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-muted-foreground">Query Scope:</span>
-            <Select
-              value={queryScope}
-              onValueChange={(value: "project" | "document") => setQueryScope(value)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select scope" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project">
-                  <div className="flex items-center">
-                    <FileStack className="mr-2 h-4 w-4" />
-                    <span>Entire Project</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="document">
-                  <div className="flex items-center">
-                    <FileSearch className="mr-2 h-4 w-4" />
-                    <span>Current Document</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+    <>
+      <Card className="mb-32 md:mb-0 animate-fade-in">
+        <CardHeader className="pb-3" style={{ display: 'none' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Brain className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">AI Analysis</CardTitle>
+              <CardDescription>
+                Intelligent insights from your{' '}
+                {queryScope === 'document' ? 'document' : 'project'}
+              </CardDescription>
+            </div>
           </div>
+        </CardHeader>
 
-          <div>
-            <div className="flex items-center mb-2">
-              <FileSearch className="h-4 w-4 mr-2 text-primary" />
-              <h3 className="text-sm font-medium">Semantic Search</h3>
-            </div>
-            
-            <div className="flex gap-2 mb-3">
-              <Input
-                placeholder={`Search within ${queryScope === "document" ? "document" : "project"}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
-              <Button 
-                size="sm" 
-                onClick={handleSearch} 
-                disabled={isSearching || !searchQuery.trim()}
-              >
-                {isSearching ? (
-                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            
-            {searchResults.length > 0 && (
-              <div className="bg-secondary p-3 rounded-md text-sm space-y-2">
-                <div className="flex justify-between items-center">
-                  <Badge variant="outline" className="bg-secondary">
-                    Results
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    onClick={() => copyToClipboard(searchResults.join("\n\n"))}
+        <CardContent className="space-y-6">
+          {/* Document Status Section */}
+          {document && (
+            <div className="border rounded-xl p-4 mt-6 sm:mt-4 bg-gradient-to-r from-secondary/50 to-secondary/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-1.5 bg-primary/10 rounded-lg">
+                  <FileSearch className="h-4 w-4 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  Document Status
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-400 truncate max-w-[200px] font-medium">
+                  {document.name}
+                </span>
+                {getStatusBadge(document.status)}
+              </div>
+              {document.status === 'processing' && (
+                <div className="space-y-3 mt-3">
+                  <div className="text-xs text-gray-400">
+                    Document is being processed for AI analysis. This usually
+                    takes 1-2 minutes.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fixStuckDocument}
+                    disabled={isLoadingStatus}
+                    className="text-xs h-8 shadow-soft"
                   >
-                    <Copy className="h-3 w-3" />
+                    {isLoadingStatus ? (
+                      <div className="spinner mr-2" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                    )}
+                    Fix Stuck Processing
                   </Button>
                 </div>
-                {searchResults.map((result, index) => (
-                  <p key={index} className="text-xs">{result}</p>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <ScrollText className="h-4 w-4 mr-2 text-primary" />
-                <h3 className="text-sm font-medium">AI Summary</h3>
-              </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={generateSummary}
-                disabled={isSummarizing}
-              >
-                {isSummarizing ? "Generating..." : "Generate"}
-              </Button>
-            </div>
-            
-            {isSummarizing && (
-              <div className="bg-secondary p-4 rounded-md flex justify-center">
-                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            
-            {summary && (
-              <div className="bg-secondary p-3 rounded-md text-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <Badge variant="outline" className="bg-secondary">
-                    Summary
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    onClick={() => copyToClipboard(summary)}
+              )}
+              {document.status === 'failed' && (
+                <div className="space-y-3 mt-3">
+                  <div className="text-xs text-destructive">
+                    Document processing failed. Please try re-uploading the
+                    document.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fixStuckDocument}
+                    disabled={isLoadingStatus}
+                    className="text-xs h-8 shadow-soft"
                   >
-                    <Copy className="h-3 w-3" />
+                    {isLoadingStatus ? (
+                      <div className="spinner mr-2" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 mr-2" />
+                    )}
+                    Retry Processing
                   </Button>
                 </div>
-                <p className="text-xs">{summary}</p>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center mb-2">
-              <MessageSquare className="h-4 w-4 mr-2 text-primary" />
-              <h3 className="text-sm font-medium">Ask Questions</h3>
+              )}
+              {document.status === 'processed' && (
+                <div className="text-xs text-emerald-600 mt-2 font-medium">
+                  ✓ Document is ready for AI analysis and search
+                </div>
+              )}
             </div>
-            
-            <div className="flex gap-2 mb-3">
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-center mb-3 mt-8">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 blur-sm rounded-lg"></div>
+                <div className="relative p-1.5 bg-primary/10 rounded-lg mr-3">
+                  <Brain className="h-4 w-4 text-primary" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  Smart AI Query
+                  <span className="text-xs text-primary animate-pulse">✨</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Unlock insights with intelligent search & AI analysis
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="text-2xs">
+                    {queryScope === 'document' && documentId
+                      ? 'Document scope'
+                      : 'Project scope'}
+                  </Badge>
+                  {/* Show scope selector when we have both options */}
+                  {documentId && document && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-2xs h-5 px-2"
+                      onClick={() =>
+                        setQueryScope(
+                          queryScope === 'document' ? 'project' : 'document',
+                        )
+                      }
+                    >
+                      Switch to{' '}
+                      {queryScope === 'document' ? 'Project' : 'Document'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
+              <div className="flex items-start gap-2">
+                <span className="text-sm">🚀</span>
+                <div>
+                  <span className="font-medium text-foreground">Pro Tip:</span>{' '}
+                  Ask questions like "What are the key safety requirements?" or
+                  search for specific terms like "concrete specifications" to
+                  get instant, intelligent results from your{' '}
+                  {queryScope === 'document' && documentId
+                    ? 'document'
+                    : 'project'}
+                  .
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
               <Textarea
-                placeholder={`Ask a question about the ${queryScope === "document" ? "document" : "project"}...`}
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                className="resize-none min-h-[60px]"
+                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleQuery()
+                  }
+                }}
               />
             </div>
-            
-            <div className="flex justify-between gap-2 mb-3">
+
+            <div className="flex justify-between gap-3 mb-4">
               <VoiceInput
                 onTranscript={handleTranscript}
                 isListening={isListening}
                 toggleListening={toggleListening}
               />
-              <Button 
-                onClick={askQuestion} 
-                disabled={isAnswering || !question.trim()}
-                size="sm"
-              >
-                {isAnswering ? "Processing..." : "Ask AI"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleQuery}
+                  disabled={
+                    isLoading ||
+                    !query.trim() ||
+                    (queryScope === 'document' &&
+                      documentId &&
+                      document?.status === 'processing')
+                  }
+                  className="flex items-center gap-2 px-6 shadow-soft hover:shadow-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary transition-all duration-200"
+                  size="default"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="spinner" />
+                      <span className="animate-pulse">Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      {isQuestion(query) ? (
+                        <>
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Ask AI ✨</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="w-4 h-4" />
+                          <span>Search</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            
-            {isAnswering && (
-              <div className="bg-secondary p-4 rounded-md flex justify-center">
-                <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+
+            {searchError && (
+              <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                {searchError}
               </div>
             )}
-            
-            {answer && (
-              <div className="bg-secondary p-3 rounded-md text-sm">
-                <div className="flex justify-between items-center mb-2">
-                  <Badge variant="outline" className="bg-secondary">
-                    Answer
+
+            {/* Display Search Results */}
+            {results?.type === 'search' &&
+              results.searchResults &&
+              results.searchResults.ids &&
+              results.searchResults.ids[0] &&
+              results.searchResults.ids[0].length > 0 && (
+                <div className="bg-gradient-to-r from-secondary/30 to-secondary/10 p-4 rounded-xl border text-sm space-y-3 mb-4 shadow-soft">
+                  <div className="flex justify-between items-center">
+                    <Badge variant="outline" className="shadow-soft">
+                      <Search className="h-3 w-3 mr-1" />
+                      Search Results ({results.searchResults.ids[0].length}{' '}
+                      found)
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:bg-secondary/80"
+                      onClick={() => {
+                        const resultsText = results
+                          .searchResults!.ids[0].map(
+                            (id: string, i: number) =>
+                              `Document: ${results.searchResults!.metadatas?.[0]?.[i]?.name || id}\n${results.searchResults!.documents?.[0]?.[i] || 'No content preview available'}`,
+                          )
+                          .join('\n\n')
+                        copyToClipboard(resultsText)
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {results.searchResults.ids[0].map(
+                      (id: string, i: number) => (
+                        <div
+                          key={id}
+                          className="p-3 bg-background rounded-lg shadow-soft border text-xs"
+                        >
+                          <div className="font-medium text-primary mb-2">
+                            Document:{' '}
+                            {results.searchResults!.metadatas?.[0]?.[i]?.name ||
+                              id}
+                          </div>
+                          <div className="text-foreground mb-2 leading-relaxed">
+                            {results.searchResults!.documents?.[0]?.[i] ||
+                              'No content preview available'}
+                          </div>
+                          <div className="text-xs text-gray-400 flex justify-between">
+                            <span>ID: {id}</span>
+                            <span className="font-medium">
+                              Relevance:{' '}
+                              {(
+                                1 -
+                                (results.searchResults!.distances?.[0]?.[i] ||
+                                  0)
+                              ).toFixed(3)}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Display AI Answer */}
+            {results?.type === 'ai' && results.aiAnswer && (
+              <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
+                <div className="flex justify-between items-center mb-3">
+                  <Badge variant="outline" className="shadow-soft">
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    AI Analysis
                   </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    onClick={() => copyToClipboard(answer)}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:bg-secondary/80"
+                    onClick={() => copyToClipboard(results.aiAnswer!)}
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
-                <p className="text-xs">{answer}</p>
+                <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+                  {results.aiAnswer}
+                </div>
               </div>
             )}
+
+            {/* No Results Message */}
+            {results?.type === 'search' &&
+              results.searchResults &&
+              (!results.searchResults.ids ||
+                !results.searchResults.ids[0] ||
+                results.searchResults.ids[0].length === 0) &&
+              !isLoading &&
+              query && (
+                <div className="text-gray-400 text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
+                  No results found for "
+                  <span className="font-medium">{query}</span>". Try different
+                  search terms or ask a question for AI analysis.
+                </div>
+              )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Shazam-style voice button - only appears on mobile */}
+      {!hideShazamButton && (
+        <VoiceShazamButton
+          isListening={isListening}
+          toggleListening={toggleListening}
+          showTranscript={isListening || query ? query : undefined}
+          isProcessing={isLoading}
+          isMobileOnly={true}
+          onHide={() => setHideShazamButton(true)}
+        />
+      )}
+
+      {/* Show voice button when hidden - small floating button */}
+      {hideShazamButton && (
+        <div className="fixed bottom-4 right-4 z-[99]">
+          <Button
+            onClick={() => setHideShazamButton(false)}
+            className="h-12 w-12 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            title="Show voice button"
+          >
+            🎤
+          </Button>
         </div>
-      </CardContent>
-    </Card>
-  );
-};
+      )}
+    </>
+  )
+}
