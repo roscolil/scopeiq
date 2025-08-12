@@ -220,19 +220,19 @@ export const MobileBiometricLogin: React.FC<MobileBiometricLoginProps> = ({
       <div className="space-y-3">
         <Button
           onClick={handleBiometricLogin}
-          disabled={isLoading}
-          className="w-full h-14 bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 hover:from-blue-600 hover:via-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 text-lg font-medium"
+          disabled={isLoading || context === 'settings'}
+          className="w-full h-14 bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 hover:from-blue-600 hover:via-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           {isLoading ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-              Authenticating...
+              {context === 'settings' ? 'Setting up...' : 'Authenticating...'}
             </>
           ) : (
             <>
               <Fingerprint className="h-6 w-6 mr-3" />
-              Tap to Sign In
+              {context === 'settings' ? 'Already Enabled' : 'Tap to Sign In'}
             </>
           )}
         </Button>

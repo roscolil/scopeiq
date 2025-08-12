@@ -181,9 +181,9 @@ const BiometricSecuritySettings = () => {
       const success = removeAllBiometricCredentials()
       if (success) {
         toast({
-          title: 'Biometric credentials cleared',
+          title: 'Credentials removed',
           description:
-            'All biometric login data has been removed from this device.',
+            'Biometric login has been disabled. You can set it up again anytime.',
         })
         checkBiometricStatus()
       } else {
@@ -292,9 +292,10 @@ const BiometricSecuritySettings = () => {
             <Button
               variant="outline"
               onClick={handleClearCredentials}
-              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              title="Remove stored login credentials and disable biometric sign-in. You can set it up again anytime."
             >
-              Clear Biometric Data
+              Disable biometric sign-in and remove saved credentials
             </Button>
           )}
         </div>
