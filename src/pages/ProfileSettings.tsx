@@ -606,7 +606,7 @@ const ProfileSettings = () => {
                 )}
               </TabsList>
             </div>
-            
+
             {/* Desktop-only original styling */}
             <div className="hidden sm:block">
               <TabsList>
