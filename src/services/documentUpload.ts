@@ -57,7 +57,13 @@ export const uploadDocumentToS3 = async (
     // Generate file key with clean hierarchy: company/projectId/files
     // Always use projectId for consistency with metadata system
     const timestamp = Date.now()
-    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    // Improved file name sanitization that preserves readability
+    const sanitizedFileName = file.name
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/[^\w\-_.]/g, '') // Remove special characters except dash, underscore, dot
+      .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+      .replace(/^_|_$/g, '') // Remove leading/trailing underscores
+
     const key = `${companyId}/${projectId}/files/${timestamp}_${sanitizedFileName}`
 
     console.log('S3 upload path:', key)

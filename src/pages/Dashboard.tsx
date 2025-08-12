@@ -575,12 +575,12 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-10 w-10 p-0 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
+                        className="h-10 w-10 p-0 rounded-full hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
                         onClick={() =>
                           navigate(routes.company.settings(companyId))
                         }
                       >
-                        <Settings className="h-5 w-5" />
+                        <Settings className="h-7 w-7" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

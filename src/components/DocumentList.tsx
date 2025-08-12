@@ -39,10 +39,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Document } from '@/types'
 import { routes } from '@/utils/navigation'
+import { cn } from '@/lib/utils'
 
 interface DocumentListProps {
   documents: Document[]
   onDelete?: (documentId: string) => void
+  onCancelProcessing?: (documentId: string) => void
   projectId: string
   companyId: string
   projectName?: string
@@ -51,6 +53,7 @@ interface DocumentListProps {
 export const DocumentList = ({
   documents,
   onDelete,
+  onCancelProcessing,
   projectId,
   companyId,
   projectName,
@@ -67,6 +70,33 @@ export const DocumentList = ({
       return <Image className="h-8 w-8 text-blue-500" />
     } else {
       return <File className="h-8 w-8 text-green-500" />
+    }
+  }
+
+  const getProcessingInfo = (doc: Document) => {
+    if (doc.type.includes('pdf')) {
+      // Show generic OCR processing without fake page numbers
+      const progress = Math.floor((Date.now() / 300) % 85) + 10 // 10-85%
+      return `OCR ${progress}%`
+    } else if (doc.type.includes('image')) {
+      const progress = Math.floor((Date.now() / 300) % 85) + 10
+      return `OCR ${progress}%`
+    } else {
+      const progress = Math.floor((Date.now() / 300) % 85) + 10
+      return `Processing ${progress}%`
+    }
+  }
+
+  const getDetailedProcessingStatus = (doc: Document) => {
+    if (doc.type.includes('pdf')) {
+      const progress = Math.floor((Date.now() / 300) % 85) + 10
+      return `Extracting text • ${progress}%`
+    } else if (doc.type.includes('image')) {
+      const progress = Math.floor((Date.now() / 300) % 85) + 10
+      return `Running OCR • ${progress}%`
+    } else {
+      const progress = Math.floor((Date.now() / 300) % 85) + 10
+      return `Analyzing • ${progress}%`
     }
   }
 
@@ -182,16 +212,41 @@ export const DocumentList = ({
           </Card>
         ) : (
           documents.map(doc => (
-            <Card key={doc.id} className="overflow-hidden">
+            <Card
+              key={doc.id}
+              className={cn(
+                'overflow-hidden transition-all duration-300 relative',
+                doc.status === 'processing' &&
+                  'ring-2 ring-amber-400 bg-amber-900/20 backdrop-blur-sm',
+              )}
+            >
+              {/* Subtle shimmer overlay for processing documents */}
+              {doc.status === 'processing' && (
+                <div className="absolute inset-0 shimmer-processing pointer-events-none opacity-15"></div>
+              )}
               <CardHeader className="p-4 pb-0">
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3">
-                    {getFileIcon(doc.type)}
+                    <div className="relative">
+                      {getFileIcon(doc.type)}
+                      {doc.status === 'processing' && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse">
+                          <div className="absolute inset-0 bg-amber-400 rounded-full animate-ping opacity-75"></div>
+                        </div>
+                      )}
+                    </div>
                     <div>
-                      <CardTitle className="text-base font-medium">
+                      <CardTitle
+                        className={cn(
+                          'text-base font-medium',
+                          doc.status === 'processing'
+                            ? 'text-white'
+                            : 'text-black',
+                        )}
+                      >
                         {doc.name}
                       </CardTitle>
-                      <CardDescription className="text-xs">
+                      <CardDescription className="text-xs text-gray-500">
                         {typeof doc.size === 'number'
                           ? `${(doc.size / 1024).toFixed(2)} KB`
                           : doc.size}{' '}
@@ -199,12 +254,22 @@ export const DocumentList = ({
                         {doc.createdAt
                           ? new Date(doc.createdAt).toLocaleDateString()
                           : 'No date'}
+                        {/* {doc.status === 'processing' && (
+                          <span className="ml-2 text-amber-700 text-xs font-semibold">
+                            • {getProcessingInfo(doc)}
+                          </span>
+                        )} */}
                       </CardDescription>
                     </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={doc.status === 'processing'}
+                      >
                         <MoreVertical className="h-4 w-4" />
                         <span className="sr-only">More options</span>
                       </Button>
@@ -212,6 +277,7 @@ export const DocumentList = ({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={() => viewDocument(doc.id, doc.name)}
+                        disabled={doc.status === 'processing'}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View
@@ -223,6 +289,7 @@ export const DocumentList = ({
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => handleDeleteClick(doc)}
+                        disabled={doc.status === 'processing'}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
@@ -232,11 +299,40 @@ export const DocumentList = ({
                 </div>
               </CardHeader>
               <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                {getStatusBadge(doc.status)}
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(doc.status)}
+                  {doc.status === 'processing' && (
+                    <div className="text-xs text-amber-700 flex items-center gap-2 font-medium">
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        {/* <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce"></div> */}
+                      </div>
+                      <span className="ml-1">
+                        {getDetailedProcessingStatus(doc)}
+                      </span>
+                      {onCancelProcessing && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onCancelProcessing(doc.id)}
+                          className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800 ml-2"
+                        >
+                          Cancel Download
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => viewDocument(doc.id, doc.name)}
+                  disabled={doc.status === 'processing'}
+                  className={cn(
+                    doc.status === 'processing' &&
+                      'opacity-50 cursor-not-allowed',
+                  )}
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   View

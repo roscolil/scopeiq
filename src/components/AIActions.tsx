@@ -61,6 +61,7 @@ export const AIActions = ({
       documents?: string[][]
     }
     aiAnswer?: string
+    query?: string
   } | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
@@ -430,6 +431,7 @@ export const AIActions = ({
         setResults({
           type: 'ai',
           aiAnswer: response,
+          query: query,
         })
 
         // Clear the query field after successful AI response
@@ -862,23 +864,36 @@ export const AIActions = ({
 
             {/* Display AI Answer */}
             {results?.type === 'ai' && results.aiAnswer && (
-              <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
-                <div className="flex justify-between items-center mb-3">
-                  <Badge variant="outline" className="shadow-soft">
-                    <MessageSquare className="h-3 w-3 mr-1" />
-                    AI Analysis
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 hover:bg-secondary/80"
-                    onClick={() => copyToClipboard(results.aiAnswer!)}
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
-                  {results.aiAnswer}
+              <div className="space-y-3">
+                {/* Display the question for context */}
+                {results.query && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="font-medium text-blue-900 mb-2">
+                      Your Question:
+                    </h4>
+                    <p className="text-blue-800 text-sm">{results.query}</p>
+                  </div>
+                )}
+
+                {/* AI Response with scrolling */}
+                <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
+                  <div className="flex justify-between items-center mb-3">
+                    <Badge variant="outline" className="shadow-soft">
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      AI Analysis
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:bg-secondary/80"
+                      onClick={() => copyToClipboard(results.aiAnswer!)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none max-h-96 overflow-y-auto">
+                    {results.aiAnswer}
+                  </div>
                 </div>
               </div>
             )}
