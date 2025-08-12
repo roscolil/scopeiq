@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -20,8 +20,9 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
-import { VoiceInput } from './VoiceInput'
+import { VoiceInputFixed } from './VoiceInputFixed'
 import { VoiceShazamButton } from './VoiceShazamButton'
+import { NovaSonicPrompts } from './NovaSonicPrompts'
 import { answerQuestionWithBedrock } from '@/utils/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -32,6 +33,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/openai'
+import { novaSonic } from '@/services/nova-sonic'
+import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
@@ -71,6 +74,10 @@ export const AIActions = ({
   const [document, setDocument] = useState<Document | null>(null)
   const [isLoadingStatus, setIsLoadingStatus] = useState(false)
   const [hideShazamButton, setHideShazamButton] = useState(false)
+  const [isVoicePlaying, setIsVoicePlaying] = useState(false)
+  const [shouldResumeListening, setShouldResumeListening] = useState(false)
+  const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
+  const [interimTranscript, setInterimTranscript] = useState<string>('')
   const { toast } = useToast()
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
@@ -82,6 +89,63 @@ export const AIActions = ({
     error: searchError,
     search,
   } = useSemanticSearch(projectId || '')
+
+  // Loop-safe voice wrapper
+  const speakWithStateTracking = useCallback(
+    async (
+      prompt: string,
+      options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
+    ) => {
+      if (!novaSonic.isAvailable()) return
+
+      try {
+        // Remember if we were listening before voice output
+        const wasListening = isListening
+        setShouldResumeListening(wasListening && !options.stopListeningAfter)
+        setIsVoicePlaying(true)
+
+        // Show the text that's being spoken
+        setCurrentSpeakingText(prompt)
+
+        console.log('🗣️ Starting voice output, was listening:', wasListening)
+
+        // IMPORTANT: Clear any pending auto-submit timers
+        if (silenceTimer) {
+          console.log('🛑 Clearing silence timer before voice output')
+          clearTimeout(silenceTimer)
+          setSilenceTimer(null)
+        }
+
+        // Reset transcript processing flag
+        hasTranscriptRef.current = false
+
+        // Stop voice input while speaking
+        if (isListening) {
+          setIsListening(false)
+        }
+
+        // Wait for voice to complete
+        console.log('🎵 Waiting for voice synthesis to complete...')
+        await novaSonic.speakPrompt(prompt, { voice: options.voice })
+
+        console.log('✅ Voice output completed successfully')
+
+        // If stopListeningAfter is true, don't resume listening
+        if (options.stopListeningAfter) {
+          console.log('🎤 Stopping microphone listening after verbal response')
+          setShouldResumeListening(false)
+        }
+      } catch (error) {
+        console.error('Voice synthesis error:', error)
+      } finally {
+        // Clear speaking text and voice state when audio finishes
+        setCurrentSpeakingText('')
+        setIsVoicePlaying(false)
+        console.log('🔄 Voice playing set to false')
+      }
+    },
+    [isListening, silenceTimer],
+  )
 
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
@@ -414,11 +478,11 @@ export const AIActions = ({
             .map((doc, i) => {
               const metadata = searchResponse.metadatas?.[0]?.[i]
               const docName = metadata?.name || `Document ${i + 1}`
-              return `Document: ${docName}\nContent: ${doc}`
+              return `Source File: "${docName}"\nContent: ${doc}`
             })
             .join('\n\n')
 
-          context += `\nRelevant Content:\n${relevantContent}`
+          context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, please reference the specific source file names (e.g., "According to [filename]..." or "As mentioned in [filename]...") to help the user understand where the information comes from.`
         } else {
           if (queryScope === 'document') {
             context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
@@ -441,6 +505,21 @@ export const AIActions = ({
           title: 'AI Analysis Complete',
           description: `Your question about the ${queryScope === 'document' ? 'document' : 'project'} has been answered.`,
         })
+
+        // Provide voice feedback with the actual AI answer (simplified)
+        if (response && response.length > 0) {
+          setTimeout(() => {
+            // Read the actual answer instead of generic completion message
+            const answerToSpeak =
+              response.length > 200
+                ? response.substring(0, 200) + '...'
+                : response
+            speakWithStateTracking(answerToSpeak, {
+              voice: 'Ruth',
+              stopListeningAfter: true,
+            }).catch(console.error)
+          }, 1000)
+        }
       } else {
         // Handle as semantic search with proper document scoping
         const searchParams: {
@@ -465,13 +544,29 @@ export const AIActions = ({
 
         const searchResponse = await semanticSearch(searchParams)
 
-        setResults({
-          type: 'search',
-          searchResults: searchResponse as typeof searchResults,
-        })
+        // Check if we got results
+        if (
+          searchResponse &&
+          searchResponse.ids &&
+          searchResponse.ids[0] &&
+          searchResponse.ids[0].length > 0
+        ) {
+          setResults({
+            type: 'search',
+            searchResults: searchResponse as typeof searchResults,
+          })
 
-        // Clear the query field after successful search
-        setQuery('')
+          // Clear the query field after successful search
+          setQuery('')
+        } else {
+          // No results found for search query
+          toast({
+            title: 'No Results Found',
+            description:
+              'Try rephrasing your search or asking a different question.',
+            variant: 'destructive',
+          })
+        }
 
         toast({
           title: 'Search Complete',
@@ -506,8 +601,13 @@ export const AIActions = ({
     }
   }
 
-  // Handle search results from the hook
+  // Handle search results from the hook - DISABLED to prevent conflicts
+  // We handle search results directly in handleQuery() instead
+  /*
   useEffect(() => {
+    // Only process search results if we actually submitted a query
+    if (!hasSubmittedQuery) return
+
     if (
       searchResults &&
       searchResults.ids &&
@@ -518,8 +618,64 @@ export const AIActions = ({
         type: 'search',
         searchResults: searchResults,
       })
+      // Reset the flag after successful results
+      setHasSubmittedQuery(false)
+    } else if (
+      searchResults &&
+      searchResults.ids &&
+      searchResults.ids[0] &&
+      searchResults.ids[0].length === 0 &&
+      query.trim()
+    ) {
+      // No results found - show toast only (no voice)
+      toast({
+        title: 'No Results Found',
+        description: 'Try rephrasing your question or asking about something else.',
+        variant: 'destructive',
+      })
+      // Reset the flag after showing no results
+      setHasSubmittedQuery(false)
     }
-  }, [searchResults])
+  }, [searchResults, query, speakWithStateTracking, toast, hasSubmittedQuery])
+  */
+
+  // Stop voice input when voice output is playing
+  useEffect(() => {
+    if (isVoicePlaying && isListening) {
+      console.log('🛑 Stopping voice input due to voice output')
+      setIsListening(false)
+    }
+  }, [isVoicePlaying, isListening])
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('🔍 State change:', {
+      isVoicePlaying,
+      isListening,
+      shouldResumeListening,
+    })
+  }, [isVoicePlaying, isListening, shouldResumeListening])
+
+  // Resume listening after voice playback finishes
+  useEffect(() => {
+    if (!isVoicePlaying && shouldResumeListening) {
+      console.log('🎤 Voice finished, preparing to resume listening...')
+
+      // Give a moment for everything to settle
+      const timer = setTimeout(() => {
+        console.log('🎤 Resuming voice input now!')
+        setIsListening(true)
+        setShouldResumeListening(false)
+        toast({
+          title: 'Voice input resumed',
+          description: 'Ready for your next question...',
+          duration: 2000,
+        })
+      }, 1500) // Slightly longer delay for more reliability
+
+      return () => clearTimeout(timer)
+    }
+  }, [isVoicePlaying, shouldResumeListening, toast])
 
   const handleSearch = () => {
     handleQuery()
@@ -559,29 +715,58 @@ export const AIActions = ({
         description:
           'Speak your query... Will auto-submit after 2s of silence.',
       })
+
+      // No initial voice prompt - just start listening silently
     }
   }
 
   const handleTranscript = (text: string) => {
+    // Prevent processing if voice is currently playing (loop prevention)
+    if (isVoicePlaying) {
+      console.log('🛑 Ignoring transcript during voice playback:', text)
+      return
+    }
+
     if (silenceTimer) {
       clearTimeout(silenceTimer)
     }
 
+    console.log('✅ Processing voice transcript:', text)
     setQuery(text)
     hasTranscriptRef.current = true
 
+    // Only set auto-submit timer if voice is not playing and won't be playing soon
     const timer = setTimeout(() => {
-      if (isListening && text.trim() && hasTranscriptRef.current) {
-        toggleListening()
+      // Check if we should auto-submit (relaxed conditions)
+      if (text.trim() && hasTranscriptRef.current && !isVoicePlaying) {
+        console.log('⏰ Auto-submitting query after silence period')
+        // Make sure listening is stopped before submitting
+        if (isListening) {
+          toggleListening()
+        }
         setTimeout(() => {
-          if (text.trim()) {
+          if (text.trim() && !isVoicePlaying) {
             handleQuery()
           }
         }, 100)
+      } else {
+        console.log('⏰ Skipping auto-submit due to voice state:', {
+          isListening,
+          hasText: !!text.trim(),
+          hasTranscript: hasTranscriptRef.current,
+          isVoicePlaying,
+        })
       }
     }, 2000)
 
     setSilenceTimer(timer)
+  }
+
+  // Handle interim transcript updates (real-time display)
+  const handleInterimTranscript = (text: string) => {
+    setInterimTranscript(text)
+    // Update query field in real-time but don't set submission flag
+    setQuery(text)
   }
 
   const handleAskAI = async () => {
@@ -719,18 +904,28 @@ export const AIActions = ({
             </div>
 
             <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
-              <div className="flex items-start gap-2">
-                <span className="text-sm">🚀</span>
-                <div>
-                  <span className="font-medium text-foreground">Pro Tip:</span>{' '}
-                  Ask questions like "What are the key safety requirements?" or
-                  search for specific terms like "concrete specifications" to
-                  get instant, intelligent results from your{' '}
-                  {queryScope === 'document' && documentId
-                    ? 'document'
-                    : 'project'}
-                  .
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">🚀</span>
+                  <div>
+                    <span className="font-medium text-foreground">
+                      Pro Tip:
+                    </span>{' '}
+                    Ask questions like "What are the key safety requirements?"
+                    or search for specific terms like "concrete specifications"
+                    to get instant, intelligent results from your{' '}
+                    {queryScope === 'document' && documentId
+                      ? 'document'
+                      : 'project'}
+                    .
+                  </div>
                 </div>
+                <NovaSonicPrompts
+                  context="welcome"
+                  disabled={isLoading}
+                  voice="Ruth"
+                  customText={`Hi! I'm your AI assistant powered by Nova Sonic. I'm here to help you analyze your ${queryScope === 'document' && documentId ? 'document' : 'project'}. You can ask questions like "What are the key safety requirements?" or search for specific terms like "concrete specifications" to get instant, intelligent results.`}
+                />
               </div>
             </div>
 
@@ -747,14 +942,56 @@ export const AIActions = ({
                   }
                 }}
               />
+
+              {/* Show text being spoken */}
+              {currentSpeakingText && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    AI is speaking:
+                  </div>
+                  <div className="text-blue-800 text-sm leading-relaxed">
+                    {currentSpeakingText}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
-              <VoiceInput
-                onTranscript={handleTranscript}
-                isListening={isListening}
-                toggleListening={toggleListening}
-              />
+              <div className="flex gap-2 items-center">
+                <VoiceInputFixed
+                  onTranscript={handleTranscript}
+                  isListening={isListening}
+                  toggleListening={toggleListening}
+                  preventLoop={true}
+                  disabled={isVoicePlaying}
+                  onInterimTranscript={handleInterimTranscript}
+                  preventAutoRestart={isVoicePlaying}
+                />
+
+                {/* Voice status indicator */}
+                {isVoicePlaying && (
+                  <div className="flex items-center gap-1 text-blue-600 text-sm">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    Speaking...
+                  </div>
+                )}
+                {shouldResumeListening && !isVoicePlaying && (
+                  <div className="flex items-center gap-1 text-orange-600 text-sm">
+                    <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce"></div>
+                    Resuming...
+                  </div>
+                )}
+
+                <NovaSonicPrompts
+                  context="guidance"
+                  disabled={isLoading || isVoicePlaying}
+                  voice="Ruth"
+                  onPromptComplete={() => {
+                    // Optional: Could trigger some action after prompt completes
+                  }}
+                />
+              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={handleQuery}
