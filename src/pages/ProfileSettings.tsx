@@ -573,17 +573,18 @@ const ProfileSettings = () => {
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <div className="overflow-x-auto scrollbar-hide">
-              <TabsList className="w-max min-w-full sm:w-auto gap-1 sm:gap-0 p-2 sm:p-1.5">
+            {/* Mobile-only scrollable wrapper */}
+            <div className="sm:hidden overflow-x-auto scrollbar-hide">
+              <TabsList className="w-max min-w-full gap-1 p-2">
                 <TabsTrigger
                   value="profile"
-                  className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                  className="text-xs px-3 py-2.5 min-w-[70px]"
                 >
                   Profile
                 </TabsTrigger>
                 <TabsTrigger
                   value="security"
-                  className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                  className="text-xs px-3 py-2.5 min-w-[70px]"
                 >
                   Security
                 </TabsTrigger>
@@ -591,18 +592,32 @@ const ProfileSettings = () => {
                   <>
                     <TabsTrigger
                       value="userManagement"
-                      className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                      className="text-xs px-3 py-2.5 min-w-[70px]"
                     >
-                      <span className="hidden sm:inline">User Management</span>
-                      <span className="sm:hidden">Users</span>
+                      Users
                     </TabsTrigger>
                     <TabsTrigger
                       value="invitations"
-                      className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                      className="text-xs px-3 py-2.5 min-w-[70px]"
                     >
-                      <span className="hidden sm:inline">Invitations</span>
-                      <span className="sm:hidden">Invites</span>
+                      Invites
                     </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
+            
+            {/* Desktop-only original styling */}
+            <div className="hidden sm:block">
+              <TabsList>
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="security">Security</TabsTrigger>
+                {canManageUsers && (
+                  <>
+                    <TabsTrigger value="userManagement">
+                      User Management
+                    </TabsTrigger>
+                    <TabsTrigger value="invitations">Invitations</TabsTrigger>
                   </>
                 )}
               </TabsList>
