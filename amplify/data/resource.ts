@@ -188,7 +188,7 @@ const schema = a.schema({
     })
     .authorization(allow => [
       allow.owner(),
-      allow.authenticated().to(['read', 'update']), // Allow authenticated users to read and update
+      allow.authenticated().to(['read', 'update', 'delete']), // Allow authenticated users to delete documents
     ])
     .secondaryIndexes(index => [
       index('projectId')

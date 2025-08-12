@@ -29,6 +29,10 @@ const Migration = lazy(() => import('./pages/Migration'))
 const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Contact = lazy(() => import('./pages/Contact'))
+const CommonTermsManagement = lazy(
+  () => import('./pages/CommonTermsManagement'),
+)
+const AITrainingConsole = lazy(() => import('./pages/AITrainingConsole'))
 
 // Enhanced loading fallback components with skeletons
 // const PageLoadingFallback = ({
@@ -163,6 +167,24 @@ const App = () => {
                 element={
                   <EnhancedSuspense>
                     <Contact />
+                  </EnhancedSuspense>
+                }
+              />
+
+              <Route
+                path="/common-terms"
+                element={
+                  <EnhancedSuspense>
+                    <CommonTermsManagement />
+                  </EnhancedSuspense>
+                }
+              />
+
+              <Route
+                path="/ai-training"
+                element={
+                  <EnhancedSuspense>
+                    <AITrainingConsole />
                   </EnhancedSuspense>
                 }
               />

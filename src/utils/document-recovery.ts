@@ -89,7 +89,7 @@ export async function retryDocumentProcessing(
 
     // Try to re-process if we have content or can extract it
     if (document.content) {
-      await processEmbeddingOnly(projectId, documentId, document.content, {
+      await processEmbeddingOnly(document.content, projectId, documentId, {
         name: document.name,
         type: document.type,
         url: document.url,
