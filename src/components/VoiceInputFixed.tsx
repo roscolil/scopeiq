@@ -1,5 +1,11 @@
 /**
- * Voice Input Component with Loop Prevention
+ * Fixed Voice Input Componexport const VoiceInputFixed = ({
+  onTranscript,
+  isListening,
+  toggleListening,
+  preventLoop = false,
+  disabled = false,
+}: VoiceInputProps) => {th Loop Prevention
  * Prevents voice prompts from triggering speech recognition
  */
 
@@ -31,7 +37,7 @@ interface VoiceInputProps {
   preventAutoRestart?: boolean // New prop to prevent auto-restart during AI responses
 }
 
-export const VoiceInput = ({
+export const VoiceInputFixed = ({
   onTranscript,
   isListening,
   toggleListening,
@@ -259,7 +265,6 @@ export const VoiceInput = ({
     toggleListening,
     isProcessing,
     preventLoop,
-    onInterimTranscript,
   ])
 
   // Handle listening state changes
@@ -297,9 +302,8 @@ export const VoiceInput = ({
   // Cleanup debounce timeout
   useEffect(() => {
     return () => {
-      const timeout = debounceTimeoutRef.current
-      if (timeout) {
-        clearTimeout(timeout)
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
       }
     }
   }, [])
@@ -329,3 +333,5 @@ export const VoiceInput = ({
     </Button>
   )
 }
+
+export { VoiceInputFixed as VoiceInput }

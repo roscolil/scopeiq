@@ -658,6 +658,7 @@ const ProjectDetails = () => {
               <AIActions
                 documentId=""
                 projectId={project.id}
+                projectName={project.name}
                 companyId={companyId || 'default-company'}
               />
             </div>

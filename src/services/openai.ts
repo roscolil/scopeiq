@@ -18,12 +18,12 @@ export const callOpenAI = async (prompt: string, context?: string) => {
           {
             role: 'system',
             content:
-              'You are an AI assistant specialized in construction and jobsite document analysis.',
+              "You are an AI assistant specialized in construction and jobsite document analysis. Provide direct, concise answers without repeating the user's question. Focus only on answering what was asked.",
           },
           {
             role: 'user',
             content: context
-              ? `Context: ${context}\n\nQuestion: ${prompt}`
+              ? `Context: ${context}\n\nQuestion: ${prompt}\n\nPlease provide a direct answer without repeating my question.`
               : prompt,
           },
         ],

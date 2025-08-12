@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/openai'
+import { novaSonic } from '@/services/nova-sonic'
+import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/embedding'
 import { documentService } from '@/services/hybrid'
@@ -41,12 +43,14 @@ import { retryDocumentProcessing } from '@/utils/document-recovery'
 interface AIActionsProps {
   documentId: string
   projectId?: string
+  projectName?: string
   companyId?: string
 }
 
 export const AIActions = ({
   documentId,
   projectId,
+  projectName,
   companyId,
 }: AIActionsProps) => {
   const [query, setQuery] = useState('')
@@ -71,9 +75,33 @@ export const AIActions = ({
   const [document, setDocument] = useState<Document | null>(null)
   const [isLoadingStatus, setIsLoadingStatus] = useState(false)
   const [hideShazamButton, setHideShazamButton] = useState(false)
+  const [isVoicePlaying, setIsVoicePlaying] = useState(false)
+  const [shouldResumeListening, setShouldResumeListening] = useState(false)
+  const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
+  const [interimTranscript, setInterimTranscript] = useState<string>('')
   const { toast } = useToast()
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
+
+  // Chat history state
+  interface ChatMessage {
+    id: string
+    type: 'user' | 'ai'
+    content: string
+    timestamp: Date
+    query?: string // Store original query for user messages
+  }
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom of chat
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [chatHistory])
 
   // Use semantic search hook for real search functionality
   const {
@@ -82,6 +110,63 @@ export const AIActions = ({
     error: searchError,
     search,
   } = useSemanticSearch(projectId || '')
+
+  // Loop-safe voice wrapper
+  const speakWithStateTracking = useCallback(
+    async (
+      prompt: string,
+      options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
+    ) => {
+      if (!novaSonic.isAvailable()) return
+
+      try {
+        // Remember if we were listening before voice output
+        const wasListening = isListening
+        setShouldResumeListening(wasListening && !options.stopListeningAfter)
+        setIsVoicePlaying(true)
+
+        // Show the text that's being spoken
+        setCurrentSpeakingText(prompt)
+
+        console.log('🗣️ Starting voice output, was listening:', wasListening)
+
+        // IMPORTANT: Clear any pending auto-submit timers
+        if (silenceTimer) {
+          console.log('🛑 Clearing silence timer before voice output')
+          clearTimeout(silenceTimer)
+          setSilenceTimer(null)
+        }
+
+        // Reset transcript processing flag
+        hasTranscriptRef.current = false
+
+        // Stop voice input while speaking
+        if (isListening) {
+          setIsListening(false)
+        }
+
+        // Wait for voice to complete
+        console.log('🎵 Waiting for voice synthesis to complete...')
+        await novaSonic.speakPrompt(prompt, { voice: options.voice })
+
+        console.log('✅ Voice output completed successfully')
+
+        // If stopListeningAfter is true, don't resume listening
+        if (options.stopListeningAfter) {
+          console.log('🎤 Stopping microphone listening after verbal response')
+          setShouldResumeListening(false)
+        }
+      } catch (error) {
+        console.error('Voice synthesis error:', error)
+      } finally {
+        // Clear speaking text and voice state when audio finishes
+        setCurrentSpeakingText('')
+        setIsVoicePlaying(false)
+        console.log('🔄 Voice playing set to false')
+      }
+    },
+    [isListening, silenceTimer],
+  )
 
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
@@ -334,8 +419,9 @@ export const AIActions = ({
         setQueryScope('project')
         toast({
           title: 'Switched to Project Scope',
-          description:
-            'No specific document selected, searching across the entire project.',
+          description: projectName
+            ? `No specific document selected, searching across "${projectName}".`
+            : 'No specific document selected, searching across the entire project.',
         })
         // Continue with project-wide search
       } else if (!document) {
@@ -349,16 +435,18 @@ export const AIActions = ({
       } else if (document.status === 'processing') {
         toast({
           title: 'Document Processing',
-          description:
-            'This document is still being processed. Switching to project-wide search instead.',
+          description: projectName
+            ? `This document is still being processed. Switching to search across "${projectName}" instead.`
+            : 'This document is still being processed. Switching to project-wide search instead.',
         })
         // Switch to project scope instead of blocking
         setQueryScope('project')
       } else if (document.status === 'failed') {
         toast({
           title: 'Document Processing Failed',
-          description:
-            'This document failed to process. Switching to project-wide search instead.',
+          description: projectName
+            ? `This document failed to process. Switching to search across "${projectName}" instead.`
+            : 'This document failed to process. Switching to project-wide search instead.',
         })
         // Switch to project scope
         setQueryScope('project')
@@ -414,11 +502,11 @@ export const AIActions = ({
             .map((doc, i) => {
               const metadata = searchResponse.metadatas?.[0]?.[i]
               const docName = metadata?.name || `Document ${i + 1}`
-              return `Document: ${docName}\nContent: ${doc}`
+              return `Source File: "${docName}"\nContent: ${doc}`
             })
             .join('\n\n')
 
-          context += `\nRelevant Content:\n${relevantContent}`
+          context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, please reference the specific source file names (e.g., "According to [filename]..." or "As mentioned in [filename]...") to help the user understand where the information comes from.`
         } else {
           if (queryScope === 'document') {
             context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
@@ -428,6 +516,26 @@ export const AIActions = ({
         }
 
         const response = await callOpenAI(query, context)
+
+        // Add user message to chat history
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          type: 'user',
+          content: query,
+          timestamp: new Date(),
+          query: query,
+        }
+
+        // Add AI response to chat history
+        const aiMessage: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          type: 'ai',
+          content: response,
+          timestamp: new Date(),
+        }
+
+        setChatHistory(prev => [...prev, userMessage, aiMessage])
+
         setResults({
           type: 'ai',
           aiAnswer: response,
@@ -439,8 +547,19 @@ export const AIActions = ({
 
         toast({
           title: 'AI Analysis Complete',
-          description: `Your question about the ${queryScope === 'document' ? 'document' : 'project'} has been answered.`,
+          description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
         })
+
+        // Provide voice feedback with the actual AI answer
+        if (response && response.length > 0) {
+          setTimeout(() => {
+            // Speak the full answer - no truncation
+            speakWithStateTracking(response, {
+              voice: 'Ruth',
+              stopListeningAfter: true,
+            }).catch(console.error)
+          }, 1000)
+        }
       } else {
         // Handle as semantic search with proper document scoping
         const searchParams: {
@@ -465,17 +584,77 @@ export const AIActions = ({
 
         const searchResponse = await semanticSearch(searchParams)
 
-        setResults({
-          type: 'search',
-          searchResults: searchResponse as typeof searchResults,
-        })
+        // Check if we got results
+        if (
+          searchResponse &&
+          searchResponse.ids &&
+          searchResponse.ids[0] &&
+          searchResponse.ids[0].length > 0
+        ) {
+          // Add user search query to chat history
+          const userMessage: ChatMessage = {
+            id: `user-search-${Date.now()}`,
+            type: 'user',
+            content: query,
+            timestamp: new Date(),
+            query: query,
+          }
 
-        // Clear the query field after successful search
-        setQuery('')
+          // Add search results summary to chat history
+          const resultCount = searchResponse.ids[0].length
+          const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
+          const aiMessage: ChatMessage = {
+            id: `ai-search-${Date.now()}`,
+            type: 'ai',
+            content: searchSummary,
+            timestamp: new Date(),
+          }
+
+          setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+          setResults({
+            type: 'search',
+            searchResults: searchResponse as typeof searchResults,
+          })
+
+          // Clear the query field after successful search
+          setQuery('')
+        } else {
+          // Add user search query to chat history even when no results
+          const userMessage: ChatMessage = {
+            id: `user-no-results-${Date.now()}`,
+            type: 'user',
+            content: query,
+            timestamp: new Date(),
+            query: query,
+          }
+
+          // Add no results message to chat history
+          const aiMessage: ChatMessage = {
+            id: `ai-no-results-${Date.now()}`,
+            type: 'ai',
+            content:
+              "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
+            timestamp: new Date(),
+          }
+
+          setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+          // No results found for search query
+          toast({
+            title: 'No Results Found',
+            description:
+              'Try rephrasing your search or asking a different question.',
+            variant: 'destructive',
+          })
+
+          // Clear the query field
+          setQuery('')
+        }
 
         toast({
           title: 'Search Complete',
-          description: `Found results ${queryScope === 'document' ? 'in this document' : 'across the project'}.`,
+          description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
         })
       }
     } catch (error) {
@@ -506,8 +685,13 @@ export const AIActions = ({
     }
   }
 
-  // Handle search results from the hook
+  // Handle search results from the hook - DISABLED to prevent conflicts
+  // We handle search results directly in handleQuery() instead
+  /*
   useEffect(() => {
+    // Only process search results if we actually submitted a query
+    if (!hasSubmittedQuery) return
+
     if (
       searchResults &&
       searchResults.ids &&
@@ -518,8 +702,64 @@ export const AIActions = ({
         type: 'search',
         searchResults: searchResults,
       })
+      // Reset the flag after successful results
+      setHasSubmittedQuery(false)
+    } else if (
+      searchResults &&
+      searchResults.ids &&
+      searchResults.ids[0] &&
+      searchResults.ids[0].length === 0 &&
+      query.trim()
+    ) {
+      // No results found - show toast only (no voice)
+      toast({
+        title: 'No Results Found',
+        description: 'Try rephrasing your question or asking about something else.',
+        variant: 'destructive',
+      })
+      // Reset the flag after showing no results
+      setHasSubmittedQuery(false)
     }
-  }, [searchResults])
+  }, [searchResults, query, speakWithStateTracking, toast, hasSubmittedQuery])
+  */
+
+  // Stop voice input when voice output is playing
+  useEffect(() => {
+    if (isVoicePlaying && isListening) {
+      console.log('🛑 Stopping voice input due to voice output')
+      setIsListening(false)
+    }
+  }, [isVoicePlaying, isListening])
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('🔍 State change:', {
+      isVoicePlaying,
+      isListening,
+      shouldResumeListening,
+    })
+  }, [isVoicePlaying, isListening, shouldResumeListening])
+
+  // Resume listening after voice playback finishes
+  useEffect(() => {
+    if (!isVoicePlaying && shouldResumeListening) {
+      console.log('🎤 Voice finished, preparing to resume listening...')
+
+      // Give a moment for everything to settle
+      const timer = setTimeout(() => {
+        console.log('🎤 Resuming voice input now!')
+        setIsListening(true)
+        setShouldResumeListening(false)
+        toast({
+          title: 'Voice input resumed',
+          description: 'Ready for your next question...',
+          duration: 2000,
+        })
+      }, 1500) // Slightly longer delay for more reliability
+
+      return () => clearTimeout(timer)
+    }
+  }, [isVoicePlaying, shouldResumeListening, toast])
 
   const handleSearch = () => {
     handleQuery()
@@ -559,29 +799,93 @@ export const AIActions = ({
         description:
           'Speak your query... Will auto-submit after 2s of silence.',
       })
+
+      // No initial voice prompt - just start listening silently
     }
   }
 
   const handleTranscript = (text: string) => {
+    // Prevent processing if voice is currently playing (loop prevention)
+    if (isVoicePlaying) {
+      console.log('🛑 Ignoring final transcript during voice playback:', text)
+      return
+    }
+
     if (silenceTimer) {
       clearTimeout(silenceTimer)
     }
 
+    console.log('✅ Processing final voice transcript:', text)
     setQuery(text)
     hasTranscriptRef.current = true
 
-    const timer = setTimeout(() => {
-      if (isListening && text.trim() && hasTranscriptRef.current) {
+    // For final transcripts, submit immediately with a short delay
+    if (text.trim()) {
+      console.log('🎯 Auto-submitting final transcript immediately')
+      // Make sure listening is stopped before submitting
+      if (isListening) {
         toggleListening()
-        setTimeout(() => {
-          if (text.trim()) {
-            handleQuery()
-          }
-        }, 100)
       }
-    }, 2000)
+      setTimeout(() => {
+        if (text.trim() && !isVoicePlaying) {
+          handleQuery()
+        }
+      }, 500) // Shorter delay for final transcripts
+    }
+  }
 
-    setSilenceTimer(timer)
+  // Handle interim transcript updates (real-time display)
+  const handleInterimTranscript = (text: string) => {
+    // Prevent processing if voice is currently playing (loop prevention)
+    if (isVoicePlaying) {
+      console.log('🛑 Ignoring interim transcript during voice playback:', text)
+      return
+    }
+
+    setInterimTranscript(text)
+    // Update query field in real-time but don't set submission flag
+    setQuery(text)
+
+    // Only start silence detection if we have some text
+    if (text.trim()) {
+      hasTranscriptRef.current = true
+
+      // Clear existing timer
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+      }
+
+      // Start new silence timer
+      const timer = setTimeout(() => {
+        // Check if we should auto-submit after silence
+        if (text.trim() && hasTranscriptRef.current && !isVoicePlaying) {
+          console.log(
+            '⏰ Auto-submitting query after 2s of silence from interim transcript',
+          )
+          // Make sure listening is stopped before submitting
+          if (isListening) {
+            toggleListening()
+          }
+          setTimeout(() => {
+            if (text.trim() && !isVoicePlaying) {
+              handleQuery()
+            }
+          }, 100)
+        } else {
+          console.log(
+            '⏰ Skipping auto-submit from interim due to voice state:',
+            {
+              isListening,
+              hasText: !!text.trim(),
+              hasTranscript: hasTranscriptRef.current,
+              isVoicePlaying,
+            },
+          )
+        }
+      }, 2000)
+
+      setSilenceTimer(timer)
+    }
   }
 
   const handleAskAI = async () => {
@@ -600,7 +904,11 @@ export const AIActions = ({
               <CardTitle className="text-lg">AI Analysis</CardTitle>
               <CardDescription>
                 Intelligent insights from your{' '}
-                {queryScope === 'document' ? 'document' : 'project'}
+                {queryScope === 'document'
+                  ? 'document'
+                  : projectName
+                    ? `project "${projectName}"`
+                    : 'project'}
               </CardDescription>
             </div>
           </div>
@@ -719,24 +1027,28 @@ export const AIActions = ({
             </div>
 
             <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
-              <div className="flex items-start gap-2">
-                <span className="text-sm">🚀</span>
-                <div>
-                  <span className="font-medium text-foreground">Pro Tip:</span>{' '}
-                  Ask questions like "What are the key safety requirements?" or
-                  search for specific terms like "concrete specifications" to
-                  get instant, intelligent results from your{' '}
-                  {queryScope === 'document' && documentId
-                    ? 'document'
-                    : 'project'}
-                  .
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-sm">🚀</span>
+                  <div>
+                    <span className="font-medium text-foreground">
+                      Pro Tip:
+                    </span>{' '}
+                    Ask questions like "What are the key safety requirements?"
+                    or search for specific terms like "concrete specifications"
+                    to get instant, intelligent results from your{' '}
+                    {queryScope === 'document' && documentId
+                      ? 'document'
+                      : 'project'}
+                    .
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="mb-4">
               <Textarea
-                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
+                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
@@ -747,14 +1059,47 @@ export const AIActions = ({
                   }
                 }}
               />
+
+              {/* Show text being spoken */}
+              {currentSpeakingText && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    AI is speaking:
+                  </div>
+                  <div className="text-blue-800 text-sm leading-relaxed">
+                    {currentSpeakingText}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
-              <VoiceInput
-                onTranscript={handleTranscript}
-                isListening={isListening}
-                toggleListening={toggleListening}
-              />
+              <div className="flex gap-2 items-center">
+                <VoiceInput
+                  onTranscript={handleTranscript}
+                  isListening={isListening}
+                  toggleListening={toggleListening}
+                  preventLoop={true}
+                  disabled={isVoicePlaying}
+                  onInterimTranscript={handleInterimTranscript}
+                  preventAutoRestart={isVoicePlaying}
+                />
+
+                {/* Voice status indicator */}
+                {isVoicePlaying && (
+                  <div className="flex items-center gap-1 text-blue-600 text-sm">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    Speaking...
+                  </div>
+                )}
+                {shouldResumeListening && !isVoicePlaying && (
+                  <div className="flex items-center gap-1 text-orange-600 text-sm">
+                    <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce"></div>
+                    Resuming...
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={handleQuery}
@@ -862,41 +1207,109 @@ export const AIActions = ({
                 </div>
               )}
 
-            {/* Display AI Answer */}
-            {results?.type === 'ai' && results.aiAnswer && (
+            {/* Chat History Display */}
+            {chatHistory.length > 0 && (
               <div className="space-y-3">
-                {/* Display the question for context */}
-                {results.query && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <h4 className="font-medium text-blue-900 mb-2">
-                      Your Question:
-                    </h4>
-                    <p className="text-blue-800 text-sm">{results.query}</p>
-                  </div>
-                )}
-
-                {/* AI Response with scrolling */}
-                <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
+                <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border shadow-soft">
                   <div className="flex justify-between items-center mb-3">
                     <Badge variant="outline" className="shadow-soft">
                       <MessageSquare className="h-3 w-3 mr-1" />
-                      AI Analysis
+                      Conversation History
                     </Badge>
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 hover:bg-secondary/80"
-                      onClick={() => copyToClipboard(results.aiAnswer!)}
+                      size="sm"
+                      className="h-7 text-xs hover:bg-secondary/80"
+                      onClick={() => setChatHistory([])}
                     >
-                      <Copy className="h-3 w-3" />
+                      Clear History
                     </Button>
                   </div>
-                  <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none max-h-96 overflow-y-auto">
-                    {results.aiAnswer}
+
+                  {/* Scrollable Chat Container */}
+                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                    {chatHistory.map(message => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[85%] p-3 rounded-lg text-sm leading-relaxed break-words whitespace-pre-wrap ${
+                            message.type === 'user'
+                              ? 'bg-primary text-primary-foreground ml-2 rounded-br-sm'
+                              : 'bg-background border shadow-sm mr-2 rounded-bl-sm'
+                          }`}
+                        >
+                          <div className="text-xs opacity-70 mb-1 flex items-center gap-1">
+                            {message.type === 'user' ? <>👤 You</> : <>🤖 AI</>}
+                            <span>•</span>
+                            <span>
+                              {message.timestamp.toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <div
+                            className={`${message.type === 'ai' ? 'prose prose-sm max-w-none text-foreground' : 'break-words whitespace-pre-wrap'}`}
+                          >
+                            {message.content}
+                          </div>
+                          {message.type === 'ai' && (
+                            <div className="flex justify-end mt-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-secondary/80 opacity-60 hover:opacity-100"
+                                onClick={() => copyToClipboard(message.content)}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={chatEndRef} />
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Display AI Answer (Legacy - will be replaced by chat history) */}
+            {results?.type === 'ai' &&
+              results.aiAnswer &&
+              !chatHistory.length && (
+                <div className="space-y-3">
+                  {/* Display the question for context */}
+                  {results.query && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <h4 className="font-medium text-blue-900 mb-2">
+                        Your Question:
+                      </h4>
+                      <p className="text-blue-800 text-sm">{results.query}</p>
+                    </div>
+                  )}
+
+                  {/* AI Response with scrolling */}
+                  <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border text-sm shadow-soft">
+                    <div className="flex justify-between items-center mb-3">
+                      <Badge variant="outline" className="shadow-soft">
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        AI Analysis
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 hover:bg-secondary/80"
+                        onClick={() => copyToClipboard(results.aiAnswer!)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="text-sm leading-relaxed text-foreground prose prose-sm max-w-none max-h-96 overflow-y-auto">
+                      {results.aiAnswer}
+                    </div>
+                  </div>
+                </div>
+              )}
 
             {/* No Results Message */}
             {results?.type === 'search' &&
