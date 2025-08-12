@@ -31,9 +31,16 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { toast } from '@/hooks/use-toast'
+import { toast, useToast } from '@/hooks/use-toast'
 import { Navigate } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { MobileBiometricLogin } from '@/components/MobileBiometricLogin'
+import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  hasBiometricCredentials,
+  removeAllBiometricCredentials,
+  isPlatformAuthenticatorAvailable,
+} from '@/services/biometric-cognito'
 import {
   Dialog,
   DialogContent,
@@ -72,6 +79,239 @@ const passwordFormSchema = z
   })
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>
+
+// Biometric Security Settings Component
+const BiometricSecuritySettings = () => {
+  const isMobile = useIsMobile()
+  const { toast } = useToast()
+  const [biometricStatus, setBiometricStatus] = useState({
+    isSupported: false,
+    isPlatformAvailable: false,
+    hasCredentials: false,
+    loading: true,
+  })
+
+  useEffect(() => {
+    checkBiometricStatus()
+
+    // Check if setup was just completed
+    const setupCompleted = localStorage.getItem('biometric_setup_completed')
+    if (setupCompleted === 'true') {
+      localStorage.removeItem('biometric_setup_completed')
+      // Delay to ensure the setup has been fully processed
+      setTimeout(() => {
+        checkBiometricStatus()
+        toast({
+          title: 'Biometric setup complete!',
+          description: 'Your biometric authentication is now active.',
+        })
+      }, 500)
+    }
+
+    // Add event listener to refresh status when user returns to the page
+    const handleFocus = () => {
+      checkBiometricStatus()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkBiometricStatus()
+      }
+    }
+
+    // Also listen for storage events (when localStorage changes)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (
+        e.key === 'biometric_credential_ids' ||
+        e.key?.startsWith('biometric_creds_')
+      ) {
+        checkBiometricStatus()
+      }
+    }
+
+    // Listen for custom biometric setup event
+    const handleBiometricSetupComplete = () => {
+      setTimeout(() => checkBiometricStatus(), 100)
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener(
+      'biometric-setup-completed',
+      handleBiometricSetupComplete,
+    )
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener(
+        'biometric-setup-completed',
+        handleBiometricSetupComplete,
+      )
+    }
+  }, [toast])
+
+  const checkBiometricStatus = async () => {
+    setBiometricStatus(prev => ({ ...prev, loading: true }))
+
+    try {
+      const isSupported =
+        typeof window !== 'undefined' && !!window.PublicKeyCredential
+      const isPlatformAvailable = isSupported
+        ? await isPlatformAuthenticatorAvailable()
+        : false
+      const hasCredentials = hasBiometricCredentials()
+
+      setBiometricStatus({
+        isSupported,
+        isPlatformAvailable,
+        hasCredentials,
+        loading: false,
+      })
+    } catch (error) {
+      console.error('Error checking biometric status:', error)
+      setBiometricStatus(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  const handleClearCredentials = async () => {
+    try {
+      const success = removeAllBiometricCredentials()
+      if (success) {
+        toast({
+          title: 'Biometric credentials cleared',
+          description:
+            'All biometric login data has been removed from this device.',
+        })
+        checkBiometricStatus()
+      } else {
+        toast({
+          title: 'Failed to clear credentials',
+          description: 'There was an error removing biometric credentials.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  if (biometricStatus.loading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-pulse">Checking biometric capabilities...</div>
+      </div>
+    )
+  }
+
+  if (!biometricStatus.isSupported || !biometricStatus.isPlatformAvailable) {
+    return (
+      <div className="text-center p-4 bg-gray-50 rounded-lg">
+        <p className="text-gray-600 mb-2">
+          Biometric authentication is not available on this device
+        </p>
+        <p className="text-sm text-gray-500">
+          {!biometricStatus.isSupported
+            ? "Your browser doesn't support biometric authentication"
+            : 'No biometric hardware detected on this device'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {isMobile && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800 mb-3">
+            🔒 Biometric authentication is optimized for mobile devices and uses
+            your device's built-in security features.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-medium">Current Status</h4>
+            <p className="text-sm text-gray-600">
+              {biometricStatus.hasCredentials
+                ? 'Biometric login is enabled on this device'
+                : 'Biometric login is not set up'}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={checkBiometricStatus}
+              disabled={biometricStatus.loading}
+              className="text-xs"
+            >
+              {biometricStatus.loading ? 'Checking...' : 'Refresh'}
+            </Button>
+            {biometricStatus.hasCredentials ? (
+              <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                ✓ Enabled
+              </div>
+            ) : (
+              <div className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">
+                Not Set Up
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <MobileBiometricLogin
+            context="settings"
+            onSetupSuccess={() => {
+              checkBiometricStatus()
+              toast({
+                title: 'Biometric login enabled!',
+                description:
+                  'You can now use biometric authentication to sign in.',
+              })
+            }}
+            onLoginSuccess={() => {
+              toast({
+                title: 'Biometric test successful!',
+                description:
+                  'Your biometric authentication is working correctly.',
+              })
+            }}
+          />
+
+          {biometricStatus.hasCredentials && (
+            <Button
+              variant="outline"
+              onClick={handleClearCredentials}
+              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+            >
+              Clear Biometric Data
+            </Button>
+          )}
+        </div>
+
+        <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
+          <p className="font-medium mb-1">Security Information:</p>
+          <ul className="space-y-1">
+            <li>• Biometric data never leaves your device</li>
+            <li>• Credentials are encrypted with device-specific keys</li>
+            <li>• Works with Touch ID, Face ID, and fingerprint sensors</li>
+            <li>• Can be disabled at any time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const ProfileSettings = () => {
   const { user, isAuthenticated, updateProfile, signOut } = useAuth()
@@ -333,17 +573,40 @@ const ProfileSettings = () => {
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList>
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              {canManageUsers && (
-                <>
-                  <TabsTrigger value="userManagement">
-                    User Management
-                  </TabsTrigger>
-                  <TabsTrigger value="invitations">Invitations</TabsTrigger>
-                </>
-              )}
-            </TabsList>
+            <div className="overflow-x-auto scrollbar-hide">
+              <TabsList className="w-max min-w-full sm:w-auto gap-1 sm:gap-0 p-2 sm:p-1.5">
+                <TabsTrigger
+                  value="profile"
+                  className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                >
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger
+                  value="security"
+                  className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                >
+                  Security
+                </TabsTrigger>
+                {canManageUsers && (
+                  <>
+                    <TabsTrigger
+                      value="userManagement"
+                      className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                    >
+                      <span className="hidden sm:inline">User Management</span>
+                      <span className="sm:hidden">Users</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="invitations"
+                      className="text-xs sm:text-sm px-3 py-2.5 sm:px-4 sm:py-2 min-w-[70px] sm:min-w-0"
+                    >
+                      <span className="hidden sm:inline">Invitations</span>
+                      <span className="sm:hidden">Invites</span>
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
 
             <TabsContent value="profile">
               <div className="grid gap-6">
@@ -508,6 +771,23 @@ const ProfileSettings = () => {
                       Sign out
                     </Button>
                   </CardFooter>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="security">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Biometric Authentication</CardTitle>
+                    <CardDescription>
+                      Manage your biometric login settings for faster and more
+                      secure access
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <BiometricSecuritySettings />
+                  </CardContent>
                 </Card>
               </div>
             </TabsContent>
