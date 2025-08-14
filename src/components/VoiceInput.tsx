@@ -87,6 +87,7 @@ export const VoiceInput = ({
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Monitor audio playback to prevent loops
@@ -202,17 +203,28 @@ export const VoiceInput = ({
         onInterimTranscript(interimTranscript)
       }
 
+      // In preventLoop mode, don't immediately submit on final transcripts
+      // Let the parent handle timing based on interim transcript silence detection
       if (finalTranscript) {
         console.log('Final transcript received:', finalTranscript)
         setTranscript(finalTranscript)
 
-        // Send final transcript immediately (no debounce for final results)
-        onTranscript(finalTranscript)
-        setIsProcessing(false)
+        if (preventLoop) {
+          // In preventLoop mode, don't call onTranscript or toggleListening
+          // Just store the transcript and let interim-based silence detection handle submission
+          console.log(
+            '🔄 In preventLoop mode - storing final transcript, continuing to listen for silence',
+          )
+          setIsProcessing(false)
+        } else {
+          // Normal mode - send final transcript immediately
+          onTranscript(finalTranscript)
+          setIsProcessing(false)
 
-        // Don't auto-stop in preventLoop mode - let parent handle silence detection
-        if (isListening && !preventLoop) {
-          toggleListening()
+          // Auto-stop in normal mode
+          if (isListening) {
+            toggleListening()
+          }
         }
       } else if (interimTranscript) {
         // Still processing interim results
@@ -296,10 +308,10 @@ export const VoiceInput = ({
 
   // Cleanup debounce timeout
   useEffect(() => {
+    const currentTimeout = debounceTimeoutRef.current
     return () => {
-      const timeout = debounceTimeoutRef.current
-      if (timeout) {
-        clearTimeout(timeout)
+      if (currentTimeout) {
+        clearTimeout(currentTimeout)
       }
     }
   }, [])
