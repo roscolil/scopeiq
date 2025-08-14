@@ -463,7 +463,12 @@ export const FileUploader = (props: FileUploaderProps) => {
                 size="sm"
                 className="text-xs"
               >
-                {isUploading ? 'Uploading...' : 'Upload All'}
+                {isUploading 
+                  ? 'Uploading...' 
+                  : selectedFiles.length === 1 
+                    ? 'Upload' 
+                    : 'Upload All'
+                }
               </Button>
             </div>
           </div>

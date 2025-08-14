@@ -731,15 +731,6 @@ export const AIActions = ({
     }
   }, [isVoicePlaying, isListening])
 
-  // Debug state changes
-  useEffect(() => {
-    console.log('🔍 State change:', {
-      isVoicePlaying,
-      isListening,
-      shouldResumeListening,
-    })
-  }, [isVoicePlaying, isListening, shouldResumeListening])
-
   // Resume listening after voice playback finishes
   useEffect(() => {
     if (!isVoicePlaying && shouldResumeListening) {
