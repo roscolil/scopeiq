@@ -54,8 +54,6 @@ class NovaSonicService {
           secretAccessKey: credentials.secretAccessKey,
         },
       })
-
-      console.log('✅ AWS Polly service initialized successfully')
     } catch (error) {
       console.error('❌ Failed to initialize AWS Polly service:', error)
     }

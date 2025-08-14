@@ -36,7 +36,14 @@ export const SearchProducts = () => {
 
   // Handle voice transcript
   const handleTranscript = (text: string) => {
+    console.log('SearchProducts received transcript:', text)
     setQuery(text)
+    // Automatically trigger search when voice transcript is received
+    if (text.trim()) {
+      setTimeout(() => {
+        searchSuppliers()
+      }, 100)
+    }
   }
 
   // Get user's location

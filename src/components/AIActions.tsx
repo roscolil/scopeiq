@@ -731,15 +731,6 @@ export const AIActions = ({
     }
   }, [isVoicePlaying, isListening])
 
-  // Debug state changes
-  useEffect(() => {
-    console.log('🔍 State change:', {
-      isVoicePlaying,
-      isListening,
-      shouldResumeListening,
-    })
-  }, [isVoicePlaying, isListening, shouldResumeListening])
-
   // Resume listening after voice playback finishes
   useEffect(() => {
     if (!isVoicePlaying && shouldResumeListening) {
@@ -805,32 +796,27 @@ export const AIActions = ({
   }
 
   const handleTranscript = (text: string) => {
+    // In preventLoop mode, this should rarely be called since we avoid final transcript submission
+    console.log(
+      '⚠️ Final transcript handler called in preventLoop mode - this may indicate an issue',
+    )
+
     // Prevent processing if voice is currently playing (loop prevention)
     if (isVoicePlaying) {
       console.log('🛑 Ignoring final transcript during voice playback:', text)
       return
     }
 
-    if (silenceTimer) {
-      clearTimeout(silenceTimer)
-    }
-
     console.log('✅ Processing final voice transcript:', text)
     setQuery(text)
     hasTranscriptRef.current = true
 
-    // For final transcripts, submit immediately with a short delay
+    // In preventLoop mode, don't immediately submit - rely on interim transcript silence detection
     if (text.trim()) {
-      console.log('🎯 Auto-submitting final transcript immediately')
-      // Make sure listening is stopped before submitting
-      if (isListening) {
-        toggleListening()
-      }
-      setTimeout(() => {
-        if (text.trim() && !isVoicePlaying) {
-          handleQuery()
-        }
-      }, 500) // Shorter delay for final transcripts
+      console.log(
+        '🔄 Final transcript received, but deferring to interim-based silence detection',
+      )
+      // Don't submit immediately, let the interim transcript silence detection handle it
     }
   }
 
@@ -850,41 +836,47 @@ export const AIActions = ({
     if (text.trim()) {
       hasTranscriptRef.current = true
 
-      // Clear existing timer
+      // Clear existing timer every time we get speech activity
       if (silenceTimer) {
         clearTimeout(silenceTimer)
+        console.log('🔄 Speech activity detected, resetting silence timer')
       }
 
-      // Start new silence timer
+      // Start new silence timer with longer duration for natural speech
       const timer = setTimeout(() => {
-        // Check if we should auto-submit after silence
-        if (text.trim() && hasTranscriptRef.current && !isVoicePlaying) {
+        // Double-check we should auto-submit after extended silence
+        const currentQuery = query || text
+        if (
+          currentQuery.trim() &&
+          hasTranscriptRef.current &&
+          !isVoicePlaying &&
+          isListening
+        ) {
           console.log(
-            '⏰ Auto-submitting query after 2s of silence from interim transcript',
+            '⏰ Auto-submitting query after 3s of silence:',
+            currentQuery.slice(0, 100),
           )
-          // Make sure listening is stopped before submitting
+          // Stop listening before submitting
           if (isListening) {
             toggleListening()
           }
           setTimeout(() => {
-            if (text.trim() && !isVoicePlaying) {
+            if (!isVoicePlaying) {
               handleQuery()
             }
           }, 100)
         } else {
-          console.log(
-            '⏰ Skipping auto-submit from interim due to voice state:',
-            {
-              isListening,
-              hasText: !!text.trim(),
-              hasTranscript: hasTranscriptRef.current,
-              isVoicePlaying,
-            },
-          )
+          console.log('⏰ Skipping auto-submit - conditions not met:', {
+            hasQuery: !!currentQuery.trim(),
+            hasTranscript: hasTranscriptRef.current,
+            isVoicePlaying,
+            isListening,
+          })
         }
-      }, 2000)
+      }, 3000) // Extended to 3 seconds for more natural interaction
 
       setSilenceTimer(timer)
+      console.log('⏰ Started 3-second silence timer for:', text.slice(0, 50))
     }
   }
 
