@@ -173,68 +173,69 @@ export const VoiceInput = ({
       }
 
       const now = Date.now()
-      // Debounce rapid-fire results
-      if (now - lastTranscriptTimeRef.current < 1000) {
-        console.log('Debouncing rapid speech recognition result')
-        return
-      }
-
       lastTranscriptTimeRef.current = now
       setIsProcessing(true)
 
       const results = Array.from(event.results) as SpeechRecognitionResult[]
 
-      // Handle interim results for real-time display
-      const interimTranscript = results
-        .filter(result => !result.isFinal)
-        .map(result => result[0].transcript)
-        .join('')
-        .trim()
-
-      // Handle final results for processing
-      const finalTranscript = results
-        .filter(result => result.isFinal)
-        .map(result => result[0].transcript)
-        .join('')
-        .trim()
-
-      // Show interim results in real-time
-      if (interimTranscript && onInterimTranscript) {
-        onInterimTranscript(interimTranscript)
+      // Build complete transcript from ALL results (both interim and final)
+      let completeTranscript = ''
+      for (let i = 0; i < results.length; i++) {
+        completeTranscript += results[i][0].transcript
       }
 
-      // In preventLoop mode, don't immediately submit on final transcripts
-      // Let the parent handle timing based on interim transcript silence detection
-      if (finalTranscript) {
-        console.log('Final transcript received:', finalTranscript)
-        setTranscript(finalTranscript)
+      console.log('Complete transcript so far:', completeTranscript)
 
-        if (preventLoop) {
-          // In preventLoop mode, don't call onTranscript or toggleListening
-          // Just store the transcript and let interim-based silence detection handle submission
+      // Store the complete accumulated transcript
+      setTranscript(completeTranscript)
+
+      // Show real-time transcript via interim callback
+      if (onInterimTranscript) {
+        onInterimTranscript(completeTranscript)
+      }
+
+      // In normal mode (non-preventLoop), send complete transcript after silence
+      if (!preventLoop) {
+        // Clear any existing timeout
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current)
+        }
+
+        // Set new timeout for silence detection
+        debounceTimeoutRef.current = setTimeout(() => {
           console.log(
-            '🔄 In preventLoop mode - storing final transcript, continuing to listen for silence',
+            'Silence detected, sending complete transcript:',
+            completeTranscript,
           )
-          setIsProcessing(false)
-        } else {
-          // Normal mode - send final transcript immediately
-          onTranscript(finalTranscript)
+          onTranscript(completeTranscript.trim())
           setIsProcessing(false)
 
-          // Auto-stop in normal mode
+          // Auto-stop after sending
           if (isListening) {
             toggleListening()
           }
-        }
-      } else if (interimTranscript) {
-        // Still processing interim results
-        setIsProcessing(true)
+        }, 2500) // 2.5 seconds of silence
       }
     }
 
     recognition.onerror = event => {
       console.error('Speech recognition error:', event.error)
       setIsProcessing(false)
+
+      // Clear timeout on error
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+        debounceTimeoutRef.current = null
+      }
+
+      // Send any accumulated transcript before stopping
+      if (transcript.trim() && !preventLoop) {
+        console.log(
+          'Error occurred, sending accumulated transcript:',
+          transcript,
+        )
+        onTranscript(transcript.trim())
+      }
 
       if (isListening && !isPlayingAudioRef.current) {
         toggleListening()
@@ -272,6 +273,7 @@ export const VoiceInput = ({
     isProcessing,
     preventLoop,
     onInterimTranscript,
+    transcript,
   ])
 
   // Handle listening state changes
@@ -300,6 +302,12 @@ export const VoiceInput = ({
         recognition.stop()
         setTranscript('')
         setIsProcessing(false)
+
+        // Clear any pending timeout when stopping
+        if (debounceTimeoutRef.current) {
+          clearTimeout(debounceTimeoutRef.current)
+          debounceTimeoutRef.current = null
+        }
       } catch (error) {
         console.warn('Error stopping recognition:', error)
       }
