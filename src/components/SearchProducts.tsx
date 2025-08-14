@@ -203,7 +203,7 @@ export const SearchProducts = () => {
               />
             </div>
             <Button type="submit" disabled={isLoading || !query.trim()}>
-              {isLoading ? 'Searching...' : 'Search'}
+              {isLoading ? 'Asking AI...' : 'Ask AI'}
             </Button>
           </form>
 
