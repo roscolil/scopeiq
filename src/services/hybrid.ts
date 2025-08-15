@@ -5,9 +5,15 @@ import {
   type DatabaseProject,
   getCurrentCompanyId,
 } from './database'
-import { s3DocumentService, s3ProjectService } from './s3-metadata'
+import {
+  s3DocumentService,
+  s3ProjectService,
+  deleteS3File,
+} from './s3-metadata'
 import { getSignedDownloadUrl } from './documentUpload'
 import { createSlug } from '@/utils/navigation'
+import { deleteEmbeddings } from './pinecone'
+import { sanitizeDocumentId } from './embedding'
 
 /**
  * Hybrid service that implements the migration strategy:
@@ -84,7 +90,8 @@ export interface UpdateProjectInput {
 const convertDbDocumentToS3 = (
   dbDoc: DatabaseDocument,
   companyId: string,
-): Omit<HybridDocument, 'id'> => ({
+): HybridDocument => ({
+  id: dbDoc.id, // Include the database document ID to ensure consistency
   name: dbDoc.name,
   type: dbDoc.type,
   size: dbDoc.size,
@@ -313,8 +320,14 @@ export const hybridDocumentService = {
     documentData: CreateDocumentInput,
   ): Promise<HybridDocument> {
     try {
+      console.log(
+        'Hybrid: Starting document creation process for:',
+        documentData.name,
+      )
+
       // Generate unique document ID
       const documentId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      console.log('Hybrid: Generated document ID:', documentId)
 
       // Use provided S3 key or generate a new one
       const s3Key =
@@ -346,16 +359,29 @@ export const hybridDocumentService = {
       // Write to database first (primary source)
       const dbDocument =
         await databaseDocumentService.createDocument(dbDocumentData)
+      console.log(
+        'Hybrid: Database document created successfully:',
+        dbDocument.id,
+      )
 
-      // Also write to S3 for backward compatibility (async, don't wait)
+      // Also write to S3 for backward compatibility (wait for completion to ensure metadata exists)
       const s3DocumentData = convertDbDocumentToS3(dbDocument, companyId)
-      s3DocumentService
-        .createDocument(companyId, projectId, s3DocumentData)
-        .catch(error => {
-          console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
-        })
+      try {
+        await s3DocumentService.createDocument(
+          companyId,
+          projectId,
+          s3DocumentData,
+        )
+        console.log(
+          'Hybrid: S3 metadata created successfully for document:',
+          dbDocument.id,
+        )
+      } catch (error) {
+        console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
+        // Don't throw - S3 is backup, database is primary
+      }
 
-      return {
+      const result = {
         id: dbDocument.id,
         name: dbDocument.name,
         type: dbDocument.type,
@@ -368,6 +394,12 @@ export const hybridDocumentService = {
         createdAt: dbDocument.createdAt || new Date().toISOString(),
         updatedAt: dbDocument.updatedAt,
       }
+
+      console.log(
+        'Hybrid: Document creation completed successfully:',
+        result.id,
+      )
+      return result
     } catch (error) {
       console.error('Hybrid: Error creating document:', error)
       throw error
@@ -400,13 +432,23 @@ export const hybridDocumentService = {
         return null
       }
 
-      // Also update in S3 for backward compatibility (async, don't wait)
+      // Also update in S3 for backward compatibility (wait for completion to ensure metadata exists)
       const s3Updates = convertDbDocumentToS3(dbDocument, companyId)
-      s3DocumentService
-        .updateDocument(companyId, projectId, documentId, s3Updates)
-        .catch(error => {
-          console.warn('Hybrid: Failed to update S3 (non-critical):', error)
-        })
+      try {
+        await s3DocumentService.updateDocument(
+          companyId,
+          projectId,
+          documentId,
+          s3Updates,
+        )
+        console.log(
+          'Hybrid: S3 metadata updated successfully for document:',
+          documentId,
+        )
+      } catch (error) {
+        console.warn('Hybrid: Failed to update S3 (non-critical):', error)
+        // Don't throw - S3 is backup, database is primary
+      }
 
       return {
         id: dbDocument.id,
@@ -434,21 +476,83 @@ export const hybridDocumentService = {
     documentId: string,
   ): Promise<void> {
     try {
-      // Get document metadata first to get S3 keys
+      console.log('Hybrid: Starting document deletion process for:', documentId)
+
+      // Get document metadata first to get S3 keys for file deletion
       const dbDocument = await databaseDocumentService.getDocument(documentId)
+      console.log(
+        'Hybrid: Retrieved document metadata:',
+        dbDocument ? 'Found' : 'Not found',
+      )
 
       // Delete from database first (primary source)
       await databaseDocumentService.deleteDocument(documentId)
+      console.log(
+        'Hybrid: Database deletion completed successfully for document:',
+        documentId,
+      )
 
-      // Also delete from S3 for backward compatibility (async, don't wait)
-      s3DocumentService
-        .deleteDocument(companyId, projectId, documentId)
-        .catch(error => {
+      // Delete S3 metadata file for backward compatibility
+      try {
+        await s3DocumentService.deleteDocument(companyId, projectId, documentId)
+        console.log(
+          'Hybrid: S3 metadata deleted successfully for document:',
+          documentId,
+        )
+      } catch (error) {
+        console.warn(
+          'Hybrid: Failed to delete S3 metadata (non-critical):',
+          error,
+        )
+      }
+
+      // Delete the actual S3 file if we have the S3 key
+      if (dbDocument?.s3Key) {
+        try {
+          await deleteS3File(dbDocument.s3Key)
+          console.log('Hybrid: S3 file deleted successfully:', dbDocument.s3Key)
+        } catch (error) {
           console.warn(
-            'Hybrid: Failed to delete from S3 (non-critical):',
+            'Hybrid: Failed to delete S3 file (non-critical):',
             error,
           )
-        })
+        }
+      } else {
+        console.warn(
+          'Hybrid: No S3 key found for document, cannot delete S3 file',
+        )
+      }
+
+      // Also delete thumbnail if it exists
+      if (dbDocument?.thumbnailS3Key) {
+        try {
+          await deleteS3File(dbDocument.thumbnailS3Key)
+          console.log(
+            'Hybrid: S3 thumbnail deleted successfully:',
+            dbDocument.thumbnailS3Key,
+          )
+        } catch (error) {
+          console.warn(
+            'Hybrid: Failed to delete S3 thumbnail (non-critical):',
+            error,
+          )
+        }
+      }
+
+      // Delete embeddings from Pinecone vector database
+      try {
+        const sanitizedId = sanitizeDocumentId(documentId)
+        await deleteEmbeddings(projectId, [sanitizedId])
+        console.log(
+          'Hybrid: Pinecone embeddings deleted successfully for document:',
+          sanitizedId,
+        )
+      } catch (error) {
+        console.warn(
+          'Hybrid: Failed to delete Pinecone embeddings (non-critical):',
+          error,
+        )
+      }
     } catch (error) {
       console.error('Hybrid: Error deleting document:', error)
       throw error

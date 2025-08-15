@@ -31,7 +31,7 @@ const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY
  * Sanitize document ID for Pinecone compatibility
  * Pinecone IDs must be strings without newlines and should be URL-safe
  */
-function sanitizeDocumentId(id: string): string {
+export function sanitizeDocumentId(id: string): string {
   return id
     .replace(/[\r\n\t]/g, '') // Remove newlines and tabs
     .replace(/[^a-zA-Z0-9\-_.]/g, '_') // Replace invalid chars with underscore
@@ -300,7 +300,6 @@ export async function upsertDocumentEmbedding({
 }) {
   // Sanitize the document ID for Pinecone compatibility
   const sanitizedId = sanitizeDocumentId(documentId)
-  console.log(`Sanitized document ID: ${documentId} -> ${sanitizedId}`)
 
   const embedding = await generateEmbedding(content)
 

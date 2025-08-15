@@ -108,6 +108,9 @@ const deleteS3Object = async (key: string): Promise<void> => {
   await s3Client.send(command)
 }
 
+// Export the delete function for use by other services
+export const deleteS3File = deleteS3Object
+
 export const s3DocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(
@@ -185,12 +188,18 @@ export const s3DocumentService = {
   async createDocument(
     companyId: string,
     projectId: string,
-    documentData: Omit<S3Document, 'id' | 'createdAt'>,
+    documentData:
+      | Omit<S3Document, 'createdAt'>
+      | Omit<S3Document, 'id' | 'createdAt'>,
   ): Promise<S3Document> {
     try {
       const document: S3Document = {
         ...documentData,
-        id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        // Use provided ID if available, otherwise generate new one
+        id:
+          'id' in documentData && documentData.id
+            ? documentData.id
+            : `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         createdAt: new Date().toISOString(),
       }
 

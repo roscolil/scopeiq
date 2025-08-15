@@ -315,21 +315,18 @@ export const DocumentList = ({
                   )}
                 </div>
 
-                <div className="flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => viewDocument(doc.id, doc.name)}
-                    disabled={doc.status === 'processing'}
-                    className={cn(
-                      doc.status === 'processing' &&
-                        'opacity-50 cursor-not-allowed',
-                    )}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                </div>
+                {doc.status === 'processed' && (
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => viewDocument(doc.id, doc.name)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  </div>
+                )}
 
                 {doc.status === 'processing' && onCancelProcessing && (
                   <Button
