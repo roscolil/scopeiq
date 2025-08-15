@@ -311,32 +311,36 @@ export const DocumentList = ({
                       <span className="ml-1">
                         {getDetailedProcessingStatus(doc)}
                       </span>
-                      {onCancelProcessing && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onCancelProcessing(doc.id)}
-                          className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800 ml-2"
-                        >
-                          Cancel Download
-                        </Button>
-                      )}
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => viewDocument(doc.id, doc.name)}
-                  disabled={doc.status === 'processing'}
-                  className={cn(
-                    doc.status === 'processing' &&
-                      'opacity-50 cursor-not-allowed',
-                  )}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
-                </Button>
+
+                <div className="flex items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => viewDocument(doc.id, doc.name)}
+                    disabled={doc.status === 'processing'}
+                    className={cn(
+                      doc.status === 'processing' &&
+                        'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                </div>
+
+                {doc.status === 'processing' && onCancelProcessing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onCancelProcessing(doc.id)}
+                    className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
+                  >
+                    Cancel Download
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))
