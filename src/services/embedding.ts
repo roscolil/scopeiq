@@ -218,6 +218,7 @@ export async function processEmbeddingOnly(
             content: truncatedContent,
             id: sanitizedId,
             originalId: documentId,
+            document_id: documentId, // Add this field for Pinecone filtering
           },
         ],
       )
@@ -314,6 +315,7 @@ export async function upsertDocumentEmbedding({
     content: truncatedContent,
     id: sanitizedId,
     originalId: documentId,
+    document_id: documentId, // Add this field for Pinecone filtering
   }
 
   await upsertEmbeddings(projectId, [sanitizedId], [embedding], [fullMetadata])
