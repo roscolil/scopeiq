@@ -58,7 +58,6 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
-      console.log('DB: Fetching documents for project:', projectId)
       const { data: documents, errors } = await client.models.Document.list({
         filter: { projectId: { eq: projectId } },
       })
@@ -70,7 +69,6 @@ export const databaseDocumentService = {
         )
       }
 
-      console.log('DB: Found documents count:', documents.length)
       return documents.map(doc => ({
         id: doc.id,
         name: doc.name,
@@ -140,8 +138,6 @@ export const databaseDocumentService = {
     documentData: Omit<DatabaseDocument, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<DatabaseDocument> {
     try {
-      console.log('DB: Creating document in database:', documentData.name)
-
       // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
       const { data: document, errors } = await client.models.Document.create({
         name: documentData.name as string & string[],
@@ -165,7 +161,6 @@ export const databaseDocumentService = {
         )
       }
 
-      console.log('DB: Document created successfully in database:', document.id)
       return {
         id: document.id,
         name: document.name,
@@ -195,13 +190,6 @@ export const databaseDocumentService = {
     updates: Partial<Omit<DatabaseDocument, 'id' | 'createdAt'>>,
   ): Promise<DatabaseDocument | null> {
     try {
-      console.log(
-        'DB: Updating document in database:',
-        documentId,
-        'Updates:',
-        updates,
-      )
-
       // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
       // @ts-expect-error - Known issue with Amplify codegen, expecting string[] instead of string
       const { data: document, errors } = await client.models.Document.update({
@@ -246,7 +234,6 @@ export const databaseDocumentService = {
   // Delete document
   async deleteDocument(documentId: string): Promise<void> {
     try {
-      console.log('DB: Attempting to delete document:', documentId)
       const { errors } = await client.models.Document.delete({
         id: documentId,
       })
@@ -257,8 +244,6 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
-
-      console.log('DB: Document deleted successfully:', documentId)
     } catch (error) {
       console.error('DB: Error deleting document:', error)
       throw error

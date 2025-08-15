@@ -320,14 +320,8 @@ export const hybridDocumentService = {
     documentData: CreateDocumentInput,
   ): Promise<HybridDocument> {
     try {
-      console.log(
-        'Hybrid: Starting document creation process for:',
-        documentData.name,
-      )
-
       // Generate unique document ID
       const documentId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      console.log('Hybrid: Generated document ID:', documentId)
 
       // Use provided S3 key or generate a new one
       const s3Key =
@@ -359,10 +353,6 @@ export const hybridDocumentService = {
       // Write to database first (primary source)
       const dbDocument =
         await databaseDocumentService.createDocument(dbDocumentData)
-      console.log(
-        'Hybrid: Database document created successfully:',
-        dbDocument.id,
-      )
 
       // Also write to S3 for backward compatibility (wait for completion to ensure metadata exists)
       const s3DocumentData = convertDbDocumentToS3(dbDocument, companyId)
@@ -371,10 +361,6 @@ export const hybridDocumentService = {
           companyId,
           projectId,
           s3DocumentData,
-        )
-        console.log(
-          'Hybrid: S3 metadata created successfully for document:',
-          dbDocument.id,
         )
       } catch (error) {
         console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
@@ -395,10 +381,6 @@ export const hybridDocumentService = {
         updatedAt: dbDocument.updatedAt,
       }
 
-      console.log(
-        'Hybrid: Document creation completed successfully:',
-        result.id,
-      )
       return result
     } catch (error) {
       console.error('Hybrid: Error creating document:', error)
@@ -441,10 +423,6 @@ export const hybridDocumentService = {
           documentId,
           s3Updates,
         )
-        console.log(
-          'Hybrid: S3 metadata updated successfully for document:',
-          documentId,
-        )
       } catch (error) {
         console.warn('Hybrid: Failed to update S3 (non-critical):', error)
         // Don't throw - S3 is backup, database is primary
@@ -476,22 +454,11 @@ export const hybridDocumentService = {
     documentId: string,
   ): Promise<void> {
     try {
-      console.log('Hybrid: Starting document deletion process for:', documentId)
-
       // Get document metadata first to get S3 keys for file deletion
       const dbDocument = await databaseDocumentService.getDocument(documentId)
-      console.log(
-        'Hybrid: Retrieved document metadata:',
-        dbDocument ? 'Found' : 'Not found',
-      )
 
       // Delete from database first (primary source)
       await databaseDocumentService.deleteDocument(documentId)
-      console.log(
-        'Hybrid: Database deletion completed successfully for document:',
-        documentId,
-      )
-
       // Delete S3 metadata file for backward compatibility
       try {
         await s3DocumentService.deleteDocument(companyId, projectId, documentId)
@@ -510,7 +477,6 @@ export const hybridDocumentService = {
       if (dbDocument?.s3Key) {
         try {
           await deleteS3File(dbDocument.s3Key)
-          console.log('Hybrid: S3 file deleted successfully:', dbDocument.s3Key)
         } catch (error) {
           console.warn(
             'Hybrid: Failed to delete S3 file (non-critical):',
@@ -527,10 +493,6 @@ export const hybridDocumentService = {
       if (dbDocument?.thumbnailS3Key) {
         try {
           await deleteS3File(dbDocument.thumbnailS3Key)
-          console.log(
-            'Hybrid: S3 thumbnail deleted successfully:',
-            dbDocument.thumbnailS3Key,
-          )
         } catch (error) {
           console.warn(
             'Hybrid: Failed to delete S3 thumbnail (non-critical):',
@@ -543,10 +505,6 @@ export const hybridDocumentService = {
       try {
         const sanitizedId = sanitizeDocumentId(documentId)
         await deleteEmbeddings(projectId, [sanitizedId])
-        console.log(
-          'Hybrid: Pinecone embeddings deleted successfully for document:',
-          sanitizedId,
-        )
       } catch (error) {
         console.warn(
           'Hybrid: Failed to delete Pinecone embeddings (non-critical):',

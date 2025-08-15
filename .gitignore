@@ -18,6 +18,7 @@ dist-ssr
 .env.production
 .env.staging
 .env.test
+.venv
 
 # API Keys and Secrets
 *.key
