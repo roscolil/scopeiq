@@ -1120,7 +1120,7 @@ export const AIActions = ({
                       ) : (
                         <>
                           <Search className="w-4 h-4" />
-                          <span>Search</span>
+                          <span>Ask AI</span>
                         </>
                       )}
                     </>

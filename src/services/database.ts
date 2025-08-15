@@ -68,6 +68,7 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
+
       return documents.map(doc => ({
         id: doc.id,
         name: doc.name,
@@ -159,6 +160,7 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
+
       return {
         id: document.id,
         name: document.name,

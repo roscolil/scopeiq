@@ -17,7 +17,7 @@ export interface DocumentChunk {
     chunkType: 'header' | 'schedule' | 'specification' | 'general' | 'table'
     hasNumbers: boolean
     hasMeasurements: boolean
-    constructionTerms: string[]
+    constructionTerms: string // Changed from string[] to string
   }
 }
 
@@ -112,7 +112,7 @@ export function chunkConstructionDocument(
           chunkType,
           hasNumbers,
           hasMeasurements,
-          constructionTerms: foundTerms,
+          constructionTerms: foundTerms.join(','), // Convert array to comma-separated string
         },
       })
       chunkIndex++
@@ -222,6 +222,7 @@ export async function processConstructionDocumentEmbedding(
         totalChunks: chunk.totalChunks,
         id: chunk.id,
         originalDocumentId: documentId,
+        document_id: documentId, // Add this field for Pinecone filtering
       }))
 
       // Store embeddings

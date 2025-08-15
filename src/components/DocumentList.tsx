@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -43,7 +42,7 @@ import { cn } from '@/lib/utils'
 
 interface DocumentListProps {
   documents: Document[]
-  onDelete?: (documentId: string) => void
+  onDelete?: (documentId: string) => void | Promise<void>
   onCancelProcessing?: (documentId: string) => void
   projectId: string
   companyId: string
@@ -62,6 +61,7 @@ export const DocumentList = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) {
@@ -188,12 +188,17 @@ export const DocumentList = ({
     }
   }
 
-  const deleteDocument = (id: string) => {
+  const deleteDocument = async (id: string) => {
     if (onDelete) {
-      onDelete(id)
+      setIsDeleting(true)
+      try {
+        await onDelete(id)
+        setDeleteDialogOpen(false)
+        setDocumentToDelete(null)
+      } finally {
+        setIsDeleting(false)
+      }
     }
-    setDeleteDialogOpen(false)
-    setDocumentToDelete(null)
   }
 
   const handleDeleteClick = (document: Document) => {
@@ -311,32 +316,33 @@ export const DocumentList = ({
                       <span className="ml-1">
                         {getDetailedProcessingStatus(doc)}
                       </span>
-                      {onCancelProcessing && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onCancelProcessing(doc.id)}
-                          className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800 ml-2"
-                        >
-                          Cancel Download
-                        </Button>
-                      )}
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => viewDocument(doc.id, doc.name)}
-                  disabled={doc.status === 'processing'}
-                  className={cn(
-                    doc.status === 'processing' &&
-                      'opacity-50 cursor-not-allowed',
-                  )}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
-                </Button>
+
+                {doc.status === 'processed' && (
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => viewDocument(doc.id, doc.name)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  </div>
+                )}
+
+                {doc.status === 'processing' && onCancelProcessing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onCancelProcessing(doc.id)}
+                    className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
+                  >
+                    Cancel Download
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))
@@ -361,17 +367,28 @@ export const DocumentList = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-100 text-gray-900 hover:bg-gray-200">
+            <AlertDialogCancel
+              className="bg-gray-100 text-gray-900 hover:bg-gray-200"
+              disabled={isDeleting}
+            >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={() =>
                 documentToDelete && deleteDocument(documentToDelete.id)
               }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
-              Delete Document
-            </AlertDialogAction>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Document'
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
