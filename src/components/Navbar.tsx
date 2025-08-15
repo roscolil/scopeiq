@@ -32,6 +32,18 @@ export const Navbar = () => {
   const navigate = useNavigate()
   const { isAuthenticated, user, signOut: authSignOut } = useAuth()
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  // Track scroll position to adjust navbar colors
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY
+      setScrolled(scrollPosition > 100) // Change colors after scrolling 100px
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // Extract company ID from user object
   const companyId = user?.companyId
@@ -65,13 +77,23 @@ export const Navbar = () => {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-transparent backdrop-blur-md">
+    <header
+      className={`sticky top-0 z-50 w-full border-b transition-all duration-300 ${
+        scrolled
+          ? 'border-gray-200 bg-white/95 backdrop-blur-md shadow-sm'
+          : 'border-white/20 bg-transparent backdrop-blur-md'
+      }`}
+    >
       <div className="container-2xl h-16 flex items-center justify-between">
         {/* Left side: Logo and menu items */}
         <div className="flex items-center gap-8">
           <Link
             to="/"
-            className="font-bold text-xl flex items-center gap-3 text-white hover:text-emerald-400 transition-colors"
+            className={`font-bold text-xl flex items-center gap-3 transition-colors ${
+              scrolled
+                ? 'text-gray-900 hover:text-emerald-600'
+                : 'text-white hover:text-emerald-400'
+            }`}
           >
             <div className="relative">
               <FilePlus className="h-6 w-6 text-emerald-400" />
@@ -90,8 +112,12 @@ export const Navbar = () => {
                   to={item.path}
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive(item.path)
-                      ? 'text-emerald-400 bg-white/20 shadow-soft backdrop-blur-sm'
-                      : 'text-gray-200 hover:text-white hover:bg-white/10'
+                      ? scrolled
+                        ? 'text-emerald-600 bg-emerald-50 shadow-soft backdrop-blur-sm'
+                        : 'text-emerald-400 bg-white/20 shadow-soft backdrop-blur-sm'
+                      : scrolled
+                        ? 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                        : 'text-gray-200 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {item.name}
@@ -107,7 +133,11 @@ export const Navbar = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden h-12 w-12 text-white hover:text-emerald-400 hover:bg-white/10 active:bg-white/20 touch-manipulation"
+                className={`md:hidden h-12 w-12 touch-manipulation transition-colors ${
+                  scrolled
+                    ? 'text-gray-700 hover:text-emerald-600 hover:bg-gray-100 active:bg-gray-200'
+                    : 'text-white hover:text-emerald-400 hover:bg-white/10 active:bg-white/20'
+                }`}
               >
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
@@ -186,7 +216,11 @@ export const Navbar = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-full hover:bg-white/20 transition-colors text-white hover:text-emerald-400"
+                      className={`h-10 w-10 rounded-full transition-colors ${
+                        scrolled
+                          ? 'hover:bg-gray-100 text-gray-700 hover:text-emerald-600'
+                          : 'hover:bg-white/20 text-white hover:text-emerald-400'
+                      }`}
                       onClick={() => setShowLogoutModal(true)}
                     >
                       <LogOut className="h-4 w-4" />
