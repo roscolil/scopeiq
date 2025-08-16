@@ -247,15 +247,6 @@ const BiometricSecuritySettings = () => {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={checkBiometricStatus}
-              disabled={biometricStatus.loading}
-              className="text-xs"
-            >
-              {biometricStatus.loading ? 'Checking...' : 'Refresh'}
-            </Button>
             {biometricStatus.hasCredentials ? (
               <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
                 ✓ Enabled

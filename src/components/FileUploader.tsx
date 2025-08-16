@@ -188,9 +188,35 @@ export const FileUploader = (props: FileUploaderProps) => {
                 content: fileText,
               },
             )
+
+            // Notify parent component of status update
+            const updatedDocument = {
+              ...newDocument,
+              status: 'processed' as const,
+              content: fileText,
+            }
+            onUploadComplete(updatedDocument as Document)
+          } else {
+            // No text content extracted, keeping status as processing
           }
         } catch (embeddingError) {
-          // Embedding processing failed - document is still uploaded but won't be searchable
+          // Update document status to failed due to processing error
+          try {
+            await documentService.updateDocument(
+              companyId,
+              projectId,
+              newDocument.id,
+              {
+                status: 'failed',
+              },
+            )
+
+            // Notify parent component of status update
+            const failedDocument = { ...newDocument, status: 'failed' as const }
+            onUploadComplete(failedDocument as Document)
+          } catch (updateError) {
+            // Failed to update document status
+          }
         }
       }
     } catch (error) {
@@ -235,7 +261,7 @@ export const FileUploader = (props: FileUploaderProps) => {
       if (successCount > 0 && failCount === 0) {
         toast({
           title: 'All uploads successful',
-          description: `${successCount} file${successCount > 1 ? 's' : ''} uploaded and processing for AI search.`,
+          description: `${successCount} file${successCount > 1 ? 's' : ''} uploaded.`,
         })
       } else if (successCount > 0 && failCount > 0) {
         toast({

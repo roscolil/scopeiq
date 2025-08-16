@@ -133,7 +133,6 @@ const SignIn = () => {
             })
           }
         } catch (biometricError) {
-          console.error('Biometric setup error:', biometricError)
           toast({
             title: 'Biometric setup failed',
             description: 'Could not set up biometric authentication.',
@@ -157,8 +156,6 @@ const SignIn = () => {
         navigate('/')
       }
     } catch (err: unknown) {
-      console.error('Sign in error details:', err)
-
       if (err instanceof Error) {
         if (err.message === 'UNVERIFIED_EMAIL') {
           // Navigate to verification page with the email

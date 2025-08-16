@@ -125,31 +125,6 @@ export const MobileBiometricLogin: React.FC<MobileBiometricLoginProps> = ({
       const result = await authenticateWithBiometric()
 
       if (result.success && result.credentials) {
-        // Check if the stored email matches the current user context
-        if (
-          result.credentials.email === 'test@example.com' ||
-          result.credentials.email.includes('test') ||
-          result.credentials.email.includes('example')
-        ) {
-          toast({
-            title: 'Outdated biometric credentials',
-            description:
-              'Your biometric login was set up with test credentials. Please set it up again.',
-            variant: 'destructive',
-          })
-
-          // Clear the old credentials
-          await clearBiometricCredentials()
-          setHasCredentials(false)
-
-          // Trigger setup flow
-          setTimeout(() => {
-            handleSetupBiometric()
-          }, 1000)
-
-          return
-        }
-
         // Use the decrypted credentials to sign in through AWS Cognito
         const user = await signIn(
           result.credentials.email,
@@ -182,21 +157,13 @@ export const MobileBiometricLogin: React.FC<MobileBiometricLoginProps> = ({
         toast({
           title: 'Credentials may be outdated',
           description:
-            'Your password may have changed. Would you like to update your biometric login?',
+            'Your password may have changed. Please update your biometric login.',
           variant: 'destructive',
         })
 
-        // Optionally clear and prompt for re-setup
-        setTimeout(async () => {
-          const shouldResetup = confirm(
-            'Your stored biometric credentials seem to be outdated. Would you like to clear them and set up biometric login again?',
-          )
-          if (shouldResetup) {
-            await clearBiometricCredentials()
-            setHasCredentials(false)
-            handleSetupBiometric()
-          }
-        }, 2000)
+        // Clear credentials and prompt for re-setup
+        await clearBiometricCredentials()
+        setHasCredentials(false)
       } else {
         toast({
           title: 'Sign in error',

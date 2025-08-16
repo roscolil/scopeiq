@@ -63,15 +63,15 @@ const ProjectDetails = () => {
       )
 
       // Show subtle notification for status changes
-      if (updatedDocument.status === 'processed') {
-        toast({
-          title: 'Document Ready',
-          description: `${updatedDocument.name} is now available for AI search.`,
-          duration: 3000,
-        })
-      }
+      // if (updatedDocument.status === 'processed') {
+      //   toast({
+      //     title: 'Document Ready',
+      //     description: `${updatedDocument.name} is now available for AI search.`,
+      //     duration: 3000,
+      //   })
+      // }
     },
-    [toast],
+    [],
   )
 
   // Poll for document status updates
@@ -271,14 +271,27 @@ const ProjectDetails = () => {
           updatedAt: doc.updatedAt,
         }))
 
-        // Only update if there are actual status changes to avoid unnecessary re-renders
+        // Only update if there are actual changes to avoid unnecessary re-renders
         setProjectDocuments(prev => {
-          const hasChanges = prev.some((prevDoc, index) => {
+          // Check for status changes
+          const hasStatusChanges = prev.some((prevDoc, index) => {
             const newDoc = transformedDocuments.find(d => d.id === prevDoc.id)
             return newDoc && newDoc.status !== prevDoc.status
           })
-          if (hasChanges) {
-            // Update cache when document statuses change
+
+          // Check for document count changes (additions or deletions)
+          const hasCountChanges = prev.length !== transformedDocuments.length
+
+          // Check for completely different document sets (by IDs)
+          const prevIds = new Set(prev.map(d => d.id))
+          const newIds = new Set(transformedDocuments.map(d => d.id))
+          const hasDocumentChanges =
+            prevIds.size !== newIds.size ||
+            [...prevIds].some(id => !newIds.has(id)) ||
+            [...newIds].some(id => !prevIds.has(id))
+
+          if (hasStatusChanges || hasCountChanges || hasDocumentChanges) {
+            // Update cache when document list changes
             setCachedDocumentsData(transformedDocuments)
             return transformedDocuments
           }
@@ -384,11 +397,30 @@ const ProjectDetails = () => {
   }
 
   const handleUploadDocument = (uploadedDocument: Document) => {
-    // Add the uploaded document to the project's document list
-    setProjectDocuments(prev => [...prev, uploadedDocument])
+    // Check if this document already exists (by ID) - if so, update it; otherwise add it
+    const existingDocumentIndex = projectDocuments.findIndex(
+      doc => doc.id === uploadedDocument.id,
+    )
 
-    // Close the dialog
-    setIsUploadDialogOpen(false)
+    let updatedDocuments: Document[]
+    if (existingDocumentIndex >= 0) {
+      // Update existing document (e.g., status change from processing to processed)
+      updatedDocuments = [...projectDocuments]
+      updatedDocuments[existingDocumentIndex] = uploadedDocument
+    } else {
+      // Add new document
+      updatedDocuments = [...projectDocuments, uploadedDocument]
+    }
+
+    setProjectDocuments(updatedDocuments)
+
+    // Immediately update the cache to reflect the changes
+    setCachedDocumentsData(updatedDocuments)
+
+    // Only close the dialog for new documents, not status updates
+    if (existingDocumentIndex < 0) {
+      setIsUploadDialogOpen(false)
+    }
 
     toast({
       title: 'Document uploaded successfully',
@@ -410,14 +442,19 @@ const ProjectDetails = () => {
       await documentService.deleteDocument(companyId, project.id, documentId)
 
       // Update the local state to remove the document
-      setProjectDocuments(prev => prev.filter(doc => doc.id !== documentId))
+      const updatedDocuments = projectDocuments.filter(
+        doc => doc.id !== documentId,
+      )
+      setProjectDocuments(updatedDocuments)
+
+      // Immediately update the cache to reflect the deletion
+      setCachedDocumentsData(updatedDocuments)
 
       toast({
         title: 'Document deleted',
         description: 'The document has been removed from this project.',
       })
     } catch (error) {
-      console.error('Error deleting document:', error)
       toast({
         title: 'Delete failed',
         description:
@@ -456,7 +493,6 @@ const ProjectDetails = () => {
         description: 'Document processing has been cancelled.',
       })
     } catch (error) {
-      console.error('Error cancelling processing:', error)
       toast({
         title: 'Cancel failed',
         description:

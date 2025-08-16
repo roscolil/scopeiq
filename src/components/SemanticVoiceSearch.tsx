@@ -36,7 +36,7 @@ const SemanticVoiceSearch: React.FC<SemanticVoiceSearchProps> = ({
           className="flex-1"
         />
         <Button type="submit" disabled={loading || !query.trim()}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ask AI'}
         </Button>
         <VoiceInput
           onTranscript={handleVoiceTranscript}
