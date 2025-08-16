@@ -283,10 +283,15 @@ const BiometricSecuritySettings = () => {
             <Button
               variant="outline"
               onClick={handleClearCredentials}
-              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-sm px-3 py-2 min-h-[2.5rem]"
               title="Remove stored login credentials and disable biometric sign-in. You can set it up again anytime."
             >
-              Disable biometric sign-in and remove saved credentials
+              <span className="block sm:hidden text-center">
+                Disable Biometric Login
+              </span>
+              <span className="hidden sm:block text-center">
+                Disable biometric sign-in and remove saved credentials
+              </span>
             </Button>
           )}
         </div>
