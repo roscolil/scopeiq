@@ -16,6 +16,7 @@ import {
   Plus,
   Check,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
@@ -165,7 +166,7 @@ export const FileUploader = (props: FileUploaderProps) => {
         ),
       )
 
-      // Process embedding in background
+      // Process embedding in background - console logs will show progress
       if (newDocument?.id) {
         try {
           const fileText = await extractTextFromFile(fileItem.file)
@@ -226,7 +227,7 @@ export const FileUploader = (props: FileUploaderProps) => {
             ? {
                 ...f,
                 status: 'failed' as const,
-                error: error instanceof Error ? error.message : 'Upload failed',
+                error: formatErrorMessage(error),
               }
             : f,
         ),
@@ -287,8 +288,137 @@ export const FileUploader = (props: FileUploaderProps) => {
     }
   }
 
-  const removeFile = (fileId: string) => {
-    setSelectedFiles(prev => prev.filter(f => f.id !== fileId))
+  const retryAllFailed = async () => {
+    const failedFiles = selectedFiles.filter(file => file.status === 'failed')
+
+    if (failedFiles.length === 0) return
+
+    toast({
+      title: 'Retrying failed uploads',
+      description: `Retrying ${failedFiles.length} failed upload(s)...`,
+    })
+
+    // Reset all failed files to pending
+    setSelectedFiles(prev =>
+      prev.map(file =>
+        file.status === 'failed'
+          ? {
+              ...file,
+              status: 'pending' as const,
+              error: undefined,
+              progress: 0,
+            }
+          : file,
+      ),
+    )
+
+    // Small delay to show the status change
+    await new Promise(resolve => setTimeout(resolve, 200))
+
+    // Retry all failed uploads sequentially
+    let retrySuccessCount = 0
+    let retryFailCount = 0
+
+    for (const fileItem of failedFiles) {
+      try {
+        await uploadSingleFile(fileItem)
+        retrySuccessCount++
+      } catch (error) {
+        console.error(`Error retrying file ${fileItem.file.name}:`, error)
+        retryFailCount++
+      }
+    }
+
+    // Show summary of retry results
+    if (retrySuccessCount > 0 && retryFailCount === 0) {
+      toast({
+        title: 'All retries successful',
+        description: `${retrySuccessCount} file(s) uploaded successfully.`,
+      })
+    } else if (retrySuccessCount > 0 && retryFailCount > 0) {
+      toast({
+        title: 'Partial retry success',
+        description: `${retrySuccessCount} succeeded, ${retryFailCount} still failed.`,
+        variant: 'default',
+      })
+    } else {
+      toast({
+        title: 'Retry failed',
+        description: 'All retry attempts failed. Please check your connection.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const removeFile = (id: string) => {
+    setSelectedFiles(prev => prev.filter(file => file.id !== id))
+  }
+
+  const retryFile = async (id: string) => {
+    const fileItem = selectedFiles.find(file => file.id === id)
+    if (!fileItem) return
+
+    try {
+      // Reset the file status to pending
+      setSelectedFiles(prev =>
+        prev.map(file =>
+          file.id === id
+            ? {
+                ...file,
+                status: 'pending' as const,
+                error: undefined,
+                progress: 0,
+              }
+            : file,
+        ),
+      )
+
+      // Small delay to show the status change
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Retry the upload
+      await uploadSingleFile(fileItem)
+
+      toast({
+        title: 'Retry started',
+        description: `Retrying upload for ${fileItem.file.name}`,
+      })
+    } catch (error) {
+      console.error('Error retrying file upload:', error)
+      toast({
+        title: 'Retry failed',
+        description: 'Could not retry the upload. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const formatErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      // Make error messages more user-friendly
+      const message = error.message.toLowerCase()
+
+      if (message.includes('network') || message.includes('fetch')) {
+        return 'Network error. Please check your connection and try again.'
+      }
+      if (message.includes('unauthorized') || message.includes('forbidden')) {
+        return 'Authorization error. Please sign in again.'
+      }
+      if (message.includes('too large') || message.includes('size')) {
+        return 'File too large. Please use a smaller file.'
+      }
+      if (message.includes('timeout')) {
+        return 'Upload timed out. Please try again.'
+      }
+      if (message.includes('cors') || message.includes('origin')) {
+        return 'Server configuration error. Please contact support.'
+      }
+
+      // Return original message if no specific pattern matched
+      return error.message
+    }
+
+    return 'Upload failed. Please try again.'
   }
 
   const removeAllFiles = () => {
@@ -341,12 +471,12 @@ export const FileUploader = (props: FileUploaderProps) => {
         return <Check className="h-4 w-4 text-green-500" />
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />
-      case 'uploading':
-        return (
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-        )
-      default:
-        return <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+      // case 'uploading':
+      //   return (
+      //     <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+      //   )
+      // default:
+      //   return <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
     }
   }
 
@@ -472,6 +602,16 @@ export const FileUploader = (props: FileUploaderProps) => {
               Selected Files ({selectedFiles.length})
             </h3>
             <div className="flex gap-2">
+              {selectedFiles.some(f => f.status === 'failed') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={retryAllFailed}
+                  className="text-xs text-blue-600 hover:text-blue-700"
+                >
+                  Retry Failed
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -502,8 +642,12 @@ export const FileUploader = (props: FileUploaderProps) => {
           {isUploading && (
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span>Overall Progress</span>
-                <span>{getOverallProgress()}%</span>
+                <span>Upload Progress</span>
+                <span>
+                  Uploading{' '}
+                  {selectedFiles.filter(f => f.status === 'uploading').length}{' '}
+                  of {selectedFiles.length} files
+                </span>
               </div>
               <Progress value={getOverallProgress()} className="w-full h-2" />
             </div>
@@ -532,14 +676,16 @@ export const FileUploader = (props: FileUploaderProps) => {
                     {fileItem.status === 'uploading' && (
                       <>
                         <span>•</span>
-                        <span>{fileItem.progress}%</span>
+                        <span>Uploading to secure storage</span>
                       </>
                     )}
                     {fileItem.status === 'failed' && fileItem.error && (
-                      <>
-                        <span>•</span>
-                        <span className="text-red-500">{fileItem.error}</span>
-                      </>
+                      <div className="flex items-start gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-red-600 text-xs leading-tight">
+                          {fileItem.error}
+                        </span>
+                      </div>
                     )}
                   </div>
 
@@ -551,15 +697,29 @@ export const FileUploader = (props: FileUploaderProps) => {
                   )}
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(fileItem.id)}
-                  disabled={fileItem.status === 'uploading'}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                  {fileItem.status === 'failed' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => retryFile(fileItem.id)}
+                      className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                      title="Retry upload"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(fileItem.id)}
+                    disabled={fileItem.status === 'uploading'}
+                    className="h-8 w-8 p-0"
+                    title="Remove file"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

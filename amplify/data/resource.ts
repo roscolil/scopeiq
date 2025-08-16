@@ -180,7 +180,7 @@ const schema = a.schema({
       projectId: a.id().required(),
       mimeType: a.string(),
       content: a.string(), // Processed text content
-      tags: a.string().array(), // For search/categorization
+      tags: a.string().array(), // Document tags
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
       // Relations

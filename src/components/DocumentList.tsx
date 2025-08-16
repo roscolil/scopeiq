@@ -62,6 +62,37 @@ export const DocumentList = ({
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [, forceUpdate] = React.useState(0)
+  const [consoleMessages, setConsoleMessages] = React.useState<string[]>([])
+
+  // Capture console logs in real-time
+  React.useEffect(() => {
+    const originalConsoleLog = console.log
+
+    console.log = (...args: unknown[]) => {
+      const message = String(args.join(' '))
+
+      // Add any processing-related message to our list
+      if (
+        message.includes('PDF') ||
+        message.includes('embedding') ||
+        message.includes('extraction') ||
+        message.includes('processing') ||
+        message.includes('OCR') ||
+        message.includes('Text length') ||
+        message.includes('Successfully')
+      ) {
+        setConsoleMessages(prev => [...prev.slice(-4), message]) // Keep last 5 messages
+      }
+
+      // Call original console.log
+      originalConsoleLog.apply(console, args)
+    }
+
+    return () => {
+      console.log = originalConsoleLog
+    }
+  }, [])
 
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) {
@@ -70,33 +101,6 @@ export const DocumentList = ({
       return <Image className="h-8 w-8 text-blue-500" />
     } else {
       return <File className="h-8 w-8 text-green-500" />
-    }
-  }
-
-  const getProcessingInfo = (doc: Document) => {
-    if (doc.type.includes('pdf')) {
-      // Show generic OCR processing without fake page numbers
-      const progress = Math.floor((Date.now() / 300) % 85) + 10 // 10-85%
-      return `OCR ${progress}%`
-    } else if (doc.type.includes('image')) {
-      const progress = Math.floor((Date.now() / 300) % 85) + 10
-      return `OCR ${progress}%`
-    } else {
-      const progress = Math.floor((Date.now() / 300) % 85) + 10
-      return `Processing ${progress}%`
-    }
-  }
-
-  const getDetailedProcessingStatus = (doc: Document) => {
-    if (doc.type.includes('pdf')) {
-      const progress = Math.floor((Date.now() / 300) % 85) + 10
-      return `Extracting text • ${progress}%`
-    } else if (doc.type.includes('image')) {
-      const progress = Math.floor((Date.now() / 300) % 85) + 10
-      return `Running OCR • ${progress}%`
-    } else {
-      const progress = Math.floor((Date.now() / 300) % 85) + 10
-      return `Analyzing • ${progress}%`
     }
   }
 
@@ -222,7 +226,7 @@ export const DocumentList = ({
               className={cn(
                 'overflow-hidden transition-all duration-300 relative',
                 doc.status === 'processing' &&
-                  'ring-2 ring-amber-400 bg-amber-900/20 backdrop-blur-sm',
+                  'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
               )}
             >
               {/* Subtle shimmer overlay for processing documents */}
@@ -235,8 +239,8 @@ export const DocumentList = ({
                     <div className="relative">
                       {getFileIcon(doc.type)}
                       {doc.status === 'processing' && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-pulse">
-                          <div className="absolute inset-0 bg-amber-400 rounded-full animate-ping opacity-75"></div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
+                          <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>
                         </div>
                       )}
                     </div>
@@ -310,11 +314,11 @@ export const DocumentList = ({
                     <div className="text-xs text-amber-700 flex items-center gap-2 font-medium">
                       <div className="flex space-x-1">
                         <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                        {/* <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce"></div> */}
                       </div>
-                      <span className="ml-1">
-                        {getDetailedProcessingStatus(doc)}
+                      <span className="ml-1 max-w-xs truncate">
+                        {consoleMessages.length > 0
+                          ? consoleMessages[consoleMessages.length - 1]
+                          : 'Processing document...'}
                       </span>
                     </div>
                   )}
