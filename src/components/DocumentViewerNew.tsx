@@ -148,7 +148,7 @@ export const DocumentViewer = ({
       } else if (preResolvedDocument.type.includes('pdf')) {
         documentContent =
           preResolvedDocument.content ||
-          'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
+          'This is a PDF document that was uploaded. Advanced AI text analysis is in progress using OCR and semantic processing.\n\nThe full text content and searchable structure will be available once processing is complete.'
       } else if (
         preResolvedDocument.type.includes('text') ||
         preResolvedDocument.type.includes('txt') ||
@@ -156,7 +156,8 @@ export const DocumentViewer = ({
         preResolvedDocument.type.includes('plain')
       ) {
         documentContent =
-          preResolvedDocument.content || 'Text content is being processed...'
+          preResolvedDocument.content ||
+          'Advanced text processing and content analysis is in progress...'
       } else {
         documentContent =
           preResolvedDocument.content || 'Document content not available.'
@@ -194,14 +195,14 @@ export const DocumentViewer = ({
           } else if (documentData.type.includes('pdf')) {
             documentContent =
               documentData.content ||
-              'This is a PDF document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
+              'This is a PDF document that was uploaded. Advanced AI text analysis is in progress using OCR and semantic processing.\n\nThe full text content and searchable structure will be available once processing is complete.'
           } else if (
             documentData.type.includes('word') ||
             documentData.type.includes('doc')
           ) {
             documentContent =
               documentData.content ||
-              'This is a Word document that was uploaded. Content extraction is in progress.\n\nThe full text will be available once processing is complete.'
+              'This is a Word document that was uploaded. Advanced document parsing and content analysis is in progress.\n\nThe formatted text content will be available once processing is complete.'
           } else if (
             documentData.type.includes('excel') ||
             documentData.type.includes('sheet') ||
@@ -209,7 +210,7 @@ export const DocumentViewer = ({
           ) {
             documentContent =
               documentData.content ||
-              'This is a spreadsheet that was uploaded. Content extraction is in progress.\n\nThe data will be available once processing is complete.'
+              'This is a spreadsheet that was uploaded. Advanced data analysis and table structure processing is in progress.\n\nThe structured data and content will be available once processing is complete.'
           } else if (
             documentData.type.includes('text') ||
             documentData.type.includes('txt') ||
@@ -218,11 +219,11 @@ export const DocumentViewer = ({
           ) {
             documentContent =
               documentData.content ||
-              'This is a text document that was uploaded. Content is being processed.'
+              'This is a text document that was uploaded. Advanced content analysis and semantic processing is in progress.'
           } else {
             documentContent =
               documentData.content ||
-              'This document has been uploaded and is being processed. Content will be available shortly.'
+              'This document has been uploaded and is being processed with advanced AI analysis. Structured content and searchable text will be available shortly.'
           }
 
           setContent(documentContent)
