@@ -116,7 +116,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
     setIsProcessing(true)
     setProgress(0)
     clearProcessingLogs()
-    setProcessingStep('Extracting text from document...')
+    setProcessingStep('Analyzing document structure and content...')
 
     try {
       // Step 1: Extract text (0-25%)
@@ -124,7 +124,9 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
       addProcessingLog(
         `File size: ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
       )
-      addProcessingLog('Extracting text content from document...')
+      addProcessingLog(
+        'Analyzing document structure and extracting all text content...',
+      )
 
       setProgress(10)
       const content = await extractTextFromFile(selectedFile)
@@ -140,10 +142,10 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
       addProcessingLog(`Processing mode: ${trainingOptions.mode}`)
 
       setProgress(25)
-      setProcessingStep('Analyzing content and extracting key concepts...')
+      setProcessingStep('Processing content with advanced AI analysis...')
 
       // Step 2: Process with AI service (25-100%)
-      addProcessingLog('Starting AI analysis and concept extraction...')
+      addProcessingLog('Initializing GPT-4 Turbo for content analysis...')
       const result = await aiDocumentTrainingService.processDocumentForTraining(
         selectedFile,
         content,
@@ -152,8 +154,10 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
       )
 
       setProgress(75)
-      setProcessingStep('Generating training examples...')
-      addProcessingLog('Finalizing training data generation...')
+      setProcessingStep('Creating semantic embeddings and training data...')
+      addProcessingLog(
+        'Generating vector embeddings and knowledge structures...',
+      )
 
       // Simulate final processing step
       await new Promise(resolve => setTimeout(resolve, 1000))
@@ -419,7 +423,9 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
             <div className="mt-6 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-white">{processingStep}</span>
-                <span className="text-sm text-slate-400">{progress}%</span>
+                <span className="text-sm text-slate-400">
+                  Processing document
+                </span>
               </div>
               <Progress value={progress} className="w-full" />
             </div>
