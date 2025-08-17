@@ -4,6 +4,7 @@ import { auth } from './auth/resource'
 import { data } from './data/resource'
 import { storage } from './storage/resource'
 import { postConfirmation } from './functions/post-confirmation/resource'
+import { preTokenGeneration } from './functions/pre-token-generation/resource'
 import { sendContactEmail } from './functions/send-contact-email/resource'
 import { sendInvitationEmail } from './functions/send-invitation-email/resource'
 
@@ -15,6 +16,7 @@ export const backend = defineBackend({
   data,
   storage,
   postConfirmation,
+  preTokenGeneration,
   sendContactEmail,
   sendInvitationEmail,
 })

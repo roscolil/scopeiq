@@ -31,7 +31,7 @@ const schema = a.schema({
       acceptUrl: a.string().required(),
     })
     .returns(a.json())
-    .authorization(allow => [allow.authenticated()])
+    .authorization(allow => [allow.groups(['Admin', 'Owner'])])
     .handler(a.handler.function(sendInvitationEmail)),
 
   // Company model for multi-tenancy
@@ -46,7 +46,19 @@ const schema = a.schema({
       users: a.hasMany('User', 'companyId'),
       invitations: a.hasMany('UserInvitation', 'companyId'),
     })
-    .authorization(allow => [allow.owner()]),
+    .authorization(allow => [
+      // Admin has full access across all companies
+      allow
+        .groups(['Admin'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+      allow.authenticated('userPools').to(['create', 'read']),
+
+      // Company owners can read and update their company
+      allow.groups(['Owner'], 'userPools').to(['read', 'update']),
+
+      // Users can only read company information
+      allow.groups(['User'], 'userPools').to(['read']),
+    ]),
 
   // Enhanced User model for RBAC
   User: a
@@ -67,10 +79,22 @@ const schema = a.schema({
       sentInvitations: a.hasMany('UserInvitation', 'invitedBy'),
     })
     .authorization(allow => [
-      allow.owner(),
-      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
-      allow.groups(['Owner']).to(['read', 'update']),
-      allow.groups(['User']).to(['read']),
+      // Global admin has full access to all users
+      allow
+        .groups(['Admin'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+
+      // Company owners can manage users in their company
+      allow
+        .groups(['Owner'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+
+      // Regular users can only read other users and update their own profile
+      allow.groups(['User'], 'userPools').to(['read']),
+      allow.owner('userPools').to(['read', 'update']),
+
+      // Allow authenticated users to create their own user record during signup
+      allow.authenticated('userPools').to(['create', 'read']),
     ])
     .secondaryIndexes(index => [
       index('companyId').sortKeys(['role']).queryField('usersByCompanyAndRole'),
@@ -88,7 +112,7 @@ const schema = a.schema({
       project: a.belongsTo('Project', 'projectId'),
     })
     .authorization(allow => [
-      allow.owner(),
+      allow.owner('userPools').to(['read']), // Owners can only read, not update ownership
       allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
       allow.groups(['Owner']).to(['create', 'read', 'delete']),
     ])
@@ -114,7 +138,7 @@ const schema = a.schema({
       projectAssignments: a.hasMany('InvitationProject', 'invitationId'),
     })
     .authorization(allow => [
-      allow.owner(),
+      allow.owner('userPools').to(['read']), // Owners can only read, not update ownership
       allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
     ])
     .secondaryIndexes(index => [
@@ -135,7 +159,7 @@ const schema = a.schema({
       project: a.belongsTo('Project', 'projectId'),
     })
     .authorization(allow => [
-      allow.owner(),
+      allow.owner('userPools').to(['read']), // Owners can only read, not update ownership
       allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
     ]),
 
@@ -145,7 +169,8 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       companyId: a.id().required(),
-      slug: a.string(), // For friendly URLs
+      slug: a.string(),
+      owner: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
       // Relations
@@ -154,7 +179,16 @@ const schema = a.schema({
       userAssignments: a.hasMany('UserProject', 'projectId'),
       invitationAssignments: a.hasMany('InvitationProject', 'projectId'),
     })
-    .authorization(allow => [allow.owner()])
+    .authorization(allow => [
+      // Only Admin and Owner can create, update, delete projects
+      allow
+        .groups(['Admin', 'Owner'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+      // Users can only read projects they're assigned to
+      allow.groups(['User'], 'userPools').to(['read']),
+      // Fallback: authenticated users can read (for initial setup)
+      allow.authenticated('userPools').to(['read']),
+    ])
     .secondaryIndexes(index => [
       index('companyId')
         .sortKeys(['createdAt'])
@@ -169,7 +203,7 @@ const schema = a.schema({
     .model({
       name: a.string().required(),
       type: a.string().required(),
-      size: a.integer().required(), // Changed to integer
+      size: a.integer().required(),
       status: a.enum(['processed', 'processing', 'failed', 'ready', 'error']),
       // S3 file paths - keeping files in S3
       s3Key: a.string().required(), // Path to actual file in S3
@@ -179,16 +213,26 @@ const schema = a.schema({
       // Metadata
       projectId: a.id().required(),
       mimeType: a.string(),
-      content: a.string(), // Processed text content
-      tags: a.string().array(), // Document tags
+      content: a.string(),
+      tags: a.string().array(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
       // Relations
       project: a.belongsTo('Project', 'projectId'),
     })
     .authorization(allow => [
-      allow.owner(),
-      allow.authenticated().to(['read', 'update', 'delete']), // Allow authenticated users to delete documents
+      // Admin has full access to all documents
+      allow
+        .groups(['Admin'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+      // Owner can manage documents in their company projects
+      allow
+        .groups(['Owner'], 'userPools')
+        .to(['create', 'read', 'update', 'delete']),
+      // Users can read/update documents in projects they're assigned to
+      allow.groups(['User'], 'userPools').to(['read', 'update']),
+      // Document owner can manage their own documents
+      allow.owner('userPools').to(['read', 'update', 'delete']),
     ])
     .secondaryIndexes(index => [
       index('projectId')
@@ -212,8 +256,8 @@ const schema = a.schema({
       updatedAt: a.datetime(),
     })
     .authorization(allow => [
-      allow.publicApiKey().to(['create']), // Only allow public creation
-      allow.guest().to(['create']), // Allow guest users to create
+      allow.publicApiKey().to(['create']),
+      allow.guest().to(['create']),
     ])
     .secondaryIndexes(index => [
       index('status').sortKeys(['createdAt']).queryField('submissionsByStatus'),
