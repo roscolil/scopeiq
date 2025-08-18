@@ -1,6 +1,0 @@
-// Alternative import syntax for Amplify backend (if needed)
-import type { ClientSchema } from '@aws-amplify/backend';
-import { a, defineData } from '@aws-amplify/backend';
-
-// Rest of your schema definition...
-// This alternative syntax sometimes resolves module resolution issues

@@ -156,6 +156,21 @@ export const databaseDocumentService = {
 
       if (errors) {
         console.error('DB: Error creating document:', errors)
+
+        // Check for authorization errors and provide more descriptive messages
+        const authError = errors.find(
+          error =>
+            error.message?.includes('Not Authorized') ||
+            error.message?.includes('Unauthorized') ||
+            error.errorType === 'Unauthorized',
+        )
+
+        if (authError) {
+          throw new Error(
+            'You do not have authorization to create documents. Please contact your administrator.',
+          )
+        }
+
         throw new Error(
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
@@ -350,44 +365,52 @@ export const databaseProjectService = {
       'id' | 'companyId' | 'createdAt' | 'updatedAt'
     >,
   ): Promise<DatabaseProject> {
-    try {
-      const companyId = await getCurrentCompanyId()
+    const companyId = await getCurrentCompanyId()
 
-      // Generate slug if not provided
-      const slug =
-        projectData.slug ||
-        projectData.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+    // Generate slug if not provided
+    const slug =
+      projectData.slug ||
+      projectData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
 
-      // Temporary workaround for Amplify type generation bug
-      const { data: project, errors } = await client.models.Project.create({
-        name: projectData.name as string & string[],
-        description: projectData.description as string & string[],
-        companyId: companyId as string & string[],
-        slug: slug as string & string[],
-      })
+    // Temporary workaround for Amplify type generation bug
+    const { data: project, errors } = await client.models.Project.create({
+      name: projectData.name as string & string[],
+      description: projectData.description as string & string[],
+      companyId: companyId as string & string[],
+      slug: slug as string & string[],
+    })
 
-      if (errors) {
-        console.error('DB: Error creating project:', errors)
+    if (errors) {
+      // Check for authorization errors and provide more descriptive messages
+      const authError = errors.find(
+        error =>
+          error.message?.includes('Not Authorized') ||
+          error.message?.includes('Unauthorized') ||
+          error.errorType === 'Unauthorized',
+      )
+
+      if (authError) {
         throw new Error(
-          `Database error: ${errors.map(e => e.message).join(', ')}`,
+          'You do not have authorization to create projects. Please contact your administrator.',
         )
       }
 
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        companyId: project.companyId,
-        slug: project.slug,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      }
-    } catch (error) {
-      console.error('DB: Error creating project:', error)
-      throw error
+      throw new Error(
+        `Database error: ${errors.map(e => e.message).join(', ')}`,
+      )
+    }
+
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      companyId: project.companyId,
+      slug: project.slug,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
     }
   },
 
