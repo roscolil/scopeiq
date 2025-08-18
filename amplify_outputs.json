@@ -4,20 +4,10 @@
     "aws_region": "ap-southeast-2",
     "user_pool_client_id": "5h7beekj587damjpqebj1a0d74",
     "identity_pool_id": "ap-southeast-2:96606e77-a512-4d47-82a2-5c36e60d938e",
-    "mfa_methods": [
-      "SMS",
-      "TOTP"
-    ],
-    "standard_required_attributes": [
-      "email",
-      "given_name"
-    ],
-    "username_attributes": [
-      "email"
-    ],
-    "user_verification_types": [
-      "email"
-    ],
+    "mfa_methods": ["SMS", "TOTP"],
+    "standard_required_attributes": ["email", "given_name"],
+    "username_attributes": ["email"],
+    "user_verification_types": ["email"],
     "groups": [
       {
         "Admin": {
@@ -50,10 +40,7 @@
     "aws_region": "ap-southeast-2",
     "api_key": "da2-nxmaqm2fcrdu5ddyeokca4cqg4",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
-    "authorization_types": [
-      "API_KEY",
-      "AWS_IAM"
-    ],
+    "authorization_types": ["API_KEY", "AWS_IAM"],
     "model_introspection": {
       "version": 1,
       "models": {
@@ -106,9 +93,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "companyId"
-                ]
+                "associatedWith": ["companyId"]
               }
             },
             "users": {
@@ -122,9 +107,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "companyId"
-                ]
+                "associatedWith": ["companyId"]
               }
             },
             "invitations": {
@@ -138,9 +121,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "companyId"
-                ]
+                "associatedWith": ["companyId"]
               }
             }
           },
@@ -159,46 +140,27 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   },
                   {
                     "allow": "private",
                     "provider": "userPools",
-                    "operations": [
-                      "create",
-                      "read"
-                    ]
+                    "operations": ["create", "read"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read",
-                      "update"
-                    ],
-                    "groups": [
-                      "Owner"
-                    ]
+                    "operations": ["read", "update"],
+                    "groups": ["Owner"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read"
-                    ],
-                    "groups": [
-                      "User"
-                    ]
+                    "operations": ["read"],
+                    "groups": ["User"]
                   }
                 ]
               }
@@ -302,9 +264,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "companyId"
-                ]
+                "targetNames": ["companyId"]
               }
             },
             "projectAssignments": {
@@ -318,9 +278,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "userId"
-                ]
+                "associatedWith": ["userId"]
               }
             },
             "sentInvitations": {
@@ -334,9 +292,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "invitedBy"
-                ]
+                "associatedWith": ["invitedBy"]
               }
             }
           },
@@ -352,9 +308,7 @@
               "properties": {
                 "name": "usersByEmail",
                 "queryField": "userByEmail",
-                "fields": [
-                  "email"
-                ]
+                "fields": ["email"]
               }
             },
             {
@@ -362,10 +316,7 @@
               "properties": {
                 "name": "usersByCompanyIdAndRole",
                 "queryField": "usersByCompanyAndRole",
-                "fields": [
-                  "companyId",
-                  "role"
-                ]
+                "fields": ["companyId", "role"]
               }
             },
             {
@@ -376,58 +327,34 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Owner"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Owner"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read"
-                    ],
-                    "groups": [
-                      "User"
-                    ]
+                    "operations": ["read"],
+                    "groups": ["User"]
                   },
                   {
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "operations": [
-                      "read",
-                      "update"
-                    ],
+                    "operations": ["read", "update"],
                     "identityClaim": "cognito:username"
                   },
                   {
                     "allow": "private",
                     "provider": "userPools",
-                    "operations": [
-                      "create",
-                      "read"
-                    ]
+                    "operations": ["create", "read"]
                   }
                 ]
               }
@@ -480,9 +407,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "userId"
-                ]
+                "targetNames": ["userId"]
               }
             },
             "project": {
@@ -495,9 +420,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "projectId"
-                ]
+                "targetNames": ["projectId"]
               }
             },
             "updatedAt": {
@@ -521,9 +444,7 @@
               "properties": {
                 "name": "userProjectsByUserId",
                 "queryField": "projectsByUser",
-                "fields": [
-                  "userId"
-                ]
+                "fields": ["userId"]
               }
             },
             {
@@ -531,9 +452,7 @@
               "properties": {
                 "name": "userProjectsByProjectId",
                 "queryField": "usersByProject",
-                "fields": [
-                  "projectId"
-                ]
+                "fields": ["projectId"]
               }
             },
             {
@@ -544,37 +463,22 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "operations": [
-                      "read"
-                    ],
+                    "operations": ["read"],
                     "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Owner"
-                    ]
+                    "operations": ["create", "read", "delete"],
+                    "groups": ["Owner"]
                   }
                 ]
               }
@@ -666,9 +570,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "companyId"
-                ]
+                "targetNames": ["companyId"]
               }
             },
             "inviter": {
@@ -681,9 +583,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "invitedBy"
-                ]
+                "targetNames": ["invitedBy"]
               }
             },
             "projectAssignments": {
@@ -697,9 +597,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "invitationId"
-                ]
+                "associatedWith": ["invitationId"]
               }
             }
           },
@@ -715,9 +613,7 @@
               "properties": {
                 "name": "userInvitationsByEmail",
                 "queryField": "invitationByEmail",
-                "fields": [
-                  "email"
-                ]
+                "fields": ["email"]
               }
             },
             {
@@ -725,10 +621,7 @@
               "properties": {
                 "name": "userInvitationsByCompanyIdAndStatus",
                 "queryField": "invitationsByCompanyAndStatus",
-                "fields": [
-                  "companyId",
-                  "status"
-                ]
+                "fields": ["companyId", "status"]
               }
             },
             {
@@ -739,24 +632,15 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "operations": [
-                      "read"
-                    ],
+                    "operations": ["read"],
                     "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   }
                 ]
               }
@@ -809,9 +693,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "invitationId"
-                ]
+                "targetNames": ["invitationId"]
               }
             },
             "project": {
@@ -824,9 +706,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "projectId"
-                ]
+                "targetNames": ["projectId"]
               }
             },
             "updatedAt": {
@@ -853,24 +733,15 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "operations": [
-                      "read"
-                    ],
+                    "operations": ["read"],
                     "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   }
                 ]
               }
@@ -951,9 +822,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "companyId"
-                ]
+                "targetNames": ["companyId"]
               }
             },
             "documents": {
@@ -967,9 +836,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "projectId"
-                ]
+                "associatedWith": ["projectId"]
               }
             },
             "userAssignments": {
@@ -983,9 +850,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "projectId"
-                ]
+                "associatedWith": ["projectId"]
               }
             },
             "invitationAssignments": {
@@ -999,9 +864,7 @@
               "isArrayNullable": true,
               "association": {
                 "connectionType": "HAS_MANY",
-                "associatedWith": [
-                  "projectId"
-                ]
+                "associatedWith": ["projectId"]
               }
             }
           },
@@ -1017,10 +880,7 @@
               "properties": {
                 "name": "projectsByCompanyIdAndCreatedAt",
                 "queryField": "projectsByCompany",
-                "fields": [
-                  "companyId",
-                  "createdAt"
-                ]
+                "fields": ["companyId", "createdAt"]
               }
             },
             {
@@ -1028,10 +888,7 @@
               "properties": {
                 "name": "projectsByCompanyIdAndName",
                 "queryField": "projectsByCompanyAndName",
-                "fields": [
-                  "companyId",
-                  "name"
-                ]
+                "fields": ["companyId", "name"]
               }
             },
             {
@@ -1042,34 +899,20 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin",
-                      "Owner"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin", "Owner"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read"
-                    ],
-                    "groups": [
-                      "User"
-                    ]
+                    "operations": ["read"],
+                    "groups": ["User"]
                   },
                   {
                     "allow": "private",
                     "provider": "userPools",
-                    "operations": [
-                      "read"
-                    ]
+                    "operations": ["read"]
                   }
                 ]
               }
@@ -1202,9 +1045,7 @@
               "attributes": [],
               "association": {
                 "connectionType": "BELONGS_TO",
-                "targetNames": [
-                  "projectId"
-                ]
+                "targetNames": ["projectId"]
               }
             }
           },
@@ -1220,9 +1061,7 @@
               "properties": {
                 "name": "documentsByStatus",
                 "queryField": "documentsByStatus",
-                "fields": [
-                  "status"
-                ]
+                "fields": ["status"]
               }
             },
             {
@@ -1230,10 +1069,7 @@
               "properties": {
                 "name": "documentsByProjectIdAndCreatedAt",
                 "queryField": "documentsByProject",
-                "fields": [
-                  "projectId",
-                  "createdAt"
-                ]
+                "fields": ["projectId", "createdAt"]
               }
             },
             {
@@ -1241,10 +1077,7 @@
               "properties": {
                 "name": "documentsByProjectIdAndName",
                 "queryField": "documentsByProjectAndName",
-                "fields": [
-                  "projectId",
-                  "name"
-                ]
+                "fields": ["projectId", "name"]
               }
             },
             {
@@ -1255,51 +1088,28 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Admin"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "create",
-                      "read",
-                      "update",
-                      "delete"
-                    ],
-                    "groups": [
-                      "Owner"
-                    ]
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Owner"]
                   },
                   {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": [
-                      "read",
-                      "update"
-                    ],
-                    "groups": [
-                      "User"
-                    ]
+                    "operations": ["read", "update"],
+                    "groups": ["User"]
                   },
                   {
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "operations": [
-                      "read",
-                      "update",
-                      "delete"
-                    ],
+                    "operations": ["read", "update", "delete"],
                     "identityClaim": "cognito:username"
                   }
                 ]
@@ -1386,9 +1196,7 @@
               "properties": {
                 "name": "contactSubmissionsByEmail",
                 "queryField": "submissionsByEmail",
-                "fields": [
-                  "email"
-                ]
+                "fields": ["email"]
               }
             },
             {
@@ -1396,10 +1204,7 @@
               "properties": {
                 "name": "contactSubmissionsByStatusAndCreatedAt",
                 "queryField": "submissionsByStatus",
-                "fields": [
-                  "status",
-                  "createdAt"
-                ]
+                "fields": ["status", "createdAt"]
               }
             },
             {
@@ -1409,16 +1214,12 @@
                   {
                     "allow": "public",
                     "provider": "apiKey",
-                    "operations": [
-                      "create"
-                    ]
+                    "operations": ["create"]
                   },
                   {
                     "allow": "public",
                     "provider": "iam",
-                    "operations": [
-                      "create"
-                    ]
+                    "operations": ["create"]
                   }
                 ]
               }
@@ -1434,46 +1235,23 @@
       "enums": {
         "UserRole": {
           "name": "UserRole",
-          "values": [
-            "Admin",
-            "Owner",
-            "User"
-          ]
+          "values": ["Admin", "Owner", "User"]
         },
         "UserInvitationRole": {
           "name": "UserInvitationRole",
-          "values": [
-            "Admin",
-            "Owner",
-            "User"
-          ]
+          "values": ["Admin", "Owner", "User"]
         },
         "UserInvitationStatus": {
           "name": "UserInvitationStatus",
-          "values": [
-            "pending",
-            "accepted",
-            "expired",
-            "cancelled"
-          ]
+          "values": ["pending", "accepted", "expired", "cancelled"]
         },
         "DocumentStatus": {
           "name": "DocumentStatus",
-          "values": [
-            "processed",
-            "processing",
-            "failed",
-            "ready",
-            "error"
-          ]
+          "values": ["processed", "processing", "failed", "ready", "error"]
         },
         "ContactSubmissionStatus": {
           "name": "ContactSubmissionStatus",
-          "values": [
-            "new",
-            "contacted",
-            "resolved"
-          ]
+          "values": ["new", "contacted", "resolved"]
         }
       },
       "nonModels": {},
@@ -1585,32 +1363,14 @@
         "aws_region": "ap-southeast-2",
         "paths": {
           "public/*": {
-            "guest": [
-              "get",
-              "list"
-            ],
-            "authenticated": [
-              "get",
-              "list",
-              "write",
-              "delete"
-            ]
+            "guest": ["get", "list"],
+            "authenticated": ["get", "list", "write", "delete"]
           },
           "protected/${cognito-identity.amazonaws.com:sub}/*": {
-            "entityidentity": [
-              "get",
-              "list",
-              "write",
-              "delete"
-            ]
+            "entityidentity": ["get", "list", "write", "delete"]
           },
           "private/${cognito-identity.amazonaws.com:sub}/*": {
-            "entityidentity": [
-              "get",
-              "list",
-              "write",
-              "delete"
-            ]
+            "entityidentity": ["get", "list", "write", "delete"]
           }
         }
       }

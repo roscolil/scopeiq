@@ -156,6 +156,21 @@ export const databaseDocumentService = {
 
       if (errors) {
         console.error('DB: Error creating document:', errors)
+
+        // Check for authorization errors and provide more descriptive messages
+        const authError = errors.find(
+          error =>
+            error.message?.includes('Not Authorized') ||
+            error.message?.includes('Unauthorized') ||
+            error.errorType === 'Unauthorized',
+        )
+
+        if (authError) {
+          throw new Error(
+            'You do not have authorization to create documents. Please contact your administrator.',
+          )
+        }
+
         throw new Error(
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )

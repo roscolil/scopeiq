@@ -8,9 +8,6 @@ import { AuthProvider } from './hooks/aws-auth'
 import { prefetchOnIdle, cleanupPrefetchObserver } from './utils/route-prefetch'
 import { PageHeaderSkeleton } from './components/skeletons'
 
-// Import role management utilities for console debugging
-import './utils/role-management'
-
 // Eagerly load critical components
 import Index from './pages/Index'
 import SignIn from './pages/SignIn'

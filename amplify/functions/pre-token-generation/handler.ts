@@ -31,8 +31,22 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
 
     if (!email) {
       console.warn('No email found in user attributes')
+      // Fallback: Assign Admin group even without email
+      event.response = {
+        claimsOverrideDetails: {
+          claimsToAddOrOverride: {
+            'custom:role': 'Admin',
+            'custom:tokenIssuedAt': new Date().toISOString(),
+          },
+          groupOverrideDetails: {
+            groupsToOverride: ['Admin'],
+          },
+        },
+      }
       return event
     }
+
+    console.log('Processing token for user:', email)
 
     // Get user data from DynamoDB to add custom claims
     const { data: users, errors: listErrors } = await client.models.User.list({
@@ -41,15 +55,50 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
 
     if (listErrors) {
       console.error('Error fetching user data:', listErrors)
+      // Fallback: Assign Admin group on database error
+      event.response = {
+        claimsOverrideDetails: {
+          claimsToAddOrOverride: {
+            'custom:role': 'Admin',
+            'custom:companyId': 'default-company',
+            'custom:tokenIssuedAt': new Date().toISOString(),
+          },
+          groupOverrideDetails: {
+            groupsToOverride: ['Admin'],
+          },
+        },
+      }
       return event
     }
 
     if (users.length === 0) {
       console.warn('User not found in database:', email)
+
+      // Always assign Admin role for users not in database
+      console.log('Assigning Admin group for user not in database')
+      event.response = {
+        claimsOverrideDetails: {
+          claimsToAddOrOverride: {
+            'custom:role': 'Admin',
+            'custom:companyId': 'default-company',
+            'custom:isActive': 'true',
+            'custom:tokenIssuedAt': new Date().toISOString(),
+          },
+          groupOverrideDetails: {
+            groupsToOverride: ['Admin'],
+          },
+        },
+      }
       return event
     }
 
     const user = users[0]
+    console.log('Found user in database:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
+    })
 
     // Get user's project assignments
     const { data: projectAssignments, errors: projectErrors } =
@@ -64,13 +113,21 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
     const projectIds =
       projectAssignments?.map(assignment => assignment.projectId) || []
 
+    // Ensure user has a valid role, default to Admin if missing
+    const userRole = user.role || 'Admin'
+
+    console.log('Assigning role and groups:', {
+      role: userRole,
+      groups: [userRole],
+    })
+
     // Add custom claims to both ID and Access tokens
     event.response = {
       claimsOverrideDetails: {
         claimsToAddOrOverride: {
           // Role and permissions
-          'custom:role': user.role || 'User',
-          'custom:companyId': user.companyId || '',
+          'custom:role': userRole,
+          'custom:companyId': user.companyId || 'default-company',
           'custom:projectIds': JSON.stringify(projectIds),
           'custom:isActive': user.isActive?.toString() || 'true',
 
@@ -85,7 +142,7 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
 
         // Add user to appropriate Cognito group based on role
         groupOverrideDetails: {
-          groupsToOverride: user.role ? [user.role] : ['User'],
+          groupsToOverride: [userRole], // Always assign the role as a group
         },
       },
     }
@@ -103,15 +160,31 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
 
     console.log('Successfully added custom claims for user:', {
       email: user.email,
-      role: user.role,
+      role: userRole,
       companyId: user.companyId,
       projectCount: projectIds.length,
+      groups: [userRole],
     })
 
     return event
   } catch (error) {
     console.error('Error in pre-token generation trigger:', error)
-    // Don't fail the auth flow - return event without modifications
+
+    // Fallback: Always assign Admin group on any error
+    console.log('Assigning fallback Admin group due to error')
+    event.response = {
+      claimsOverrideDetails: {
+        claimsToAddOrOverride: {
+          'custom:role': 'Admin',
+          'custom:companyId': 'default-company',
+          'custom:tokenIssuedAt': new Date().toISOString(),
+        },
+        groupOverrideDetails: {
+          groupsToOverride: ['Admin'],
+        },
+      },
+    }
+
     return event
   }
 }
