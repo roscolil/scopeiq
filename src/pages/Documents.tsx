@@ -464,10 +464,10 @@ const Documents = () => {
                       setIsUploadDialogOpen(false)
 
                       // Show success toast
-                      toast({
-                        title: 'Document uploaded',
-                        description: `${doc.name} has been added to this project.`,
-                      })
+                      // toast({
+                      //   title: 'Document uploaded',
+                      //   description: `${doc.name} has been added to this project.`,
+                      // })
                     }}
                   />
                 </DialogContent>

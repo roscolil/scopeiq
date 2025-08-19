@@ -422,10 +422,10 @@ const ProjectDetails = () => {
       setIsUploadDialogOpen(false)
     }
 
-    toast({
-      title: 'Document uploaded successfully',
-      description: `${uploadedDocument.name} has been added to this project.`,
-    })
+    // toast({
+    //   title: 'Document uploaded successfully',
+    //   description: `${uploadedDocument.name} has been added to this project.`,
+    // })
   }
 
   const handleDeleteDocument = async (documentId: string) => {
