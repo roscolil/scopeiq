@@ -874,10 +874,6 @@ export const AIActions = ({
       // Only start silence detection if we have some text
       if (text.trim()) {
         hasTranscriptRef.current = true
-        console.log(
-          '🎤 Setting hasTranscriptRef to true for text:',
-          text.slice(0, 50),
-        )
 
         // Clear existing timer every time we get speech activity
         if (silenceTimer) {
@@ -888,27 +884,29 @@ export const AIActions = ({
         // Start new silence timer with longer duration for natural speech
         const timer = setTimeout(
           () => {
-            // Use the text parameter directly - it's the most recent transcript
-            console.log('⏰ Silence timer fired, checking conditions:', {
-              hasText: !!text.trim(),
+            // Use the text parameter directly to avoid stale closure
+            const currentQuery = text.trim()
+            console.log('⏰ Silence timeout triggered, checking conditions:', {
+              hasQuery: !!currentQuery,
               hasTranscript: hasTranscriptRef.current,
               isVoicePlaying,
               isListening,
-              text: text.slice(0, 50),
+              queryLength: currentQuery.length,
+              textFromClosure: text.slice(0, 50),
             })
 
             if (
-              text.trim() &&
+              currentQuery &&
               hasTranscriptRef.current &&
               !isVoicePlaying &&
               isListening
             ) {
               console.log(
                 `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
-                text.slice(0, 100),
+                currentQuery.slice(0, 100),
               )
-              // Ensure query state is set to the latest transcript before submitting
-              setQuery(text)
+              // Set the query to the transcript text before submitting
+              setQuery(currentQuery)
               // Stop listening before submitting
               if (isListening) {
                 toggleListening()
@@ -920,10 +918,11 @@ export const AIActions = ({
               }, 100)
             } else {
               console.log('⏰ Skipping auto-submit - conditions not met:', {
-                hasText: !!text.trim(),
+                hasQuery: !!currentQuery,
                 hasTranscript: hasTranscriptRef.current,
                 isVoicePlaying,
                 isListening,
+                queryText: currentQuery.slice(0, 100),
               })
             }
           },
