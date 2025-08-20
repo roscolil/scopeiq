@@ -405,7 +405,7 @@ export const AIActions = ({
     return startsWithQuestionWord || hasQuestionMarker
   }
 
-  const handleQuery = useCallback(async () => {
+  const handleQuery = async () => {
     if (!query.trim()) return
 
     if (!projectId) {
@@ -688,21 +688,7 @@ export const AIActions = ({
     } finally {
       setIsLoading(false)
     }
-  }, [
-    query,
-    projectId,
-    queryScope,
-    documentId,
-    document,
-    projectName,
-    toast,
-    setQueryScope,
-    setIsLoading,
-    setResults,
-    setQuery,
-    setChatHistory,
-    speakWithStateTracking,
-  ])
+  }
 
   // Handle search results from the hook - DISABLED to prevent conflicts
   // We handle search results directly in handleQuery() instead
@@ -788,61 +774,7 @@ export const AIActions = ({
     })
   }
 
-  const stopListening = useCallback(() => {
-    if (!isListening) return
-
-    console.log('📱 Stopping voice recognition programmatically')
-    setIsListening(false)
-    hasTranscriptRef.current = false
-
-    if (silenceTimer) {
-      clearTimeout(silenceTimer)
-      setSilenceTimer(null)
-    }
-
-    // Stop mobile recognition if it's active
-    if (isMobile && mobileRecognitionRef.current) {
-      try {
-        mobileRecognitionRef.current.stop()
-        console.log('📱 Stopped mobile voice recognition')
-      } catch (error) {
-        console.error('Error stopping mobile recognition:', error)
-      }
-    }
-  }, [isListening, silenceTimer, isMobile])
-
   const toggleListening = useCallback(() => {
-    // Mobile-friendly debugging with alerts instead of console logs
-    const debugState = {
-      isCurrentlyListening: isListening,
-      isMobile,
-      hasMobileRecognition: !!mobileRecognitionRef.current,
-      speechAPIAvailable:
-        'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
-    }
-
-    // Show initial debug info
-    alert(
-      `🔍 Voice Button Debug:\n` +
-        `Currently Listening: ${debugState.isCurrentlyListening ? 'Yes' : 'No'}\n` +
-        `Is Mobile: ${debugState.isMobile ? 'Yes' : 'No'}\n` +
-        `Mobile Recognition: ${debugState.hasMobileRecognition ? 'Ready' : 'Missing'}\n` +
-        `Speech API: ${debugState.speechAPIAvailable ? 'Available' : 'Missing'}`,
-    )
-
-    // If already listening, don't stop - let the auto-submission handle it
-    // This creates a better UX where users tap once and speak naturally
-    if (isListening) {
-      alert('📱 Already listening - ignoring additional taps for better UX')
-      toast({
-        title: 'Already listening',
-        description: 'Keep speaking... Will auto-submit after silence.',
-        duration: 1500,
-      })
-      return
-    }
-
-    alert('🎤 Starting voice recognition...')
     const newListeningState = !isListening
     setIsListening(newListeningState)
 
@@ -851,30 +783,37 @@ export const AIActions = ({
       setSilenceTimer(null)
     }
 
-    // Start mobile recognition when turning on
-    if (!isListening) {
+    if (isListening) {
+      hasTranscriptRef.current = false
+
+      // Stop mobile recognition if it's active
+      if (isMobile && mobileRecognitionRef.current) {
+        try {
+          mobileRecognitionRef.current.stop()
+          console.log('📱 Stopped mobile voice recognition')
+        } catch (error) {
+          console.error('Error stopping mobile recognition:', error)
+        }
+      }
+
+      toast({
+        title: 'Voice input stopped',
+        description: 'Voice recording has been stopped.',
+      })
+    } else {
       // Start mobile recognition if needed
       if (isMobile && mobileRecognitionRef.current) {
         try {
-          alert('📱 Attempting to start mobile recognition...')
           mobileRecognitionRef.current.start()
-          alert('✅ Successfully started mobile voice recognition - speak now!')
+          console.log('📱 Started mobile voice recognition')
         } catch (error) {
-          alert(
-            `❌ Error starting mobile recognition: ${error instanceof Error ? error.message : String(error)}`,
-          )
+          console.error('Error starting mobile recognition:', error)
         }
-      } else {
-        alert(
-          `❌ Cannot start mobile recognition:\n` +
-            `Is Mobile: ${isMobile ? 'Yes' : 'No'}\n` +
-            `Has Mobile Recognition: ${mobileRecognitionRef.current ? 'Yes' : 'No'}`,
-        )
       }
 
       toast({
         title: 'Voice input started',
-        description: `Speak your query... Will auto-submit after ${isMobile ? '1.3s' : '2s'} of silence.`,
+        description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
       })
     }
   }, [isListening, silenceTimer, isMobile, toast])
@@ -923,16 +862,7 @@ export const AIActions = ({
       // Update query field in real-time but don't set submission flag
       setQuery(text)
 
-      // CRITICAL FIX: Only use interim transcript auto-submission on desktop
-      // Mobile devices use their own mobileRecognitionRef auto-submission system
-      if (isMobile) {
-        console.log(
-          '📱 Mobile device - skipping interim transcript auto-submission (using mobile recognition system)',
-        )
-        return
-      }
-
-      // Only start silence detection if we have some text (DESKTOP ONLY)
+      // Only start silence detection if we have some text
       if (text.trim()) {
         hasTranscriptRef.current = true
 
@@ -942,7 +872,7 @@ export const AIActions = ({
           console.log('🔄 Speech activity detected, resetting silence timer')
         }
 
-        // Start new silence timer with longer duration for natural speech (DESKTOP)
+        // Start new silence timer with longer duration for natural speech
         const timer = setTimeout(
           () => {
             // Double-check we should auto-submit after extended silence
@@ -954,7 +884,7 @@ export const AIActions = ({
               isListening
             ) {
               console.log(
-                `⏰ Auto-submitting query after 3s of silence (DESKTOP):`,
+                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
               // Stop listening before submitting
@@ -967,25 +897,22 @@ export const AIActions = ({
                 }
               }, 100)
             } else {
-              console.log(
-                '⏰ Skipping desktop auto-submit - conditions not met:',
-                {
-                  hasQuery: !!currentQuery.trim(),
-                  hasTranscript: hasTranscriptRef.current,
-                  isVoicePlaying,
-                  isListening,
-                },
-              )
+              console.log('⏰ Skipping auto-submit - conditions not met:', {
+                hasQuery: !!currentQuery.trim(),
+                hasTranscript: hasTranscriptRef.current,
+                isVoicePlaying,
+                isListening,
+              })
             }
           },
-          3000, // 3s timeout for desktop natural speech patterns
-        )
+          isMobile ? 1500 : 3000,
+        ) // Shorter timeout on mobile for better responsiveness
 
         setSilenceTimer(timer)
         console.log(
-          '🖥️ Started desktop silence timer for:',
+          '⏰ Started silence timer for:',
           text.slice(0, 50),
-          '(3s timeout)',
+          `(${isMobile ? '1.5s' : '3s'} timeout)`,
         )
       }
     },
@@ -1002,56 +929,42 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
-    console.log('🔍 Mobile recognition useEffect called:', {
-      isMobile,
-      hasRecognition: !!mobileRecognitionRef.current,
-    })
-
-    if (!isMobile) {
-      console.log('🖥️ Not mobile, skipping mobile recognition setup')
-      return // Only for mobile
-    }
+    if (!isMobile) return // Only for mobile
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
-      console.log('📱 Initializing mobile recognition...')
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition
 
       if (SpeechRecognitionAPI) {
-        console.log(
-          '📱 SpeechRecognitionAPI available, creating recognition instance',
-        )
         const recognition = new SpeechRecognitionAPI()
-        recognition.continuous = true // Enable continuous mode for better silence detection on mobile
+        recognition.continuous = false // Disable continuous on mobile to prevent loops
         recognition.interimResults = true
         recognition.lang = 'en-US'
         recognition.maxAlternatives = 1
 
         let mobileTranscript = ''
-        let lastSpeechTime = 0
 
         recognition.onresult = event => {
           if (isVoicePlaying) return // Ignore during playback
 
-          const results = Array.from(event.results) as SpeechRecognitionResult[]
+          const results = Array.from(event.results)
           let completeTranscript = ''
-          let hasNewFinalResult = false
+          let hasFinalResult = false
 
-          // Process all results to build complete transcript
           for (let i = 0; i < results.length; i++) {
             completeTranscript += results[i][0].transcript
             if (results[i].isFinal) {
-              hasNewFinalResult = true
+              hasFinalResult = true
             }
           }
 
           mobileTranscript = completeTranscript
-          lastSpeechTime = Date.now()
-
-          console.log('📱 Mobile voice transcript:', completeTranscript, {
-            hasNewFinalResult,
-            resultCount: results.length,
-          })
+          console.log(
+            '📱 Mobile voice transcript:',
+            completeTranscript,
+            'Final:',
+            hasFinalResult,
+          )
 
           // Update query in real-time
           setQuery(completeTranscript)
@@ -1060,44 +973,49 @@ export const AIActions = ({
           // Clear any existing timer
           if (silenceTimer) {
             clearTimeout(silenceTimer)
+            setSilenceTimer(null)
           }
 
-          // Auto-submit after silence (shorter timeout for mobile responsiveness)
+          // If we have a final result or significant text, set up auto-submit
           if (completeTranscript.trim()) {
             hasTranscriptRef.current = true
 
-            const timer = setTimeout(() => {
-              const timeSinceLastSpeech = Date.now() - lastSpeechTime
-              console.log('📱 Checking auto-submit:', {
-                transcript: mobileTranscript.trim(),
-                timeSinceLastSpeech,
-                isListening,
-                isVoicePlaying,
-              })
+            // Shorter delay for final results, longer for interim
+            const delay = hasFinalResult ? 500 : 1500
 
-              if (
-                mobileTranscript.trim() &&
-                !isVoicePlaying &&
-                isListening &&
-                timeSinceLastSpeech >= 1200
-              ) {
+            const timer = setTimeout(() => {
+              if (mobileTranscript.trim() && !isVoicePlaying && isListening) {
                 console.log(
                   '📱 Auto-submitting mobile transcript:',
                   mobileTranscript,
                 )
+
+                // Stop listening first
+                setIsListening(false)
+
+                // Stop recognition
+                if (mobileRecognitionRef.current) {
+                  try {
+                    mobileRecognitionRef.current.stop()
+                  } catch (error) {
+                    console.warn(
+                      'Error stopping recognition during auto-submit:',
+                      error,
+                    )
+                  }
+                }
+
+                // Set final query and submit
                 setQuery(mobileTranscript.trim())
 
-                // Stop listening first using the proper function
-                stopListening()
-
-                // Submit query after brief delay
+                // Submit query with small delay to ensure state updates
                 setTimeout(() => {
                   if (!isVoicePlaying) {
                     handleQuery()
                   }
-                }, 150)
+                }, 200)
               }
-            }, 1300) // 1.3s silence detection for mobile
+            }, delay)
 
             setSilenceTimer(timer)
           }
@@ -1106,71 +1024,69 @@ export const AIActions = ({
         recognition.onerror = event => {
           console.error('📱 Mobile voice error:', event.error)
 
-          // If we have transcript, submit it
-          if (mobileTranscript.trim()) {
-            console.log(
-              '📱 Submitting transcript before error cleanup:',
-              mobileTranscript,
-            )
-            setQuery(mobileTranscript.trim())
-
-            setTimeout(() => {
-              if (!isVoicePlaying) {
-                handleQuery()
-              }
-            }, 100)
-          }
-
-          // Stop listening on error using proper function
-          if (isListening) {
-            stopListening()
-          }
-
           // Clear any pending timer
           if (silenceTimer) {
             clearTimeout(silenceTimer)
             setSilenceTimer(null)
+          }
+
+          // If we have accumulated transcript, submit it before stopping
+          if (mobileTranscript.trim()) {
+            console.log(
+              '📱 Submitting transcript after error:',
+              mobileTranscript,
+            )
+            setQuery(mobileTranscript.trim())
+
+            // Submit query after small delay
+            setTimeout(() => {
+              if (!isVoicePlaying) {
+                handleQuery()
+              }
+            }, 200)
+          }
+
+          // Stop listening on error
+          if (isListening) {
+            setIsListening(false)
           }
         }
 
         recognition.onend = () => {
           console.log('📱 Mobile voice recognition ended')
 
-          // If we have transcript and we're still supposed to be listening, submit it
+          // If we have transcript and we're still listening, this might be an unexpected end
+          // Submit what we have if there's content
           if (mobileTranscript.trim() && isListening) {
             console.log(
-              '📱 Recognition ended with transcript, auto-submitting:',
+              '📱 Recognition ended unexpectedly, submitting transcript:',
               mobileTranscript,
             )
+            setIsListening(false)
             setQuery(mobileTranscript.trim())
-            stopListening()
 
+            // Submit after small delay
             setTimeout(() => {
               if (!isVoicePlaying) {
                 handleQuery()
               }
-            }, 100)
-          }
-
-          // Clear any pending timer
-          if (silenceTimer) {
-            clearTimeout(silenceTimer)
-            setSilenceTimer(null)
+            }, 200)
           }
         }
 
         mobileRecognitionRef.current = recognition
-        console.log('📱 Mobile voice recognition initialized successfully')
-      } else {
-        console.error('❌ SpeechRecognitionAPI not available in this browser')
+        console.log('📱 Mobile voice recognition initialized')
       }
-    } else {
-      console.log(
-        '📱 Mobile recognition already exists or window not available',
-      )
     }
 
     return () => {
+      // Clean up silence timer
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+        setSilenceTimer(null)
+      }
+
+      // Clean up mobile recognition
       if (mobileRecognitionRef.current) {
         try {
           mobileRecognitionRef.current.stop()
@@ -1179,14 +1095,7 @@ export const AIActions = ({
         }
       }
     }
-  }, [
-    isMobile,
-    isVoicePlaying,
-    silenceTimer,
-    isListening,
-    handleQuery,
-    stopListening,
-  ])
+  }, [isMobile, isVoicePlaying, silenceTimer, isListening, handleQuery])
 
   const handleAskAI = async () => {
     await handleQuery()
