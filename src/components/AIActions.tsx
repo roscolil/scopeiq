@@ -405,7 +405,7 @@ export const AIActions = ({
     return startsWithQuestionWord || hasQuestionMarker
   }
 
-  const handleQuery = async () => {
+  const handleQuery = useCallback(async () => {
     if (!query.trim()) return
 
     if (!projectId) {
@@ -688,7 +688,21 @@ export const AIActions = ({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [
+    query,
+    projectId,
+    queryScope,
+    documentId,
+    document,
+    projectName,
+    toast,
+    setQueryScope,
+    setIsLoading,
+    setResults,
+    setQuery,
+    setChatHistory,
+    speakWithStateTracking,
+  ])
 
   // Handle search results from the hook - DISABLED to prevent conflicts
   // We handle search results directly in handleQuery() instead
@@ -937,55 +951,84 @@ export const AIActions = ({
 
       if (SpeechRecognitionAPI) {
         const recognition = new SpeechRecognitionAPI()
-        recognition.continuous = false // Disable continuous on mobile to prevent loops
+        recognition.continuous = true // Enable continuous mode for better silence detection on mobile
         recognition.interimResults = true
         recognition.lang = 'en-US'
         recognition.maxAlternatives = 1
 
         let mobileTranscript = ''
+        let lastSpeechTime = 0
 
         recognition.onresult = event => {
           if (isVoicePlaying) return // Ignore during playback
 
-          const results = Array.from(event.results)
+          const results = Array.from(event.results) as SpeechRecognitionResult[]
           let completeTranscript = ''
+          let hasNewFinalResult = false
 
+          // Process all results to build complete transcript
           for (let i = 0; i < results.length; i++) {
             completeTranscript += results[i][0].transcript
+            if (results[i].isFinal) {
+              hasNewFinalResult = true
+            }
           }
 
           mobileTranscript = completeTranscript
-          console.log('📱 Mobile voice transcript:', completeTranscript)
+          lastSpeechTime = Date.now()
+
+          console.log('📱 Mobile voice transcript:', completeTranscript, {
+            hasNewFinalResult,
+            resultCount: results.length,
+          })
 
           // Update query in real-time
           setQuery(completeTranscript)
           setInterimTranscript(completeTranscript)
 
-          // Auto-submit after mobile-optimized delay
+          // Clear any existing timer
+          if (silenceTimer) {
+            clearTimeout(silenceTimer)
+          }
+
+          // Auto-submit after silence (shorter timeout for mobile responsiveness)
           if (completeTranscript.trim()) {
             hasTranscriptRef.current = true
 
-            if (silenceTimer) {
-              clearTimeout(silenceTimer)
-            }
-
             const timer = setTimeout(() => {
-              if (mobileTranscript.trim() && !isVoicePlaying && isListening) {
+              const timeSinceLastSpeech = Date.now() - lastSpeechTime
+              console.log('📱 Checking auto-submit:', {
+                transcript: mobileTranscript.trim(),
+                timeSinceLastSpeech,
+                isListening,
+                isVoicePlaying,
+              })
+
+              if (
+                mobileTranscript.trim() &&
+                !isVoicePlaying &&
+                isListening &&
+                timeSinceLastSpeech >= 1200
+              ) {
                 console.log(
                   '📱 Auto-submitting mobile transcript:',
                   mobileTranscript,
                 )
-                setQuery(mobileTranscript)
+                setQuery(mobileTranscript.trim())
+
+                // Stop listening first
                 if (isListening) {
-                  setIsListening(false) // Stop listening
+                  setIsListening(false)
                 }
+
+                // Submit query after brief delay
                 setTimeout(() => {
                   if (!isVoicePlaying) {
                     handleQuery()
                   }
-                }, 100)
+                }, 150)
               }
-            }, 1500) // 1.5s for mobile
+            }, 1300) // 1.3s silence detection for mobile
 
             setSilenceTimer(timer)
           }
@@ -993,17 +1036,58 @@ export const AIActions = ({
 
         recognition.onerror = event => {
           console.error('📱 Mobile voice error:', event.error)
+
+          // If we have transcript, submit it
           if (mobileTranscript.trim()) {
-            setQuery(mobileTranscript)
+            console.log(
+              '📱 Submitting transcript before error cleanup:',
+              mobileTranscript,
+            )
+            setQuery(mobileTranscript.trim())
+
+            setTimeout(() => {
+              if (!isVoicePlaying) {
+                handleQuery()
+              }
+            }, 100)
           }
+
+          // Stop listening on error
           if (isListening) {
             setIsListening(false)
+          }
+
+          // Clear any pending timer
+          if (silenceTimer) {
+            clearTimeout(silenceTimer)
+            setSilenceTimer(null)
           }
         }
 
         recognition.onend = () => {
           console.log('📱 Mobile voice recognition ended')
-          // Don't auto-restart on mobile to prevent loops
+
+          // If we have transcript and we're still supposed to be listening, submit it
+          if (mobileTranscript.trim() && isListening) {
+            console.log(
+              '📱 Recognition ended with transcript, auto-submitting:',
+              mobileTranscript,
+            )
+            setQuery(mobileTranscript.trim())
+            setIsListening(false)
+
+            setTimeout(() => {
+              if (!isVoicePlaying) {
+                handleQuery()
+              }
+            }, 100)
+          }
+
+          // Clear any pending timer
+          if (silenceTimer) {
+            clearTimeout(silenceTimer)
+            setSilenceTimer(null)
+          }
         }
 
         mobileRecognitionRef.current = recognition
