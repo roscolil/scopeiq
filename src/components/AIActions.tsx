@@ -874,6 +874,10 @@ export const AIActions = ({
       // Only start silence detection if we have some text
       if (text.trim()) {
         hasTranscriptRef.current = true
+        console.log(
+          '🎤 Setting hasTranscriptRef to true for text:',
+          text.slice(0, 50),
+        )
 
         // Clear existing timer every time we get speech activity
         if (silenceTimer) {
@@ -884,18 +888,27 @@ export const AIActions = ({
         // Start new silence timer with longer duration for natural speech
         const timer = setTimeout(
           () => {
-            // Double-check we should auto-submit after extended silence
-            const currentQuery = query || text
+            // Use the text parameter directly - it's the most recent transcript
+            console.log('⏰ Silence timer fired, checking conditions:', {
+              hasText: !!text.trim(),
+              hasTranscript: hasTranscriptRef.current,
+              isVoicePlaying,
+              isListening,
+              text: text.slice(0, 50),
+            })
+
             if (
-              currentQuery.trim() &&
+              text.trim() &&
               hasTranscriptRef.current &&
               !isVoicePlaying &&
               isListening
             ) {
               console.log(
                 `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
-                currentQuery.slice(0, 100),
+                text.slice(0, 100),
               )
+              // Ensure query state is set to the latest transcript before submitting
+              setQuery(text)
               // Stop listening before submitting
               if (isListening) {
                 toggleListening()
@@ -907,7 +920,7 @@ export const AIActions = ({
               }, 100)
             } else {
               console.log('⏰ Skipping auto-submit - conditions not met:', {
-                hasQuery: !!currentQuery.trim(),
+                hasText: !!text.trim(),
                 hasTranscript: hasTranscriptRef.current,
                 isVoicePlaying,
                 isListening,
@@ -928,7 +941,6 @@ export const AIActions = ({
     [
       isVoicePlaying,
       silenceTimer,
-      query,
       isListening,
       isMobile,
       toggleListening,
