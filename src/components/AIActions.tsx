@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from './VoiceInput'
 import { VoiceShazamButton } from './VoiceShazamButton'
 import { answerQuestionWithBedrock } from '@/utils/aws'
@@ -80,6 +81,7 @@ export const AIActions = ({
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
   const [interimTranscript, setInterimTranscript] = useState<string>('')
   const { toast } = useToast()
+  const isMobile = useIsMobile()
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
 
@@ -787,8 +789,7 @@ export const AIActions = ({
     } else {
       toast({
         title: 'Voice input started',
-        description:
-          'Speak your query... Will auto-submit after 2s of silence.',
+        description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
       })
 
       // No initial voice prompt - just start listening silently
@@ -843,40 +844,47 @@ export const AIActions = ({
       }
 
       // Start new silence timer with longer duration for natural speech
-      const timer = setTimeout(() => {
-        // Double-check we should auto-submit after extended silence
-        const currentQuery = query || text
-        if (
-          currentQuery.trim() &&
-          hasTranscriptRef.current &&
-          !isVoicePlaying &&
-          isListening
-        ) {
-          console.log(
-            '⏰ Auto-submitting query after 3s of silence:',
-            currentQuery.slice(0, 100),
-          )
-          // Stop listening before submitting
-          if (isListening) {
-            toggleListening()
-          }
-          setTimeout(() => {
-            if (!isVoicePlaying) {
-              handleQuery()
+      const timer = setTimeout(
+        () => {
+          // Double-check we should auto-submit after extended silence
+          const currentQuery = query || text
+          if (
+            currentQuery.trim() &&
+            hasTranscriptRef.current &&
+            !isVoicePlaying &&
+            isListening
+          ) {
+            console.log(
+              '⏰ Auto-submitting query after 3s of silence:',
+              currentQuery.slice(0, 100),
+            )
+            // Stop listening before submitting
+            if (isListening) {
+              toggleListening()
             }
-          }, 100)
-        } else {
-          console.log('⏰ Skipping auto-submit - conditions not met:', {
-            hasQuery: !!currentQuery.trim(),
-            hasTranscript: hasTranscriptRef.current,
-            isVoicePlaying,
-            isListening,
-          })
-        }
-      }, 3000) // Extended to 3 seconds for more natural interaction
+            setTimeout(() => {
+              if (!isVoicePlaying) {
+                handleQuery()
+              }
+            }, 100)
+          } else {
+            console.log('⏰ Skipping auto-submit - conditions not met:', {
+              hasQuery: !!currentQuery.trim(),
+              hasTranscript: hasTranscriptRef.current,
+              isVoicePlaying,
+              isListening,
+            })
+          }
+        },
+        isMobile ? 1500 : 3000,
+      ) // Shorter timeout on mobile for better responsiveness
 
       setSilenceTimer(timer)
-      console.log('⏰ Started 3-second silence timer for:', text.slice(0, 50))
+      console.log(
+        '⏰ Started silence timer for:',
+        text.slice(0, 50),
+        `(${isMobile ? '1.5s' : '3s'} timeout)`,
+      )
     }
   }
 
@@ -1068,15 +1076,19 @@ export const AIActions = ({
 
             <div className="flex justify-between gap-3 mb-4">
               <div className="flex gap-2 items-center">
-                <VoiceInput
-                  onTranscript={handleTranscript}
-                  isListening={isListening}
-                  toggleListening={toggleListening}
-                  preventLoop={true}
-                  disabled={isVoicePlaying}
-                  onInterimTranscript={handleInterimTranscript}
-                  preventAutoRestart={isVoicePlaying}
-                />
+                {/* VoiceInput - always present for voice recognition, but hidden on mobile */}
+                <div className={isMobile ? 'hidden' : 'block'}>
+                  <VoiceInput
+                    onTranscript={handleTranscript}
+                    isListening={isListening}
+                    toggleListening={toggleListening}
+                    preventLoop={true}
+                    disabled={isVoicePlaying}
+                    onInterimTranscript={handleInterimTranscript}
+                    preventAutoRestart={isVoicePlaying}
+                    isMobile={isMobile}
+                  />
+                </div>
 
                 {/* Voice status indicator */}
                 {isVoicePlaying && (
@@ -1321,8 +1333,8 @@ export const AIActions = ({
         </CardContent>
       </Card>
 
-      {/* Shazam-style voice button - only appears on mobile */}
-      {!hideShazamButton && (
+      {/* Shazam-style voice button - primary voice input on mobile */}
+      {!hideShazamButton && isMobile && (
         <VoiceShazamButton
           isListening={isListening}
           toggleListening={toggleListening}
@@ -1333,8 +1345,8 @@ export const AIActions = ({
         />
       )}
 
-      {/* Show voice button when hidden - small floating button */}
-      {hideShazamButton && (
+      {/* Show voice button when hidden - small floating button (mobile only) */}
+      {hideShazamButton && isMobile && (
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
