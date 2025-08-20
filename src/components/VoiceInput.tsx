@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Mic, MicOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 // TypeScript declarations for Speech Recognition API
 interface SpeechRecognitionResult {
@@ -63,11 +64,18 @@ export const VoiceInput = ({
       if (SpeechRecognitionAPI) {
         const recognitionInstance = new SpeechRecognitionAPI()
 
-        // FIXED: Configure for better silence detection
+        // FIXED: Configure for better silence detection and mobile responsiveness
         recognitionInstance.continuous = true // Enable continuous listening for silence detection
         recognitionInstance.interimResults = true // Enable interim results to detect speech activity
         recognitionInstance.lang = 'en-US'
         recognitionInstance.maxAlternatives = 1
+
+        // Mobile-specific optimizations
+        if (isMobile) {
+          console.log('🎤 Configuring voice recognition for mobile device')
+          // On mobile, we want more responsive interaction
+          recognitionInstance.continuous = false // Disable continuous mode on mobile to prevent loops
+        }
 
         setRecognition(recognitionInstance)
       } else {
@@ -344,13 +352,16 @@ export const VoiceInput = ({
       size="icon"
       aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
       onClick={toggleListening}
-      className="shrink-0"
+      className={cn(
+        'shrink-0',
+        isMobile ? 'hidden' : 'inline-flex', // Hide button on mobile, but keep voice recognition active
+      )}
       disabled={isProcessing || disabled}
     >
       {isListening ? (
-        <MicOff className={`w-5 h-5 ${micColor}`} />
+        <MicOff className={micColor} />
       ) : (
-        <Mic className={`w-5 h-5 ${micColor}`} />
+        <Mic className={micColor} />
       )}
     </Button>
   )
