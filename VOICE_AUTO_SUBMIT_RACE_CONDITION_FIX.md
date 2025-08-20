@@ -45,7 +45,7 @@ console.log('⏰ Silence timeout triggered, checking conditions:', {
   isVoicePlaying,
   isListening,
   queryLength: currentQuery.length,
-  textFromClosure: text.slice(0, 50),  // Show actual captured text
+  textFromClosure: text.slice(0, 50), // Show actual captured text
 })
 ```
 
@@ -70,33 +70,48 @@ setTimeout(() => handleQuery(), 100)
 
 ```tsx
 // Fixed timeout closure to use text parameter directly
-const timer = setTimeout(() => {
-  const currentQuery = text.trim()  // Use closure-captured text, not state
-  
-  // Enhanced logging for debugging
-  console.log('⏰ Silence timeout triggered, checking conditions:', {
-    hasQuery: !!currentQuery,
-    hasTranscript: hasTranscriptRef.current,
-    isVoicePlaying,
-    isListening,
-    queryLength: currentQuery.length,
-    textFromClosure: text.slice(0, 50),
-  })
-  
-  if (currentQuery && hasTranscriptRef.current && !isVoicePlaying && isListening) {
-    // Synchronize state before submission
-    setQuery(currentQuery)
-    toggleListening()
-    setTimeout(() => handleQuery(), 100)
-  }
-}, isMobile ? 1500 : 3000)
+const timer = setTimeout(
+  () => {
+    const currentQuery = text.trim() // Use closure-captured text, not state
+
+    // Enhanced logging for debugging
+    console.log('⏰ Silence timeout triggered, checking conditions:', {
+      hasQuery: !!currentQuery,
+      hasTranscript: hasTranscriptRef.current,
+      isVoicePlaying,
+      isListening,
+      queryLength: currentQuery.length,
+      textFromClosure: text.slice(0, 50),
+    })
+
+    if (
+      currentQuery &&
+      hasTranscriptRef.current &&
+      !isVoicePlaying &&
+      isListening
+    ) {
+      // Synchronize state before submission
+      setQuery(currentQuery)
+      toggleListening()
+      setTimeout(() => handleQuery(), 100)
+    }
+  },
+  isMobile ? 1500 : 3000,
+)
 ```
 
 ### **Dependency Array Cleanup**
 
 ```tsx
 // Removed unnecessary 'query' dependency since we use text parameter
-[isVoicePlaying, silenceTimer, isListening, isMobile, toggleListening, handleQuery]
+;[
+  isVoicePlaying,
+  silenceTimer,
+  isListening,
+  isMobile,
+  toggleListening,
+  handleQuery,
+]
 ```
 
 ---
@@ -155,17 +170,20 @@ const timer = setTimeout(() => {
 ## 📱 **Testing Verification**
 
 ### **Mobile Device Testing**
+
 - ✅ Speak "hello world" → verify 1.5s auto-submit
 - ✅ Check console for detailed condition logging
 - ✅ Verify all conditions show `true` values
 - ✅ Confirm query submits automatically
 
 ### **Desktop Testing**
+
 - ✅ Use VoiceInput → verify 3s auto-submit
 - ✅ Same debugging output format
 - ✅ No regression in desktop functionality
 
 ### **Edge Cases**
+
 - ✅ Very short phrases (1-2 words)
 - ✅ Long phrases with natural pauses
 - ✅ Quick successive voice inputs
