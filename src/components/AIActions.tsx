@@ -812,12 +812,28 @@ export const AIActions = ({
   }, [isListening, silenceTimer, isMobile])
 
   const toggleListening = useCallback(() => {
+    // Mobile-friendly debugging with alerts instead of console logs
+    const debugState = {
+      isCurrentlyListening: isListening,
+      isMobile,
+      hasMobileRecognition: !!mobileRecognitionRef.current,
+      speechAPIAvailable:
+        'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
+    }
+
+    // Show initial debug info
+    alert(
+      `🔍 Voice Button Debug:\n` +
+        `Currently Listening: ${debugState.isCurrentlyListening ? 'Yes' : 'No'}\n` +
+        `Is Mobile: ${debugState.isMobile ? 'Yes' : 'No'}\n` +
+        `Mobile Recognition: ${debugState.hasMobileRecognition ? 'Ready' : 'Missing'}\n` +
+        `Speech API: ${debugState.speechAPIAvailable ? 'Available' : 'Missing'}`,
+    )
+
     // If already listening, don't stop - let the auto-submission handle it
     // This creates a better UX where users tap once and speak naturally
     if (isListening) {
-      console.log(
-        '📱 Already listening - ignoring additional taps for better UX',
-      )
+      alert('📱 Already listening - ignoring additional taps for better UX')
       toast({
         title: 'Already listening',
         description: 'Keep speaking... Will auto-submit after silence.',
@@ -826,6 +842,7 @@ export const AIActions = ({
       return
     }
 
+    alert('🎤 Starting voice recognition...')
     const newListeningState = !isListening
     setIsListening(newListeningState)
 
@@ -839,11 +856,20 @@ export const AIActions = ({
       // Start mobile recognition if needed
       if (isMobile && mobileRecognitionRef.current) {
         try {
+          alert('📱 Attempting to start mobile recognition...')
           mobileRecognitionRef.current.start()
-          console.log('📱 Started mobile voice recognition')
+          alert('✅ Successfully started mobile voice recognition - speak now!')
         } catch (error) {
-          console.error('Error starting mobile recognition:', error)
+          alert(
+            `❌ Error starting mobile recognition: ${error instanceof Error ? error.message : String(error)}`,
+          )
         }
+      } else {
+        alert(
+          `❌ Cannot start mobile recognition:\n` +
+            `Is Mobile: ${isMobile ? 'Yes' : 'No'}\n` +
+            `Has Mobile Recognition: ${mobileRecognitionRef.current ? 'Yes' : 'No'}`,
+        )
       }
 
       toast({
@@ -976,13 +1002,25 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
-    if (!isMobile) return // Only for mobile
+    console.log('🔍 Mobile recognition useEffect called:', {
+      isMobile,
+      hasRecognition: !!mobileRecognitionRef.current,
+    })
+
+    if (!isMobile) {
+      console.log('🖥️ Not mobile, skipping mobile recognition setup')
+      return // Only for mobile
+    }
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
+      console.log('📱 Initializing mobile recognition...')
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition
 
       if (SpeechRecognitionAPI) {
+        console.log(
+          '📱 SpeechRecognitionAPI available, creating recognition instance',
+        )
         const recognition = new SpeechRecognitionAPI()
         recognition.continuous = true // Enable continuous mode for better silence detection on mobile
         recognition.interimResults = true
@@ -1122,8 +1160,14 @@ export const AIActions = ({
         }
 
         mobileRecognitionRef.current = recognition
-        console.log('📱 Mobile voice recognition initialized')
+        console.log('📱 Mobile voice recognition initialized successfully')
+      } else {
+        console.error('❌ SpeechRecognitionAPI not available in this browser')
       }
+    } else {
+      console.log(
+        '📱 Mobile recognition already exists or window not available',
+      )
     }
 
     return () => {
