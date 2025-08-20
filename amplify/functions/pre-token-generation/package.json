@@ -1,0 +1,12 @@
+{
+  "name": "pre-token-generation",
+  "version": "1.0.0",
+  "main": "handler.ts",
+  "dependencies": {
+    "aws-amplify": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "typescript": "^5.0.0"
+  }
+}

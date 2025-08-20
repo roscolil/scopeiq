@@ -109,10 +109,15 @@ export const ProjectForm = ({ onSubmit, defaultValues }: ProjectFormProps) => {
       // Reset form after successful submission
       form.reset()
     } catch (error) {
-      console.error('ProjectForm: Error submitting form:', error)
+      // Extract the error message from the error object
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create project. Please try again.'
+
       toast({
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       })
     } finally {

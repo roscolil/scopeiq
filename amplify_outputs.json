@@ -1,11 +1,11 @@
 {
   "auth": {
-    "user_pool_id": "ap-southeast-2_5YHqOMRto",
+    "user_pool_id": "ap-southeast-2_LL6lnCxy0",
     "aws_region": "ap-southeast-2",
-    "user_pool_client_id": "5gnf5d270o0q15imkkmf0oishb",
-    "identity_pool_id": "ap-southeast-2:6f5efd7f-924e-4bdd-a266-13f7922524e9",
-    "mfa_methods": [],
-    "standard_required_attributes": ["email"],
+    "user_pool_client_id": "5h7beekj587damjpqebj1a0d74",
+    "identity_pool_id": "ap-southeast-2:96606e77-a512-4d47-82a2-5c36e60d938e",
+    "mfa_methods": ["SMS", "TOTP"],
+    "standard_required_attributes": ["email", "given_name"],
     "username_attributes": ["email"],
     "user_verification_types": ["email"],
     "groups": [
@@ -25,7 +25,7 @@
         }
       }
     ],
-    "mfa_configuration": "NONE",
+    "mfa_configuration": "OPTIONAL",
     "password_policy": {
       "min_length": 8,
       "require_lowercase": true,
@@ -36,9 +36,9 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://o4oqwdchcbfynfzvnokwv2kouy.appsync-api.ap-southeast-2.amazonaws.com/graphql",
+    "url": "https://nekg4czaujge7fb2frv3xnasp4.appsync-api.ap-southeast-2.amazonaws.com/graphql",
     "aws_region": "ap-southeast-2",
-    "api_key": "da2-pjecowx4ljcc3fb2wzunm45434",
+    "api_key": "da2-nxmaqm2fcrdu5ddyeokca4cqg4",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": ["API_KEY", "AWS_IAM"],
     "model_introspection": {
@@ -137,11 +137,30 @@
               "properties": {
                 "rules": [
                   {
+                    "groupClaim": "cognito:groups",
                     "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
+                  },
+                  {
+                    "allow": "private",
+                    "provider": "userPools",
+                    "operations": ["create", "read"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read", "update"],
+                    "groups": ["Owner"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read"],
+                    "groups": ["User"]
                   }
                 ]
               }
@@ -305,13 +324,6 @@
               "properties": {
                 "rules": [
                   {
-                    "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
-                  },
-                  {
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
@@ -322,7 +334,7 @@
                     "groupClaim": "cognito:groups",
                     "provider": "userPools",
                     "allow": "groups",
-                    "operations": ["read", "update"],
+                    "operations": ["create", "read", "update", "delete"],
                     "groups": ["Owner"]
                   },
                   {
@@ -331,6 +343,18 @@
                     "allow": "groups",
                     "operations": ["read"],
                     "groups": ["User"]
+                  },
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "operations": ["read", "update"],
+                    "identityClaim": "cognito:username"
+                  },
+                  {
+                    "allow": "private",
+                    "provider": "userPools",
+                    "operations": ["create", "read"]
                   }
                 ]
               }
@@ -439,8 +463,8 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": ["read"],
+                    "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
@@ -608,8 +632,8 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": ["read"],
+                    "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
@@ -709,8 +733,8 @@
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "operations": ["read"],
+                    "identityClaim": "cognito:username"
                   },
                   {
                     "groupClaim": "cognito:groups",
@@ -762,6 +786,13 @@
             },
             "slug": {
               "name": "slug",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "owner": {
+              "name": "owner",
               "isArray": false,
               "type": "String",
               "isRequired": false,
@@ -865,11 +896,23 @@
               "properties": {
                 "rules": [
                   {
+                    "groupClaim": "cognito:groups",
                     "provider": "userPools",
-                    "ownerField": "owner",
-                    "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin", "Owner"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read"],
+                    "groups": ["User"]
+                  },
+                  {
+                    "allow": "private",
+                    "provider": "userPools",
+                    "operations": ["read"]
                   }
                 ]
               }
@@ -1042,15 +1085,32 @@
               "properties": {
                 "rules": [
                   {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Admin"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["create", "read", "update", "delete"],
+                    "groups": ["Owner"]
+                  },
+                  {
+                    "groupClaim": "cognito:groups",
+                    "provider": "userPools",
+                    "allow": "groups",
+                    "operations": ["read", "update"],
+                    "groups": ["User"]
+                  },
+                  {
                     "provider": "userPools",
                     "ownerField": "owner",
                     "allow": "owner",
-                    "identityClaim": "cognito:username",
-                    "operations": ["create", "update", "delete", "read"]
-                  },
-                  {
-                    "allow": "private",
-                    "operations": ["read", "update", "delete"]
+                    "operations": ["read", "update", "delete"],
+                    "identityClaim": "cognito:username"
                   }
                 ]
               }
@@ -1295,11 +1355,11 @@
   },
   "storage": {
     "aws_region": "ap-southeast-2",
-    "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-mn5w1ghb5oy9",
+    "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-7kkwhgidiaj9",
     "buckets": [
       {
         "name": "amplifyTeamDrive",
-        "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-mn5w1ghb5oy9",
+        "bucket_name": "amplify-vitereactshadcnts-amplifyteamdrivebucket28-7kkwhgidiaj9",
         "aws_region": "ap-southeast-2",
         "paths": {
           "public/*": {

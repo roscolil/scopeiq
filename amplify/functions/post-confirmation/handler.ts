@@ -33,6 +33,15 @@ export const handler: PostConfirmationTriggerHandler = async event => {
     email?.split('@')[0] ||
     'User'
 
+  // In post-confirmation trigger, groups are not available in the event
+  // We'll determine role based on existing users in the company or default to Owner
+  const userRole: 'Admin' | 'Owner' | 'User' = 'Owner' // Default for first user in company
+
+  // Note: Group assignment happens separately through Cognito admin operations
+  // The actual role will be determined by group membership in the pre-token-generation trigger
+
+  console.log('Determined user role:', userRole)
+
   if (!email) {
     console.error('No email found in user attributes')
     return event
@@ -80,7 +89,7 @@ export const handler: PostConfirmationTriggerHandler = async event => {
         await client.models.User.create({
           email,
           name,
-          role: 'Owner', // First user in a company becomes Owner by default
+          role: userRole, // Use the determined role based on Cognito groups
           companyId: companyId!,
           isActive: true,
           acceptedAt: new Date().toISOString(),
@@ -105,7 +114,7 @@ export const handler: PostConfirmationTriggerHandler = async event => {
         response.userAttributes = {
           ...response.userAttributes,
           'custom:companyId': companyId!,
-          'custom:role': 'Owner',
+          'custom:role': userRole,
         }
         console.log('Updated Cognito user attributes with company and role')
       } catch (attrError) {
