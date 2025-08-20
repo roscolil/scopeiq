@@ -405,299 +405,313 @@ export const AIActions = ({
     return startsWithQuestionWord || hasQuestionMarker
   }
 
-  const handleQuery = useCallback(async () => {
-    if (!query.trim()) return
+  const handleQuery = useCallback(
+    async (queryText?: string) => {
+      const queryToUse = queryText || query
+      if (!queryToUse.trim()) return
 
-    if (!projectId) {
-      toast({
-        title: 'Project Required',
-        description: 'Project ID is required for search and AI functionality.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    // Check document status before proceeding
-    if (queryScope === 'document') {
-      // If no documentId but scope is document, switch to project
-      if (!documentId) {
-        setQueryScope('project')
+      if (!projectId) {
         toast({
-          title: 'Switched to Project Scope',
-          description: projectName
-            ? `No specific document selected, searching across "${projectName}".`
-            : 'No specific document selected, searching across the entire project.',
-        })
-        // Continue with project-wide search
-      } else if (!document) {
-        toast({
-          title: 'Document Loading',
+          title: 'Project Required',
           description:
-            'Document information is still loading. Please wait a moment and try again.',
+            'Project ID is required for search and AI functionality.',
           variant: 'destructive',
         })
         return
-      } else if (document.status === 'processing') {
-        toast({
-          title: 'Document Processing',
-          description: projectName
-            ? `This document is still being processed. Switching to search across "${projectName}" instead.`
-            : 'This document is still being processed. Switching to project-wide search instead.',
-        })
-        // Switch to project scope instead of blocking
-        setQueryScope('project')
-      } else if (document.status === 'failed') {
-        toast({
-          title: 'Document Processing Failed',
-          description: projectName
-            ? `This document failed to process. Switching to search across "${projectName}" instead.`
-            : 'This document failed to process. Switching to project-wide search instead.',
-        })
-        // Switch to project scope
-        setQueryScope('project')
       }
-    }
 
-    console.log('Starting query:', { query, projectId, queryScope })
-    setIsLoading(true)
-    setResults(null)
-
-    try {
-      if (isQuestion(query)) {
-        // Handle as AI question - first get relevant content via semantic search
-        const searchParams: {
-          projectId: string
-          query: string
-          topK: number
-          documentId?: string
-        } = {
-          projectId: projectId,
-          query: query,
-          topK: 3,
+      // Check document status before proceeding
+      if (queryScope === 'document') {
+        // If no documentId but scope is document, switch to project
+        if (!documentId) {
+          setQueryScope('project')
+          toast({
+            title: 'Switched to Project Scope',
+            description: projectName
+              ? `No specific document selected, searching across "${projectName}".`
+              : 'No specific document selected, searching across the entire project.',
+          })
+          // Continue with project-wide search
+        } else if (!document) {
+          toast({
+            title: 'Document Loading',
+            description:
+              'Document information is still loading. Please wait a moment and try again.',
+            variant: 'destructive',
+          })
+          return
+        } else if (document.status === 'processing') {
+          toast({
+            title: 'Document Processing',
+            description: projectName
+              ? `This document is still being processed. Switching to search across "${projectName}" instead.`
+              : 'This document is still being processed. Switching to project-wide search instead.',
+          })
+          // Switch to project scope instead of blocking
+          setQueryScope('project')
+        } else if (document.status === 'failed') {
+          toast({
+            title: 'Document Processing Failed',
+            description: projectName
+              ? `This document failed to process. Switching to search across "${projectName}" instead.`
+              : 'This document failed to process. Switching to project-wide search instead.',
+          })
+          // Switch to project scope
+          setQueryScope('project')
         }
+      }
 
-        // Only add documentId filter for document-specific queries if we have a valid document
-        if (
-          queryScope === 'document' &&
-          documentId &&
-          document?.status === 'processed'
-        ) {
-          searchParams.documentId = documentId
-        }
+      console.log('Starting query:', {
+        query: queryToUse,
+        projectId,
+        queryScope,
+      })
+      setIsLoading(true)
+      setResults(null)
 
-        const searchResponse = await semanticSearch(searchParams)
+      try {
+        if (isQuestion(queryToUse)) {
+          // Handle as AI question - first get relevant content via semantic search
+          const searchParams: {
+            projectId: string
+            query: string
+            topK: number
+            documentId?: string
+          } = {
+            projectId: projectId,
+            query: queryToUse,
+            topK: 3,
+          }
 
-        // Build context from search results
-        let context = ``
-        if (queryScope === 'document' && documentId && document) {
-          context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
-        } else {
-          context = `Project ID: ${projectId}\nSearching across entire project.\n`
-        }
+          // Only add documentId filter for document-specific queries if we have a valid document
+          if (
+            queryScope === 'document' &&
+            documentId &&
+            document?.status === 'processed'
+          ) {
+            searchParams.documentId = documentId
+          }
 
-        // Add relevant document content as context
-        if (
-          searchResponse &&
-          searchResponse.documents &&
-          searchResponse.documents[0] &&
-          searchResponse.documents[0].length > 0
-        ) {
-          const relevantContent = searchResponse.documents[0]
-            .slice(0, 3) // Use top 3 results
-            .map((doc, i) => {
-              const metadata = searchResponse.metadatas?.[0]?.[i]
-              const docName = metadata?.name || `Document ${i + 1}`
-              return `Source File: "${docName}"\nContent: ${doc}`
-            })
-            .join('\n\n')
+          const searchResponse = await semanticSearch(searchParams)
 
-          context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, please reference the specific source file names (e.g., "According to [filename]..." or "As mentioned in [filename]...") to help the user understand where the information comes from.`
-        } else {
-          if (queryScope === 'document') {
-            context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
+          // Build context from search results
+          let context = ``
+          if (queryScope === 'document' && documentId && document) {
+            context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
           } else {
-            context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+            context = `Project ID: ${projectId}\nSearching across entire project.\n`
           }
-        }
 
-        const response = await callOpenAI(query, context)
+          // Add relevant document content as context
+          if (
+            searchResponse &&
+            searchResponse.documents &&
+            searchResponse.documents[0] &&
+            searchResponse.documents[0].length > 0
+          ) {
+            const relevantContent = searchResponse.documents[0]
+              .slice(0, 3) // Use top 3 results
+              .map((doc, i) => {
+                const metadata = searchResponse.metadatas?.[0]?.[i]
+                const docName = metadata?.name || `Document ${i + 1}`
+                return `Source File: "${docName}"\nContent: ${doc}`
+              })
+              .join('\n\n')
 
-        // Add user message to chat history
-        const userMessage: ChatMessage = {
-          id: `user-${Date.now()}`,
-          type: 'user',
-          content: query,
-          timestamp: new Date(),
-          query: query,
-        }
+            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, please reference the specific source file names (e.g., "According to [filename]..." or "As mentioned in [filename]...") to help the user understand where the information comes from.`
+          } else {
+            if (queryScope === 'document') {
+              context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
+            } else {
+              context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+            }
+          }
 
-        // Add AI response to chat history
-        const aiMessage: ChatMessage = {
-          id: `ai-${Date.now()}`,
-          type: 'ai',
-          content: response,
-          timestamp: new Date(),
-        }
+          const response = await callOpenAI(queryToUse, context)
 
-        setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-        setResults({
-          type: 'ai',
-          aiAnswer: response,
-          query: query,
-        })
-
-        // Clear the query field after successful AI response
-        setQuery('')
-
-        toast({
-          title: 'AI Analysis Complete',
-          description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
-        })
-
-        // Provide voice feedback with the actual AI answer
-        if (response && response.length > 0) {
-          setTimeout(() => {
-            // Speak the full answer - no truncation
-            speakWithStateTracking(response, {
-              voice: 'Ruth',
-              stopListeningAfter: true,
-            }).catch(console.error)
-          }, 1000)
-        }
-      } else {
-        // Handle as semantic search with proper document scoping
-        const searchParams: {
-          projectId: string
-          query: string
-          topK: number
-          documentId?: string
-        } = {
-          projectId: projectId,
-          query: query,
-          topK: 10, // More results for search than AI context
-        }
-
-        // Only add documentId filter for document-specific queries if we have a valid document
-        if (
-          queryScope === 'document' &&
-          documentId &&
-          document?.status === 'processed'
-        ) {
-          searchParams.documentId = documentId
-        }
-
-        const searchResponse = await semanticSearch(searchParams)
-
-        // Check if we got results
-        if (
-          searchResponse &&
-          searchResponse.ids &&
-          searchResponse.ids[0] &&
-          searchResponse.ids[0].length > 0
-        ) {
-          // Add user search query to chat history
+          // Add user message to chat history
           const userMessage: ChatMessage = {
-            id: `user-search-${Date.now()}`,
+            id: `user-${Date.now()}`,
             type: 'user',
-            content: query,
+            content: queryToUse,
             timestamp: new Date(),
-            query: query,
+            query: queryToUse,
           }
 
-          // Add search results summary to chat history
-          const resultCount = searchResponse.ids[0].length
-          const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
+          // Add AI response to chat history
           const aiMessage: ChatMessage = {
-            id: `ai-search-${Date.now()}`,
+            id: `ai-${Date.now()}`,
             type: 'ai',
-            content: searchSummary,
+            content: response,
             timestamp: new Date(),
           }
 
           setChatHistory(prev => [...prev, userMessage, aiMessage])
 
           setResults({
-            type: 'search',
-            searchResults: searchResponse as typeof searchResults,
-          })
-
-          // Clear the query field after successful search
-          setQuery('')
-        } else {
-          // Add user search query to chat history even when no results
-          const userMessage: ChatMessage = {
-            id: `user-no-results-${Date.now()}`,
-            type: 'user',
-            content: query,
-            timestamp: new Date(),
-            query: query,
-          }
-
-          // Add no results message to chat history
-          const aiMessage: ChatMessage = {
-            id: `ai-no-results-${Date.now()}`,
             type: 'ai',
-            content:
-              "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
-            timestamp: new Date(),
-          }
-
-          setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-          // No results found for search query
-          toast({
-            title: 'No Results Found',
-            description:
-              'Try rephrasing your search or asking a different question.',
-            variant: 'destructive',
+            aiAnswer: response,
+            query: queryToUse,
           })
 
-          // Clear the query field
+          // Clear the query field after successful AI response
           setQuery('')
+
+          toast({
+            title: 'AI Analysis Complete',
+            description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
+          })
+
+          // Provide voice feedback with the actual AI answer
+          if (response && response.length > 0) {
+            setTimeout(() => {
+              // Speak the full answer - no truncation
+              speakWithStateTracking(response, {
+                voice: 'Ruth',
+                stopListeningAfter: true,
+              }).catch(console.error)
+            }, 1000)
+          }
+        } else {
+          // Handle as semantic search with proper document scoping
+          const searchParams: {
+            projectId: string
+            query: string
+            topK: number
+            documentId?: string
+          } = {
+            projectId: projectId,
+            query: queryToUse,
+            topK: 10, // More results for search than AI context
+          }
+
+          // Only add documentId filter for document-specific queries if we have a valid document
+          if (
+            queryScope === 'document' &&
+            documentId &&
+            document?.status === 'processed'
+          ) {
+            searchParams.documentId = documentId
+          }
+
+          const searchResponse = await semanticSearch(searchParams)
+
+          // Check if we got results
+          if (
+            searchResponse &&
+            searchResponse.ids &&
+            searchResponse.ids[0] &&
+            searchResponse.ids[0].length > 0
+          ) {
+            // Add user search query to chat history
+            const userMessage: ChatMessage = {
+              id: `user-search-${Date.now()}`,
+              type: 'user',
+              content: query,
+              timestamp: new Date(),
+              query: query,
+            }
+
+            // Add search results summary to chat history
+            const resultCount = searchResponse.ids[0].length
+            const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
+            const aiMessage: ChatMessage = {
+              id: `ai-search-${Date.now()}`,
+              type: 'ai',
+              content: searchSummary,
+              timestamp: new Date(),
+            }
+
+            setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+            setResults({
+              type: 'search',
+              searchResults: searchResponse as typeof searchResults,
+            })
+
+            // Clear the query field after successful search
+            setQuery('')
+          } else {
+            // Add user search query to chat history even when no results
+            const userMessage: ChatMessage = {
+              id: `user-no-results-${Date.now()}`,
+              type: 'user',
+              content: query,
+              timestamp: new Date(),
+              query: query,
+            }
+
+            // Add no results message to chat history
+            const aiMessage: ChatMessage = {
+              id: `ai-no-results-${Date.now()}`,
+              type: 'ai',
+              content:
+                "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
+              timestamp: new Date(),
+            }
+
+            setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+            // No results found for search query
+            toast({
+              title: 'No Results Found',
+              description:
+                'Try rephrasing your search or asking a different question.',
+              variant: 'destructive',
+            })
+
+            // Clear the query field
+            setQuery('')
+          }
+
+          toast({
+            title: 'Search Complete',
+            description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
+          })
+        }
+      } catch (error) {
+        console.error('Query Error:', error)
+
+        let title = 'Query Failed'
+        let description =
+          'Please try again or contact support if the problem persists.'
+
+        if (error instanceof Error) {
+          const errorMessage = error.message
+          if (errorMessage.includes('API key is not configured')) {
+            title = 'Configuration Error'
+            description =
+              'OpenAI API key is missing from environment variables.'
+          } else if (errorMessage.includes('OpenAI API error')) {
+            title = 'AI Service Error'
+            description = errorMessage.replace('OpenAI API error: ', '')
+          }
         }
 
         toast({
-          title: 'Search Complete',
-          description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
+          title,
+          description,
+          variant: 'destructive',
         })
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error('Query Error:', error)
-
-      let title = 'Query Failed'
-      let description =
-        'Please try again or contact support if the problem persists.'
-
-      if (error instanceof Error) {
-        const errorMessage = error.message
-        if (errorMessage.includes('API key is not configured')) {
-          title = 'Configuration Error'
-          description = 'OpenAI API key is missing from environment variables.'
-        } else if (errorMessage.includes('OpenAI API error')) {
-          title = 'AI Service Error'
-          description = errorMessage.replace('OpenAI API error: ', '')
-        }
-      }
-
-      toast({
-        title,
-        description,
-        variant: 'destructive',
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [
-    query,
-    projectId,
-    queryScope,
-    documentId,
-    document,
-    projectName,
-    toast,
-    speakWithStateTracking,
-  ])
+    },
+    [
+      query,
+      projectId,
+      queryScope,
+      documentId,
+      document,
+      projectName,
+      toast,
+      speakWithStateTracking,
+      setChatHistory,
+      setResults,
+      setQuery,
+      setIsLoading,
+    ],
+  )
 
   // Handle search results from the hook - DISABLED to prevent conflicts
   // We handle search results directly in handleQuery() instead
@@ -785,12 +799,6 @@ export const AIActions = ({
 
   const toggleListening = useCallback(() => {
     const newListeningState = !isListening
-    console.log('🎤 toggleListening called:', {
-      currentState: isListening,
-      newState: newListeningState,
-      isMobile,
-      hasMobileRecognition: !!mobileRecognitionRef.current,
-    })
     setIsListening(newListeningState)
 
     if (silenceTimer) {
@@ -798,36 +806,30 @@ export const AIActions = ({
       setSilenceTimer(null)
     }
 
-    if (isListening) {
+    if (newListeningState) {
       hasTranscriptRef.current = false
 
-      // Stop mobile recognition if it's active
+      // Start mobile recognition when listening begins
       if (isMobile && mobileRecognitionRef.current) {
         try {
-          mobileRecognitionRef.current.stop()
-          console.log('📱 Stopped mobile voice recognition')
+          mobileRecognitionRef.current.start()
         } catch (error) {
-          console.error('Error stopping mobile recognition:', error)
+          console.error('Error starting mobile recognition:', error)
         }
       }
 
       toast({
-        title: 'Voice input stopped',
-        description: 'Voice recording has been stopped.',
+        title: 'Voice input started',
+        description: 'Voice recording has been started.',
       })
     } else {
-      // Start mobile recognition if needed
+      // Stop mobile recognition when listening ends
       if (isMobile && mobileRecognitionRef.current) {
         try {
-          mobileRecognitionRef.current.start()
-          console.log('📱 Started mobile voice recognition')
+          mobileRecognitionRef.current.stop()
         } catch (error) {
-          console.error('Error starting mobile recognition:', error)
+          console.error('Error stopping mobile recognition:', error)
         }
-      } else if (isMobile && !mobileRecognitionRef.current) {
-        console.error(
-          '📱 Mobile recognition not available when trying to start',
-        )
       }
 
       toast({
@@ -868,13 +870,6 @@ export const AIActions = ({
   // Handle interim transcript updates (real-time display)
   const handleInterimTranscript = useCallback(
     (text: string) => {
-      console.log('🎤 handleInterimTranscript called with:', {
-        text: text.slice(0, 50),
-        length: text.length,
-        isVoicePlaying,
-        currentSilenceTimer: !!silenceTimer,
-      })
-
       // Prevent processing if voice is currently playing (loop prevention)
       if (isVoicePlaying) {
         console.log(
@@ -891,10 +886,6 @@ export const AIActions = ({
       // Only start silence detection if we have some text
       if (text.trim()) {
         hasTranscriptRef.current = true
-        console.log(
-          '🎤 Set hasTranscriptRef to true for text:',
-          text.slice(0, 30),
-        )
 
         // Clear existing timer every time we get speech activity
         if (silenceTimer) {
@@ -905,35 +896,19 @@ export const AIActions = ({
         // Start new silence timer with longer duration for natural speech
         const timer = setTimeout(
           () => {
-            // Use the text parameter directly to avoid stale closure
-            const currentQuery = text.trim()
-            console.log('⏰ Silence timeout triggered, checking conditions:', {
-              hasQuery: !!currentQuery,
-              hasTranscript: hasTranscriptRef.current,
-              isVoicePlaying,
-              isListening,
-              isMobile,
-              queryLength: currentQuery.length,
-              textFromClosure: text.slice(0, 50),
-            })
-
-            // On mobile, recognition ends naturally so isListening might be false
-            // We should submit if we have text and no voice is playing
-            const shouldSubmit = isMobile
-              ? currentQuery && hasTranscriptRef.current && !isVoicePlaying
-              : currentQuery &&
-                hasTranscriptRef.current &&
-                !isVoicePlaying &&
-                isListening
-
-            if (shouldSubmit) {
+            // Double-check we should auto-submit after extended silence
+            const currentQuery = query || text
+            if (
+              currentQuery.trim() &&
+              hasTranscriptRef.current &&
+              !isVoicePlaying &&
+              isListening
+            ) {
               console.log(
                 `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
-              // Set the query to the transcript text before submitting
-              setQuery(currentQuery)
-              // Stop listening before submitting (if still listening)
+              // Stop listening before submitting
               if (isListening) {
                 toggleListening()
               }
@@ -944,13 +919,10 @@ export const AIActions = ({
               }, 100)
             } else {
               console.log('⏰ Skipping auto-submit - conditions not met:', {
-                hasQuery: !!currentQuery,
+                hasQuery: !!currentQuery.trim(),
                 hasTranscript: hasTranscriptRef.current,
                 isVoicePlaying,
                 isListening,
-                isMobile,
-                shouldSubmit,
-                queryText: currentQuery.slice(0, 100),
               })
             }
           },
@@ -968,6 +940,7 @@ export const AIActions = ({
     [
       isVoicePlaying,
       silenceTimer,
+      query,
       isListening,
       isMobile,
       toggleListening,
@@ -977,10 +950,6 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
-    console.log('📱 Mobile recognition setup effect:', {
-      isMobile,
-      hasRecognition: !!mobileRecognitionRef.current,
-    })
     if (!isMobile) return // Only for mobile
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
@@ -988,18 +957,16 @@ export const AIActions = ({
         window.SpeechRecognition || window.webkitSpeechRecognition
 
       if (SpeechRecognitionAPI) {
-        console.log('📱 Creating mobile voice recognition instance')
         const recognition = new SpeechRecognitionAPI()
         recognition.continuous = false // Disable continuous on mobile to prevent loops
         recognition.interimResults = true
         recognition.lang = 'en-US'
         recognition.maxAlternatives = 1
 
+        let mobileTranscript = ''
+
         recognition.onresult = event => {
-          if (isVoicePlaying) {
-            console.log('📱 Ignoring voice result during playback')
-            return
-          }
+          if (isVoicePlaying) return // Ignore during playback
 
           const results = Array.from(event.results)
           let completeTranscript = ''
@@ -1008,41 +975,55 @@ export const AIActions = ({
             completeTranscript += results[i][0].transcript
           }
 
+          mobileTranscript = completeTranscript
           console.log('📱 Mobile voice transcript:', completeTranscript)
 
           // Update query in real-time
           setQuery(completeTranscript)
           setInterimTranscript(completeTranscript)
 
-          // Use the standard interim transcript handler for consistent silence detection
+          // Auto-submit after mobile-optimized delay
           if (completeTranscript.trim()) {
-            console.log(
-              '📱 Calling handleInterimTranscript with:',
-              completeTranscript.slice(0, 50),
-            )
-            handleInterimTranscript(completeTranscript)
+            hasTranscriptRef.current = true
+
+            if (silenceTimer) {
+              clearTimeout(silenceTimer)
+            }
+
+            // Capture the transcript in the closure
+            const transcriptToSubmit = completeTranscript
+            const timer = setTimeout(() => {
+              const trimmedTranscript = transcriptToSubmit.trim()
+              if (trimmedTranscript && trimmedTranscript.length > 0) {
+                setQuery(trimmedTranscript)
+                setIsListening(false) // Stop listening
+                // Trigger the query with the transcript parameter
+                setTimeout(() => {
+                  handleQuery(trimmedTranscript)
+                }, 300)
+              }
+            }, 1500) // 1.5s for mobile
+
+            setSilenceTimer(timer)
           }
         }
 
         recognition.onerror = event => {
           console.error('📱 Mobile voice error:', event.error)
+          if (mobileTranscript.trim()) {
+            setQuery(mobileTranscript)
+          }
           if (isListening) {
             setIsListening(false)
           }
         }
 
         recognition.onend = () => {
-          console.log(
-            '📱 Mobile voice recognition ended naturally (continuous: false)',
-          )
+          console.log('📱 Mobile voice recognition ended')
           // Don't auto-restart on mobile to prevent loops
-          // The silence timer will handle auto-submission
         }
 
         mobileRecognitionRef.current = recognition
-        console.log('📱 Mobile voice recognition initialized successfully')
-      } else {
-        console.error('📱 Speech Recognition API not available')
       }
     }
 
@@ -1050,13 +1031,23 @@ export const AIActions = ({
       if (mobileRecognitionRef.current) {
         try {
           mobileRecognitionRef.current.stop()
-          console.log('📱 Cleaned up mobile recognition')
         } catch (error) {
           console.error('Error stopping mobile recognition:', error)
         }
       }
     }
-  }, [isMobile, isVoicePlaying, handleInterimTranscript, isListening])
+  }, [
+    isMobile,
+    isVoicePlaying,
+    silenceTimer,
+    isListening,
+    handleQuery,
+    projectId,
+    documentId,
+    queryScope,
+    toast,
+    handleTranscript,
+  ])
 
   const handleAskAI = async () => {
     await handleQuery()
@@ -1276,7 +1267,7 @@ export const AIActions = ({
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={handleQuery}
+                  onClick={() => handleQuery()}
                   disabled={
                     isLoading ||
                     !query.trim() ||
