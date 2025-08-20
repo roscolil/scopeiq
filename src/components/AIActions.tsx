@@ -897,7 +897,16 @@ export const AIActions = ({
       // Update query field in real-time but don't set submission flag
       setQuery(text)
 
-      // Only start silence detection if we have some text
+      // CRITICAL FIX: Only use interim transcript auto-submission on desktop
+      // Mobile devices use their own mobileRecognitionRef auto-submission system
+      if (isMobile) {
+        console.log(
+          '📱 Mobile device - skipping interim transcript auto-submission (using mobile recognition system)',
+        )
+        return
+      }
+
+      // Only start silence detection if we have some text (DESKTOP ONLY)
       if (text.trim()) {
         hasTranscriptRef.current = true
 
@@ -907,7 +916,7 @@ export const AIActions = ({
           console.log('🔄 Speech activity detected, resetting silence timer')
         }
 
-        // Start new silence timer with longer duration for natural speech
+        // Start new silence timer with longer duration for natural speech (DESKTOP)
         const timer = setTimeout(
           () => {
             // Double-check we should auto-submit after extended silence
@@ -919,7 +928,7 @@ export const AIActions = ({
               isListening
             ) {
               console.log(
-                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
+                `⏰ Auto-submitting query after 3s of silence (DESKTOP):`,
                 currentQuery.slice(0, 100),
               )
               // Stop listening before submitting
@@ -932,22 +941,25 @@ export const AIActions = ({
                 }
               }, 100)
             } else {
-              console.log('⏰ Skipping auto-submit - conditions not met:', {
-                hasQuery: !!currentQuery.trim(),
-                hasTranscript: hasTranscriptRef.current,
-                isVoicePlaying,
-                isListening,
-              })
+              console.log(
+                '⏰ Skipping desktop auto-submit - conditions not met:',
+                {
+                  hasQuery: !!currentQuery.trim(),
+                  hasTranscript: hasTranscriptRef.current,
+                  isVoicePlaying,
+                  isListening,
+                },
+              )
             }
           },
-          isMobile ? 1500 : 3000,
-        ) // Shorter timeout on mobile for better responsiveness
+          3000, // 3s timeout for desktop natural speech patterns
+        )
 
         setSilenceTimer(timer)
         console.log(
-          '⏰ Started silence timer for:',
+          '🖥️ Started desktop silence timer for:',
           text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '3s'} timeout)`,
+          '(3s timeout)',
         )
       }
     },
