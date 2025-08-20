@@ -775,6 +775,13 @@ export const AIActions = ({
   }
 
   const toggleListening = useCallback(() => {
+    console.log(
+      '🎤 toggleListening called - current isListening:',
+      isListening,
+      'isMobile:',
+      isMobile,
+    )
+
     const newListeningState = !isListening
     setIsListening(newListeningState)
 
@@ -789,8 +796,9 @@ export const AIActions = ({
       // Stop mobile recognition if it's active
       if (isMobile && mobileRecognitionRef.current) {
         try {
+          console.log('📱 Attempting to stop mobile recognition...')
           mobileRecognitionRef.current.stop()
-          console.log('📱 Stopped mobile voice recognition')
+          console.log('📱 Successfully stopped mobile voice recognition')
         } catch (error) {
           console.error('Error stopping mobile recognition:', error)
         }
@@ -804,11 +812,19 @@ export const AIActions = ({
       // Start mobile recognition if needed
       if (isMobile && mobileRecognitionRef.current) {
         try {
+          console.log('📱 Attempting to start mobile recognition...')
+          console.log('📱 Recognition instance:', mobileRecognitionRef.current)
           mobileRecognitionRef.current.start()
-          console.log('📱 Started mobile voice recognition')
+          console.log('📱 Successfully started mobile voice recognition')
         } catch (error) {
           console.error('Error starting mobile recognition:', error)
+          console.error('Error details:', error.name, error.message)
         }
+      } else {
+        console.log('📱 Cannot start mobile recognition:', {
+          isMobile,
+          hasRecognition: !!mobileRecognitionRef.current,
+        })
       }
 
       toast({
@@ -929,13 +945,24 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
-    if (!isMobile) return // Only for mobile
+    console.log('📱 Mobile recognition setup effect running:', {
+      isMobile,
+      hasRecognition: !!mobileRecognitionRef.current,
+    })
+
+    if (!isMobile) {
+      console.log('📱 Not mobile, skipping recognition setup')
+      return // Only for mobile
+    }
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
+      console.log('📱 Initializing mobile recognition...')
+
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition
 
       if (SpeechRecognitionAPI) {
+        console.log('📱 SpeechRecognition API available, creating instance...')
         const recognition = new SpeechRecognitionAPI()
         recognition.continuous = false // Disable continuous on mobile to prevent loops
         recognition.interimResults = true
@@ -945,9 +972,13 @@ export const AIActions = ({
         let mobileTranscript = ''
 
         recognition.onresult = event => {
-          if (isVoicePlaying) return // Ignore during playback
+          console.log('📱 Mobile recognition onresult triggered')
+          if (isVoicePlaying) {
+            console.log('📱 Ignoring recognition during voice playback')
+            return // Ignore during playback
+          }
 
-          const results = Array.from(event.results)
+          const results = Array.from(event.results) as SpeechRecognitionResult[]
           let completeTranscript = ''
           let hasFinalResult = false
 
@@ -1075,8 +1106,21 @@ export const AIActions = ({
         }
 
         mobileRecognitionRef.current = recognition
-        console.log('📱 Mobile voice recognition initialized')
+        console.log(
+          '📱 Mobile voice recognition initialized successfully:',
+          recognition,
+        )
+      } else {
+        console.error('📱 SpeechRecognition API not available')
       }
+    } else {
+      console.log(
+        '📱 Mobile recognition already exists or window not available:',
+        {
+          hasWindow: typeof window !== 'undefined',
+          hasRecognition: !!mobileRecognitionRef.current,
+        },
+      )
     }
 
     return () => {
