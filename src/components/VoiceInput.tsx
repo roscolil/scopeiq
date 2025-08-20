@@ -57,6 +57,15 @@ export const VoiceInput = ({
 
   // Initialize speech recognition
   useEffect(() => {
+    // CRITICAL FIX: Don't initialize recognition on mobile to prevent duplicate voice processing
+    // Mobile devices use the mobileRecognitionRef in AIActions component instead
+    if (isMobile) {
+      console.log(
+        '🎤 Skipping VoiceInput recognition initialization on mobile (using AIActions mobile recognition)',
+      )
+      return
+    }
+
     if (typeof window !== 'undefined' && !recognition) {
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition
@@ -64,19 +73,13 @@ export const VoiceInput = ({
       if (SpeechRecognitionAPI) {
         const recognitionInstance = new SpeechRecognitionAPI()
 
-        // FIXED: Configure for better silence detection and mobile responsiveness
+        // Configure for desktop/tablet usage
         recognitionInstance.continuous = true // Enable continuous listening for silence detection
         recognitionInstance.interimResults = true // Enable interim results to detect speech activity
         recognitionInstance.lang = 'en-US'
         recognitionInstance.maxAlternatives = 1
 
-        // Mobile-specific optimizations
-        if (isMobile) {
-          console.log('🎤 Configuring voice recognition for mobile device')
-          // On mobile, we want more responsive interaction
-          recognitionInstance.continuous = false // Disable continuous mode on mobile to prevent loops
-        }
-
+        console.log('🎤 VoiceInput recognition initialized for desktop/tablet')
         setRecognition(recognitionInstance)
       } else {
         console.error('Speech Recognition API is not supported in this browser')
@@ -98,7 +101,7 @@ export const VoiceInput = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [isMobile]) // Include isMobile to re-initialize when device type changes
 
   // Monitor audio playback to prevent loops
   useEffect(() => {
@@ -173,7 +176,7 @@ export const VoiceInput = ({
 
   // Set up recognition event handlers
   useEffect(() => {
-    if (!recognition) return
+    if (!recognition) return // No recognition on mobile - handled by AIActions
 
     recognition.onresult = event => {
       // Prevent processing if audio is playing
@@ -292,7 +295,7 @@ export const VoiceInput = ({
 
   // Handle listening state changes
   useEffect(() => {
-    if (!recognition) return
+    if (!recognition) return // No recognition on mobile - handled by AIActions
 
     if (isListening && !isPlayingAudioRef.current) {
       try {
