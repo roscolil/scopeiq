@@ -85,6 +85,9 @@ export const AIActions = ({
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
 
+  // Mobile-only voice recognition (when VoiceInput is not available)
+  const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
+
   // Chat history state
   interface ChatMessage {
     id: string
@@ -771,7 +774,7 @@ export const AIActions = ({
     })
   }
 
-  const toggleListening = () => {
+  const toggleListening = useCallback(() => {
     const newListeningState = !isListening
     setIsListening(newListeningState)
 
@@ -782,111 +785,242 @@ export const AIActions = ({
 
     if (isListening) {
       hasTranscriptRef.current = false
+
+      // Stop mobile recognition if it's active
+      if (isMobile && mobileRecognitionRef.current) {
+        try {
+          mobileRecognitionRef.current.stop()
+          console.log('📱 Stopped mobile voice recognition')
+        } catch (error) {
+          console.error('Error stopping mobile recognition:', error)
+        }
+      }
+
       toast({
         title: 'Voice input stopped',
         description: 'Voice recording has been stopped.',
       })
     } else {
+      // Start mobile recognition if needed
+      if (isMobile && mobileRecognitionRef.current) {
+        try {
+          mobileRecognitionRef.current.start()
+          console.log('📱 Started mobile voice recognition')
+        } catch (error) {
+          console.error('Error starting mobile recognition:', error)
+        }
+      }
+
       toast({
         title: 'Voice input started',
         description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
       })
-
-      // No initial voice prompt - just start listening silently
     }
-  }
+  }, [isListening, silenceTimer, isMobile, toast])
 
-  const handleTranscript = (text: string) => {
-    // In preventLoop mode, this should rarely be called since we avoid final transcript submission
-    console.log(
-      '⚠️ Final transcript handler called in preventLoop mode - this may indicate an issue',
-    )
-
-    // Prevent processing if voice is currently playing (loop prevention)
-    if (isVoicePlaying) {
-      console.log('🛑 Ignoring final transcript during voice playback:', text)
-      return
-    }
-
-    console.log('✅ Processing final voice transcript:', text)
-    setQuery(text)
-    hasTranscriptRef.current = true
-
-    // In preventLoop mode, don't immediately submit - rely on interim transcript silence detection
-    if (text.trim()) {
+  const handleTranscript = useCallback(
+    (text: string) => {
+      // In preventLoop mode, this should rarely be called since we avoid final transcript submission
       console.log(
-        '🔄 Final transcript received, but deferring to interim-based silence detection',
+        '⚠️ Final transcript handler called in preventLoop mode - this may indicate an issue',
       )
-      // Don't submit immediately, let the interim transcript silence detection handle it
-    }
-  }
 
-  // Handle interim transcript updates (real-time display)
-  const handleInterimTranscript = (text: string) => {
-    // Prevent processing if voice is currently playing (loop prevention)
-    if (isVoicePlaying) {
-      console.log('🛑 Ignoring interim transcript during voice playback:', text)
-      return
-    }
-
-    setInterimTranscript(text)
-    // Update query field in real-time but don't set submission flag
-    setQuery(text)
-
-    // Only start silence detection if we have some text
-    if (text.trim()) {
-      hasTranscriptRef.current = true
-
-      // Clear existing timer every time we get speech activity
-      if (silenceTimer) {
-        clearTimeout(silenceTimer)
-        console.log('🔄 Speech activity detected, resetting silence timer')
+      // Prevent processing if voice is currently playing (loop prevention)
+      if (isVoicePlaying) {
+        console.log('🛑 Ignoring final transcript during voice playback:', text)
+        return
       }
 
-      // Start new silence timer with longer duration for natural speech
-      const timer = setTimeout(
-        () => {
-          // Double-check we should auto-submit after extended silence
-          const currentQuery = query || text
-          if (
-            currentQuery.trim() &&
-            hasTranscriptRef.current &&
-            !isVoicePlaying &&
-            isListening
-          ) {
-            console.log(
-              '⏰ Auto-submitting query after 3s of silence:',
-              currentQuery.slice(0, 100),
-            )
-            // Stop listening before submitting
-            if (isListening) {
-              toggleListening()
-            }
-            setTimeout(() => {
-              if (!isVoicePlaying) {
-                handleQuery()
-              }
-            }, 100)
-          } else {
-            console.log('⏰ Skipping auto-submit - conditions not met:', {
-              hasQuery: !!currentQuery.trim(),
-              hasTranscript: hasTranscriptRef.current,
-              isVoicePlaying,
-              isListening,
-            })
-          }
-        },
-        isMobile ? 1500 : 3000,
-      ) // Shorter timeout on mobile for better responsiveness
+      console.log('✅ Processing final voice transcript:', text)
+      setQuery(text)
+      hasTranscriptRef.current = true
 
-      setSilenceTimer(timer)
-      console.log(
-        '⏰ Started silence timer for:',
-        text.slice(0, 50),
-        `(${isMobile ? '1.5s' : '3s'} timeout)`,
-      )
+      // In preventLoop mode, don't immediately submit - rely on interim transcript silence detection
+      if (text.trim()) {
+        console.log(
+          '🔄 Final transcript received, but deferring to interim-based silence detection',
+        )
+        // Don't submit immediately, let the interim transcript silence detection handle it
+      }
+    },
+    [isVoicePlaying],
+  )
+
+  // Handle interim transcript updates (real-time display)
+  const handleInterimTranscript = useCallback(
+    (text: string) => {
+      // Prevent processing if voice is currently playing (loop prevention)
+      if (isVoicePlaying) {
+        console.log(
+          '🛑 Ignoring interim transcript during voice playback:',
+          text,
+        )
+        return
+      }
+
+      setInterimTranscript(text)
+      // Update query field in real-time but don't set submission flag
+      setQuery(text)
+
+      // Only start silence detection if we have some text
+      if (text.trim()) {
+        hasTranscriptRef.current = true
+
+        // Clear existing timer every time we get speech activity
+        if (silenceTimer) {
+          clearTimeout(silenceTimer)
+          console.log('🔄 Speech activity detected, resetting silence timer')
+        }
+
+        // Start new silence timer with longer duration for natural speech
+        const timer = setTimeout(
+          () => {
+            // Double-check we should auto-submit after extended silence
+            const currentQuery = query || text
+            if (
+              currentQuery.trim() &&
+              hasTranscriptRef.current &&
+              !isVoicePlaying &&
+              isListening
+            ) {
+              console.log(
+                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
+                currentQuery.slice(0, 100),
+              )
+              // Stop listening before submitting
+              if (isListening) {
+                toggleListening()
+              }
+              setTimeout(() => {
+                if (!isVoicePlaying) {
+                  handleQuery()
+                }
+              }, 100)
+            } else {
+              console.log('⏰ Skipping auto-submit - conditions not met:', {
+                hasQuery: !!currentQuery.trim(),
+                hasTranscript: hasTranscriptRef.current,
+                isVoicePlaying,
+                isListening,
+              })
+            }
+          },
+          isMobile ? 1500 : 3000,
+        ) // Shorter timeout on mobile for better responsiveness
+
+        setSilenceTimer(timer)
+        console.log(
+          '⏰ Started silence timer for:',
+          text.slice(0, 50),
+          `(${isMobile ? '1.5s' : '3s'} timeout)`,
+        )
+      }
+    },
+    [
+      isVoicePlaying,
+      silenceTimer,
+      query,
+      isListening,
+      isMobile,
+      toggleListening,
+      handleQuery,
+    ],
+  )
+
+  // Mobile voice recognition setup (when VoiceInput component is not rendered)
+  useEffect(() => {
+    if (!isMobile) return // Only for mobile
+
+    if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
+      const SpeechRecognitionAPI =
+        window.SpeechRecognition || window.webkitSpeechRecognition
+
+      if (SpeechRecognitionAPI) {
+        const recognition = new SpeechRecognitionAPI()
+        recognition.continuous = false // Disable continuous on mobile to prevent loops
+        recognition.interimResults = true
+        recognition.lang = 'en-US'
+        recognition.maxAlternatives = 1
+
+        let mobileTranscript = ''
+
+        recognition.onresult = event => {
+          if (isVoicePlaying) return // Ignore during playback
+
+          const results = Array.from(event.results)
+          let completeTranscript = ''
+
+          for (let i = 0; i < results.length; i++) {
+            completeTranscript += results[i][0].transcript
+          }
+
+          mobileTranscript = completeTranscript
+          console.log('📱 Mobile voice transcript:', completeTranscript)
+
+          // Update query in real-time
+          setQuery(completeTranscript)
+          setInterimTranscript(completeTranscript)
+
+          // Auto-submit after mobile-optimized delay
+          if (completeTranscript.trim()) {
+            hasTranscriptRef.current = true
+
+            if (silenceTimer) {
+              clearTimeout(silenceTimer)
+            }
+
+            const timer = setTimeout(() => {
+              if (mobileTranscript.trim() && !isVoicePlaying && isListening) {
+                console.log(
+                  '📱 Auto-submitting mobile transcript:',
+                  mobileTranscript,
+                )
+                setQuery(mobileTranscript)
+                if (isListening) {
+                  setIsListening(false) // Stop listening
+                }
+                setTimeout(() => {
+                  if (!isVoicePlaying) {
+                    handleQuery()
+                  }
+                }, 100)
+              }
+            }, 1500) // 1.5s for mobile
+
+            setSilenceTimer(timer)
+          }
+        }
+
+        recognition.onerror = event => {
+          console.error('📱 Mobile voice error:', event.error)
+          if (mobileTranscript.trim()) {
+            setQuery(mobileTranscript)
+          }
+          if (isListening) {
+            setIsListening(false)
+          }
+        }
+
+        recognition.onend = () => {
+          console.log('📱 Mobile voice recognition ended')
+          // Don't auto-restart on mobile to prevent loops
+        }
+
+        mobileRecognitionRef.current = recognition
+        console.log('📱 Mobile voice recognition initialized')
+      }
     }
-  }
+
+    return () => {
+      if (mobileRecognitionRef.current) {
+        try {
+          mobileRecognitionRef.current.stop()
+        } catch (error) {
+          console.error('Error stopping mobile recognition:', error)
+        }
+      }
+    }
+  }, [isMobile, isVoicePlaying, silenceTimer, isListening, handleQuery])
 
   const handleAskAI = async () => {
     await handleQuery()
@@ -1076,8 +1210,8 @@ export const AIActions = ({
 
             <div className="flex justify-between gap-3 mb-4">
               <div className="flex gap-2 items-center">
-                {/* VoiceInput - always present for voice recognition, but hidden on mobile */}
-                <div className={isMobile ? 'hidden' : 'block'}>
+                {/* VoiceInput - only render on desktop to prevent dual systems on mobile */}
+                {!isMobile && (
                   <VoiceInput
                     onTranscript={handleTranscript}
                     isListening={isListening}
@@ -1088,7 +1222,7 @@ export const AIActions = ({
                     preventAutoRestart={isVoicePlaying}
                     isMobile={isMobile}
                   />
-                </div>
+                )}
 
                 {/* Voice status indicator */}
                 {isVoicePlaying && (
