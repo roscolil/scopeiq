@@ -81,9 +81,16 @@ export const VoiceShazamButton = ({
   return (
     <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
       {/* Help message */}
-      {showHelpMessage && (
+      {showHelpMessage && !isListening && (
         <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          💡 Tap outside to hide voice button
+          🎤 Tap to speak • Auto-submits after silence
+        </div>
+      )}
+
+      {/* Listening instruction */}
+      {isListening && (
+        <div className="bg-primary/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+          🔴 Listening... Speak your query
         </div>
       )}
 
@@ -113,7 +120,13 @@ export const VoiceShazamButton = ({
             position: 'relative',
             zIndex: 200,
           }}
-          aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+          aria-label={
+            isProcessing
+              ? 'Processing voice input...'
+              : isListening
+                ? 'Listening... Speak now and stop when done'
+                : 'Tap to start voice input'
+          }
         >
           <div
             className={cn(
@@ -134,8 +147,8 @@ export const VoiceShazamButton = ({
                 style={{ transform: 'scale(1.25)' }}
               />
             ) : isListening ? (
-              <MicOff
-                className="text-white"
+              <Mic
+                className="text-white animate-pulse"
                 strokeWidth={1.5}
                 width="100%"
                 height="100%"

@@ -788,7 +788,44 @@ export const AIActions = ({
     })
   }
 
+  const stopListening = useCallback(() => {
+    if (!isListening) return
+
+    console.log('📱 Stopping voice recognition programmatically')
+    setIsListening(false)
+    hasTranscriptRef.current = false
+
+    if (silenceTimer) {
+      clearTimeout(silenceTimer)
+      setSilenceTimer(null)
+    }
+
+    // Stop mobile recognition if it's active
+    if (isMobile && mobileRecognitionRef.current) {
+      try {
+        mobileRecognitionRef.current.stop()
+        console.log('📱 Stopped mobile voice recognition')
+      } catch (error) {
+        console.error('Error stopping mobile recognition:', error)
+      }
+    }
+  }, [isListening, silenceTimer, isMobile])
+
   const toggleListening = useCallback(() => {
+    // If already listening, don't stop - let the auto-submission handle it
+    // This creates a better UX where users tap once and speak naturally
+    if (isListening) {
+      console.log(
+        '📱 Already listening - ignoring additional taps for better UX',
+      )
+      toast({
+        title: 'Already listening',
+        description: 'Keep speaking... Will auto-submit after silence.',
+        duration: 1500,
+      })
+      return
+    }
+
     const newListeningState = !isListening
     setIsListening(newListeningState)
 
@@ -797,24 +834,8 @@ export const AIActions = ({
       setSilenceTimer(null)
     }
 
-    if (isListening) {
-      hasTranscriptRef.current = false
-
-      // Stop mobile recognition if it's active
-      if (isMobile && mobileRecognitionRef.current) {
-        try {
-          mobileRecognitionRef.current.stop()
-          console.log('📱 Stopped mobile voice recognition')
-        } catch (error) {
-          console.error('Error stopping mobile recognition:', error)
-        }
-      }
-
-      toast({
-        title: 'Voice input stopped',
-        description: 'Voice recording has been stopped.',
-      })
-    } else {
+    // Start mobile recognition when turning on
+    if (!isListening) {
       // Start mobile recognition if needed
       if (isMobile && mobileRecognitionRef.current) {
         try {
@@ -827,7 +848,7 @@ export const AIActions = ({
 
       toast({
         title: 'Voice input started',
-        description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
+        description: `Speak your query... Will auto-submit after ${isMobile ? '1.3s' : '2s'} of silence.`,
       })
     }
   }, [isListening, silenceTimer, isMobile, toast])
@@ -1016,10 +1037,8 @@ export const AIActions = ({
                 )
                 setQuery(mobileTranscript.trim())
 
-                // Stop listening first
-                if (isListening) {
-                  setIsListening(false)
-                }
+                // Stop listening first using the proper function
+                stopListening()
 
                 // Submit query after brief delay
                 setTimeout(() => {
@@ -1052,9 +1071,9 @@ export const AIActions = ({
             }, 100)
           }
 
-          // Stop listening on error
+          // Stop listening on error using proper function
           if (isListening) {
-            setIsListening(false)
+            stopListening()
           }
 
           // Clear any pending timer
@@ -1074,7 +1093,7 @@ export const AIActions = ({
               mobileTranscript,
             )
             setQuery(mobileTranscript.trim())
-            setIsListening(false)
+            stopListening()
 
             setTimeout(() => {
               if (!isVoicePlaying) {
@@ -1104,7 +1123,14 @@ export const AIActions = ({
         }
       }
     }
-  }, [isMobile, isVoicePlaying, silenceTimer, isListening, handleQuery])
+  }, [
+    isMobile,
+    isVoicePlaying,
+    silenceTimer,
+    isListening,
+    handleQuery,
+    stopListening,
+  ])
 
   const handleAskAI = async () => {
     await handleQuery()
