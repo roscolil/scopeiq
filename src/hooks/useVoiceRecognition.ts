@@ -1,12 +1,9 @@
 /**
- * Voice Input Component with Loop Prevention
- * Prevents voice prompts from triggering speech recognition
+ * Shared Voice Recognition Hook
+ * Extracts voice recognition logic for use by both VoiceInput and VoiceShazamButton
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 // TypeScript declarations for Speech Recognition API
 interface SpeechRecognitionResult {
@@ -22,27 +19,33 @@ interface SpeechRecognitionEvent {
   resultIndex: number
 }
 
-interface VoiceInputProps {
+interface VoiceRecognitionConfig {
   onTranscript: (text: string) => void
-  isListening: boolean
-  toggleListening: () => void
-  preventLoop?: boolean // New prop to prevent voice loops
-  disabled?: boolean // New prop to disable the component
-  onInterimTranscript?: (text: string) => void // New prop for interim results
-  preventAutoRestart?: boolean // New prop to prevent auto-restart during AI responses
-  isMobile?: boolean // New prop to optimize timeouts for mobile
+  onInterimTranscript?: (text: string) => void
+  preventLoop?: boolean
+  disabled?: boolean
+  preventAutoRestart?: boolean
+  isMobile?: boolean
 }
 
-export const VoiceInput = ({
+interface VoiceRecognitionResult {
+  isListening: boolean
+  transcript: string
+  isProcessing: boolean
+  startListening: () => void
+  stopListening: () => void
+  toggleListening: () => void
+}
+
+export const useVoiceRecognition = ({
   onTranscript,
-  isListening,
-  toggleListening,
+  onInterimTranscript,
   preventLoop = false,
   disabled = false,
-  onInterimTranscript,
   preventAutoRestart = false,
   isMobile = false,
-}: VoiceInputProps) => {
+}: VoiceRecognitionConfig): VoiceRecognitionResult => {
+  const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState<string>('')
   const [recognition, setRecognition] = useState<
     typeof SpeechRecognition | null
@@ -57,15 +60,6 @@ export const VoiceInput = ({
 
   // Initialize speech recognition
   useEffect(() => {
-    // CRITICAL FIX: Don't initialize recognition on mobile to prevent duplicate voice processing
-    // Mobile devices use the mobileRecognitionRef in AIActions component instead
-    if (isMobile) {
-      console.log(
-        '🎤 Skipping VoiceInput recognition initialization on mobile (using AIActions mobile recognition)',
-      )
-      return
-    }
-
     if (typeof window !== 'undefined' && !recognition) {
       const SpeechRecognitionAPI =
         window.SpeechRecognition || window.webkitSpeechRecognition
@@ -73,13 +67,12 @@ export const VoiceInput = ({
       if (SpeechRecognitionAPI) {
         const recognitionInstance = new SpeechRecognitionAPI()
 
-        // Configure for desktop/tablet usage
-        recognitionInstance.continuous = true // Enable continuous listening for silence detection
-        recognitionInstance.interimResults = true // Enable interim results to detect speech activity
+        // Configure for better mobile performance
+        recognitionInstance.continuous = true
+        recognitionInstance.interimResults = true
         recognitionInstance.lang = 'en-US'
         recognitionInstance.maxAlternatives = 1
 
-        console.log('🎤 VoiceInput recognition initialized for desktop/tablet')
         setRecognition(recognitionInstance)
       } else {
         console.error('Speech Recognition API is not supported in this browser')
@@ -101,7 +94,7 @@ export const VoiceInput = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile]) // Include isMobile to re-initialize when device type changes
+  }, [])
 
   // Monitor audio playback to prevent loops
   useEffect(() => {
@@ -109,7 +102,6 @@ export const VoiceInput = ({
 
     const handleAudioStart = () => {
       isPlayingAudioRef.current = true
-      // Stop listening when audio starts playing
       if (isListening && recognition) {
         console.log('Audio playback detected, pausing voice input')
         try {
@@ -122,13 +114,11 @@ export const VoiceInput = ({
 
     const handleAudioEnd = () => {
       isPlayingAudioRef.current = false
-      // Don't auto-restart if preventAutoRestart is true (during AI responses)
       if (preventAutoRestart) {
         console.log('Auto-restart prevented during AI response')
         return
       }
 
-      // Small delay before allowing voice input again
       setTimeout(() => {
         if (isListening && recognition && !isProcessing) {
           console.log('Audio playback ended, resuming voice input')
@@ -138,10 +128,9 @@ export const VoiceInput = ({
             console.warn('Error restarting recognition after audio:', error)
           }
         }
-      }, 500) // 500ms delay to avoid feedback
+      }, 500)
     }
 
-    // Listen for audio elements
     const audioElements = document.querySelectorAll('audio')
     audioElements.forEach(audio => {
       audio.addEventListener('play', handleAudioStart)
@@ -149,7 +138,6 @@ export const VoiceInput = ({
       audio.addEventListener('pause', handleAudioEnd)
     })
 
-    // Also monitor for dynamically created audio
     const observer = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
         mutation.addedNodes.forEach(node => {
@@ -176,10 +164,9 @@ export const VoiceInput = ({
 
   // Set up recognition event handlers
   useEffect(() => {
-    if (!recognition) return // No recognition on mobile - handled by AIActions
+    if (!recognition) return
 
     recognition.onresult = event => {
-      // Prevent processing if audio is playing
       if (isPlayingAudioRef.current && preventLoop) {
         console.log('Ignoring speech recognition during audio playback')
         return
@@ -190,47 +177,38 @@ export const VoiceInput = ({
       setIsProcessing(true)
 
       const results = Array.from(event.results) as SpeechRecognitionResult[]
-
-      // Build complete transcript from ALL results (both interim and final)
       let completeTranscript = ''
       for (let i = 0; i < results.length; i++) {
         completeTranscript += results[i][0].transcript
       }
 
       console.log('Complete transcript so far:', completeTranscript)
-
-      // Store the complete accumulated transcript
       setTranscript(completeTranscript)
 
-      // Show real-time transcript via interim callback
       if (onInterimTranscript) {
         onInterimTranscript(completeTranscript)
       }
 
-      // In normal mode (non-preventLoop), send complete transcript after silence
       if (!preventLoop) {
-        // Clear any existing timeout
         if (debounceTimeoutRef.current) {
           clearTimeout(debounceTimeoutRef.current)
         }
 
-        // Set new timeout for silence detection
-        debounceTimeoutRef.current = setTimeout(
-          () => {
-            console.log(
-              'Silence detected, sending complete transcript:',
-              completeTranscript,
-            )
-            onTranscript(completeTranscript.trim())
-            setIsProcessing(false)
+        // Use shorter timeout on mobile for better responsiveness
+        const silenceTimeout = isMobile ? 1500 : 2500
+        debounceTimeoutRef.current = setTimeout(() => {
+          console.log(
+            'Silence detected, sending complete transcript:',
+            completeTranscript,
+          )
+          onTranscript(completeTranscript.trim())
+          setIsProcessing(false)
 
-            // Auto-stop after sending
-            if (isListening) {
-              toggleListening()
-            }
-          },
-          isMobile ? 1500 : 2500,
-        ) // Mobile-aware timeout for better responsiveness
+          // Auto-stop after sending
+          if (isListening) {
+            setIsListening(false)
+          }
+        }, silenceTimeout)
       }
     }
 
@@ -238,13 +216,11 @@ export const VoiceInput = ({
       console.error('Speech recognition error:', event.error)
       setIsProcessing(false)
 
-      // Clear timeout on error
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current)
         debounceTimeoutRef.current = null
       }
 
-      // Send any accumulated transcript before stopping
       if (transcript.trim() && !preventLoop) {
         console.log(
           'Error occurred, sending accumulated transcript:',
@@ -254,7 +230,7 @@ export const VoiceInput = ({
       }
 
       if (isListening && !isPlayingAudioRef.current) {
-        toggleListening()
+        setIsListening(false)
       }
     }
 
@@ -262,7 +238,6 @@ export const VoiceInput = ({
       console.log('Speech recognition ended')
       setIsProcessing(false)
 
-      // Only restart if we're still supposed to be listening and not playing audio
       if (isListening && !isPlayingAudioRef.current && !isProcessing) {
         try {
           setTimeout(() => {
@@ -285,7 +260,6 @@ export const VoiceInput = ({
     recognition,
     isListening,
     onTranscript,
-    toggleListening,
     isProcessing,
     preventLoop,
     onInterimTranscript,
@@ -295,11 +269,11 @@ export const VoiceInput = ({
 
   // Handle listening state changes
   useEffect(() => {
-    if (!recognition) return // No recognition on mobile - handled by AIActions
+    if (!recognition || disabled) return
 
     if (isListening && !isPlayingAudioRef.current) {
       try {
-        console.log('Starting speech recognition (loop-safe)')
+        console.log('Starting speech recognition')
         setTranscript('')
         recognition.start()
       } catch (error) {
@@ -320,7 +294,6 @@ export const VoiceInput = ({
         setTranscript('')
         setIsProcessing(false)
 
-        // Clear any pending timeout when stopping
         if (debounceTimeoutRef.current) {
           clearTimeout(debounceTimeoutRef.current)
           debounceTimeoutRef.current = null
@@ -329,7 +302,7 @@ export const VoiceInput = ({
         console.warn('Error stopping recognition:', error)
       }
     }
-  }, [isListening, recognition])
+  }, [isListening, recognition, disabled])
 
   // Cleanup debounce timeout
   useEffect(() => {
@@ -341,31 +314,16 @@ export const VoiceInput = ({
     }
   }, [])
 
-  const buttonVariant = isListening ? 'default' : 'outline'
-  const micColor = isListening
-    ? isProcessing
-      ? 'text-orange-500'
-      : 'text-red-500'
-    : 'text-gray-500'
+  const startListening = () => setIsListening(true)
+  const stopListening = () => setIsListening(false)
+  const toggleListening = () => setIsListening(!isListening)
 
-  return (
-    <Button
-      type="button"
-      variant={buttonVariant}
-      size="icon"
-      aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
-      onClick={toggleListening}
-      className={cn(
-        'shrink-0',
-        isMobile ? 'hidden' : 'inline-flex', // Hide button on mobile, but keep voice recognition active
-      )}
-      disabled={isProcessing || disabled}
-    >
-      {isListening ? (
-        <MicOff className={micColor} />
-      ) : (
-        <Mic className={micColor} />
-      )}
-    </Button>
-  )
+  return {
+    isListening,
+    transcript,
+    isProcessing,
+    startListening,
+    stopListening,
+    toggleListening,
+  }
 }

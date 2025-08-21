@@ -27,21 +27,13 @@ export const VoiceShazamButton = ({
   // Use the built-in mobile detection hook
   const isMobileView = useIsMobile()
 
-  // Start pulse animation when listening or show initial pulse animation
+  // Start pulse animation when listening
   useEffect(() => {
     if (isListening) {
       setPulseAnimation(true)
     } else {
       setPulseAnimation(false)
     }
-
-    // Add a subtle attention-grabbing pulse on first render
-    const initialPulse = setTimeout(() => {
-      setPulseAnimation(true)
-      setTimeout(() => setPulseAnimation(false), 1500)
-    }, 500)
-
-    return () => clearTimeout(initialPulse)
   }, [isListening])
 
   // Hide help message after 5 seconds
@@ -81,9 +73,9 @@ export const VoiceShazamButton = ({
   return (
     <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
       {/* Help message */}
-      {showHelpMessage && (
+      {showHelpMessage && !isListening && (
         <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          💡 Tap outside to hide voice button
+          🎤 Tap to speak • Auto-submits after silence
         </div>
       )}
 
@@ -100,25 +92,37 @@ export const VoiceShazamButton = ({
           disabled={isProcessing}
           className={cn(
             'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
-            pulseAnimation
-              ? 'animate-pulse bg-primary shadow-primary/30'
-              : 'bg-primary',
+            'border-4 border-background transition-all duration-300',
             isListening
-              ? 'ring-8 ring-primary/50 scale-115 transition-all duration-300'
-              : 'hover:scale-110 active:scale-95 transition-all duration-200',
-            'border-4 border-background',
+              ? 'bg-emerald-400 hover:bg-emerald-500 ring-8 ring-emerald-400/50 scale-105' // Red when listening
+              : isProcessing
+                ? 'bg-orange-500 hover:bg-orange-600' // Orange when processing
+                : 'bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95', // Normal state
+            pulseAnimation && 'animate-pulse shadow-2xl',
           )}
           style={{
-            boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+            boxShadow: isListening
+              ? '0 0 40px rgba(239, 68, 68, 0.6)' // Red glow when listening
+              : '0 0 30px rgba(0,0,0,0.5)',
             position: 'relative',
             zIndex: 200,
           }}
-          aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+          aria-label={
+            isProcessing
+              ? 'Processing voice input...'
+              : isListening
+                ? 'Listening... Speak now and stop when done'
+                : 'Tap to start voice input'
+          }
         >
           <div
             className={cn(
-              'absolute inset-0 bg-primary rounded-full opacity-20',
-              pulseAnimation ? 'animate-ping' : 'hidden',
+              'absolute inset-0 rounded-full opacity-30',
+              isListening
+                ? 'bg-emerald-400 animate-ping'
+                : pulseAnimation
+                  ? 'bg-primary animate-ping'
+                  : 'hidden',
             )}
           />
           <div
@@ -134,8 +138,8 @@ export const VoiceShazamButton = ({
                 style={{ transform: 'scale(1.25)' }}
               />
             ) : isListening ? (
-              <MicOff
-                className="text-white"
+              <Mic
+                className="text-white animate-pulse"
                 strokeWidth={1.5}
                 width="100%"
                 height="100%"
