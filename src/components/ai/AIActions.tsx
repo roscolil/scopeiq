@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -1055,7 +1056,7 @@ export const AIActions = ({
 
   return (
     <>
-      <Card className="mb-32 md:mb-0 animate-fade-in">
+      <Card className="mb-16 md:mb-0 animate-fade-in">
         <CardHeader className="pb-3" style={{ display: 'none' }}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -1187,7 +1188,7 @@ export const AIActions = ({
               </div>
             </div>
 
-            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
+            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50 hidden md:block">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <span className="text-sm">🚀</span>
@@ -1223,7 +1224,7 @@ export const AIActions = ({
 
               {/* Show text being spoken */}
               {currentSpeakingText && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
                   <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                     AI is speaking:
@@ -1377,18 +1378,24 @@ export const AIActions = ({
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border shadow-soft">
                   <div className="flex justify-between items-center mb-3">
-                    <Badge variant="outline" className="shadow-soft">
+                    <Badge
+                      variant="outline"
+                      className="shadow-soft hidden md:flex"
+                    >
                       <MessageSquare className="h-3 w-3 mr-1" />
                       Conversation History
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs hover:bg-secondary/80"
-                      onClick={() => setChatHistory([])}
-                    >
-                      Clear History
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <ChatExport messages={chatHistory} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 md:h-7 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-all duration-200"
+                        onClick={() => setChatHistory([])}
+                      >
+                        Clear History
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Scrollable Chat Container */}
