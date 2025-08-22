@@ -9,7 +9,7 @@ import {
   getS3BucketName,
   getAWSRegion,
   getAWSCredentialsSafe,
-} from '../../utils/aws-config'
+} from '@/utils/aws/aws-config'
 
 // S3 Configuration
 const awsRegion = getAWSRegion()

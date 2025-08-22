@@ -21,13 +21,13 @@ import {
 } from '@/components/ui/dialog'
 import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 import {
   getCachedData,
   prefetchProjectData,
   prefetchDocumentData,
-} from '@/utils/data-prefetch'
+} from '@/utils/performance/data-prefetch'
 
 const EnhancedDocuments = () => {
   const { companyId, projectId } = useParams<{

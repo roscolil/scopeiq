@@ -10,7 +10,7 @@ import {
   getAWSCredentialsSafe,
   getAWSRegion,
   getS3BucketName,
-} from '../../utils/aws-config'
+} from '@/utils/aws/aws-config'
 import * as pdfjs from 'pdfjs-dist'
 import mammoth from 'mammoth'
 

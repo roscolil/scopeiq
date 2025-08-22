@@ -12,7 +12,7 @@ import {
   Engine,
   LanguageCode,
 } from '@aws-sdk/client-polly'
-import { getAWSCredentials, getAWSRegion } from '@/utils/aws-config'
+import { getAWSCredentials, getAWSRegion } from '@/utils/aws/aws-config'
 
 interface NovaSonicOptions {
   voice?: VoiceId

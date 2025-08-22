@@ -11,7 +11,7 @@ import {
   deleteS3File,
 } from './s3-metadata'
 import { getSignedDownloadUrl } from '../file/documentUpload'
-import { createSlug } from '@/utils/navigation'
+import { createSlug } from '@/utils/ui/navigation'
 import { deleteEmbeddings } from '../ai/pinecone'
 import { sanitizeDocumentId } from '../ai/embedding'
 

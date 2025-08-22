@@ -48,7 +48,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { Project, Document } from '@/types'
 import { projectService, documentService } from '@/services/data/hybrid'
 import { companyService, Company } from '@/services/api/company'
-import { routes, createSlug } from '@/utils/navigation'
+import { routes, createSlug } from '@/utils/ui/navigation'
 import { useAuth } from '@/hooks/aws-auth'
 
 const Dashboard = () => {

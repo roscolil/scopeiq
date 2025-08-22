@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { FileText, Folder, MoreVertical, Trash2 } from 'lucide-react'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { projectService } from '@/services/data/hybrid'
 

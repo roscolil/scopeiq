@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Document } from '@/types'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import { cn } from '@/lib/utils'
 
 interface DocumentListProps {

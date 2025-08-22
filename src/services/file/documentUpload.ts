@@ -8,7 +8,7 @@ import {
   getS3BucketName,
   getAWSRegion,
   getAWSCredentialsSafe,
-} from '../../utils/aws-config'
+} from '@/utils/aws/aws-config'
 
 // Check configuration at startup
 const awsRegion = getAWSRegion()

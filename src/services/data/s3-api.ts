@@ -5,7 +5,7 @@ import {
   S3Document,
   S3Project,
 } from './s3-metadata'
-import { createSlug } from '@/utils/navigation'
+import { createSlug } from '@/utils/ui/navigation'
 
 // Helper function to get current user's company ID
 // In a real app, this would come from authentication/user context

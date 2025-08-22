@@ -18,8 +18,8 @@ import {
   updateUserAttributes,
 } from 'aws-amplify/auth'
 import { userService } from '@/services/auth/user'
-import { prefetchForAuthenticatedUser } from '@/utils/route-prefetch'
-import { prefetchUserData } from '@/utils/data-prefetch'
+import { prefetchForAuthenticatedUser } from '@/utils/performance/route-prefetch'
+import { prefetchUserData } from '@/utils/performance/data-prefetch'
 
 interface User {
   id: string

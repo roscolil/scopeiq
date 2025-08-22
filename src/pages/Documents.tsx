@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 
 const Documents = () => {

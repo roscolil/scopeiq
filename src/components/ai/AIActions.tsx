@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
-import { answerQuestionWithBedrock } from '@/utils/aws'
+import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -39,7 +39,7 @@ import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
-import { retryDocumentProcessing } from '@/utils/document-recovery'
+import { retryDocumentProcessing } from '@/utils/data/document-recovery'
 
 interface AIActionsProps {
   documentId: string

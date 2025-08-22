@@ -3,7 +3,7 @@ import {
   highlightText,
   highlightStyles,
   HighlightTerm,
-} from '@/utils/text-highlight'
+} from '@/utils/ui/text-highlight'
 
 interface HighlightedTextProps {
   text: string

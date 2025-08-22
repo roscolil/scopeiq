@@ -20,7 +20,7 @@ const LazyPDFViewer = lazy(async () => {
   await import('react-pdf/dist/Page/TextLayer.css')
 
   // Initialize PDF worker
-  const { initializePDFWorker } = await import('@/utils/pdf-lazy-loader')
+  const { initializePDFWorker } = await import('@/utils/performance/pdf-lazy-loader')
   await initializePDFWorker()
 
   // Import the actual PDF viewer component

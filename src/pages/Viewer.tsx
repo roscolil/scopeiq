@@ -27,7 +27,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { routes, createSlug } from '@/utils/navigation'
+import { routes, createSlug } from '@/utils/ui/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/data/hybrid'
 

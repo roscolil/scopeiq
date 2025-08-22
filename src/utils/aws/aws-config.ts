@@ -3,7 +3,7 @@
  * Gets AWS configuration from Amplify outputs and environment variables
  */
 
-import amplifyOutputs from '../../amplify_outputs.json'
+import amplifyOutputs from '../../../amplify_outputs.json'
 
 // Helper function to get environment variables
 const getEnvVar = (key: string): string | undefined => {

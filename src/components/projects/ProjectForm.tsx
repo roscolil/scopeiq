@@ -6,7 +6,7 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { createSlug } from '@/utils/navigation'
+import { createSlug } from '@/utils/ui/navigation'
 import {
   Form,
   FormControl,

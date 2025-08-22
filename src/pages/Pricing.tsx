@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import {
   Card,
   CardContent,

@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { routes } from '@/utils/navigation'
+import { routes } from '@/utils/ui/navigation'
 import { projectService, documentService } from '@/services/data/hybrid'
 
 const ProjectDetails = () => {

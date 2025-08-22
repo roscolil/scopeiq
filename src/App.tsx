@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { Spinner } from '@/components/shared/Spinner'
 import { AuthProvider } from './hooks/aws-auth'
-import { prefetchOnIdle, cleanupPrefetchObserver } from './utils/route-prefetch'
+import { prefetchOnIdle, cleanupPrefetchObserver } from '@/utils/performance/route-prefetch'
 import { PageHeaderSkeleton } from './components/skeletons'
 
 // Eagerly load critical components
