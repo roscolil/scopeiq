@@ -68,7 +68,7 @@ export const ChatExport: React.FC<ChatExportProps> = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="!overflow-hidden !max-h-none !bg-transparent !p-0 w-[90vw] sm:w-full max-w-[300px] sm:max-w-sm border-0 shadow-xl rounded-2xl sm:rounded-2xl">
+      <DialogContent className="!overflow-hidden !max-h-none !bg-transparent !p-0 w-[90vw] sm:w-full max-w-[300px] border-0 shadow-xl rounded-2xl sm:rounded-2xl">
         <div className="bg-white rounded-2xl p-4 sm:p-0 w-full h-full overflow-hidden">
           <div className="text-center mb-4 sm:mb-6 sm:pt-6 sm:px-6">
             <div className="flex items-center justify-center gap-2 text-lg font-semibold mb-2">
@@ -100,7 +100,7 @@ export const ChatExport: React.FC<ChatExportProps> = ({
             <Button
               variant="ghost"
               onClick={() => setIsOpen(false)}
-              className="w-full h-9 sm:h-10 text-gray-600 hover:text-gray-800 rounded-xl"
+              className="w-full h-9 sm:h-10 text-gray-600 hover:text-gray-800 rounded-xl border border-gray-300 hover:border-gray-400 !mt-10"
             >
               Cancel
             </Button>

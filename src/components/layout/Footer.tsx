@@ -8,9 +8,9 @@ export const Footer = () => {
   return (
     <footer className="border-t border-white/20 py-8 md:py-12 bg-transparent backdrop-blur-sm">
       <div className="container-2xl">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
+        <div className="flex flex-col items-center justify-between gap-6 md:gap-0 lg:flex-row">
           {/* Brand */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
               <FilePlus className="h-5 w-5 text-emerald-400" />
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
@@ -26,7 +26,7 @@ export const Footer = () => {
           </div>
 
           {/* Links */}
-          <div className="flex items-center gap-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 md:gap-8 order-1 md:order-2">
             <Link
               to="/our-team"
               className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
