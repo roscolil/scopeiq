@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useUserManagement } from '../hooks/use-user-management'
+import { useUserManagement } from '@/hooks/use-user-management'
 import {
   userManagementService,
   type User as ServiceUser,
   type UserInvitation as ServiceUserInvitation,
   type UserRole as ServiceUserRole,
-} from '../services/auth/user-management'
+} from '@/services/auth/user-management'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'

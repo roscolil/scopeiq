@@ -11,32 +11,32 @@ export interface PrefetchStrategy {
 // Route prefetch configuration
 export const ROUTE_PREFETCH_CONFIG: Record<string, PrefetchStrategy> = {
   '/documents': {
-    component: () => import('@/pages/Documents'),
+    component: () => import('@/pages/documents/Documents'),
     prefetchOn: 'hover', // Prefetch when user hovers over navigation
     priority: 'high',
   },
   '/projects': {
-    component: () => import('@/pages/Projects'),
+    component: () => import('@/pages/projects/Projects'),
     prefetchOn: 'hover',
     priority: 'high',
   },
   '/viewer': {
-    component: () => import('@/pages/Viewer'),
+    component: () => import('@/pages/documents/Viewer'),
     prefetchOn: 'immediate', // Prefetch immediately for authenticated users
     priority: 'high',
   },
   '/dashboard': {
-    component: () => import('@/pages/Dashboard'),
+    component: () => import('@/pages/dashboard/Dashboard'),
     prefetchOn: 'immediate',
     priority: 'high',
   },
   '/settings': {
-    component: () => import('@/pages/ProfileSettings'),
+    component: () => import('@/pages/dashboard/ProfileSettings'),
     prefetchOn: 'idle',
     priority: 'medium',
   },
   '/project-details': {
-    component: () => import('@/pages/ProjectDetails'),
+    component: () => import('@/pages/projects/ProjectDetails'),
     prefetchOn: 'hover',
     priority: 'high',
   },
