@@ -28,6 +28,18 @@ export const Footer = () => {
           {/* Links */}
           <div className="flex items-center gap-8">
             <Link
+              to="/our-team"
+              className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
+            >
+              Our Team
+            </Link>
+            <Link
+              to="/work-with-us"
+              className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
+            >
+              Work With Us
+            </Link>
+            <Link
               to="/terms"
               className="text-sm text-gray-300 hover:text-white transition-colors duration-200 font-medium"
             >

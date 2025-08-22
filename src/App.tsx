@@ -32,6 +32,8 @@ const Migration = lazy(() => import('./pages/admin/Migration'))
 const Terms = lazy(() => import('./pages/legal/Terms'))
 const Privacy = lazy(() => import('./pages/legal/Privacy'))
 const Contact = lazy(() => import('./pages/legal/Contact'))
+const OurTeam = lazy(() => import('./pages/legal/OurTeam'))
+const WorkWithUs = lazy(() => import('./pages/legal/WorkWithUs'))
 const CommonTermsManagement = lazy(
   () => import('./pages/admin/CommonTermsManagement'),
 )
@@ -170,6 +172,22 @@ const App = () => {
                 element={
                   <EnhancedSuspense>
                     <Contact />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/our-team"
+                element={
+                  <EnhancedSuspense>
+                    <OurTeam />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/work-with-us"
+                element={
+                  <EnhancedSuspense>
+                    <WorkWithUs />
                   </EnhancedSuspense>
                 }
               />
