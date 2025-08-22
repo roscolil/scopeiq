@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Document } from '@/types'
-import { documentService } from '@/services/hybrid'
+import { documentService } from '@/services/data/hybrid'
 
 interface UseDocumentStatusOptions {
   documentId: string

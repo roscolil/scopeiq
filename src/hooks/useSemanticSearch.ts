@@ -3,7 +3,7 @@ import {
   semanticSearch,
   hybridSemanticSearch,
   searchCommonTermsOnly,
-} from '@/services/embedding'
+} from '@/services/ai/embedding'
 
 export type SearchMode = 'project-only' | 'hybrid' | 'common-only' | 'smart'
 

@@ -3,7 +3,7 @@ import { Amplify } from 'aws-amplify'
 import outputs from '../amplify_outputs.json'
 import App from './App'
 import './index.css'
-import { initializeServiceWorker } from './utils/service-worker'
+import { initializeServiceWorker } from '@/utils/performance/service-worker'
 
 Amplify.configure(outputs)
 

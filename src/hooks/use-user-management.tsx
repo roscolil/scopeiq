@@ -12,7 +12,7 @@ import {
   type UpdateUserInput,
   type InviteUserInput,
   ROLE_PERMISSIONS,
-} from '@/services/user-management'
+} from '@/services/auth/user-management'
 import { useToast } from '@/hooks/use-toast'
 
 export function useUserManagement(companyId: string) {
