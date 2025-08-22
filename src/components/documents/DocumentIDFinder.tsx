@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { databaseDocumentService } from '@/services/database'
+import { databaseDocumentService } from '@/services/data/database'
 
 interface DocumentInfo {
   id: string

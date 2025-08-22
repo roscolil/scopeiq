@@ -26,8 +26,8 @@ import {
   aiDocumentTrainingService,
   DocumentTrainingOptions,
   GeneratedTrainingData,
-} from '@/services/ai-document-training'
-import { extractTextFromFile } from '@/services/embedding'
+} from '@/services/ai/ai-document-training'
+import { extractTextFromFile } from '@/services/ai/embedding'
 
 interface AITrainingUploaderProps {
   onTrainingDataGenerated: (data: GeneratedTrainingData) => void

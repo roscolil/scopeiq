@@ -30,7 +30,7 @@ import {
 import { FileText, Folder, MoreVertical, Trash2 } from 'lucide-react'
 import { routes } from '@/utils/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { projectService } from '@/services/hybrid'
+import { projectService } from '@/services/data/hybrid'
 
 interface ProjectListProps {
   projects: Project[]

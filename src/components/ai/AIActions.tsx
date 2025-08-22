@@ -32,12 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { callOpenAI } from '@/services/openai'
-import { novaSonic } from '@/services/nova-sonic'
+import { callOpenAI } from '@/services/ai/openai'
+import { novaSonic } from '@/services/api/nova-sonic'
 import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import { semanticSearch } from '@/services/embedding'
-import { documentService } from '@/services/hybrid'
+import { semanticSearch } from '@/services/ai/embedding'
+import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/document-recovery'
 

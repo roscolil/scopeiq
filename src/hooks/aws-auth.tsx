@@ -17,7 +17,7 @@ import {
   confirmResetPassword,
   updateUserAttributes,
 } from 'aws-amplify/auth'
-import { userService } from '@/services/user'
+import { userService } from '@/services/auth/user'
 import { prefetchForAuthenticatedUser } from '@/utils/route-prefetch'
 import { prefetchUserData } from '@/utils/data-prefetch'
 

@@ -23,9 +23,12 @@ import {
   AlertTriangle,
   RefreshCw,
 } from 'lucide-react'
-import { projectService } from '@/services/s3-api'
-import { s3ProjectService, s3DocumentService } from '@/services/s3-metadata'
-import { databaseService } from '@/services/database-simple'
+import { projectService } from '@/services/data/s3-api'
+import {
+  s3ProjectService,
+  s3DocumentService,
+} from '@/services/data/s3-metadata'
+import { databaseService } from '@/services/data/database-simple'
 import { Project } from '@/types'
 
 interface MigrationStats {
@@ -126,6 +129,7 @@ export const DataMigration: React.FC = () => {
                   key: `${companyId}/${project.id}/${doc.id}`,
                   size: doc.size,
                   type: doc.type,
+                  status: 'processed' as const, // Add the required status field
                   uploadedAt: doc.createdAt,
                   projectId: doc.projectId,
                 })),
@@ -179,7 +183,15 @@ export const DataMigration: React.FC = () => {
       // Get existing database projects
       const dbData = await databaseService.getProjects()
       console.log('Migration: Found database projects:', dbData)
-      setDbProjects(dbData || [])
+      setDbProjects(
+        (dbData || []) as Array<{
+          id: string
+          name: string
+          description?: string
+          createdAt: string
+          updatedAt?: string
+        }>,
+      )
 
       setCurrentStep('ready')
     } catch (error) {
@@ -217,13 +229,6 @@ export const DataMigration: React.FC = () => {
       const dbProject = await databaseService.createProject({
         name: s3Project.name,
         description: s3Project.description || '',
-        // Map additional fields as needed
-        streetNumber: s3Project.streetNumber || '',
-        streetName: s3Project.streetName || '',
-        suburb: s3Project.suburb || '',
-        state: s3Project.state || '',
-        postcode: s3Project.postcode || '',
-        address: s3Project.address || '',
       })
 
       // Migrate documents if any
@@ -232,12 +237,12 @@ export const DataMigration: React.FC = () => {
         for (const doc of s3Project.documents) {
           try {
             await databaseService.createDocument({
+              name: doc.name || 'Unknown',
+              type: doc.type || 'application/octet-stream',
+              size: doc.size || 0,
+              status: 'processed' as const,
+              s3Key: doc.key || '',
               projectId: dbProject.id,
-              fileName: doc.name || doc.key || 'Unknown',
-              fileKey: doc.key || '',
-              fileSize: doc.size || 0,
-              fileType: doc.type || 'application/octet-stream',
-              uploadedAt: doc.uploadedAt || new Date().toISOString(),
             })
             documentCount++
           } catch (docError) {

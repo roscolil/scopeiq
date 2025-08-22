@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/navigation'
-import { projectService, documentService } from '@/services/hybrid'
+import { projectService, documentService } from '@/services/data/hybrid'
 
 const ProjectDetails = () => {
   const { companyId, projectId } = useParams<{

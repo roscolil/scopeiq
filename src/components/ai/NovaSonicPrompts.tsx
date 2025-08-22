@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Volume2, VolumeX, Loader2, Sparkles } from 'lucide-react'
-import { novaSonic } from '@/services/nova-sonic'
+import { novaSonic } from '@/services/api/nova-sonic'
 import { useToast } from '@/hooks/use-toast'
 import {
   Tooltip,

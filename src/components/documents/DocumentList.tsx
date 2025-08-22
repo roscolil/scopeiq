@@ -344,7 +344,7 @@ export const DocumentList = ({
                     onClick={() => onCancelProcessing(doc.id)}
                     className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
                   >
-                    Cancel Download
+                    Cancel
                   </Button>
                 )}
               </CardFooter>

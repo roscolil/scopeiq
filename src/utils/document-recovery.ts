@@ -2,8 +2,11 @@
  * Utility functions for fixing document processing issues
  */
 
-import { documentService } from '@/services/hybrid'
-import { processEmbeddingOnly, extractTextFromFile } from '@/services/embedding'
+import { documentService } from '@/services/data/hybrid'
+import {
+  processEmbeddingOnly,
+  extractTextFromFile,
+} from '@/services/ai/embedding'
 
 /**
  * Fix documents that are stuck in 'processing' state

@@ -34,8 +34,8 @@ import {
   Zap,
   Shield,
 } from 'lucide-react'
-import { hybridProjectService } from '@/services/hybrid-projects'
-import { projectService, documentService } from '@/services/hybrid'
+import { hybridProjectService } from '@/services/data/hybrid-projects'
+import { projectService, documentService } from '@/services/data/hybrid'
 
 interface StorageMetrics {
   s3: {

@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import React from 'react'
-import { processEmbeddingOnly, extractTextFromFile } from '@/services/embedding'
+import {
+  processEmbeddingOnly,
+  extractTextFromFile,
+} from '@/services/ai/embedding'
 import { useToast } from '@/hooks/use-toast'
-import { uploadDocumentToS3 } from '@/services/documentUpload'
+import { uploadDocumentToS3 } from '@/services/file/documentUpload'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
@@ -20,7 +23,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
-import { documentService } from '@/services/hybrid'
+import { documentService } from '@/services/data/hybrid'
 
 interface FileUploaderProps {
   projectId: string

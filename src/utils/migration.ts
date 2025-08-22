@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
-import { s3ProjectService, s3DocumentService } from '../services/s3-metadata'
+import {
+  s3ProjectService,
+  s3DocumentService,
+} from '../services/data/s3-metadata'
 import { getCurrentUser } from 'aws-amplify/auth'
 
 /**
@@ -50,9 +54,9 @@ export const migrationService = {
       // First, create or ensure company exists
       try {
         await client.models.Company.create({
-          name: 'Default Company', // You can update this later
+          name: 'Default Company',
           description: 'Migrated from S3',
-        })
+        } as any)
         console.log('✅ Company record created')
       } catch (error) {
         console.log('ℹ️ Company might already exist, continuing...')
@@ -80,7 +84,7 @@ export const migrationService = {
           // Create project in database
           const { data: dbProject, errors } =
             await client.models.Project.create({
-              id: s3Project.id, // Keep the same ID
+              id: s3Project.id,
               name: s3Project.name,
               description: s3Project.description || '',
               companyId,
@@ -89,7 +93,7 @@ export const migrationService = {
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, ''),
               createdAt: s3Project.createdAt,
-            })
+            } as any)
 
           if (errors) {
             report.errors.push(
@@ -147,7 +151,7 @@ export const migrationService = {
                   mimeType: s3Document.type,
                   content: s3Document.content || '',
                   createdAt: s3Document.createdAt,
-                })
+                } as any)
 
               if (docErrors) {
                 report.errors.push(

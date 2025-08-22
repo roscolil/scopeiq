@@ -35,7 +35,7 @@ import {
   ROLE_PERMISSIONS,
   UserRole as ServiceUserRole,
   User as ServiceUser,
-} from '@/services/user-management'
+} from '@/services/auth/user-management'
 
 const userFormSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

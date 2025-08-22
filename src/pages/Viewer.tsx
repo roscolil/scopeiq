@@ -29,7 +29,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/navigation'
 import { Document as DocumentType } from '@/types'
-import { documentService, projectService } from '@/services/hybrid'
+import { documentService, projectService } from '@/services/data/hybrid'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{

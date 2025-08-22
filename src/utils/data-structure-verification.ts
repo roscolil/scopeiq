@@ -12,8 +12,8 @@ import {
   s3DocumentService,
   s3ProjectService,
   S3Document,
-} from '../services/s3-metadata'
-import { databaseDocumentService } from '../services/database'
+} from '../services/data/s3-metadata'
+import { databaseDocumentService } from '../services/data/database'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
 // Initialize S3 client for direct inspection

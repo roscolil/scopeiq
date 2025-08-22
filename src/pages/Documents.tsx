@@ -21,7 +21,7 @@ import {
 import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/navigation'
-import { documentService, projectService } from '@/services/hybrid'
+import { documentService, projectService } from '@/services/data/hybrid'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{

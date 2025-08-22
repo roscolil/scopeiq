@@ -11,7 +11,7 @@ import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
 import { AIActions } from '@/components/ai/AIActions'
 import { Document as DocumentType } from '@/types'
-import { documentService } from '@/services/hybrid'
+import { documentService } from '@/services/data/hybrid'
 import {
   Card,
   CardContent,

@@ -11,7 +11,7 @@ import {
   authenticateWithBiometric,
   hasBiometricCredentials,
   clearBiometricCredentials,
-} from '@/services/biometric-cognito'
+} from '@/services/auth/biometric-cognito'
 
 interface MobileBiometricLoginProps {
   onSetupSuccess?: () => void

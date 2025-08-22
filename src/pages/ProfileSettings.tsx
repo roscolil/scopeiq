@@ -5,7 +5,7 @@ import {
   type User as ServiceUser,
   type UserInvitation as ServiceUserInvitation,
   type UserRole as ServiceUserRole,
-} from '../services/user-management'
+} from '../services/auth/user-management'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -40,7 +40,7 @@ import {
   hasBiometricCredentials,
   removeAllBiometricCredentials,
   isPlatformAuthenticatorAvailable,
-} from '@/services/biometric-cognito'
+} from '@/services/auth/biometric-cognito'
 import {
   Dialog,
   DialogContent,
@@ -54,7 +54,7 @@ import { UserTable } from '@/components/admin/UserTable'
 import { UserStats } from '@/components/admin/UserStats'
 import { Project } from '@/types'
 import { Plus, UserPlus, Mail } from 'lucide-react'
-import { projectService } from '@/services/hybrid'
+import { projectService } from '@/services/data/hybrid'
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),

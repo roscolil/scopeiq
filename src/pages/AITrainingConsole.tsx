@@ -49,8 +49,8 @@ import {
   Activity,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { aiTrainingService, TrainingExample } from '@/services/ai-training'
-import { GeneratedTrainingData } from '@/services/ai-document-training'
+import { aiTrainingService, TrainingExample } from '@/services/ai/ai-training'
+import { GeneratedTrainingData } from '@/services/ai/ai-document-training'
 
 // Knowledge metrics interface
 

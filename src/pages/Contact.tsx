@@ -16,7 +16,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { contactService, type ContactFormData } from '@/services/contact'
+import { contactService, type ContactFormData } from '@/services/api/contact'
 
 const Contact = () => {
   const navigate = useNavigate()

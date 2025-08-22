@@ -46,7 +46,7 @@ import {
 import {
   User as ServiceUser,
   UserRole as ServiceUserRole,
-} from '@/services/user-management'
+} from '@/services/auth/user-management'
 
 interface UserTableProps {
   users: ServiceUser[]

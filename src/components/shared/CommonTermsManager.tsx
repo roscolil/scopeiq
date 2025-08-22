@@ -40,7 +40,7 @@ import {
   getAvailableContentTypes,
   getTermsCountByType,
   addCustomCommonTerm,
-} from '@/services/common-terms'
+} from '@/services/utils/common-terms'
 import {
   CheckCircle,
   AlertCircle,
@@ -67,8 +67,8 @@ import {
   queryEmbeddings,
   deleteEmbeddings,
   NAMESPACE_CONFIG,
-} from '@/services/pinecone'
-import type { CommonContentType } from '@/services/embedding'
+} from '@/services/ai/pinecone'
+import type { CommonContentType } from '@/services/ai/embedding'
 
 // Form schema for adding new terms
 const addTermSchema = z.object({

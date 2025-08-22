@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
-import { documentService } from '@/services/hybrid'
+import { documentService } from '@/services/data/hybrid'
 
 interface RefreshResult {
   success: boolean

@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/projects/ProjectForm'
-import { projectService } from '@/services/hybrid'
+import { projectService } from '@/services/data/hybrid'
 
 const Projects = () => {
   const navigate = useNavigate()

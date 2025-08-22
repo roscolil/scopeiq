@@ -25,7 +25,7 @@ import {
   hasBiometricCredentials,
   isPlatformAuthenticatorAvailable,
   setupBiometricAuth,
-} from '@/services/biometric-cognito'
+} from '@/services/auth/biometric-cognito'
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),

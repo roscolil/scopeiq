@@ -25,7 +25,7 @@ import {
   type UserRole,
   type User,
   type UserInvitation,
-} from '@/services/user-management'
+} from '@/services/auth/user-management'
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
