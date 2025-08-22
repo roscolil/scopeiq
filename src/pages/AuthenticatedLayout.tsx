@@ -1,7 +1,7 @@
 // AuthenticatedLayout.tsx
 import { Outlet, Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/aws-auth'
-import { Spinner } from '@/components/Spinner'
+import { Spinner } from '@/components/shared/Spinner'
 import { Component, ErrorInfo, ReactNode } from 'react'
 
 // Error boundary to catch auth context errors

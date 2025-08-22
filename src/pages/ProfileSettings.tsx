@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useAuth } from '@/hooks/aws-auth'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import {
   Card,
   CardContent,
@@ -34,7 +34,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast, useToast } from '@/hooks/use-toast'
 import { Navigate } from 'react-router-dom'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MobileBiometricLogin } from '@/components/MobileBiometricLogin'
+import { MobileBiometricLogin } from '@/components/auth/MobileBiometricLogin'
 import { useIsMobile } from '@/hooks/use-mobile'
 import {
   hasBiometricCredentials,
@@ -49,9 +49,9 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { UserForm } from '@/components/UserForm'
-import { UserTable } from '@/components/UserTable'
-import { UserStats } from '@/components/UserStats'
+import { UserForm } from '@/components/admin/UserForm'
+import { UserTable } from '@/components/admin/UserTable'
+import { UserStats } from '@/components/admin/UserStats'
 import { Project } from '@/types'
 import { Plus, UserPlus, Mail } from 'lucide-react'
 import { projectService } from '@/services/hybrid'

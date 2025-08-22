@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import {
   Card,
   CardContent,
@@ -24,7 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { AITrainingUploader } from '@/components/AITrainingUploader'
+import { AITrainingUploader } from '@/components/ai/AITrainingUploader'
 import {
   ArrowLeft,
   Brain,

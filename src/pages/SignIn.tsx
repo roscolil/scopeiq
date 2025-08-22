@@ -12,7 +12,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { AuthLayout } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { useState, useEffect } from 'react'
@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/aws-auth'
 import { routes } from '@/utils/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { MobileBiometricLogin } from '@/components/MobileBiometricLogin'
+import { MobileBiometricLogin } from '@/components/auth/MobileBiometricLogin'
 import {
   hasBiometricCredentials,
   isPlatformAuthenticatorAvailable,

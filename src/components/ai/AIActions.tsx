@@ -21,8 +21,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { VoiceInput } from './VoiceInput'
-import { VoiceShazamButton } from './VoiceShazamButton'
+import { VoiceInput } from '@/components/voice/VoiceInput'
+import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
 import { answerQuestionWithBedrock } from '@/utils/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {

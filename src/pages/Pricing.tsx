@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import { routes } from '@/utils/navigation'
 import {
@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/Badge'
+import { Badge } from '@/components/shared/Badge'
 import { Check, Star } from 'lucide-react'
 
 const pricingPlans = [

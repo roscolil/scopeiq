@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
-import { AutocompleteInput } from '@/components/AutocompleteInput'
+import { AutocompleteInput } from '@/components/shared/AutocompleteInput'
 
 const formSchema = z
   .object({

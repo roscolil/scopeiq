@@ -1,14 +1,14 @@
 // Enhanced Documents page with skeleton loading
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
-import { DocumentList } from '@/components/DocumentList'
-import { FileUploader } from '@/components/FileUploader'
+import { Layout } from '@/components/layout/Layout'
+import { DocumentList } from '@/components/documents/DocumentList'
+import { FileUploader } from '@/components/upload/FileUploader'
 import {
   DocumentListSkeleton,
   PageHeaderSkeleton,
   ProjectsWithDocumentsSkeleton,
-} from '@/components/skeletons'
+} from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Filter, ArrowLeft } from '@/components/icons'

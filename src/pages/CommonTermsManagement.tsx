@@ -1,5 +1,5 @@
-import { Layout } from '@/components/Layout'
-import { CommonTermsManager } from '@/components/CommonTermsManager'
+import { Layout } from '@/components/layout/Layout'
+import { CommonTermsManager } from '@/components/shared/CommonTermsManager'
 import {
   Card,
   CardContent,

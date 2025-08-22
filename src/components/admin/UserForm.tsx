@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MultiSelect } from '@/components/MultiSelect'
+import { MultiSelect } from '@/components/shared/MultiSelect'
 import { Switch } from '@/components/ui/switch'
 import {
   User as EntityUser,

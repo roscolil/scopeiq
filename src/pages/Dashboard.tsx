@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import {
   PageHeaderSkeleton,
@@ -8,7 +8,7 @@ import {
   ProjectRowsSkeleton,
   DocumentListSkeleton,
   NumberSkeleton,
-} from '@/components/skeletons'
+} from '@/components/shared/skeletons'
 import {
   Card,
   CardContent,

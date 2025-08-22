@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
-import { ProjectList } from '@/components/ProjectList'
-import { PageHeaderSkeleton, ProjectListSkeleton } from '@/components/skeletons'
+import { Layout } from '@/components/layout/Layout'
+import { ProjectList } from '@/components/projects/ProjectList'
+import {
+  PageHeaderSkeleton,
+  ProjectListSkeleton,
+} from '@/components/shared/skeletons'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter } from 'lucide-react'
@@ -14,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ProjectForm } from '@/components/ProjectForm'
+import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/hybrid'
 
 const Projects = () => {

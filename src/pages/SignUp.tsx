@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { AuthLayout } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { signUp } from 'aws-amplify/auth'

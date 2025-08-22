@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
-import { DocumentList } from '@/components/DocumentList'
-import { FileUploader } from '@/components/FileUploader'
+import { Layout } from '@/components/layout/Layout'
+import { DocumentList } from '@/components/documents/DocumentList'
+import { FileUploader } from '@/components/upload/FileUploader'
 import {
   ProjectDetailsSkeleton,
   DocumentListSkeleton,
   AIActionsSkeleton,
-} from '@/components/skeletons'
+} from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Edit, Trash2, Plus, ChevronDown } from 'lucide-react'
 import {
@@ -19,12 +19,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { ProjectForm } from '@/components/ProjectForm'
+import { ProjectForm } from '@/components/projects/ProjectForm'
 import { Project, Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
-import { AIActions } from '@/components/AIActions'
+import { AIActions } from '@/components/ai/AIActions'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { ProjectSelector } from '@/components/ProjectSelector'
+import { ProjectSelector } from '@/components/projects/ProjectSelector'
 import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
 import {
   DropdownMenu,

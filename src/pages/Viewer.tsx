@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
-import { DocumentViewer } from '@/components/DocumentViewerNew'
+import { Layout } from '@/components/layout/Layout'
+import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
 import {
   PageHeaderSkeleton,
   DocumentViewerSkeleton,
-} from '@/components/skeletons'
+} from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,

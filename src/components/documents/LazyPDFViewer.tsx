@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Spinner } from '@/components/Spinner'
+import { Spinner } from '@/components/shared/Spinner'
 
 // Import the PDFViewer props type
 interface PDFViewerProps {

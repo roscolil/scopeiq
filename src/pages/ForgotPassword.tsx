@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { AuthLayout } from '@/components/AuthLayout'
+import { AuthLayout } from '@/components/auth/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from '@/hooks/use-toast'
 import { resetPassword, confirmResetPassword } from 'aws-amplify/auth'

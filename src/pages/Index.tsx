@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -20,7 +20,7 @@ import {
   SearchX,
   Shield,
 } from 'lucide-react'
-import { FaqAccordion } from '@/components/FaqAccordion'
+import { FaqAccordion } from '@/components/shared/FaqAccordion'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/aws-auth'
 

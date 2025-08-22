@@ -7,9 +7,9 @@ import {
   Brain,
   AlertCircle,
 } from 'lucide-react'
-import { DocumentViewerSkeleton } from './skeletons'
+import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
-import { AIActions } from './AIActions'
+import { AIActions } from '@/components/ai/AIActions'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/hybrid'
 import {
@@ -18,8 +18,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from './ui/card'
-import { Badge } from './ui/badge'
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 // Text File Viewer Component
 const TextFileViewer = ({ document }: { document: DocumentType }) => {

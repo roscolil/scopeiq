@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import { VoiceInput } from '@/components/VoiceInput'
+import { VoiceInput } from '@/components/voice/VoiceInput'
 
 interface SemanticVoiceSearchProps {
   projectId: string

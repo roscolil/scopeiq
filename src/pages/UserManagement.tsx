@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Layout } from '@/components/Layout'
+import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Spinner } from '@/components/Spinner'
+import { Spinner } from '@/components/shared/Spinner'
 import { useToast } from '@/hooks/use-toast'
 import {
   userManagementService,
@@ -120,6 +120,7 @@ export default function UserManagement() {
         email: inviteForm.email.trim().toLowerCase(),
         role: inviteForm.role,
         companyId: 'company-1', // In real app, get from current user context
+        invitedBy: 'current-user-id', // In real app, get from auth context
         inviterName: inviteForm.inviterName,
         companyName: inviteForm.companyName,
       })
