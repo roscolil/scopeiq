@@ -31,7 +31,7 @@ const OurTeam = () => {
     },
     {
       name: 'Ross Lillis',
-      role: 'CTO',
+      role: 'Tech Lead',
       bio: 'Former construction project manager turned product leader, bridging industry needs with technology.',
       image: '/placeholder.svg',
       linkedin: '#',
