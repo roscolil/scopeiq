@@ -100,10 +100,30 @@ export const AIActions = ({
   }
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to keep chat in viewport (not all the way to bottom)
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll to the chat container to keep it visible, with some offset from top
+    chatContainerRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start', // This positions the chat container at the top of the viewport
+    })
+
+    // Small delay then scroll to show the latest message without going all the way to bottom
+    setTimeout(() => {
+      if (chatEndRef.current && chatContainerRef.current) {
+        const containerRect = chatContainerRef.current.getBoundingClientRect()
+        const endRect = chatEndRef.current.getBoundingClientRect()
+
+        // Only scroll within the chat container if needed
+        const chatContainer = chatContainerRef.current
+        if (chatContainer.scrollHeight > chatContainer.clientHeight) {
+          chatContainer.scrollTop =
+            chatContainer.scrollHeight - chatContainer.clientHeight
+        }
+      }
+    }, 300)
   }
 
   useEffect(() => {
@@ -1212,7 +1232,7 @@ export const AIActions = ({
             <div className="mb-4">
               <Textarea
                 placeholder={
-                  isMobile 
+                  isMobile
                     ? `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}...`
                     : `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`
                 }
@@ -1404,7 +1424,10 @@ export const AIActions = ({
                   </div>
 
                   {/* Scrollable Chat Container */}
-                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  <div
+                    ref={chatContainerRef}
+                    className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                  >
                     {chatHistory.map(message => (
                       <div
                         key={message.id}
