@@ -579,10 +579,13 @@ export const AIActions = ({
           // Clear the query field after successful AI response
           setQuery('')
 
-          toast({
-            title: 'AI Analysis Complete',
-            description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
-          })
+          // Only show toast on desktop, not mobile
+          if (!isMobile) {
+            toast({
+              title: 'AI Analysis Complete',
+              description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
+            })
+          }
 
           // Provide voice feedback with the actual AI answer
           if (response && response.length > 0) {
@@ -726,6 +729,7 @@ export const AIActions = ({
       documentId,
       document,
       projectName,
+      isMobile,
       toast,
       speakWithStateTracking,
       setChatHistory,
@@ -840,10 +844,13 @@ export const AIActions = ({
         }
       }
 
-      toast({
-        title: 'Voice input started',
-        description: 'Voice recording has been started.',
-      })
+      // Only show toast on desktop, not mobile
+      if (!isMobile) {
+        toast({
+          title: 'Voice input started',
+          description: 'Voice recording has been started.',
+        })
+      }
     } else {
       // Stop mobile recognition when listening ends
       if (isMobile && mobileRecognitionRef.current) {
@@ -854,10 +861,13 @@ export const AIActions = ({
         }
       }
 
-      toast({
-        title: 'Voice input started',
-        description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
-      })
+      // Only show toast on desktop, not mobile
+      if (!isMobile) {
+        toast({
+          title: 'Voice input started',
+          description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
+        })
+      }
     }
   }, [isListening, silenceTimer, isMobile, toast])
 

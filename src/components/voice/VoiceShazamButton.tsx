@@ -128,20 +128,20 @@ export const VoiceShazamButton = ({
             className={cn(
               'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
               'border-4 border-background transition-all duration-300',
-              isListening
-                ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105' // Solid emerald when listening
-                : isProcessing
-                  ? 'bg-transparent hover:bg-transparent ring-8 ring-orange-400 scale-105 !opacity-100' // Transparent button, let overlay handle background
+              isProcessing
+                ? 'bg-transparent hover:bg-transparent ring-8 ring-orange-400 scale-105 !opacity-100' // Processing state - highest priority
+                : isListening
+                  ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105' // Listening state
                   : 'bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95', // Normal state
               pulseAnimation && 'animate-pulse shadow-2xl',
               isProcessing && 'animate-pulse shadow-2xl', // Add pulse animation during processing
             )}
             style={{
-              boxShadow: isListening
-                ? '0 0 40px rgba(16, 185, 129, 0.6)' // Emerald glow when listening
-                : isProcessing
-                  ? '0 0 40px rgba(234, 88, 12, 0.6)' // Orange glow when processing
-                  : '0 0 30px rgba(0,0,0,0.5)',
+              boxShadow: isProcessing
+                ? '0 0 40px rgba(234, 88, 12, 0.6)' // Orange glow when processing - highest priority
+                : isListening
+                  ? '0 0 40px rgba(16, 185, 129, 0.6)' // Emerald glow when listening
+                  : '0 0 30px rgba(0,0,0,0.5)', // Default glow
               position: 'relative',
               zIndex: 200,
             }}
@@ -164,13 +164,13 @@ export const VoiceShazamButton = ({
             <div
               className={cn(
                 'absolute inset-0 rounded-full',
-                isListening
-                  ? 'bg-emerald-500 opacity-40 animate-ping'
-                  : isProcessing
-                    ? 'bg-orange-600 opacity-50 animate-pulse'
+                isProcessing
+                  ? 'bg-orange-600 opacity-50 animate-pulse' // Processing state - highest priority
+                  : isListening
+                    ? 'bg-emerald-500 opacity-40 animate-ping' // Listening state
                     : pulseAnimation
-                      ? 'bg-primary opacity-40 animate-ping'
-                      : 'hidden',
+                      ? 'bg-primary opacity-40 animate-ping' // Default pulse animation
+                      : 'hidden', // Hidden when none of the above
               )}
             />
             {/* Additional processing animation ring */}
