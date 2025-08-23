@@ -940,6 +940,8 @@ export const AIActions = ({
                 `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
+              // Set loading state immediately to prevent button flash
+              setIsLoading(true)
               // Stop listening before submitting
               if (isListening) {
                 toggleListening()
@@ -1028,6 +1030,8 @@ export const AIActions = ({
               const trimmedTranscript = transcriptToSubmit.trim()
               if (trimmedTranscript && trimmedTranscript.length > 0) {
                 setQuery(trimmedTranscript)
+                // Set loading state immediately to prevent button flash
+                setIsLoading(true)
                 setIsListening(false) // Stop listening
                 // Trigger the query with the transcript parameter
                 setTimeout(() => {
