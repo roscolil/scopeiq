@@ -17,6 +17,7 @@ import {
   FileStack,
   RefreshCw,
   Loader2,
+  Mic,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -1513,15 +1514,18 @@ export const AIActions = ({
         />
       )}
 
-      {/* Show voice button when hidden - small floating button (mobile only) */}
+      {/* Show voice button when hidden - larger floating button in bottom-left (mobile only) */}
       {hideShazamButton && isMobile && (
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            className="h-12 w-12 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            className="h-24 w-24 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
             title="Show voice button"
           >
-            🎤
+            <Mic
+              className="text-white"
+              style={{ width: '36px', height: '36px' }}
+            />
           </Button>
         </div>
       )}
