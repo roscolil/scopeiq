@@ -586,23 +586,27 @@ const ProjectDetails = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full md:w-auto"
+                    className="w-full md:w-auto h-12 text-base"
                   >
-                    Actions <ChevronDown className="h-4 w-4 ml-1" />
+                    Actions <ChevronDown className="h-5 w-5 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="w-56 p-2">
                   <DropdownMenuItem
                     onClick={() => setShowAITools(!showAITools)}
+                    className="p-3 text-base"
                   >
                     {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                  <DropdownMenuItem
+                    onClick={() => setIsEditDialogOpen(true)}
+                    className="p-3 text-base"
+                  >
                     Edit Project
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-destructive"
+                    className="text-destructive p-3 text-base"
                   >
                     Delete Project
                   </DropdownMenuItem>

@@ -17,12 +17,14 @@ import {
   FileStack,
   RefreshCw,
   Loader2,
+  Mic,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -98,10 +100,30 @@ export const AIActions = ({
   }
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to keep chat in viewport (not all the way to bottom)
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll to the chat container to keep it visible, with some offset from top
+    chatContainerRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start', // This positions the chat container at the top of the viewport
+    })
+
+    // Small delay then scroll to show the latest message without going all the way to bottom
+    setTimeout(() => {
+      if (chatEndRef.current && chatContainerRef.current) {
+        const containerRect = chatContainerRef.current.getBoundingClientRect()
+        const endRect = chatEndRef.current.getBoundingClientRect()
+
+        // Only scroll within the chat container if needed
+        const chatContainer = chatContainerRef.current
+        if (chatContainer.scrollHeight > chatContainer.clientHeight) {
+          chatContainer.scrollTop =
+            chatContainer.scrollHeight - chatContainer.clientHeight
+        }
+      }
+    }, 300)
   }
 
   useEffect(() => {
@@ -557,10 +579,13 @@ export const AIActions = ({
           // Clear the query field after successful AI response
           setQuery('')
 
-          toast({
-            title: 'AI Analysis Complete',
-            description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
-          })
+          // Only show toast on desktop, not mobile
+          if (!isMobile) {
+            toast({
+              title: 'AI Analysis Complete',
+              description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
+            })
+          }
 
           // Provide voice feedback with the actual AI answer
           if (response && response.length > 0) {
@@ -704,6 +729,7 @@ export const AIActions = ({
       documentId,
       document,
       projectName,
+      isMobile,
       toast,
       speakWithStateTracking,
       setChatHistory,
@@ -818,10 +844,13 @@ export const AIActions = ({
         }
       }
 
-      toast({
-        title: 'Voice input started',
-        description: 'Voice recording has been started.',
-      })
+      // Only show toast on desktop, not mobile
+      if (!isMobile) {
+        toast({
+          title: 'Voice input started',
+          description: 'Voice recording has been started.',
+        })
+      }
     } else {
       // Stop mobile recognition when listening ends
       if (isMobile && mobileRecognitionRef.current) {
@@ -832,10 +861,13 @@ export const AIActions = ({
         }
       }
 
-      toast({
-        title: 'Voice input started',
-        description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
-      })
+      // Only show toast on desktop, not mobile
+      if (!isMobile) {
+        toast({
+          title: 'Voice input started',
+          description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
+        })
+      }
     }
   }, [isListening, silenceTimer, isMobile, toast])
 
@@ -908,6 +940,8 @@ export const AIActions = ({
                 `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
+              // Set loading state immediately to prevent button flash
+              setIsLoading(true)
               // Stop listening before submitting
               if (isListening) {
                 toggleListening()
@@ -996,6 +1030,8 @@ export const AIActions = ({
               const trimmedTranscript = transcriptToSubmit.trim()
               if (trimmedTranscript && trimmedTranscript.length > 0) {
                 setQuery(trimmedTranscript)
+                // Set loading state immediately to prevent button flash
+                setIsLoading(true)
                 setIsListening(false) // Stop listening
                 // Trigger the query with the transcript parameter
                 setTimeout(() => {
@@ -1055,7 +1091,7 @@ export const AIActions = ({
 
   return (
     <>
-      <Card className="mb-32 md:mb-0 animate-fade-in">
+      <Card className="mb-16 md:mb-0 animate-fade-in">
         <CardHeader className="pb-3" style={{ display: 'none' }}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -1187,7 +1223,7 @@ export const AIActions = ({
               </div>
             </div>
 
-            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50">
+            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50 hidden md:block">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <span className="text-sm">🚀</span>
@@ -1209,7 +1245,11 @@ export const AIActions = ({
 
             <div className="mb-4">
               <Textarea
-                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
+                placeholder={
+                  isMobile
+                    ? `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}...`
+                    : `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`
+                }
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
@@ -1223,7 +1263,7 @@ export const AIActions = ({
 
               {/* Show text being spoken */}
               {currentSpeakingText && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
                   <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                     AI is speaking:
@@ -1377,22 +1417,31 @@ export const AIActions = ({
               <div className="space-y-3">
                 <div className="bg-gradient-to-r from-primary/5 to-accent/5 p-4 rounded-xl border shadow-soft">
                   <div className="flex justify-between items-center mb-3">
-                    <Badge variant="outline" className="shadow-soft">
+                    <Badge
+                      variant="outline"
+                      className="shadow-soft hidden md:flex"
+                    >
                       <MessageSquare className="h-3 w-3 mr-1" />
                       Conversation History
                     </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs hover:bg-secondary/80"
-                      onClick={() => setChatHistory([])}
-                    >
-                      Clear History
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <ChatExport messages={chatHistory} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 md:h-7 text-xs border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-all duration-200"
+                        onClick={() => setChatHistory([])}
+                      >
+                        Clear History
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Scrollable Chat Container */}
-                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  <div
+                    ref={chatContainerRef}
+                    className="max-h-96 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                  >
                     {chatHistory.map(message => (
                       <div
                         key={message.id}
@@ -1506,15 +1555,18 @@ export const AIActions = ({
         />
       )}
 
-      {/* Show voice button when hidden - small floating button (mobile only) */}
+      {/* Show voice button when hidden - larger floating button in bottom-left (mobile only) */}
       {hideShazamButton && isMobile && (
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            className="h-12 w-12 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            className="h-24 w-24 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
             title="Show voice button"
           >
-            🎤
+            <Mic
+              className="text-white"
+              style={{ width: '36px', height: '36px' }}
+            />
           </Button>
         </div>
       )}
