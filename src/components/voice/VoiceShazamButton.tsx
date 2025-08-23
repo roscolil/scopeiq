@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff, Loader2 } from 'lucide-react'
+import { Mic, MicOff, Loader2, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -84,6 +84,24 @@ export const VoiceShazamButton = ({
             0%, 100% { height: 12px; transform: scaleY(1); }
             50% { height: 24px; transform: scaleY(1.8); }
           }
+          @keyframes brain-pulse {
+            0%, 100% { 
+              transform: scale(2.5); 
+              opacity: 0.9;
+            }
+            50% { 
+              transform: scale(3.2); 
+              opacity: 1;
+            }
+          }
+          @keyframes brain-glow {
+            0%, 100% { 
+              box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            }
+            50% { 
+              box-shadow: 0 0 40px rgba(255, 255, 255, 0.6);
+            }
+          }
         `,
         }}
       />
@@ -165,15 +183,32 @@ export const VoiceShazamButton = ({
             >
               {isProcessing ? (
                 <div className="relative flex items-center justify-center">
-                  {/* AI Processing with Sound Waves */}
+                  {/* AI Processing Brain */}
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      animation: 'brain-glow 2s ease-in-out infinite',
+                    }}
+                  />
+                  <Brain
+                    className="text-white"
+                    strokeWidth={1.5}
+                    style={{
+                      animation: 'brain-pulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                </div>
+              ) : isListening ? (
+                <div className="relative flex items-center justify-center">
+                  {/* Listening with Sound Waves */}
                   <div className="relative">
-                    {/* Sound wave bars representing voice processing */}
+                    {/* Sound wave bars representing voice listening */}
                     <div className="absolute -left-6 top-1/2 transform -translate-y-1/2 flex space-x-1">
                       <div
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '8px',
-                          animation: 'pulse-height-1 1.5s ease-in-out infinite',
+                          animation: 'pulse-height-1 1.2s ease-in-out infinite',
                           animationDelay: '0ms',
                         }}
                       ></div>
@@ -181,16 +216,16 @@ export const VoiceShazamButton = ({
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '16px',
-                          animation: 'pulse-height-2 1.2s ease-in-out infinite',
-                          animationDelay: '200ms',
+                          animation: 'pulse-height-2 1.0s ease-in-out infinite',
+                          animationDelay: '150ms',
                         }}
                       ></div>
                       <div
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '12px',
-                          animation: 'pulse-height-1 1.8s ease-in-out infinite',
-                          animationDelay: '400ms',
+                          animation: 'pulse-height-1 1.4s ease-in-out infinite',
+                          animationDelay: '300ms',
                         }}
                       ></div>
                     </div>
@@ -200,53 +235,31 @@ export const VoiceShazamButton = ({
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '12px',
-                          animation: 'pulse-height-2 1.4s ease-in-out infinite',
-                          animationDelay: '300ms',
+                          animation: 'pulse-height-2 1.1s ease-in-out infinite',
+                          animationDelay: '200ms',
                         }}
                       ></div>
                       <div
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '16px',
-                          animation: 'pulse-height-1 1.6s ease-in-out infinite',
-                          animationDelay: '500ms',
+                          animation: 'pulse-height-1 1.3s ease-in-out infinite',
+                          animationDelay: '400ms',
                         }}
                       ></div>
                       <div
                         className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
                         style={{
                           height: '8px',
-                          animation: 'pulse-height-2 1.3s ease-in-out infinite',
-                          animationDelay: '700ms',
+                          animation: 'pulse-height-2 1.0s ease-in-out infinite',
+                          animationDelay: '550ms',
                         }}
                       ></div>
                     </div>
-                  </div>
 
-                  {/* Neural network connection rings */}
-                  <div
-                    className="absolute inset-0 border-2 border-white/30 border-dashed rounded-full animate-spin"
-                    style={{
-                      transform: 'scale(1.3)',
-                      animationDuration: '4s',
-                    }}
-                  />
-                  <div
-                    className="absolute inset-0 border border-white/20 rounded-full animate-ping"
-                    style={{
-                      transform: 'scale(1.6)',
-                      animationDuration: '2s',
-                    }}
-                  />
+                    {/* No microphone icon in listening state - just the soundwaves */}
+                  </div>
                 </div>
-              ) : isListening ? (
-                <Mic
-                  className="text-white animate-pulse"
-                  strokeWidth={1.5}
-                  width="100%"
-                  height="100%"
-                  style={{ transform: 'scale(3)' }}
-                />
               ) : (
                 <Mic
                   className="text-white"

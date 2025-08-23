@@ -1211,7 +1211,11 @@ export const AIActions = ({
 
             <div className="mb-4">
               <Textarea
-                placeholder={`💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`}
+                placeholder={
+                  isMobile 
+                    ? `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : 'project'}...`
+                    : `💬 Ask anything about this ${queryScope === 'document' && documentId ? 'document' : projectName ? `project "${projectName}"` : 'project'}... e.g., "What are the main requirements?" or search for "safety protocols"`
+                }
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 className="w-full resize-none min-h-[70px] shadow-soft focus:shadow-medium transition-all duration-200 placeholder:text-muted-foreground/70"
