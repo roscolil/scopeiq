@@ -23,21 +23,23 @@ interface EmailConfirmationDialogProps {
   messages: ChatMessage[]
 }
 
-export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = ({
-  isOpen,
-  onClose,
-  messages,
-}) => {
+export const EmailConfirmationDialog: React.FC<
+  EmailConfirmationDialogProps
+> = ({ isOpen, onClose, messages }) => {
   const { user } = useAuth()
   const { toast } = useToast()
-  
+
   const [recipientEmail, setRecipientEmail] = useState(user?.email || '')
   const [subject, setSubject] = useState(
-    ChatEmailService.getSuggestedSubject(messages)
+    ChatEmailService.getSuggestedSubject(messages),
   )
   const [format, setFormat] = useState<'html' | 'text'>('html')
   const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; messageId?: string; error?: string } | null>(null)
+  const [result, setResult] = useState<{
+    success: boolean
+    messageId?: string
+    error?: string
+  } | null>(null)
 
   const chatEmailService = new ChatEmailService()
 
@@ -65,7 +67,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
       const emailResult = await chatEmailService.sendChatEmail(
         messages,
         recipientEmail,
-        options
+        options,
       )
 
       setResult(emailResult)
@@ -75,7 +77,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
           title: 'Email Sent Successfully',
           description: `Chat conversation sent to ${recipientEmail}`,
         })
-        
+
         // Close dialog after a short delay to show success
         setTimeout(() => {
           onClose()
@@ -92,9 +94,10 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
       console.error('Error sending email:', error)
       setResult({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       })
-      
+
       toast({
         title: 'Email Failed',
         description: 'An unexpected error occurred while sending the email.',
@@ -133,7 +136,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
               id="email"
               type="email"
               value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
+              onChange={e => setRecipientEmail(e.target.value)}
               placeholder="Enter email address"
               disabled={isLoading}
               className="w-full"
@@ -151,7 +154,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
             <Input
               id="subject"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onChange={e => setSubject(e.target.value)}
               placeholder="Email subject line"
               disabled={isLoading}
               className="w-full"
@@ -191,7 +194,8 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              This conversation contains {messages.length} messages and will be sent with timestamps included.
+              This conversation contains {messages.length} messages and will be
+              sent with timestamps included.
             </AlertDescription>
           </Alert>
 
@@ -206,8 +210,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
               <AlertDescription>
                 {result.success
                   ? `Email sent successfully! Message ID: ${result.messageId?.substring(0, 8)}...`
-                  : result.error || 'Failed to send email'
-                }
+                  : result.error || 'Failed to send email'}
               </AlertDescription>
             </Alert>
           )}
@@ -216,7 +219,11 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
           <div className="flex gap-3 pt-2">
             <Button
               onClick={handleSendEmail}
-              disabled={isLoading || !recipientEmail || !ChatEmailService.isValidEmail(recipientEmail)}
+              disabled={
+                isLoading ||
+                !recipientEmail ||
+                !ChatEmailService.isValidEmail(recipientEmail)
+              }
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isLoading ? (
@@ -231,7 +238,7 @@ export const EmailConfirmationDialog: React.FC<EmailConfirmationDialogProps> = (
                 </>
               )}
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={handleClose}

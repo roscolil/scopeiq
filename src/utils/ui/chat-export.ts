@@ -54,7 +54,7 @@ Mobile-optimized conversation export`
 
 /**
  * Download chat conversation as text file
- * Mobile-optimized: opens in new tab on mobile, downloads on desktop
+ * Forces file download on all devices
  */
 export function downloadChatConversation(
   messages: ChatMessage[],
@@ -67,57 +67,14 @@ export function downloadChatConversation(
   const blob = new Blob([content], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
 
-  // Detect mobile device
-  const isMobile =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent,
-    )
-
-  if (isMobile) {
-    // On mobile, open in new tab for easier sharing
-    const newWindow = window.open()
-    if (newWindow) {
-      newWindow.document.write(`
-        <html>
-          <head>
-            <title>ScopeIQ Chat Export</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { 
-                font-family: monospace; 
-                padding: 20px; 
-                white-space: pre-wrap; 
-                line-height: 1.5;
-                font-size: 14px;
-              }
-              .header {
-                background: #f5f5f5;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <strong>ScopeIQ Chat Conversation</strong><br>
-              Tap and hold to select all text, then copy/share
-            </div>
-            ${content.replace(/\n/g, '<br>')}
-          </body>
-        </html>
-      `)
-      newWindow.document.close()
-    }
-  } else {
-    // On desktop, trigger download
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  // Always trigger download (works on both mobile and desktop)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 
   // Clean up
   setTimeout(() => URL.revokeObjectURL(url), 1000)
@@ -180,4 +137,221 @@ export async function shareChatConversation(
     console.log('Share cancelled or failed:', error)
     return false
   }
+}
+
+/**
+ * Format chat conversation as HTML for email and web display
+ */
+export function formatChatAsHTML(
+  messages: ChatMessage[],
+  includeTimestamps: boolean = true,
+): string {
+  const styles = `
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f9fafb;
+      }
+      .header {
+        background: linear-gradient(135deg, #4f46e5, #3b82f6);
+        color: white;
+        padding: 24px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        text-align: center;
+      }
+      .header h1 {
+        margin: 0 0 8px 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 14px;
+      }
+      .conversation {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .message {
+        margin-bottom: 20px;
+        padding: 16px;
+        border-radius: 8px;
+        border-left: 4px solid #e5e7eb;
+      }
+      .message.user {
+        background-color: #eff6ff;
+        border-left-color: #3b82f6;
+      }
+      .message.ai {
+        background-color: #f0fdf4;
+        border-left-color: #10b981;
+      }
+      .message-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .message-header .icon {
+        margin-right: 8px;
+        font-size: 16px;
+      }
+      .message-header .timestamp {
+        margin-left: auto;
+        font-weight: normal;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      .message-content {
+        color: #374151;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 24px;
+        padding: 16px;
+        color: #6b7280;
+        font-size: 12px;
+        border-top: 1px solid #e5e7eb;
+      }
+      .stats {
+        display: flex;
+        justify-content: space-around;
+        margin: 16px 0;
+        padding: 16px;
+        background: #f3f4f6;
+        border-radius: 8px;
+      }
+      .stat {
+        text-align: center;
+      }
+      .stat-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+      .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 4px;
+      }
+    </style>
+  `
+
+  const date = new Date().toLocaleDateString()
+  const time = new Date().toLocaleTimeString()
+
+  const header = `
+    <div class="header">
+      <h1>🔍 ScopeIQ Chat Conversation</h1>
+      <p>Exported on ${date} at ${time}</p>
+    </div>
+    
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">${messages.length}</div>
+        <div class="stat-label">Messages</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${messages.filter(m => m.type === 'user').length}</div>
+        <div class="stat-label">User Messages</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">${messages.filter(m => m.type === 'ai').length}</div>
+        <div class="stat-label">AI Responses</div>
+      </div>
+    </div>
+  `
+
+  const conversationContent = messages
+    .map(message => {
+      const timestamp = includeTimestamps
+        ? `<span class="timestamp">${message.timestamp.toLocaleTimeString()}</span>`
+        : ''
+
+      const icon = message.type === 'user' ? '👤' : '🤖'
+      const label = message.type === 'user' ? 'You' : 'AI Assistant'
+      const messageClass = message.type === 'user' ? 'user' : 'ai'
+
+      // Escape HTML in content
+      const escapedContent = message.content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+
+      return `
+        <div class="message ${messageClass}">
+          <div class="message-header">
+            <span class="icon">${icon}</span>
+            <span>${label}</span>
+            ${timestamp}
+          </div>
+          <div class="message-content">${escapedContent}</div>
+        </div>
+      `
+    })
+    .join('')
+
+  const footer = `
+    <div class="footer">
+      Generated by ScopeIQ AI Assistant<br>
+      Professional conversation export with full formatting
+    </div>
+  `
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>ScopeIQ Chat Conversation - ${date}</title>
+      ${styles}
+    </head>
+    <body>
+      ${header}
+      <div class="conversation">
+        ${conversationContent}
+      </div>
+      ${footer}
+    </body>
+    </html>
+  `
+}
+
+/**
+ * Download chat conversation as HTML file
+ */
+export function downloadChatAsHTML(
+  messages: ChatMessage[],
+  includeTimestamps: boolean = true,
+): void {
+  const htmlContent = formatChatAsHTML(messages, includeTimestamps)
+  const filename = `scopeiq-chat-${new Date().toISOString().split('T')[0]}.html`
+
+  const blob = new Blob([htmlContent], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  // Clean up
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
