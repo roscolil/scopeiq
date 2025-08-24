@@ -24,6 +24,7 @@
   "exclude": [
     "dist",
     "public",
+    ".amplify",
     "eslint.config.js",
     "postcss.config.js",
     "test-aws-config.js",
