@@ -64,7 +64,9 @@ export const Spinner = ({
     <div className={`flex flex-col items-center space-y-4 ${className}`}>
       <div className={`relative ${sizeClasses[size]} flex-shrink-0`}>
         {/* Outer spinning ring - brighter colors */}
-        <div className={`absolute inset-0 rounded-full ${borderWidths[size]} border-white/30 border-t-white animate-spin`}></div>
+        <div
+          className={`absolute inset-0 rounded-full ${borderWidths[size]} border-white/30 border-t-white animate-spin`}
+        ></div>
 
         {/* Inner spinning ring - counter rotation */}
         <div
