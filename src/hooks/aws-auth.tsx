@@ -19,7 +19,7 @@ import {
 } from 'aws-amplify/auth'
 import { userService } from '@/services/auth/user'
 import { prefetchForAuthenticatedUser } from '@/utils/performance/route-prefetch'
-import { prefetchUserData } from '@/utils/performance/data-prefetch'
+import { prefetchUserData } from '@/utils/data/data-prefetch'
 
 interface User {
   id: string
