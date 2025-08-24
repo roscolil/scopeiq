@@ -3,77 +3,61 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
-import { Spinner } from '@/components/Spinner'
+import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider } from './hooks/aws-auth'
-import { prefetchOnIdle, cleanupPrefetchObserver } from './utils/route-prefetch'
-import { PageHeaderSkeleton } from './components/skeletons'
+import {
+  prefetchOnIdle,
+  cleanupPrefetchObserver,
+} from '@/utils/performance/route-prefetch'
 
 // Eagerly load critical components
-import Index from './pages/Index'
-import SignIn from './pages/SignIn'
-import SignUp from './pages/SignUp'
-import AuthenticatedLayout from './pages/AuthenticatedLayout'
-import Dashboard from './pages/Dashboard' // Load Dashboard eagerly
+import HomePage from '@/pages/dashboard/IndexPage'
+import SignIn from './pages/auth/SignIn'
+import SignUp from './pages/auth/SignUp'
+import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
+import Dashboard from './pages/dashboard/Dashboard' // Load Dashboard eagerly
 
 // Lazy load secondary pages
-const Documents = lazy(() => import('./pages/Documents'))
-const Projects = lazy(() => import('./pages/Projects'))
-const ProjectDetails = lazy(() => import('./pages/ProjectDetails'))
-const Viewer = lazy(() => import('./pages/Viewer'))
-const NotFound = lazy(() => import('./pages/NotFound'))
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const ProfileSettings = lazy(() => import('./pages/ProfileSettings'))
-const VerifyEmail = lazy(() => import('./pages/VerifyEmail'))
-const Pricing = lazy(() => import('./pages/Pricing'))
-const Migration = lazy(() => import('./pages/Migration'))
-const Terms = lazy(() => import('./pages/Terms'))
-const Privacy = lazy(() => import('./pages/Privacy'))
-const Contact = lazy(() => import('./pages/Contact'))
+const Documents = lazy(() => import('./pages/documents/Documents'))
+const Projects = lazy(() => import('./pages/projects/Projects'))
+const ProjectDetails = lazy(() => import('./pages/projects/ProjectDetails'))
+const Viewer = lazy(() => import('./pages/documents/Viewer'))
+const NotFound = lazy(() => import('./pages/core/NotFound'))
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
+const ProfileSettings = lazy(() => import('./pages/dashboard/ProfileSettings'))
+const VerifyEmail = lazy(() => import('./pages/auth/VerifyEmail'))
+const Pricing = lazy(() => import('./pages/dashboard/Pricing'))
+const Migration = lazy(() => import('./pages/admin/Migration'))
+const Terms = lazy(() => import('./pages/legal/Terms'))
+const Privacy = lazy(() => import('./pages/legal/Privacy'))
+const Contact = lazy(() => import('./pages/legal/Contact'))
+const OurTeam = lazy(() => import('./pages/legal/OurTeam'))
+const WorkWithUs = lazy(() => import('./pages/legal/WorkWithUs'))
 const CommonTermsManagement = lazy(
-  () => import('./pages/CommonTermsManagement'),
+  () => import('./pages/admin/CommonTermsManagement'),
 )
-const AITrainingConsole = lazy(() => import('./pages/AITrainingConsole'))
+const AITrainingConsole = lazy(() => import('./pages/admin/AITrainingConsole'))
 
-// Enhanced loading fallback components with skeletons
-// const PageLoadingFallback = ({
-//   type,
-// }: {
-//   type?: 'documents' | 'projects' | 'default'
-// }) => {
-//   switch (type) {
-//     case 'documents':
-//       return (
-//         <div className="container mx-auto p-6 space-y-6">
-//           <PageHeaderSkeleton />
-//           {/* <DocumentListSkeleton /> */}
-//         </div>
-//       )
-//     case 'projects':
-//       return (
-//         <div className="container mx-auto p-6 space-y-6">
-//           <PageHeaderSkeleton />
-//           {/* <ProjectsWithDocumentsSkeleton /> */}
-//         </div>
-//       )
-//     default:
-//       return (
-//         <div className="flex justify-center items-center h-64">
-//           <Spinner />
-//         </div>
-//       )
-//   }
-// }
+// Enhanced loading fallback components with modern design
+const PageLoadingFallback = ({
+  type,
+}: {
+  type?: 'documents' | 'projects' | 'profile' | 'default'
+}) => {
+  return <PageLoader type={type} />
+}
 
 // Enhanced Suspense wrapper with smart fallbacks
 const EnhancedSuspense = ({
   children,
-  // fallbackType,
+  fallbackType,
 }: {
   children: React.ReactNode
-  fallbackType?: 'documents' | 'projects' | 'default'
+  fallbackType?: 'documents' | 'projects' | 'profile' | 'default'
 }) => (
-  // <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
-  <Suspense>{children}</Suspense>
+  <Suspense fallback={<PageLoadingFallback type={fallbackType} />}>
+    {children}
+  </Suspense>
 )
 
 const App = () => {
@@ -109,14 +93,14 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public routes - eagerly loaded */}
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/auth">
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
                 <Route
                   path="forgot-password"
                   element={
-                    <EnhancedSuspense>
+                    <EnhancedSuspense fallbackType="default">
                       <ForgotPassword />
                     </EnhancedSuspense>
                   }
@@ -124,7 +108,7 @@ const App = () => {
                 <Route
                   path="verify-email"
                   element={
-                    <EnhancedSuspense>
+                    <EnhancedSuspense fallbackType="default">
                       <VerifyEmail />
                     </EnhancedSuspense>
                   }
@@ -133,7 +117,7 @@ const App = () => {
               <Route
                 path="/pricing"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <Pricing />
                   </EnhancedSuspense>
                 }
@@ -141,7 +125,7 @@ const App = () => {
               <Route
                 path="/migration"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <Migration />
                   </EnhancedSuspense>
                 }
@@ -149,7 +133,7 @@ const App = () => {
               <Route
                 path="/terms"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <Terms />
                   </EnhancedSuspense>
                 }
@@ -157,7 +141,7 @@ const App = () => {
               <Route
                 path="/privacy"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <Privacy />
                   </EnhancedSuspense>
                 }
@@ -165,8 +149,24 @@ const App = () => {
               <Route
                 path="/contact"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <Contact />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/our-team"
+                element={
+                  <EnhancedSuspense fallbackType="default">
+                    <OurTeam />
+                  </EnhancedSuspense>
+                }
+              />
+              <Route
+                path="/work-with-us"
+                element={
+                  <EnhancedSuspense fallbackType="default">
+                    <WorkWithUs />
                   </EnhancedSuspense>
                 }
               />
@@ -174,7 +174,7 @@ const App = () => {
               <Route
                 path="/common-terms"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <CommonTermsManagement />
                   </EnhancedSuspense>
                 }
@@ -183,7 +183,7 @@ const App = () => {
               <Route
                 path="/ai-training"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <AITrainingConsole />
                   </EnhancedSuspense>
                 }
@@ -200,7 +200,7 @@ const App = () => {
                   <Route
                     path="settings"
                     element={
-                      <EnhancedSuspense>
+                      <EnhancedSuspense fallbackType="profile">
                         <ProfileSettings />
                       </EnhancedSuspense>
                     }
@@ -262,7 +262,7 @@ const App = () => {
               <Route
                 path="*"
                 element={
-                  <EnhancedSuspense>
+                  <EnhancedSuspense fallbackType="default">
                     <NotFound />
                   </EnhancedSuspense>
                 }

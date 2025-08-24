@@ -33,6 +33,20 @@
       background-position: 200% 0;
     }
   }
+
+  /* Enhanced spinner animations */
+  .animate-spin-reverse {
+    animation: spin-reverse 1s linear infinite;
+  }
+
+  @keyframes spin-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
 }
 
 @layer base {
