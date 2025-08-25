@@ -584,14 +584,26 @@ export async function improvedDocumentSearch({
       .slice(0, topK)
       .sort((a, b) => b.score - a.score)
 
-    // Step 5: Format for return
-    const formattedResults = combinedResults.map(result => ({
-      id: result.id,
-      content: result.content,
-      metadata: result.metadata,
-      similarity: result.score,
-      hasExactMatch: result.content.toLowerCase().includes(queryLower),
-    }))
+    // Step 5: Format for return (excluding file names from metadata)
+    const formattedResults = combinedResults.map(result => {
+      // Filter out file name related metadata fields
+      const sanitizedMetadata = { ...result.metadata }
+      delete sanitizedMetadata.name
+      delete sanitizedMetadata.fileName
+      delete sanitizedMetadata.file_name
+      delete sanitizedMetadata.filename
+      delete sanitizedMetadata.originalName
+      delete sanitizedMetadata.document_name
+      delete sanitizedMetadata.documentName
+
+      return {
+        id: result.id,
+        content: result.content,
+        metadata: sanitizedMetadata,
+        similarity: result.score,
+        hasExactMatch: result.content.toLowerCase().includes(queryLower),
+      }
+    })
 
     return {
       results: formattedResults,
