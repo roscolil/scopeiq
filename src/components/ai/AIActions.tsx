@@ -534,13 +534,11 @@ export const AIActions = ({
             const relevantContent = searchResponse.documents[0]
               .slice(0, 3) // Use top 3 results
               .map((doc, i) => {
-                const metadata = searchResponse.metadatas?.[0]?.[i]
-                const docName = metadata?.name || `Document ${i + 1}`
-                return `Source File: "${docName}"\nContent: ${doc}`
+                return `Content: ${doc}`
               })
               .join('\n\n')
 
-            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, please reference the specific source file names (e.g., "According to [filename]..." or "As mentioned in [filename]...") to help the user understand where the information comes from.`
+            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, base it on the content provided above.`
           } else {
             if (queryScope === 'document') {
               context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`

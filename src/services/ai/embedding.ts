@@ -198,7 +198,6 @@ export async function processEmbeddingOnly(
         metadata,
       )
     } else {
-      console.log('Using standard embedding process')
       const embedding = await generateEmbedding(content)
 
       // Truncate content for metadata to avoid size limits
@@ -223,8 +222,6 @@ export async function processEmbeddingOnly(
         ],
       )
     }
-
-    console.log(`Successfully processed embedding for document: ${sanitizedId}`)
   } catch (error) {
     console.error('Failed to process embedding:', error)
     throw error
@@ -298,26 +295,81 @@ export async function upsertDocumentEmbedding({
   content: string
   metadata?: Record<string, string | number | boolean>
 }) {
+  if (!content || content.trim().length === 0) {
+    throw new Error('Cannot embed empty content')
+  }
+
   // Sanitize the document ID for Pinecone compatibility
   const sanitizedId = sanitizeDocumentId(documentId)
 
-  const embedding = await generateEmbedding(content)
+  // Chunk the content properly (1000 chars per chunk with 200 char overlap)
+  const chunkSize = 1000
+  const chunkOverlap = 200
+  const chunks: string[] = []
 
-  // Truncate content for metadata to avoid size limits
-  const truncatedContent =
-    content.length > 1000
-      ? content.substring(0, 1000) + '...[truncated]'
-      : content
-
-  const fullMetadata = {
-    ...metadata,
-    content: truncatedContent,
-    id: sanitizedId,
-    originalId: documentId,
-    document_id: documentId, // Add this field for Pinecone filtering
+  // Create overlapping chunks
+  for (let i = 0; i < content.length; i += chunkSize - chunkOverlap) {
+    const chunk = content.slice(i, i + chunkSize)
+    if (chunk.trim().length > 0) {
+      chunks.push(chunk.trim())
+    }
   }
 
-  await upsertEmbeddings(projectId, [sanitizedId], [embedding], [fullMetadata])
+  // Store the full document as one chunk (for comprehensive search)
+  const fullDocumentId = `${sanitizedId}_full`
+  const fullDocumentEmbedding = await generateEmbedding(content)
+
+  const fullDocumentMetadata = {
+    ...metadata,
+    content: content.substring(0, 2000), // Store first 2000 chars for preview
+    chunkType: 'full_document',
+    chunkIndex: -1,
+    totalChunks: chunks.length,
+    id: fullDocumentId,
+    originalId: documentId,
+    document_id: documentId,
+    documentName: metadata?.name || 'Unknown Document',
+  }
+
+  // Process chunks in batches
+  const batchSize = 10
+  const allIds: string[] = [fullDocumentId]
+  const allEmbeddings: number[][] = [fullDocumentEmbedding]
+  const allMetadata: Record<string, string | number | boolean>[] = [
+    fullDocumentMetadata,
+  ]
+
+  // Process regular chunks
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batchChunks = chunks.slice(i, i + batchSize)
+
+    for (let j = 0; j < batchChunks.length; j++) {
+      const chunk = batchChunks[j]
+      const chunkIndex = i + j
+      const chunkId = `${sanitizedId}_chunk_${chunkIndex}`
+
+      const chunkEmbedding = await generateEmbedding(chunk)
+
+      const chunkMetadata = {
+        ...metadata,
+        content: chunk,
+        chunkType: 'chunk',
+        chunkIndex,
+        totalChunks: chunks.length,
+        id: chunkId,
+        originalId: documentId,
+        document_id: documentId,
+        documentName: metadata?.name || 'Unknown Document',
+      }
+
+      allIds.push(chunkId)
+      allEmbeddings.push(chunkEmbedding)
+      allMetadata.push(chunkMetadata)
+    }
+  }
+
+  // Upsert all embeddings
+  await upsertEmbeddings(projectId, allIds, allEmbeddings, allMetadata)
 }
 
 export async function semanticSearch({
@@ -340,7 +392,6 @@ export async function semanticSearch({
   const isConstructionQuery = isConstructionRelatedQuery(query)
 
   if (isConstructionQuery) {
-    console.log('Using enhanced construction document search')
     try {
       const result = await searchConstructionDocument(projectId, query, {
         documentId,
@@ -470,6 +521,100 @@ export async function searchCommonTermsOnly({
   const validTopK = Math.max(1, Math.floor(Number(topK) || 5))
 
   return await queryEmbeddings(NAMESPACE_CONFIG.common, [embedding], validTopK)
+}
+
+export async function improvedDocumentSearch({
+  projectId,
+  query,
+  topK = 50,
+  documentId,
+}: {
+  projectId: string
+  query: string
+  topK?: number
+  documentId?: string
+}) {
+  try {
+    // Step 1: Get semantic results
+    const embedding = await generateEmbedding(query)
+    const namespace = `project_${projectId}`
+
+    const results = await queryEmbeddings(
+      namespace,
+      [embedding],
+      Math.min(topK * 2, 1000), // Get extra results for filtering
+    )
+
+    if (!results.ids?.[0] || results.ids[0].length === 0) {
+      return {
+        results: [],
+        totalResults: 0,
+        exactMatches: 0,
+        semanticMatches: 0,
+      }
+    }
+
+    // Step 2: Convert to structured format and filter
+    const searchResults = results.ids[0].map((id, index) => ({
+      id,
+      content: results.documents![0][index] || '',
+      metadata: results.metadatas![0][index] || {},
+      score: 1 - (results.distances![0][index] || 1), // Convert distance to similarity
+    }))
+
+    // Step 3: Apply text-based filtering for exact matches
+    const queryLower = query.toLowerCase()
+    const exactMatches: typeof searchResults = []
+    const semanticMatches: typeof searchResults = []
+
+    searchResults.forEach(result => {
+      const contentLower = result.content.toLowerCase()
+      if (contentLower.includes(queryLower)) {
+        exactMatches.push({
+          ...result,
+          score: result.score + 0.5, // Boost exact matches
+        })
+      } else {
+        semanticMatches.push(result)
+      }
+    })
+
+    // Step 4: Combine results (exact matches first, then semantic)
+    const combinedResults = [...exactMatches, ...semanticMatches]
+      .slice(0, topK)
+      .sort((a, b) => b.score - a.score)
+
+    // Step 5: Format for return (excluding file names from metadata)
+    const formattedResults = combinedResults.map(result => {
+      // Filter out file name related metadata fields
+      const sanitizedMetadata = { ...result.metadata }
+      delete sanitizedMetadata.name
+      delete sanitizedMetadata.fileName
+      delete sanitizedMetadata.file_name
+      delete sanitizedMetadata.filename
+      delete sanitizedMetadata.originalName
+      delete sanitizedMetadata.document_name
+      delete sanitizedMetadata.documentName
+
+      return {
+        id: result.id,
+        content: result.content,
+        metadata: sanitizedMetadata,
+        similarity: result.score,
+        hasExactMatch: result.content.toLowerCase().includes(queryLower),
+      }
+    })
+
+    return {
+      results: formattedResults,
+      totalResults: combinedResults.length,
+      exactMatches: exactMatches.length,
+      semanticMatches: semanticMatches.length,
+    }
+  } catch (error) {
+    console.error('Search failed:', error)
+    throw error
+  }
 }
 
 export async function addCommonTerm({

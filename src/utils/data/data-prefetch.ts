@@ -89,7 +89,7 @@ export const prefetchUserData = async (companyId: string): Promise<void> => {
     {
       key: `projects-${companyId}`,
       fetcher: async () => {
-        const { projectService } = await import('@/services/hybrid')
+        const { projectService } = await import('@/services/data/hybrid')
         return projectService.getProjects()
       },
       background: true,
@@ -97,7 +97,7 @@ export const prefetchUserData = async (companyId: string): Promise<void> => {
     {
       key: `all-documents-${companyId}`,
       fetcher: async () => {
-        const { documentService } = await import('@/services/hybrid')
+        const { documentService } = await import('@/services/data/hybrid')
         return documentService.getAllDocuments()
       },
       background: true,
@@ -117,14 +117,14 @@ export const prefetchProjectData = async (
     {
       key: `project-${projectId}`,
       fetcher: async () => {
-        const { projectService } = await import('@/services/hybrid')
+        const { projectService } = await import('@/services/data/hybrid')
         return projectService.getProject(companyId, projectId)
       },
     },
     {
       key: `documents-${projectId}`,
       fetcher: async () => {
-        const { documentService } = await import('@/services/hybrid')
+        const { documentService } = await import('@/services/data/hybrid')
         return documentService.getDocumentsByProject(projectId)
       },
     },
@@ -143,7 +143,7 @@ export const prefetchDocumentData = async (
     {
       key: `document-${documentId}`,
       fetcher: async () => {
-        const { documentService } = await import('@/services/hybrid')
+        const { documentService } = await import('@/services/data/hybrid')
         return documentService.getDocument(companyId, projectId, documentId)
       },
     },
