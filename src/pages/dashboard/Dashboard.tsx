@@ -742,88 +742,90 @@ const Dashboard = () => {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                     {isLoadingProjects ? (
                       <ProjectRowsSkeleton itemCount={3} />
                     ) : projects.length > 0 ? (
-                      projects.slice(0, 3).map((project, index) => (
-                        <div key={project.id}>
-                          <div
-                            className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
-                            onClick={() => {
-                              // Use existing slug or generate from name
-                              const projectSlug =
-                                project.slug ||
-                                createSlug(
-                                  project.name ||
-                                    `project-${project.id.slice(0, 8)}`,
-                                )
-
-                              navigate(
-                                routes.company.project.details(
-                                  companyId,
-                                  project.id,
-                                  projectSlug,
-                                ),
-                              )
-                            }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <div className="font-medium text-slate-800">
-                                  {project.name}
-                                </div>
-                                <div className="text-xs text-slate-600">
-                                  {project.documents?.length || 0} documents
-                                </div>
-                              </div>
-                              <div className="text-sm text-slate-600">
-                                {project.createdAt
-                                  ? new Date(
-                                      project.createdAt,
-                                    ).toLocaleDateString()
-                                  : 'Recently'}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="secondary"
-                                className="text-xs bg-blue-100 text-blue-700 border-blue-200"
-                              >
-                                {project.documents?.length || 0} files
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  // Use existing slug or generate from name
-                                  const projectSlug =
-                                    project.slug ||
-                                    createSlug(
-                                      project.name ||
-                                        `project-${project.id.slice(0, 8)}`,
-                                    )
-
-                                  navigate(
-                                    routes.company.project.details(
-                                      companyId,
-                                      project.id,
-                                      projectSlug,
-                                    ),
+                      <div className="space-y-0">
+                        {projects.slice(0, 5).map((project, index) => (
+                          <div key={project.id}>
+                            <div
+                              className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
+                              onClick={() => {
+                                // Use existing slug or generate from name
+                                const projectSlug =
+                                  project.slug ||
+                                  createSlug(
+                                    project.name ||
+                                      `project-${project.id.slice(0, 8)}`,
                                   )
-                                }}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </Button>
+
+                                navigate(
+                                  routes.company.project.details(
+                                    companyId,
+                                    project.id,
+                                    projectSlug,
+                                  ),
+                                )
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <div className="font-medium text-slate-800">
+                                    {project.name}
+                                  </div>
+                                  <div className="text-xs text-slate-600">
+                                    {project.documents?.length || 0} documents
+                                  </div>
+                                </div>
+                                <div className="text-sm text-slate-600">
+                                  {project.createdAt
+                                    ? new Date(
+                                        project.createdAt,
+                                      ).toLocaleDateString()
+                                    : 'Recently'}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs bg-blue-100 text-blue-700 border-blue-200"
+                                >
+                                  {project.documents?.length || 0} files
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    // Use existing slug or generate from name
+                                    const projectSlug =
+                                      project.slug ||
+                                      createSlug(
+                                        project.name ||
+                                          `project-${project.id.slice(0, 8)}`,
+                                      )
+
+                                    navigate(
+                                      routes.company.project.details(
+                                        companyId,
+                                        project.id,
+                                        projectSlug,
+                                      ),
+                                    )
+                                  }}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View
+                                </Button>
+                              </div>
                             </div>
+                            {index < projects.slice(0, 5).length - 1 && (
+                              <div className="border-b border-gray-300 mx-3"></div>
+                            )}
                           </div>
-                          {index < projects.slice(0, 3).length - 1 && (
-                            <div className="border-b border-gray-300 mx-3"></div>
-                          )}
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8">
                         <Folders className="h-8 w-8 mx-auto mb-2 text-gray-400" />
