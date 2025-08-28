@@ -203,7 +203,7 @@ export async function processConstructionDocumentEmbedding(
       const batch = chunks.slice(i, i + batchSize)
 
       console.log(
-        `Processing chunk batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(chunks.length / batchSize)}`,
+        `Processing chunk batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(chunks.length / batchSize)} (${batch.length} chunks)`,
       )
 
       // Generate embeddings for the batch

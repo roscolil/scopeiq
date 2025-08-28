@@ -485,6 +485,12 @@ const Documents = () => {
               companyId={companyId || 'default-company'}
               projectName={projectName}
               onDelete={handleDeleteDocument}
+              onRetryProcessing={async () => {
+                // Force refresh after retry
+                setTimeout(() => {
+                  window.location.reload()
+                }, 1000)
+              }}
             />
           ) : (
             <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
@@ -600,6 +606,12 @@ const Documents = () => {
                           companyId={companyId || 'default-company'}
                           projectName={project.name}
                           onDelete={handleDeleteDocument}
+                          onRetryProcessing={async () => {
+                            // Force refresh after retry
+                            setTimeout(() => {
+                              window.location.reload()
+                            }, 1000)
+                          }}
                         />
                       ) : (
                         <div className="text-center p-4 border rounded bg-secondary/10">
@@ -640,6 +652,12 @@ const Documents = () => {
                   companyId={companyId || 'default-company'}
                   projectName=""
                   onDelete={handleDeleteDocument}
+                  onRetryProcessing={async () => {
+                    // Force refresh after retry
+                    setTimeout(() => {
+                      window.location.reload()
+                    }, 1000)
+                  }}
                 />
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">

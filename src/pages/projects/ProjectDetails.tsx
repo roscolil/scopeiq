@@ -80,7 +80,8 @@ const ProjectDetails = () => {
     projectId: projectId || '',
     companyId: companyId || '',
     onDocumentUpdate: handleDocumentStatusUpdate,
-    enabled: projectDocuments.some(doc => doc.status === 'processing'),
+    enabled:
+      projectDocuments?.some(doc => doc.status === 'processing') || false,
   })
 
   // Cache keys
@@ -99,11 +100,11 @@ const ProjectDetails = () => {
   }, [PROJECT_CACHE_KEY])
 
   const setCachedProjectData = useCallback(
-    (projectData: Project) => {
+    (data: Project) => {
       localStorage.setItem(
         PROJECT_CACHE_KEY,
         JSON.stringify({
-          data: projectData,
+          data,
           timestamp: Date.now(),
         }),
       )
@@ -115,24 +116,31 @@ const ProjectDetails = () => {
     const cached = localStorage.getItem(DOCUMENTS_CACHE_KEY)
     if (cached) {
       const { data, timestamp } = JSON.parse(cached)
-      const isStale = Date.now() - timestamp > 5 * 60 * 1000 // 5 minutes
-      return { data: data as Document[], isStale }
+      // Cache is valid for 5 minutes
+      if (Date.now() - timestamp < 5 * 60 * 1000) {
+        return data
+      }
     }
     return null
   }, [DOCUMENTS_CACHE_KEY])
 
   const setCachedDocumentsData = useCallback(
-    (documentsData: Document[]) => {
+    (data: Document[]) => {
       localStorage.setItem(
         DOCUMENTS_CACHE_KEY,
         JSON.stringify({
-          data: documentsData,
+          data,
           timestamp: Date.now(),
         }),
       )
     },
     [DOCUMENTS_CACHE_KEY],
   )
+
+  const clearCache = useCallback(() => {
+    localStorage.removeItem(PROJECT_CACHE_KEY)
+    localStorage.removeItem(DOCUMENTS_CACHE_KEY)
+  }, [PROJECT_CACHE_KEY, DOCUMENTS_CACHE_KEY])
 
   // Load cached data immediately on mount
   useEffect(() => {
@@ -144,7 +152,7 @@ const ProjectDetails = () => {
 
     const cachedDocuments = getCachedDocuments()
     if (cachedDocuments) {
-      setProjectDocuments(cachedDocuments.data)
+      setProjectDocuments(cachedDocuments.data || [])
       setIsDocumentsLoading(false)
     }
   }, [getCachedProject, getCachedDocuments])
@@ -303,10 +311,10 @@ const ProjectDetails = () => {
     }
 
     // Determine polling interval based on document statuses
-    const hasProcessingDocs = projectDocuments.some(
-      doc => doc.status === 'processing',
-    )
-    const hasFailedDocs = projectDocuments.some(doc => doc.status === 'failed')
+    const hasProcessingDocs =
+      projectDocuments?.some(doc => doc.status === 'processing') || false
+    const hasFailedDocs =
+      projectDocuments?.some(doc => doc.status === 'failed') || false
 
     let pollInterval: number
     if (hasProcessingDocs) {
@@ -398,18 +406,17 @@ const ProjectDetails = () => {
 
   const handleUploadDocument = (uploadedDocument: Document) => {
     // Check if this document already exists (by ID) - if so, update it; otherwise add it
-    const existingDocumentIndex = projectDocuments.findIndex(
-      doc => doc.id === uploadedDocument.id,
-    )
+    const existingDocumentIndex =
+      projectDocuments?.findIndex(doc => doc.id === uploadedDocument.id) ?? -1
 
     let updatedDocuments: Document[]
     if (existingDocumentIndex >= 0) {
       // Update existing document (e.g., status change from processing to processed)
-      updatedDocuments = [...projectDocuments]
+      updatedDocuments = [...(projectDocuments || [])]
       updatedDocuments[existingDocumentIndex] = uploadedDocument
     } else {
       // Add new document
-      updatedDocuments = [...projectDocuments, uploadedDocument]
+      updatedDocuments = [...(projectDocuments || []), uploadedDocument]
     }
 
     setProjectDocuments(updatedDocuments)
@@ -431,7 +438,7 @@ const ProjectDetails = () => {
   const handleDeleteDocument = async (documentId: string) => {
     try {
       // Find the document to get its projectId (should be the current project)
-      const documentToDelete = projectDocuments.find(
+      const documentToDelete = projectDocuments?.find(
         doc => doc.id === documentId,
       )
 
@@ -442,9 +449,8 @@ const ProjectDetails = () => {
       await documentService.deleteDocument(companyId, project.id, documentId)
 
       // Update the local state to remove the document
-      const updatedDocuments = projectDocuments.filter(
-        doc => doc.id !== documentId,
-      )
+      const updatedDocuments =
+        projectDocuments?.filter(doc => doc.id !== documentId) || []
       setProjectDocuments(updatedDocuments)
 
       // Immediately update the cache to reflect the deletion
@@ -468,7 +474,7 @@ const ProjectDetails = () => {
     try {
       // For now, we'll just update the status to failed to stop the processing indicators
       // In a real implementation, you'd want to actually cancel the background processing
-      const documentToCancel = projectDocuments.find(
+      const documentToCancel = projectDocuments?.find(
         doc => doc.id === documentId,
       )
 
@@ -798,6 +804,13 @@ const ProjectDetails = () => {
               documents={projectDocuments}
               onDelete={handleDeleteDocument}
               onCancelProcessing={handleCancelProcessing}
+              onRetryProcessing={async () => {
+                // Force refresh of documents after retry by clearing cache
+                clearCache()
+                setTimeout(() => {
+                  window.location.reload()
+                }, 1000)
+              }}
               projectId={project.id}
               companyId={companyId || 'default-company'}
               projectName={project.name}

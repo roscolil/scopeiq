@@ -29,6 +29,7 @@ import {
   Download,
   Trash2,
   Loader2,
+  RotateCcw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -39,11 +40,15 @@ import {
 import { Document } from '@/types'
 import { routes } from '@/utils/ui/navigation'
 import { cn } from '@/lib/utils'
+import { processEmbeddingOnly } from '@/services/ai/embedding'
+import { documentService } from '@/services/data/hybrid'
+import { useToast } from '@/hooks/use-toast'
 
 interface DocumentListProps {
   documents: Document[]
   onDelete?: (documentId: string) => void | Promise<void>
   onCancelProcessing?: (documentId: string) => void
+  onRetryProcessing?: (documentId: string) => void | Promise<void>
   projectId: string
   companyId: string
   projectName?: string
@@ -53,11 +58,13 @@ export const DocumentList = ({
   documents,
   onDelete,
   onCancelProcessing,
+  onRetryProcessing,
   projectId,
   companyId,
   projectName,
 }: DocumentListProps) => {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
@@ -80,7 +87,11 @@ export const DocumentList = ({
         message.includes('processing') ||
         message.includes('OCR') ||
         message.includes('Text length') ||
-        message.includes('Successfully')
+        message.includes('Successfully') ||
+        message.includes('chunk') ||
+        message.includes('batch') ||
+        message.includes('Created') ||
+        message.includes('Processing chunk batch')
       ) {
         setConsoleMessages(prev => [...prev.slice(-4), message]) // Keep last 5 messages
       }
@@ -140,6 +151,115 @@ export const DocumentList = ({
       documentName,
     )
     navigate(route)
+  }
+
+  const retryProcessing = async (document: Document) => {
+    if (!document.content) {
+      toast({
+        title: 'Cannot retry processing',
+        description:
+          'Document content is not available. Please re-upload the file.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      toast({
+        title: 'Retrying processing',
+        description: `Processing ${document.name}...`,
+      })
+
+      // Update document status to processing
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processing',
+      })
+
+      // Call the retry callback if provided
+      if (onRetryProcessing) {
+        await onRetryProcessing(document.id)
+      }
+
+      // Retry the embedding process
+      await processEmbeddingOnly(document.content, projectId, document.id, {
+        name: document.name,
+        type: document.type,
+        size: document.size,
+      })
+
+      // Update document status to processed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processed',
+      })
+
+      toast({
+        title: 'Processing completed',
+        description: `${document.name} has been successfully processed.`,
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    } catch (error) {
+      console.error('Error retrying document processing:', error)
+
+      // Update document status back to failed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'failed',
+      })
+
+      toast({
+        title: 'Processing failed again',
+        description:
+          'The document processing failed. Please check the document and try again.',
+        variant: 'destructive',
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    }
+  }
+
+  const getProcessingInfo = (document: Document) => {
+    // Find the most recent processing message for this document
+    const relevantMessage = consoleMessages
+      .slice() // Create a copy to avoid mutating
+      .reverse() // Get most recent first
+      .find(
+        msg =>
+          msg.includes('chunk batch') ||
+          msg.includes('Created') ||
+          msg.includes('Processing'),
+      )
+
+    if (relevantMessage) {
+      // Extract batch information if available
+      if (relevantMessage.includes('Processing chunk batch')) {
+        const batchMatch = relevantMessage.match(
+          /Processing chunk batch (\d+)\/(\d+)/,
+        )
+        if (batchMatch) {
+          return `Processing batch ${batchMatch[1]} of ${batchMatch[2]}`
+        }
+      }
+
+      // Extract chunk creation info
+      if (
+        relevantMessage.includes('Created') &&
+        relevantMessage.includes('chunks')
+      ) {
+        const chunkMatch = relevantMessage.match(/Created (\d+) chunks/)
+        if (chunkMatch) {
+          return `Created ${chunkMatch[1]} chunks`
+        }
+      }
+
+      // Return a cleaned version of the message
+      return relevantMessage.length > 50
+        ? relevantMessage.substring(0, 50) + '...'
+        : relevantMessage
+    }
+
+    return 'Processing document...'
   }
 
   const downloadDocument = async (document: Document) => {
@@ -291,6 +411,15 @@ export const DocumentList = ({
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </DropdownMenuItem>
+                      {doc.status === 'failed' && (
+                        <DropdownMenuItem
+                          onClick={() => retryProcessing(doc)}
+                          className="text-amber-600 hover:text-amber-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Retry Processing
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => downloadDocument(doc)}>
                         <Download className="h-4 w-4 mr-2" />
                         Download
@@ -311,11 +440,11 @@ export const DocumentList = ({
                 <div className="flex items-center gap-2">
                   {getStatusBadge(doc.status)}
                   {doc.status === 'processing' && (
-                    <div className="text-xs text-amber-700 flex items-center gap-2 font-medium">
+                    <div className="text-xs text-amber-700 flex ml-2 items-center gap-2 font-medium">
                       <div className="flex space-x-1">
                         <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                       </div>
-                      <span className="ml-1 max-w-xs truncate">
+                      <span className="max-w-xs truncate">
                         {consoleMessages.length > 0
                           ? consoleMessages[consoleMessages.length - 1]
                           : 'Processing document...'}
