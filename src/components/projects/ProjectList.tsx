@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
 import { Project } from '@/types'
 import {
   Card,
@@ -10,73 +9,21 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { FileText, Folder, MoreVertical, Trash2 } from 'lucide-react'
+import { FileText, Folder } from 'lucide-react'
 import { routes } from '@/utils/ui/navigation'
-import { useToast } from '@/hooks/use-toast'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { projectService } from '@/services/data/hybrid'
 
 interface ProjectListProps {
   projects: Project[]
   companyId: string
   onCreateProject?: () => void
-  onProjectDeleted?: (projectId: string) => void
 }
 
 export const ProjectList = ({
   projects,
   companyId,
   onCreateProject,
-  onProjectDeleted,
 }: ProjectListProps) => {
   const navigate = useNavigate()
-  const { toast } = useToast()
-  const isMobile = useIsMobile()
-  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
-    null,
-  )
-
-  const handleDeleteProject = async (project: Project) => {
-    try {
-      setDeletingProjectId(project.id)
-      await projectService.deleteProject(companyId, project.id)
-
-      if (onProjectDeleted) {
-        onProjectDeleted(project.id)
-      }
-
-      toast({
-        title: 'Project deleted',
-        description: `"${project.name}" has been permanently deleted.`,
-      })
-    } catch (error) {
-      console.error('Error deleting project:', error)
-      toast({
-        title: 'Delete failed',
-        description: 'Failed to delete the project. Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
-      setDeletingProjectId(null)
-    }
-  }
 
   if (projects.length === 0) {
     return (
@@ -143,79 +90,6 @@ export const ProjectList = ({
                   </div> */}
                 </div>
               </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={isMobile ? 'h-10 w-10' : 'h-8 w-8'}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <MoreVertical
-                      className={isMobile ? 'h-6 w-6' : 'h-4 w-4'}
-                    />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className={isMobile ? 'w-48 p-2' : ''}
-                >
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem
-                        className={`text-red-600 focus:text-red-700 focus:bg-red-50 ${
-                          isMobile ? 'p-3 text-base' : ''
-                        }`}
-                        onSelect={e => e.preventDefault()}
-                      >
-                        <Trash2
-                          className={`mr-2 ${isMobile ? 'h-5 w-5' : 'h-4 w-4'}`}
-                        />
-                        Delete Project
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent
-                      className={`bg-white ${isMobile ? 'mx-4 max-w-sm' : ''}`}
-                    >
-                      <AlertDialogHeader>
-                        <AlertDialogTitle
-                          className={`text-gray-900 ${isMobile ? 'text-lg' : ''}`}
-                        >
-                          Delete Project
-                        </AlertDialogTitle>
-                        <AlertDialogDescription
-                          className={`text-gray-600 ${isMobile ? 'text-base' : ''}`}
-                        >
-                          Are you sure you want to delete "{project.name}"? This
-                          action will permanently delete the project and all its
-                          documents. This cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter className={isMobile ? 'gap-3' : ''}>
-                        <AlertDialogCancel
-                          className={`bg-gray-100 text-gray-900 hover:bg-gray-200 ${
-                            isMobile ? 'h-12 px-6 text-base' : ''
-                          }`}
-                        >
-                          Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteProject(project)}
-                          disabled={deletingProjectId === project.id}
-                          className={`bg-red-600 hover:bg-red-700 text-white ${
-                            isMobile ? 'h-12 px-6 text-base' : ''
-                          }`}
-                        >
-                          {deletingProjectId === project.id
-                            ? 'Deleting...'
-                            : 'Delete Project'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </CardHeader>
 
