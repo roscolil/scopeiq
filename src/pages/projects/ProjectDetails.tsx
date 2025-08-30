@@ -9,7 +9,14 @@ import {
   AIActionsSkeleton,
 } from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, Plus, ChevronDown } from 'lucide-react'
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Plus,
+  ChevronDown,
+  RefreshCw,
+} from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -116,11 +123,16 @@ const ProjectDetails = () => {
     const cached = localStorage.getItem(DOCUMENTS_CACHE_KEY)
     if (cached) {
       const { data, timestamp } = JSON.parse(cached)
-      // Cache is valid for 5 minutes
-      if (Date.now() - timestamp < 5 * 60 * 1000) {
-        return data
+      // Reduce cache validity to 2 minutes for documents to ensure fresher data
+      if (Date.now() - timestamp < 2 * 60 * 1000) {
+        console.log('📋 Using cached documents data')
+        return { data, isStale: false }
+      } else {
+        console.log('📋 Cached documents data is stale, will refresh')
+        return { data, isStale: true }
       }
     }
+    console.log('📋 No cached documents data found')
     return null
   }, [DOCUMENTS_CACHE_KEY])
 
@@ -145,15 +157,22 @@ const ProjectDetails = () => {
   // Load cached data immediately on mount
   useEffect(() => {
     const cachedProject = getCachedProject()
-    if (cachedProject) {
+    if (cachedProject && !cachedProject.isStale) {
+      console.log('🏗️ Loading cached project data')
       setProject(cachedProject.data)
       setIsProjectLoading(false)
     }
 
     const cachedDocuments = getCachedDocuments()
-    if (cachedDocuments) {
+    if (cachedDocuments && !cachedDocuments.isStale) {
+      console.log('📋 Loading cached documents data')
       setProjectDocuments(cachedDocuments.data || [])
       setIsDocumentsLoading(false)
+    } else if (cachedDocuments && cachedDocuments.isStale) {
+      // Show stale data immediately but mark for refresh
+      console.log('📋 Loading stale cached documents data, will refresh soon')
+      setProjectDocuments(cachedDocuments.data || [])
+      setIsDocumentsLoading(true) // Keep loading state to trigger refresh
     }
   }, [getCachedProject, getCachedDocuments])
 
@@ -167,7 +186,15 @@ const ProjectDetails = () => {
       const shouldRefreshProject = !cachedProject || cachedProject.isStale
       const shouldRefreshDocuments = !cachedDocuments || cachedDocuments.isStale
 
+      console.log('🔍 Cache status:', {
+        shouldRefreshProject,
+        shouldRefreshDocuments,
+        hasCachedProject: !!cachedProject,
+        hasCachedDocuments: !!cachedDocuments,
+      })
+
       if (!shouldRefreshProject && !shouldRefreshDocuments) {
+        console.log('✅ Using cached data, no refresh needed')
         return // No need to refresh
       }
 
@@ -299,6 +326,13 @@ const ProjectDetails = () => {
             [...newIds].some(id => !prevIds.has(id))
 
           if (hasStatusChanges || hasCountChanges || hasDocumentChanges) {
+            console.log('📊 Document changes detected:', {
+              hasStatusChanges,
+              hasCountChanges,
+              hasDocumentChanges,
+              prevCount: prev.length,
+              newCount: transformedDocuments.length,
+            })
             // Update cache when document list changes
             setCachedDocumentsData(transformedDocuments)
             return transformedDocuments
@@ -405,6 +439,12 @@ const ProjectDetails = () => {
   }
 
   const handleUploadDocument = (uploadedDocument: Document) => {
+    console.log(
+      '📄 Document upload completed:',
+      uploadedDocument.name,
+      uploadedDocument.id,
+    )
+
     // Check if this document already exists (by ID) - if so, update it; otherwise add it
     const existingDocumentIndex =
       projectDocuments?.findIndex(doc => doc.id === uploadedDocument.id) ?? -1
@@ -414,19 +454,114 @@ const ProjectDetails = () => {
       // Update existing document (e.g., status change from processing to processed)
       updatedDocuments = [...(projectDocuments || [])]
       updatedDocuments[existingDocumentIndex] = uploadedDocument
+      console.log('📄 Updated existing document in list')
     } else {
       // Add new document
       updatedDocuments = [...(projectDocuments || []), uploadedDocument]
+      console.log('📄 Added new document to list')
     }
 
     setProjectDocuments(updatedDocuments)
 
-    // Immediately update the cache to reflect the changes
+    // Clear cache to force fresh data fetch on next load
+    // This ensures that after page refresh, we get the latest data from the database
+    console.log('🗑️ Clearing cache to ensure fresh data on refresh')
+    clearCache()
+
+    // Set cache with fresh data for immediate use
     setCachedDocumentsData(updatedDocuments)
 
     // Only close the dialog for new documents, not status updates
     if (existingDocumentIndex < 0) {
       setIsUploadDialogOpen(false)
+
+      // Force a refresh of the document list after a short delay
+      // This ensures the database has been updated
+      setTimeout(async () => {
+        try {
+          console.log('🔄 Refreshing document list from database...')
+          const freshDocuments = await documentService.getDocumentsByProject(
+            project?.id || projectId,
+          )
+          const transformedDocuments: Document[] = (freshDocuments || []).map(
+            doc => ({
+              id: doc.id,
+              name: doc.name || 'Untitled Document',
+              type: doc.type || 'unknown',
+              size:
+                typeof doc.size === 'number'
+                  ? doc.size
+                  : parseInt(String(doc.size)) || 0,
+              status: doc.status || 'processing',
+              url: doc.url,
+              thumbnailUrl: doc.thumbnailUrl,
+              projectId: doc.projectId,
+              content: doc.content,
+              createdAt: doc.createdAt,
+              updatedAt: doc.updatedAt,
+            }),
+          )
+
+          console.log(
+            `📊 Found ${transformedDocuments.length} documents in database`,
+          )
+          setProjectDocuments(transformedDocuments)
+          setCachedDocumentsData(transformedDocuments)
+        } catch (error) {
+          console.error('❌ Error refreshing document list:', error)
+        }
+      }, 2000) // 2 second delay to ensure database consistency
+    }
+  }
+
+  const forceRefreshDocuments = async () => {
+    if (!project?.id) return
+
+    console.log('🔄 Force refreshing documents from database...')
+    setIsDocumentsLoading(true)
+
+    try {
+      // Clear cache first
+      clearCache()
+
+      // Fetch fresh data from database
+      const documents = await documentService.getDocumentsByProject(project.id)
+      const transformedDocuments: Document[] = (documents || []).map(doc => ({
+        id: doc.id,
+        name: doc.name || 'Untitled Document',
+        type: doc.type || 'unknown',
+        size:
+          typeof doc.size === 'number'
+            ? doc.size
+            : parseInt(String(doc.size)) || 0,
+        status: doc.status || 'processing',
+        url: doc.url,
+        thumbnailUrl: doc.thumbnailUrl,
+        projectId: doc.projectId,
+        content: doc.content,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      }))
+
+      console.log(
+        `📊 Force refresh found ${transformedDocuments.length} documents`,
+      )
+      setProjectDocuments(transformedDocuments)
+      setCachedDocumentsData(transformedDocuments)
+
+      toast({
+        title: 'Documents refreshed',
+        description: `Found ${transformedDocuments.length} documents in project.`,
+      })
+    } catch (error) {
+      console.error('❌ Error force refreshing documents:', error)
+      toast({
+        title: 'Refresh failed',
+        description: 'Failed to refresh documents. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDocumentsLoading(false)
     }
 
     // toast({
@@ -768,32 +903,47 @@ const ProjectDetails = () => {
               Documents
             </h2>
 
-            <Dialog
-              open={isUploadDialogOpen}
-              onOpenChange={setIsUploadDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Document
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Upload Document to Project</DialogTitle>
-                  <DialogDescription>
-                    Upload a document to {project.name}
-                  </DialogDescription>
-                </DialogHeader>
-
-                {/* Pass the required props to FileUploader */}
-                <FileUploader
-                  projectId={project.id}
-                  companyId={companyId || 'default-company'}
-                  onUploadComplete={handleUploadDocument}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={forceRefreshDocuments}
+                disabled={isDocumentsLoading}
+                className="flex items-center"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-1 ${isDocumentsLoading ? 'animate-spin' : ''}`}
                 />
-              </DialogContent>
-            </Dialog>
+                Refresh
+              </Button>
+
+              <Dialog
+                open={isUploadDialogOpen}
+                onOpenChange={setIsUploadDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Document
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Upload Document to Project</DialogTitle>
+                    <DialogDescription>
+                      Upload a document to {project.name}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {/* Pass the required props to FileUploader */}
+                  <FileUploader
+                    projectId={project.id}
+                    companyId={companyId || 'default-company'}
+                    onUploadComplete={handleUploadDocument}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {/* Progressive loading for documents */}

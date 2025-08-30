@@ -43,6 +43,10 @@ import { cn } from '@/lib/utils'
 import { processEmbeddingOnly } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { useToast } from '@/hooks/use-toast'
+import {
+  processingMessageBroadcaster,
+  type ProcessingMessage,
+} from '@/services/utils/processing-messages'
 
 interface DocumentListProps {
   documents: Document[]
@@ -70,40 +74,33 @@ export const DocumentList = ({
     React.useState<Document | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [, forceUpdate] = React.useState(0)
-  const [consoleMessages, setConsoleMessages] = React.useState<string[]>([])
+  const [processingMessages, setProcessingMessages] = React.useState<
+    ProcessingMessage[]
+  >([])
 
-  // Capture console logs in real-time
+  // Subscribe to processing messages
   React.useEffect(() => {
-    const originalConsoleLog = console.log
-
-    console.log = (...args: unknown[]) => {
-      const message = String(args.join(' '))
-
-      // Add any processing-related message to our list
-      if (
-        message.includes('PDF') ||
-        message.includes('embedding') ||
-        message.includes('extraction') ||
-        message.includes('processing') ||
-        message.includes('OCR') ||
-        message.includes('Text length') ||
-        message.includes('Successfully') ||
-        message.includes('chunk') ||
-        message.includes('batch') ||
-        message.includes('Created') ||
-        message.includes('Processing chunk batch')
-      ) {
-        setConsoleMessages(prev => [...prev.slice(-4), message]) // Keep last 5 messages
+    const unsubscribe = processingMessageBroadcaster.subscribe(message => {
+      // Only show messages for documents in this project
+      if (!message.projectId || message.projectId === projectId) {
+        setProcessingMessages(prev => {
+          const newMessages = [...prev, message]
+          // Keep only the last 10 messages
+          return newMessages.slice(-10)
+        })
       }
+    })
 
-      // Call original console.log
-      originalConsoleLog.apply(console, args)
-    }
+    // Load recent messages for this project on mount
+    const recentMessages = processingMessageBroadcaster.getRecentMessages(
+      undefined,
+      projectId,
+      5,
+    )
+    setProcessingMessages(recentMessages)
 
-    return () => {
-      console.log = originalConsoleLog
-    }
-  }, [])
+    return unsubscribe
+  }, [projectId])
 
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) {
@@ -221,45 +218,47 @@ export const DocumentList = ({
 
   const getProcessingInfo = (document: Document) => {
     // Find the most recent processing message for this document
-    const relevantMessage = consoleMessages
+    const relevantMessage = processingMessages
       .slice() // Create a copy to avoid mutating
       .reverse() // Get most recent first
       .find(
         msg =>
-          msg.includes('chunk batch') ||
-          msg.includes('Created') ||
-          msg.includes('Processing'),
+          msg.documentId === document.id ||
+          (msg.type === 'progress' &&
+            (msg.message.includes('chunk batch') ||
+              msg.message.includes('Created') ||
+              msg.message.includes('Processing'))),
       )
 
     if (relevantMessage) {
       // Extract batch information if available
-      if (relevantMessage.includes('Processing chunk batch')) {
-        const batchMatch = relevantMessage.match(
-          /Processing chunk batch (\d+)\/(\d+)/,
-        )
-        if (batchMatch) {
-          return `Processing batch ${batchMatch[1]} of ${batchMatch[2]}`
-        }
+      if (relevantMessage.details?.batchInfo) {
+        const { current, total } = relevantMessage.details.batchInfo
+        return `Processing batch ${current} of ${total}`
       }
 
-      // Extract chunk creation info
-      if (
-        relevantMessage.includes('Created') &&
-        relevantMessage.includes('chunks')
-      ) {
-        const chunkMatch = relevantMessage.match(/Created (\d+) chunks/)
-        if (chunkMatch) {
-          return `Created ${chunkMatch[1]} chunks`
-        }
-      }
-
-      // Return a cleaned version of the message
-      return relevantMessage.length > 50
-        ? relevantMessage.substring(0, 50) + '...'
-        : relevantMessage
+      // Return the message, truncated if needed
+      return relevantMessage.message.length > 50
+        ? relevantMessage.message.substring(0, 50) + '...'
+        : relevantMessage.message
     }
 
     return 'Processing document...'
+  }
+
+  const getProcessingProgress = (document: Document) => {
+    // Find the most recent progress message for this document
+    const progressMessage = processingMessages
+      .slice()
+      .reverse()
+      .find(
+        msg =>
+          msg.documentId === document.id &&
+          msg.type === 'progress' &&
+          msg.details?.progress !== undefined,
+      )
+
+    return progressMessage?.details?.progress
   }
 
   const downloadDocument = async (document: Document) => {
@@ -444,11 +443,26 @@ export const DocumentList = ({
                       <div className="flex space-x-1">
                         <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                       </div>
-                      <span className="max-w-xs truncate">
-                        {consoleMessages.length > 0
-                          ? consoleMessages[consoleMessages.length - 1]
-                          : 'Processing document...'}
-                      </span>
+                      <div className="flex items-center gap-2 max-w-xs">
+                        <span className="truncate">
+                          {getProcessingInfo(doc)}
+                        </span>
+                        {getProcessingProgress(doc) !== undefined && (
+                          <div className="flex items-center gap-1 ml-1">
+                            <div className="w-16 h-1 bg-amber-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-amber-500 transition-all duration-300"
+                                style={{
+                                  width: `${getProcessingProgress(doc)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-amber-600">
+                              {getProcessingProgress(doc)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
