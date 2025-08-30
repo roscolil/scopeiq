@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Loader2,
   Mic,
+  Volume2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -84,6 +85,7 @@ export const AIActions = ({
   const [interimTranscript, setInterimTranscript] = useState<string>('')
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
 
@@ -820,6 +822,29 @@ export const AIActions = ({
       description: 'The text has been copied to your clipboard.',
     })
   }
+
+  // iOS-specific function to play response with user interaction
+  const playResponseWithUserGesture = useCallback(
+    async (text: string) => {
+      if (!text) return
+
+      try {
+        console.log('🍎 iOS user-initiated speech playback')
+        await speakWithStateTracking(text, {
+          voice: 'Ruth',
+          stopListeningAfter: false,
+        })
+      } catch (error) {
+        console.error('Error playing response:', error)
+        toast({
+          title: 'Playback Error',
+          description: 'Unable to play the response. Please try again.',
+          variant: 'destructive',
+        })
+      }
+    },
+    [speakWithStateTracking, toast],
+  )
 
   const toggleListening = useCallback(() => {
     const newListeningState = !isListening
@@ -1575,7 +1600,21 @@ export const AIActions = ({
                             {message.content}
                           </div>
                           {message.type === 'ai' && (
-                            <div className="flex justify-end mt-2">
+                            <div className="flex justify-end mt-2 gap-1">
+                              {/* iOS-specific Play Response button */}
+                              {isIOS && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-secondary/80 opacity-60 hover:opacity-100"
+                                  onClick={() =>
+                                    playResponseWithUserGesture(message.content)
+                                  }
+                                  title="Play Response (iOS)"
+                                >
+                                  <Volume2 className="h-3 w-3" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"

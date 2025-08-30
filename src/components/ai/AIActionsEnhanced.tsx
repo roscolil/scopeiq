@@ -21,6 +21,7 @@ import {
   Sparkles,
   Zap,
   Target,
+  Volume2,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -105,8 +106,10 @@ export const AIActionsEnhanced = ({
 
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
+  const [lastResponseText, setLastResponseText] = useState<string>('')
 
   // Mobile-only voice recognition
   const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
@@ -546,6 +549,9 @@ export const AIActionsEnhanced = ({
 
           // Provide enhanced voice feedback
           if (response.response && response.response.length > 0) {
+            setLastResponseText(response.response) // Save for iOS playback button
+
+            // Automatic playback (may fail on iOS due to user gesture requirement)
             setTimeout(() => {
               speakWithStateTracking(response.response, {
                 voice: 'Ruth',
@@ -650,21 +656,31 @@ export const AIActionsEnhanced = ({
       if (isMobile && mobileRecognitionRef.current) {
         try {
           // iOS Safari fix: Ensure we have user gesture and permissions
-          if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-            console.log('🍎 Starting iOS enhanced voice recognition with user gesture')
-            
+          if (
+            navigator.userAgent.includes('iPhone') ||
+            navigator.userAgent.includes('iPad')
+          ) {
+            console.log(
+              '🍎 Starting iOS enhanced voice recognition with user gesture',
+            )
+
             // Request microphone permission explicitly on iOS
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              navigator.mediaDevices.getUserMedia({ audio: true })
+              navigator.mediaDevices
+                .getUserMedia({ audio: true })
                 .then(() => {
                   console.log('🍎 iOS microphone permission granted (enhanced)')
                   mobileRecognitionRef.current?.start()
                 })
-                .catch((error) => {
-                  console.error('🍎 iOS microphone permission denied (enhanced):', error)
+                .catch(error => {
+                  console.error(
+                    '🍎 iOS microphone permission denied (enhanced):',
+                    error,
+                  )
                   toast({
                     title: 'Microphone Permission Required',
-                    description: 'Please allow microphone access in Safari settings to use enhanced voice input.',
+                    description:
+                      'Please allow microphone access in Safari settings to use enhanced voice input.',
                     variant: 'destructive',
                   })
                   setIsListening(false)
@@ -679,29 +695,32 @@ export const AIActionsEnhanced = ({
           }
         } catch (error) {
           console.error('Error starting enhanced mobile recognition:', error)
-          
+
           if (error instanceof DOMException) {
             if (error.name === 'NotAllowedError') {
               toast({
                 title: 'Microphone Permission Denied',
-                description: 'Please allow microphone access to use enhanced voice input.',
+                description:
+                  'Please allow microphone access to use enhanced voice input.',
                 variant: 'destructive',
               })
             } else if (error.name === 'NotSupportedError') {
               toast({
                 title: 'Enhanced Voice Recognition Not Supported',
-                description: 'Your browser does not support enhanced voice recognition.',
+                description:
+                  'Your browser does not support enhanced voice recognition.',
                 variant: 'destructive',
               })
             } else {
               toast({
                 title: 'Enhanced Voice Recognition Error',
-                description: 'Unable to start enhanced voice recognition. Please try again.',
+                description:
+                  'Unable to start enhanced voice recognition. Please try again.',
                 variant: 'destructive',
               })
             }
           }
-          
+
           setIsListening(false)
         }
       }
@@ -846,14 +865,16 @@ export const AIActionsEnhanced = ({
 
       if (SpeechRecognitionAPI) {
         const recognition = new SpeechRecognitionAPI()
-        
+
         // iOS Safari requires different settings for better compatibility
-        const isIOS = navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')
+        const isIOS =
+          navigator.userAgent.includes('iPhone') ||
+          navigator.userAgent.includes('iPad')
         if (isIOS) {
           console.log('🍎 Configuring enhanced mobile recognition for iOS')
-          recognition.continuous = false  // iOS works better with non-continuous mode
-          recognition.interimResults = false  // iOS Safari has issues with interim results
-          recognition.maxAlternatives = 1  // Keep it simple for iOS
+          recognition.continuous = false // iOS works better with non-continuous mode
+          recognition.interimResults = false // iOS Safari has issues with interim results
+          recognition.maxAlternatives = 1 // Keep it simple for iOS
         } else {
           recognition.continuous = false
           recognition.interimResults = true
@@ -880,9 +901,11 @@ export const AIActionsEnhanced = ({
           )
 
           setQuery(completeTranscript)
-          
+
           // iOS doesn't support interim results, so we handle both cases
-          const isIOS = navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')
+          const isIOS =
+            navigator.userAgent.includes('iPhone') ||
+            navigator.userAgent.includes('iPad')
           if (!isIOS) {
             setInterimTranscript(completeTranscript)
           }
@@ -947,6 +970,29 @@ export const AIActionsEnhanced = ({
       description: 'The enhanced text has been copied to your clipboard.',
     })
   }
+
+  // iOS-specific function to play response with user interaction
+  const playResponseWithUserGesture = useCallback(
+    async (text: string) => {
+      if (!text) return
+
+      try {
+        console.log('🍎 iOS user-initiated speech playback')
+        await speakWithStateTracking(text, {
+          voice: 'Ruth',
+          stopListeningAfter: false,
+        })
+      } catch (error) {
+        console.error('Error playing response:', error)
+        toast({
+          title: 'Playback Error',
+          description: 'Unable to play the response. Please try again.',
+          variant: 'destructive',
+        })
+      }
+    },
+    [speakWithStateTracking, toast],
+  )
 
   // Stop voice input when voice output is playing
   useEffect(() => {
@@ -1542,7 +1588,21 @@ export const AIActionsEnhanced = ({
                             )}
 
                           {message.type === 'ai' && (
-                            <div className="flex justify-end mt-2">
+                            <div className="flex justify-end mt-2 gap-1">
+                              {/* iOS-specific Play Response button */}
+                              {isIOS && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-secondary/80 opacity-60 hover:opacity-100"
+                                  onClick={() =>
+                                    playResponseWithUserGesture(message.content)
+                                  }
+                                  title="Play Response (iOS)"
+                                >
+                                  <Volume2 className="h-3 w-3" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
