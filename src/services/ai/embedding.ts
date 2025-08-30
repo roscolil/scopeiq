@@ -18,6 +18,7 @@ import {
   processConstructionDocumentEmbedding,
   searchConstructionDocument,
 } from './construction-embedding'
+import { broadcastProcessingMessage } from '../utils/processing-messages'
 
 // Re-export the type for external use
 export type { CommonContentType } from './pinecone'
@@ -302,6 +303,13 @@ export async function upsertDocumentEmbedding({
   // Sanitize the document ID for Pinecone compatibility
   const sanitizedId = sanitizeDocumentId(documentId)
 
+  // Clear previous messages for this document and start fresh
+  broadcastProcessingMessage.startProcessing(
+    `Starting embedding generation for ${metadata?.name || 'document'}`,
+    documentId,
+    projectId,
+  )
+
   // Chunk the content properly (1000 chars per chunk with 200 char overlap)
   const chunkSize = 1000
   const chunkOverlap = 200
@@ -314,6 +322,12 @@ export async function upsertDocumentEmbedding({
       chunks.push(chunk.trim())
     }
   }
+
+  broadcastProcessingMessage.info(
+    `Created ${chunks.length} chunks for processing`,
+    documentId,
+    projectId,
+  )
 
   // Store the full document as one chunk (for comprehensive search)
   const fullDocumentId = `${sanitizedId}_full`
@@ -340,8 +354,20 @@ export async function upsertDocumentEmbedding({
   ]
 
   // Process regular chunks
+  const totalBatches = Math.ceil(chunks.length / batchSize)
+
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batchChunks = chunks.slice(i, i + batchSize)
+    const currentBatch = Math.floor(i / batchSize) + 1
+
+    // Broadcast batch progress
+    broadcastProcessingMessage.batchProgress(
+      currentBatch,
+      totalBatches,
+      batchChunks.length,
+      documentId,
+      projectId,
+    )
 
     for (let j = 0; j < batchChunks.length; j++) {
       const chunk = batchChunks[j]
@@ -370,6 +396,13 @@ export async function upsertDocumentEmbedding({
 
   // Upsert all embeddings
   await upsertEmbeddings(projectId, allIds, allEmbeddings, allMetadata)
+
+  // Broadcast completion message
+  broadcastProcessingMessage.success(
+    `Successfully processed ${chunks.length} chunks for ${metadata?.name || 'document'}`,
+    documentId,
+    projectId,
+  )
 }
 
 export async function semanticSearch({

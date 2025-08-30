@@ -29,6 +29,7 @@ import {
   Download,
   Trash2,
   Loader2,
+  RotateCcw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -39,11 +40,19 @@ import {
 import { Document } from '@/types'
 import { routes } from '@/utils/ui/navigation'
 import { cn } from '@/lib/utils'
+import { processEmbeddingOnly } from '@/services/ai/embedding'
+import { documentService } from '@/services/data/hybrid'
+import { useToast } from '@/hooks/use-toast'
+import {
+  processingMessageBroadcaster,
+  type ProcessingMessage,
+} from '@/services/utils/processing-messages'
 
 interface DocumentListProps {
   documents: Document[]
   onDelete?: (documentId: string) => void | Promise<void>
   onCancelProcessing?: (documentId: string) => void
+  onRetryProcessing?: (documentId: string) => void | Promise<void>
   projectId: string
   companyId: string
   projectName?: string
@@ -53,46 +62,45 @@ export const DocumentList = ({
   documents,
   onDelete,
   onCancelProcessing,
+  onRetryProcessing,
   projectId,
   companyId,
   projectName,
 }: DocumentListProps) => {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [, forceUpdate] = React.useState(0)
-  const [consoleMessages, setConsoleMessages] = React.useState<string[]>([])
+  const [processingMessages, setProcessingMessages] = React.useState<
+    ProcessingMessage[]
+  >([])
 
-  // Capture console logs in real-time
+  // Subscribe to processing messages
   React.useEffect(() => {
-    const originalConsoleLog = console.log
-
-    console.log = (...args: unknown[]) => {
-      const message = String(args.join(' '))
-
-      // Add any processing-related message to our list
-      if (
-        message.includes('PDF') ||
-        message.includes('embedding') ||
-        message.includes('extraction') ||
-        message.includes('processing') ||
-        message.includes('OCR') ||
-        message.includes('Text length') ||
-        message.includes('Successfully')
-      ) {
-        setConsoleMessages(prev => [...prev.slice(-4), message]) // Keep last 5 messages
+    const unsubscribe = processingMessageBroadcaster.subscribe(message => {
+      // Only show messages for documents in this project
+      if (!message.projectId || message.projectId === projectId) {
+        setProcessingMessages(prev => {
+          const newMessages = [...prev, message]
+          // Keep only the last 10 messages
+          return newMessages.slice(-10)
+        })
       }
+    })
 
-      // Call original console.log
-      originalConsoleLog.apply(console, args)
-    }
+    // Load recent messages for this project on mount
+    const recentMessages = processingMessageBroadcaster.getRecentMessages(
+      undefined,
+      projectId,
+      5,
+    )
+    setProcessingMessages(recentMessages)
 
-    return () => {
-      console.log = originalConsoleLog
-    }
-  }, [])
+    return unsubscribe
+  }, [projectId])
 
   const getFileIcon = (type: string) => {
     if (type.includes('pdf')) {
@@ -140,6 +148,117 @@ export const DocumentList = ({
       documentName,
     )
     navigate(route)
+  }
+
+  const retryProcessing = async (document: Document) => {
+    if (!document.content) {
+      toast({
+        title: 'Cannot retry processing',
+        description:
+          'Document content is not available. Please re-upload the file.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      toast({
+        title: 'Retrying processing',
+        description: `Processing ${document.name}...`,
+      })
+
+      // Update document status to processing
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processing',
+      })
+
+      // Call the retry callback if provided
+      if (onRetryProcessing) {
+        await onRetryProcessing(document.id)
+      }
+
+      // Retry the embedding process
+      await processEmbeddingOnly(document.content, projectId, document.id, {
+        name: document.name,
+        type: document.type,
+        size: document.size,
+      })
+
+      // Update document status to processed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processed',
+      })
+
+      toast({
+        title: 'Processing completed',
+        description: `${document.name} has been successfully processed.`,
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    } catch (error) {
+      console.error('Error retrying document processing:', error)
+
+      // Update document status back to failed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'failed',
+      })
+
+      toast({
+        title: 'Processing failed again',
+        description:
+          'The document processing failed. Please check the document and try again.',
+        variant: 'destructive',
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    }
+  }
+
+  const getProcessingInfo = (document: Document) => {
+    // Find the most recent processing message for this document
+    const relevantMessage = processingMessages
+      .slice() // Create a copy to avoid mutating
+      .reverse() // Get most recent first
+      .find(
+        msg =>
+          msg.documentId === document.id ||
+          (msg.type === 'progress' &&
+            (msg.message.includes('chunk batch') ||
+              msg.message.includes('Created') ||
+              msg.message.includes('Processing'))),
+      )
+
+    if (relevantMessage) {
+      // Extract batch information if available
+      if (relevantMessage.details?.batchInfo) {
+        const { current, total } = relevantMessage.details.batchInfo
+        return `Processing batch ${current} of ${total}`
+      }
+
+      // Return the message, truncated if needed
+      return relevantMessage.message.length > 50
+        ? relevantMessage.message.substring(0, 50) + '...'
+        : relevantMessage.message
+    }
+
+    return 'Processing document...'
+  }
+
+  const getProcessingProgress = (document: Document) => {
+    // Find the most recent progress message for this document
+    const progressMessage = processingMessages
+      .slice()
+      .reverse()
+      .find(
+        msg =>
+          msg.documentId === document.id &&
+          msg.type === 'progress' &&
+          msg.details?.progress !== undefined,
+      )
+
+    return progressMessage?.details?.progress
   }
 
   const downloadDocument = async (document: Document) => {
@@ -291,6 +410,15 @@ export const DocumentList = ({
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </DropdownMenuItem>
+                      {doc.status === 'failed' && (
+                        <DropdownMenuItem
+                          onClick={() => retryProcessing(doc)}
+                          className="text-amber-600 hover:text-amber-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Retry Processing
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => downloadDocument(doc)}>
                         <Download className="h-4 w-4 mr-2" />
                         Download
@@ -311,15 +439,30 @@ export const DocumentList = ({
                 <div className="flex items-center gap-2">
                   {getStatusBadge(doc.status)}
                   {doc.status === 'processing' && (
-                    <div className="text-xs text-amber-700 flex items-center gap-2 font-medium">
+                    <div className="text-xs text-amber-700 flex ml-2 items-center gap-2 font-medium">
                       <div className="flex space-x-1">
                         <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                       </div>
-                      <span className="ml-1 max-w-xs truncate">
-                        {consoleMessages.length > 0
-                          ? consoleMessages[consoleMessages.length - 1]
-                          : 'Processing document...'}
-                      </span>
+                      <div className="flex items-center gap-2 max-w-xs">
+                        <span className="truncate">
+                          {getProcessingInfo(doc)}
+                        </span>
+                        {getProcessingProgress(doc) !== undefined && (
+                          <div className="flex items-center gap-1 ml-1">
+                            <div className="w-16 h-1 bg-amber-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-amber-500 transition-all duration-300"
+                                style={{
+                                  width: `${getProcessingProgress(doc)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-amber-600">
+                              {getProcessingProgress(doc)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
