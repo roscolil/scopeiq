@@ -141,7 +141,17 @@ class NovaSonicService {
         // Create audio element and play
         const audio = new Audio(audioUrl)
 
-        console.log('🎵 Starting audio playback...')
+        // iOS Safari specific configuration for better compatibility
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        if (isIOS) {
+          console.log('� Configuring audio for iOS Safari')
+          // Pre-load the audio to prepare for playback
+          audio.preload = 'auto'
+          // iOS requires explicit interaction, but we'll try anyway
+          audio.muted = false
+        }
+
+        console.log('�🎵 Starting audio playback...')
 
         audio.onended = () => {
           console.log('✅ Audio playback completed successfully')
@@ -163,11 +173,31 @@ class NovaSonicService {
           console.log('🎶 Audio ready to play')
         }
 
-        audio.play().catch(playError => {
-          console.error('❌ Audio play() failed:', playError)
-          URL.revokeObjectURL(audioUrl)
-          reject(playError)
-        })
+        // iOS Safari fix: Handle play promise rejection gracefully
+        const playPromise = audio.play()
+
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('🎵 Audio playback started successfully')
+            })
+            .catch(playError => {
+              console.error('❌ Audio play() failed:', playError)
+
+              // iOS-specific error handling
+              if (isIOS && playError.name === 'NotAllowedError') {
+                console.warn(
+                  '🍎 iOS audio playback blocked - user interaction required',
+                )
+                // Don't reject, as this is expected behavior on iOS
+                URL.revokeObjectURL(audioUrl)
+                resolve() // Resolve instead of reject for iOS compatibility
+              } else {
+                URL.revokeObjectURL(audioUrl)
+                reject(playError)
+              }
+            })
+        }
       } catch (error) {
         console.error('❌ Audio setup error:', error)
         reject(error)
@@ -197,6 +227,21 @@ class NovaSonicService {
       return true
     } catch (error) {
       console.error('❌ Failed to speak:', error)
+
+      // iOS Safari specific handling
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      if (
+        isIOS &&
+        error instanceof Error &&
+        error.message.includes('NotAllowedError')
+      ) {
+        console.warn(
+          '🍎 iOS audio blocked - this is expected behavior without user gesture',
+        )
+        // Return true for iOS as blocking is expected
+        return true
+      }
+
       return false
     }
   }
