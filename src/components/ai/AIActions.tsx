@@ -872,8 +872,17 @@ export const AIActions = ({
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
               navigator.mediaDevices
                 .getUserMedia({ audio: true })
-                .then(() => {
+                .then(async () => {
                   console.log('🍎 iOS microphone permission granted')
+
+                  // Unlock audio for automatic speech responses
+                  try {
+                    await novaSonic.unlockAudio()
+                    console.log('🍎 Audio unlocked for automatic responses')
+                  } catch (error) {
+                    console.warn('🍎 Could not unlock audio:', error)
+                  }
+
                   mobileRecognitionRef.current?.start()
                 })
                 .catch(error => {

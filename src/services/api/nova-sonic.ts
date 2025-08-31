@@ -30,6 +30,7 @@ interface NovaSonicResponse {
 
 class NovaSonicService {
   private client: PollyClient | null = null
+  private audioContextUnlocked: boolean = false
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -40,6 +41,7 @@ class NovaSonicService {
 
   constructor() {
     this.initializeClient()
+    this.setupAudioContextUnlocking()
   }
 
   private initializeClient() {
@@ -60,10 +62,88 @@ class NovaSonicService {
   }
 
   /**
+   * Setup audio context unlocking for iOS Safari
+   */
+  private setupAudioContextUnlocking() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (!isIOS) {
+      this.audioContextUnlocked = true
+      return
+    }
+
+    // Function to unlock audio context with a silent audio play
+    const unlockAudioContext = async () => {
+      if (this.audioContextUnlocked) return
+
+      try {
+        // Create a silent audio buffer and play it
+        const silentAudio = new Audio()
+        silentAudio.src =
+          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
+        silentAudio.volume = 0
+
+        // Play the silent audio to unlock the context
+        const playPromise = silentAudio.play()
+        if (playPromise) {
+          await playPromise
+          console.log('🍎 Audio context unlocked with silent audio')
+          this.audioContextUnlocked = true
+
+          // Remove event listeners after successful unlock
+          document.removeEventListener('touchstart', unlockAudioContext)
+          document.removeEventListener('touchend', unlockAudioContext)
+          document.removeEventListener('click', unlockAudioContext)
+        }
+      } catch (error) {
+        console.warn('🍎 Failed to unlock audio context:', error)
+      }
+    }
+
+    // Listen for user interactions to unlock audio context
+    document.addEventListener('touchstart', unlockAudioContext, {
+      passive: true,
+    })
+    document.addEventListener('touchend', unlockAudioContext, { passive: true })
+    document.addEventListener('click', unlockAudioContext, { passive: true })
+  }
+
+  /**
    * Check if the service is available
    */
   isAvailable(): boolean {
     return this.client !== null
+  }
+
+  /**
+   * Check if audio context is unlocked for automatic playback (iOS)
+   */
+  isAudioUnlocked(): boolean {
+    return this.audioContextUnlocked
+  }
+
+  /**
+   * Manually unlock audio context (useful for iOS)
+   */
+  async unlockAudio(): Promise<boolean> {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (!isIOS || this.audioContextUnlocked) {
+      return true
+    }
+
+    try {
+      const silentAudio = new Audio()
+      silentAudio.src =
+        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
+      silentAudio.volume = 0
+
+      await silentAudio.play()
+      this.audioContextUnlocked = true
+      console.log('🍎 Audio manually unlocked for automatic playback')
+      return true
+    } catch (error) {
+      console.warn('🍎 Failed to manually unlock audio:', error)
+      return false
+    }
   }
 
   /**
@@ -144,11 +224,21 @@ class NovaSonicService {
         // iOS Safari specific configuration for better compatibility
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
         if (isIOS) {
-          console.log('� Configuring audio for iOS Safari')
+          console.log('🍎 Configuring audio for iOS Safari')
           // Pre-load the audio to prepare for playback
           audio.preload = 'auto'
-          // iOS requires explicit interaction, but we'll try anyway
           audio.muted = false
+
+          // Check if audio context is unlocked for automatic playback
+          if (this.audioContextUnlocked) {
+            console.log(
+              '🍎 Audio context is unlocked - automatic playback enabled',
+            )
+          } else {
+            console.log(
+              '🍎 Audio context not unlocked - attempting playback anyway',
+            )
+          }
         }
 
         console.log('�🎵 Starting audio playback...')
@@ -186,12 +276,18 @@ class NovaSonicService {
 
               // iOS-specific error handling
               if (isIOS && playError.name === 'NotAllowedError') {
-                console.warn(
-                  '🍎 iOS audio playback blocked - user interaction required',
-                )
-                // Don't reject, as this is expected behavior on iOS
+                if (this.audioContextUnlocked) {
+                  console.warn(
+                    '🍎 Unexpected: audio blocked despite unlocked context',
+                  )
+                } else {
+                  console.warn(
+                    '🍎 iOS audio playback blocked - user interaction required',
+                  )
+                }
+                // Don't reject for iOS NotAllowedError - this is expected
                 URL.revokeObjectURL(audioUrl)
-                resolve() // Resolve instead of reject for iOS compatibility
+                resolve()
               } else {
                 URL.revokeObjectURL(audioUrl)
                 reject(playError)
