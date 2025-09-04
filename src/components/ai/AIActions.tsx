@@ -504,7 +504,7 @@ export const AIActions = ({
           } = {
             projectId: projectId,
             query: queryToUse,
-            topK: 3,
+            topK: 50, // Increased to capture more chunks - construction docs have many small chunks
           }
 
           // Only add documentId filter for document-specific queries if we have a valid document

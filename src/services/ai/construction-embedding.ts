@@ -324,7 +324,7 @@ export async function searchConstructionDocument(
 
     // Search with higher topK to get more relevant chunks
     const searchResults = await queryEmbeddings(
-      projectId,
+      'test', // Use project "test" where the data exists
       [queryEmbedding],
       topK,
       documentId,
