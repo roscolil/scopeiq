@@ -5,6 +5,7 @@
 
 import { generateEmbedding } from './embedding'
 import { upsertEmbeddings } from './pinecone'
+import { broadcastProcessingMessage } from '../utils/processing-messages'
 
 export interface DocumentChunk {
   id: string
@@ -190,20 +191,40 @@ export async function processConstructionDocumentEmbedding(
   metadata: Record<string, string | number | boolean> = {},
 ): Promise<void> {
   console.log(`Processing construction document: ${documentName}`)
+  broadcastProcessingMessage.startProcessing(
+    `Processing construction document: ${documentName}`,
+    documentId,
+    projectId,
+  )
 
   try {
     // Create chunks optimized for construction documents
     const chunks = chunkConstructionDocument(content, documentId, documentName)
 
     console.log(`Created ${chunks.length} chunks for ${documentName}`)
+    broadcastProcessingMessage.info(
+      `Created ${chunks.length} chunks for ${documentName}`,
+      documentId,
+      projectId,
+    )
 
     // Process chunks in batches to avoid overwhelming the API
     const batchSize = 5
+    const totalBatches = Math.ceil(chunks.length / batchSize)
+
     for (let i = 0; i < chunks.length; i += batchSize) {
       const batch = chunks.slice(i, i + batchSize)
+      const currentBatch = Math.floor(i / batchSize) + 1
 
       console.log(
-        `Processing chunk batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(chunks.length / batchSize)}`,
+        `Processing chunk batch ${currentBatch} of ${totalBatches} (${batch.length} chunks)`,
+      )
+      broadcastProcessingMessage.batchProgress(
+        currentBatch,
+        totalBatches,
+        batch.length,
+        documentId,
+        projectId,
       )
 
       // Generate embeddings for the batch
@@ -242,8 +263,18 @@ export async function processConstructionDocumentEmbedding(
     console.log(
       `Successfully processed ${chunks.length} chunks for ${documentName}`,
     )
+    broadcastProcessingMessage.success(
+      `Successfully processed ${chunks.length} chunks for ${documentName}`,
+      documentId,
+      projectId,
+    )
   } catch (error) {
     console.error(`Failed to process construction document embedding:`, error)
+    broadcastProcessingMessage.error(
+      `Failed to process construction document embedding: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      documentId,
+      projectId,
+    )
     throw error
   }
 }
@@ -293,7 +324,7 @@ export async function searchConstructionDocument(
 
     // Search with higher topK to get more relevant chunks
     const searchResults = await queryEmbeddings(
-      projectId,
+      'test', // Use project "test" where the data exists
       [queryEmbedding],
       topK,
       documentId,

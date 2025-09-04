@@ -37,6 +37,7 @@ interface FileUploadItem {
   status: 'pending' | 'uploading' | 'completed' | 'failed'
   progress: number
   error?: string
+  processingMessage?: string
 }
 
 export const FileUploader = (props: FileUploaderProps) => {
@@ -48,7 +49,55 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [progressHistory, setProgressHistory] = useState<
     Array<{ time: number; progress: number }>
   >([])
+  const [processingMessages, setProcessingMessages] = useState<
+    Record<string, string>
+  >({})
   const { toast } = useToast()
+
+  // Capture console logs for processing progress
+  React.useEffect(() => {
+    const originalConsoleLog = console.log
+
+    console.log = (...args: unknown[]) => {
+      const message = String(args.join(' '))
+
+      // Capture processing messages
+      if (
+        message.includes('Processing chunk batch') ||
+        message.includes('Created') ||
+        message.includes('chunks') ||
+        message.includes('embedding') ||
+        message.includes('processing')
+      ) {
+        // Try to find which file this message is for
+        const currentUploadingFile = selectedFiles.find(
+          f => f.status === 'uploading',
+        )
+        if (currentUploadingFile) {
+          setProcessingMessages(prev => ({
+            ...prev,
+            [currentUploadingFile.id]: message,
+          }))
+
+          // Update the file item with the processing message
+          setSelectedFiles(prev =>
+            prev.map(file =>
+              file.id === currentUploadingFile.id
+                ? { ...file, processingMessage: message }
+                : file,
+            ),
+          )
+        }
+      }
+
+      // Call original console.log
+      originalConsoleLog.apply(console, args)
+    }
+
+    return () => {
+      console.log = originalConsoleLog
+    }
+  }, [selectedFiles])
 
   const validateFile = (file: File): { valid: boolean; error?: string } => {
     const allowedTypes = [
@@ -682,6 +731,25 @@ export const FileUploader = (props: FileUploaderProps) => {
                         <span>Uploading to secure storage</span>
                       </>
                     )}
+                    {fileItem.status === 'uploading' &&
+                      fileItem.processingMessage && (
+                        <>
+                          <span>•</span>
+                          <span className="text-amber-600 font-medium">
+                            {fileItem.processingMessage.includes(
+                              'Processing chunk batch',
+                            )
+                              ? fileItem.processingMessage.replace(
+                                  'Processing chunk batch ',
+                                  'Batch ',
+                                )
+                              : fileItem.processingMessage.length > 40
+                                ? fileItem.processingMessage.substring(0, 40) +
+                                  '...'
+                                : fileItem.processingMessage}
+                          </span>
+                        </>
+                      )}
                     {fileItem.status === 'failed' && fileItem.error && (
                       <div className="flex items-start gap-1 mt-1">
                         <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />

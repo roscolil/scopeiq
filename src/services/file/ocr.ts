@@ -1,5 +1,6 @@
 import Tesseract from 'tesseract.js'
 import * as pdfjs from 'pdfjs-dist'
+import { broadcastProcessingMessage } from '../utils/processing-messages'
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
@@ -128,6 +129,9 @@ export class EnhancedOCRService {
       console.log(
         `Text length: ${totalText.length}, Has images: ${hasImages}, Has text: ${hasText}`,
       )
+      broadcastProcessingMessage.info(
+        `PDF.js extraction completed. Text length: ${totalText.length}, Has images: ${hasImages}, Has text: ${hasText}`,
+      )
 
       return {
         text: totalText,
@@ -174,6 +178,10 @@ export class EnhancedOCRService {
 
       for (let i = 1; i <= pdf.numPages; i++) {
         console.log(`Processing page ${i}/${pdf.numPages} with OCR...`)
+        broadcastProcessingMessage.progress(
+          `Processing page ${i}/${pdf.numPages} with OCR...`,
+          Math.round((i / pdf.numPages) * 100),
+        )
 
         try {
           const page = await pdf.getPage(i)
@@ -211,6 +219,10 @@ export class EnhancedOCRService {
           console.log(
             `Page ${i} OCR completed. Confidence: ${data.confidence.toFixed(1)}%`,
           )
+          broadcastProcessingMessage.progress(
+            `Page ${i} OCR completed. Confidence: ${data.confidence.toFixed(1)}%`,
+            Math.round((i / pdf.numPages) * 100),
+          )
         } catch (pageError) {
           console.warn(`OCR failed for page ${i}:`, pageError)
         }
@@ -220,6 +232,9 @@ export class EnhancedOCRService {
 
       console.log(`OCR extraction completed in ${Date.now() - startTime}ms`)
       console.log(`Average confidence: ${avgConfidence.toFixed(1)}%`)
+      broadcastProcessingMessage.success(
+        `OCR extraction completed in ${Date.now() - startTime}ms with ${avgConfidence.toFixed(1)}% confidence`,
+      )
 
       return {
         text: totalText,

@@ -5,6 +5,7 @@
 
 import { upsertDocumentEmbedding } from '../ai/embedding'
 import { documentService } from '../data/hybrid'
+import { broadcastProcessingMessage } from './processing-messages'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import {
   getAWSCredentialsSafe,
@@ -115,6 +116,11 @@ export async function processDocumentEmbedding(
       'Starting background embedding processing for document:',
       documentId,
     )
+    broadcastProcessingMessage.startProcessing(
+      `Starting background embedding processing for document: ${metadata.name}`,
+      documentId,
+      projectId,
+    )
 
     // Try to update document status to 'processing', but don't fail if it doesn't work
     try {
@@ -161,15 +167,30 @@ export async function processDocumentEmbedding(
         'Successfully processed embedding and updated status for document:',
         documentId,
       )
+      broadcastProcessingMessage.success(
+        `Successfully processed embedding for ${metadata.name}`,
+        documentId,
+        projectId,
+      )
     } catch (statusError) {
       console.warn(
         'Embedding processed but could not update document status:',
         statusError,
       )
       console.log('Successfully processed embedding for document:', documentId)
+      broadcastProcessingMessage.success(
+        `Successfully processed embedding for ${metadata.name} (status update failed)`,
+        documentId,
+        projectId,
+      )
     }
   } catch (error) {
     console.error('Background embedding processing failed:', error)
+    broadcastProcessingMessage.error(
+      `Background embedding processing failed for ${metadata.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      documentId,
+      projectId,
+    )
 
     // Try to update document status to 'failed', but don't throw if it doesn't work
     try {

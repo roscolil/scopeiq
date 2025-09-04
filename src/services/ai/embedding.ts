@@ -18,6 +18,7 @@ import {
   processConstructionDocumentEmbedding,
   searchConstructionDocument,
 } from './construction-embedding'
+import { broadcastProcessingMessage } from '../utils/processing-messages'
 
 // Re-export the type for external use
 export type { CommonContentType } from './pinecone'
@@ -183,45 +184,14 @@ export async function processEmbeddingOnly(
     // Sanitize the document ID for Pinecone compatibility
     const sanitizedId = sanitizeDocumentId(documentId)
 
-    // Check if this is a construction document that would benefit from chunking
-    const isConstructionDoc = isConstructionDocument(
+    // Always process as construction document for better chunking and search precision
+    await processConstructionDocumentEmbedding(
       content,
-      String(metadata.name || ''),
+      projectId,
+      sanitizedId,
+      String(metadata.name || documentId),
+      metadata,
     )
-
-    if (isConstructionDoc) {
-      await processConstructionDocumentEmbedding(
-        content,
-        projectId,
-        sanitizedId,
-        String(metadata.name || documentId),
-        metadata,
-      )
-    } else {
-      const embedding = await generateEmbedding(content)
-
-      // Truncate content for metadata to avoid size limits
-      const truncatedContent =
-        content.length > 1000
-          ? content.substring(0, 1000) + '...[truncated]'
-          : content
-
-      // Store the embedding in Pinecone
-      await upsertEmbeddings(
-        projectId,
-        [sanitizedId],
-        [embedding],
-        [
-          {
-            ...metadata,
-            content: truncatedContent,
-            id: sanitizedId,
-            originalId: documentId,
-            document_id: documentId, // Add this field for Pinecone filtering
-          },
-        ],
-      )
-    }
   } catch (error) {
     console.error('Failed to process embedding:', error)
     throw error
@@ -244,6 +214,16 @@ function isConstructionDocument(content: string, filename: string): boolean {
     'architectural',
     'construction',
     'building',
+    'boq',
+    'bill of quantities',
+    'quantities',
+    'tender',
+    'estimate',
+    'materials',
+    'oven',
+    'kitchen',
+    'appliance',
+    'miele',
   ]
 
   const constructionPatterns = [
@@ -254,6 +234,11 @@ function isConstructionDocument(content: string, filename: string): boolean {
     /architectural.*plan/gi,
     /construction.*document/gi,
     /building.*specification/gi,
+    /bill.*of.*quantities/gi,
+    /boq/gi,
+    /quantities.*schedule/gi,
+    /material.*list/gi,
+    /tender.*document/gi,
   ]
 
   // Check filename
@@ -302,6 +287,13 @@ export async function upsertDocumentEmbedding({
   // Sanitize the document ID for Pinecone compatibility
   const sanitizedId = sanitizeDocumentId(documentId)
 
+  // Clear previous messages for this document and start fresh
+  broadcastProcessingMessage.startProcessing(
+    `Starting embedding generation for ${metadata?.name || 'document'}`,
+    documentId,
+    projectId,
+  )
+
   // Chunk the content properly (1000 chars per chunk with 200 char overlap)
   const chunkSize = 1000
   const chunkOverlap = 200
@@ -314,6 +306,12 @@ export async function upsertDocumentEmbedding({
       chunks.push(chunk.trim())
     }
   }
+
+  broadcastProcessingMessage.info(
+    `Created ${chunks.length} chunks for processing`,
+    documentId,
+    projectId,
+  )
 
   // Store the full document as one chunk (for comprehensive search)
   const fullDocumentId = `${sanitizedId}_full`
@@ -340,8 +338,20 @@ export async function upsertDocumentEmbedding({
   ]
 
   // Process regular chunks
+  const totalBatches = Math.ceil(chunks.length / batchSize)
+
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batchChunks = chunks.slice(i, i + batchSize)
+    const currentBatch = Math.floor(i / batchSize) + 1
+
+    // Broadcast batch progress
+    broadcastProcessingMessage.batchProgress(
+      currentBatch,
+      totalBatches,
+      batchChunks.length,
+      documentId,
+      projectId,
+    )
 
     for (let j = 0; j < batchChunks.length; j++) {
       const chunk = batchChunks[j]
@@ -370,6 +380,13 @@ export async function upsertDocumentEmbedding({
 
   // Upsert all embeddings
   await upsertEmbeddings(projectId, allIds, allEmbeddings, allMetadata)
+
+  // Broadcast completion message
+  broadcastProcessingMessage.success(
+    `Successfully processed ${chunks.length} chunks for ${metadata?.name || 'document'}`,
+    documentId,
+    projectId,
+  )
 }
 
 export async function semanticSearch({
@@ -388,42 +405,33 @@ export async function semanticSearch({
   // Ensure topK is a valid integer
   const validTopK = Math.max(1, Math.floor(Number(topK) || 10))
 
-  // Check if this looks like a construction-related query
-  const isConstructionQuery = isConstructionRelatedQuery(query)
+  // Always use construction search since all queries are construction-related
+  try {
+    const result = await searchConstructionDocument(projectId, query, {
+      documentId,
+      topK: validTopK,
+      chunkTypes: getRelevantChunkTypes(query),
+      requireNumbers: /\d/.test(query),
+      requireMeasurements:
+        /\d+['"'-]\s*\d*\s*\d*['"/]?|\d+\.\d+\s*(mm|cm|m|ft|in|inch)/gi.test(
+          query,
+        ),
+    })
 
-  if (isConstructionQuery) {
-    try {
-      const result = await searchConstructionDocument(projectId, query, {
-        documentId,
-        topK: validTopK,
-        chunkTypes: getRelevantChunkTypes(query),
-        requireNumbers: /\d/.test(query),
-        requireMeasurements:
-          /\d+['"'-]\s*\d*\s*\d*['"/]?|\d+\.\d+\s*(mm|cm|m|ft|in|inch)/gi.test(
-            query,
-          ),
-      })
-
-      // Transform to match expected format
-      return {
-        ids: [result.results.map(r => r.id)],
-        documents: [result.results.map(r => r.content)],
-        metadatas: [result.results.map(r => r.metadata)],
-        distances: [result.results.map(r => r.distance)],
-        summary: result.summary,
-        confidence: result.confidence,
-      }
-    } catch (constructionSearchError) {
-      console.warn(
-        'Construction search failed, falling back to standard search:',
-        constructionSearchError,
-      )
-      // Fall back to standard search
+    // Transform to match expected format
+    return {
+      ids: [result.results.map(r => r.id)],
+      documents: [result.results.map(r => r.content)],
+      metadatas: [result.results.map(r => r.metadata)],
+      distances: [result.results.map(r => r.distance)],
+      summary: result.summary,
+      confidence: result.confidence,
     }
+  } catch (constructionSearchError) {
+    console.error('Construction search failed:', constructionSearchError)
+    // Fall back to standard search if construction search fails
+    return await queryEmbeddings(projectId, [embedding], validTopK, documentId)
   }
-
-  // Standard search
-  return await queryEmbeddings(projectId, [embedding], validTopK, documentId)
 }
 
 /**
@@ -449,6 +457,13 @@ function isConstructionRelatedQuery(query: string): boolean {
     'dimension',
     'scale',
     'hardware',
+    'miele',
+    'oven',
+    'appliance',
+    'kitchen',
+    'equipment',
+    'apartment',
+    'floor',
   ]
 
   return constructionTerms.some(term =>
@@ -474,9 +489,19 @@ function getRelevantChunkTypes(query: string): string[] {
     chunkTypes.push('header')
   }
 
-  // If no specific types found, include all
+  // If no specific types found, include all common types including 'chunk'
   if (chunkTypes.length === 0) {
-    chunkTypes.push('schedule', 'specification', 'table', 'general')
+    chunkTypes.push(
+      'schedule',
+      'specification',
+      'table',
+      'general',
+      'content',
+      'text',
+      'description',
+      'item',
+      'chunk',
+    )
   }
 
   return chunkTypes
