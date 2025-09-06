@@ -29,7 +29,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { Project, Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
-import { AIActions } from '@/components/ai/AIActions'
+import { AIActionsPython as AIActions } from '@/components/ai/AIActionsPython'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ProjectSelector } from '@/components/projects/ProjectSelector'
 import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'

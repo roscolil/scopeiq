@@ -205,12 +205,41 @@ export const databaseDocumentService = {
     updates: Partial<Omit<DatabaseDocument, 'id' | 'createdAt'>>,
   ): Promise<DatabaseDocument | null> {
     try {
-      // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
-      // @ts-expect-error - Known issue with Amplify codegen, expecting string[] instead of string
-      const { data: document, errors } = await client.models.Document.update({
+      // First, get the current document to ensure it exists and we have the latest version
+      const currentDocument = await this.getDocument(documentId)
+      if (!currentDocument) {
+        console.error('DB: Document not found for update:', documentId)
+        return null
+      }
+
+      // Prepare the update data with proper type handling
+      const updateData: any = {
         id: documentId,
-        ...updates,
-      })
+      }
+
+      // Only include fields that are being updated and are not undefined
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.type !== undefined) updateData.type = updates.type
+      if (updates.size !== undefined) updateData.size = updates.size
+      if (updates.status !== undefined) updateData.status = updates.status
+      if (updates.s3Key !== undefined) updateData.s3Key = updates.s3Key
+      if (updates.s3Url !== undefined) updateData.s3Url = updates.s3Url
+      if (updates.thumbnailS3Key !== undefined)
+        updateData.thumbnailS3Key = updates.thumbnailS3Key
+      if (updates.thumbnailUrl !== undefined)
+        updateData.thumbnailUrl = updates.thumbnailUrl
+      if (updates.projectId !== undefined)
+        updateData.projectId = updates.projectId
+      if (updates.mimeType !== undefined) updateData.mimeType = updates.mimeType
+      if (updates.content !== undefined) updateData.content = updates.content
+      if (updates.tags !== undefined) updateData.tags = updates.tags
+
+      // Add updatedAt timestamp
+      updateData.updatedAt = new Date().toISOString()
+
+      // Perform the update
+      const { data: document, errors } =
+        await client.models.Document.update(updateData)
 
       if (errors) {
         console.error('DB: Error updating document:', errors)
