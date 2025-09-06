@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
-import { AIActions } from '@/components/ai/AIActions'
+import { AIActionsPython as AIActions } from '@/components/ai/AIActionsPython'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/data/hybrid'
 import {

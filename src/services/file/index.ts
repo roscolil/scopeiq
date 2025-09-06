@@ -1,13 +1,18 @@
-// File Services - Upload, processing, and extraction
+/**
+ * File Services Index
+ * Centralized exports for all file services
+ */
 
-// Core file services
+// Existing services
 export * from './documentUpload'
+export * from './image-processing'
 export * from './ocr'
 
-// Image and PDF processing
-export * from './image-processing'
-export * from './pdf-image-extraction'
+// Python backend services
+export * from './python-document-upload'
 
-// Default exports for common usage
-export { uploadDocumentToS3 } from './documentUpload'
-export { enhancedExtractTextFromPDF } from './ocr'
+// Re-export types
+export type {
+  PythonUploadResult,
+  PythonUploadOptions,
+} from './python-document-upload'
