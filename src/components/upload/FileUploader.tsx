@@ -93,6 +93,38 @@ export const FileUploader = (props: FileUploaderProps) => {
           'Available mappings:',
           Array.from(pythonDocumentMapping.current.entries()),
         )
+
+        // Try to find the file item by Python document ID as fallback
+        const fileItem = selectedFiles.find(
+          f => f.pythonDocumentId === result.documentId,
+        )
+        if (!fileItem) {
+          console.error(
+            'Could not find file item for Python document ID:',
+            result.documentId,
+          )
+          return
+        }
+
+        // Create a basic document record without database ID
+        const document: Document = {
+          id: result.documentId, // Use Python document ID as fallback
+          name: fileItem.file.name,
+          type: fileItem.file.type,
+          size: fileItem.file.size,
+          status:
+            result.processingStatus === 'completed'
+              ? 'processed'
+              : 'processing',
+          url: result.s3Url,
+          key: result.s3Key,
+          content: '',
+          projectId: projectId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+        onUploadComplete(document)
         return
       }
 

@@ -58,6 +58,8 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
+      console.log(`🔍 DB: Fetching documents for project ID: ${projectId}`)
+
       const { data: documents, errors } = await client.models.Document.list({
         filter: { projectId: { eq: projectId } },
       })
@@ -69,7 +71,12 @@ export const databaseDocumentService = {
         )
       }
 
-      return documents.map(doc => ({
+      console.log(`📋 DB: Raw documents from database:`, documents)
+      console.log(
+        `📊 DB: Found ${documents.length} documents for project ${projectId}`,
+      )
+
+      const mappedDocuments = documents.map(doc => ({
         id: doc.id,
         name: doc.name,
         type: doc.type,
@@ -86,6 +93,17 @@ export const databaseDocumentService = {
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
       }))
+
+      console.log(
+        `📋 DB: Mapped documents:`,
+        mappedDocuments.map(d => ({
+          id: d.id,
+          name: d.name,
+          status: d.status,
+        })),
+      )
+
+      return mappedDocuments
     } catch (error) {
       console.error('DB: Error fetching documents by project:', error)
       throw error
@@ -138,6 +156,13 @@ export const databaseDocumentService = {
     documentData: Omit<DatabaseDocument, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<DatabaseDocument> {
     try {
+      console.log(`📝 DB: Creating document:`, {
+        name: documentData.name,
+        projectId: documentData.projectId,
+        status: documentData.status,
+        s3Key: documentData.s3Key,
+      })
+
       // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
       const { data: document, errors } = await client.models.Document.create({
         name: documentData.name as string & string[],
@@ -175,6 +200,13 @@ export const databaseDocumentService = {
           `Database error: ${errors.map(e => e.message).join(', ')}`,
         )
       }
+
+      console.log(`✅ DB: Document created successfully:`, {
+        id: document.id,
+        name: document.name,
+        projectId: document.projectId,
+        status: document.status,
+      })
 
       return {
         id: document.id,

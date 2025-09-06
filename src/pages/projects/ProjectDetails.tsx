@@ -480,9 +480,22 @@ const ProjectDetails = () => {
       setTimeout(async () => {
         try {
           console.log('🔄 Refreshing document list from database...')
-          const freshDocuments = await documentService.getDocumentsByProject(
-            project?.id || projectId,
+
+          // Use the project ID consistently
+          const targetProjectId = project?.id || projectId
+          if (!targetProjectId) {
+            console.error('❌ No project ID available for refresh')
+            return
+          }
+
+          console.log(
+            `🔍 Fetching documents for project ID: ${targetProjectId}`,
           )
+          const freshDocuments =
+            await documentService.getDocumentsByProject(targetProjectId)
+
+          console.log(`📋 Raw documents from database:`, freshDocuments)
+
           const transformedDocuments: Document[] = (freshDocuments || []).map(
             doc => ({
               id: doc.id,
@@ -504,13 +517,65 @@ const ProjectDetails = () => {
 
           console.log(
             `📊 Found ${transformedDocuments.length} documents in database`,
+            transformedDocuments.map(d => ({
+              id: d.id,
+              name: d.name,
+              status: d.status,
+            })),
           )
-          setProjectDocuments(transformedDocuments)
-          setCachedDocumentsData(transformedDocuments)
+
+          // Only update if we actually got documents or if the count changed
+          if (
+            transformedDocuments.length > 0 ||
+            projectDocuments.length === 0
+          ) {
+            setProjectDocuments(transformedDocuments)
+            setCachedDocumentsData(transformedDocuments)
+          } else {
+            console.log(
+              '⚠️ No documents found in database, keeping current state',
+            )
+          }
         } catch (error) {
           console.error('❌ Error refreshing document list:', error)
+          // If refresh fails, try again after a longer delay
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Retrying document refresh after error...')
+              const targetProjectId = project?.id || projectId
+              if (targetProjectId) {
+                const retryDocuments =
+                  await documentService.getDocumentsByProject(targetProjectId)
+                const retryTransformed: Document[] = (retryDocuments || []).map(
+                  doc => ({
+                    id: doc.id,
+                    name: doc.name || 'Untitled Document',
+                    type: doc.type || 'unknown',
+                    size:
+                      typeof doc.size === 'number'
+                        ? doc.size
+                        : parseInt(String(doc.size)) || 0,
+                    status: doc.status || 'processing',
+                    url: doc.url,
+                    thumbnailUrl: doc.thumbnailUrl,
+                    projectId: doc.projectId,
+                    content: doc.content,
+                    createdAt: doc.createdAt,
+                    updatedAt: doc.updatedAt,
+                  }),
+                )
+                console.log(
+                  `📊 Retry found ${retryTransformed.length} documents`,
+                )
+                setProjectDocuments(retryTransformed)
+                setCachedDocumentsData(retryTransformed)
+              }
+            } catch (retryError) {
+              console.error('❌ Retry also failed:', retryError)
+            }
+          }, 3000) // 3 second delay for retry
         }
-      }, 2000) // 2 second delay to ensure database consistency
+      }, 3000) // Increased delay to 3 seconds to ensure database consistency
     }
   }
 
