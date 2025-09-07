@@ -21,6 +21,8 @@ export interface DocumentUploadRequest {
 export interface DocumentUploadResponse {
   document_id: string
   processing_status: 'uploaded' | 'processing' | 'completed' | 'failed'
+  original_filename: string
+  sanitized_filename: string
   s3_key: string
   s3_url: string
   estimated_processing_time?: number

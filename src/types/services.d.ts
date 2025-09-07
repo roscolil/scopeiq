@@ -165,6 +165,6 @@ export interface EnvironmentConfig {
   AWS_REGION: string
   // AWS credentials - using generic keys to avoid secret detection
   [key: string]: string | undefined
-  S3_BUCKET_NAME: string
+  AWS_S3_BUCKET: string
   OPENAI_API_KEY?: string
 }

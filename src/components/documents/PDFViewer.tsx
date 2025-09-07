@@ -112,7 +112,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
           )}
         </div>
 
-        {/* PDF Embed */}
+        {/* PDF Embed - Uses inline URL with Content-Disposition: inline */}
         {!embedError ? (
           <div className="border rounded-lg overflow-hidden">
             <iframe

@@ -23,15 +23,15 @@ const outputs = amplifyOutputs as AmplifyOutputs
 
 // Get S3 bucket name from Amplify configuration
 export const getS3BucketName = (): string => {
-  // First try to get from Amplify outputs (primary source)
-  if (outputs.storage?.bucket_name) {
-    return outputs.storage.bucket_name
+  // First try to get from environment variable (override Amplify)
+  const envBucketName = getEnvVar('AWS_S3_BUCKET')
+  if (envBucketName) {
+    return envBucketName
   }
 
-  // Fallback to environment variable
-  const s3BucketName = getEnvVar('S3_BUCKET_NAME')
-  if (s3BucketName) {
-    return s3BucketName
+  // Fallback to Amplify outputs
+  if (outputs.storage?.bucket_name) {
+    return outputs.storage.bucket_name
   }
 
   throw new Error(

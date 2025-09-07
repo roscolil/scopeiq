@@ -119,7 +119,7 @@ VITE_PINECONE_API_KEY=your_pinecone_api_key
 VITE_AWS_REGION=your_aws_region
 VITE_AWS_ACCESS_KEY_ID=your_access_key
 VITE_AWS_SECRET_ACCESS_KEY=your_secret_key
-VITE_S3_BUCKET_NAME=your_s3_bucket
+VITE_AWS_S3_BUCKET=your_s3_bucket
 
 # Google Places (Optional)
 VITE_GOOGLE_PLACES_API_KEY=your_google_places_key
