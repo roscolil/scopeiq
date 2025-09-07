@@ -13,6 +13,8 @@ import { broadcastProcessingMessage } from '../utils/processing-messages'
 
 export interface PythonUploadResult {
   documentId: string
+  originalFilename: string
+  sanitizedFilename: string
   s3Key: string
   s3Url: string
   processingStatus: 'uploaded' | 'processing' | 'completed' | 'failed'
@@ -101,6 +103,8 @@ export async function uploadDocumentToPythonBackend(
 
     const result = {
       documentId: uploadData.document_id,
+      originalFilename: uploadData.original_filename,
+      sanitizedFilename: uploadData.sanitized_filename,
       s3Key: uploadData.s3_key,
       s3Url: uploadData.s3_url,
       processingStatus: finalProcessingStatus,

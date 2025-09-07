@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Upload,
   X,
@@ -96,8 +97,9 @@ export const FileUploaderPython = (props: FileUploaderPythonProps) => {
         status:
           result.processingStatus === 'completed' ? 'processed' : 'processing',
         url: result.s3Url,
-        s3Key: result.s3Key,
+        key: result.s3Key,
         content: '',
+        projectId: projectId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -203,25 +205,10 @@ export const FileUploaderPython = (props: FileUploaderPythonProps) => {
     try {
       if (currentBackend === 'python' && backendHealth) {
         // Use Python backend
-        const result = await pythonUpload.uploadDocument(fileItem.file, {
-          documentName: fileItem.file.name,
-          onProgress: progress => {
-            setSelectedFiles(prev =>
-              prev.map(f =>
-                f.id === fileItem.id
-                  ? { ...f, progress: Math.min(progress, 90) }
-                  : f,
-              ),
-            )
-          },
-          onStatusUpdate: status => {
-            setSelectedFiles(prev =>
-              prev.map(f =>
-                f.id === fileItem.id ? { ...f, processingMessage: status } : f,
-              ),
-            )
-          },
-        })
+        const result = await pythonUpload.uploadDocument(
+          fileItem.file,
+          fileItem.file.name,
+        )
 
         // Update file with document ID
         setSelectedFiles(prev =>
@@ -244,8 +231,9 @@ export const FileUploaderPython = (props: FileUploaderPythonProps) => {
           size: fileItem.file.size,
           status: 'processing',
           url: result.s3Url,
-          s3Key: result.s3Key,
+          key: result.s3Key,
           content: '',
+          projectId: projectId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }
