@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import React from 'react'
 import {
   processEmbeddingOnly,
@@ -9,6 +9,7 @@ import { uploadDocumentToS3 } from '@/services/file/documentUpload'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Upload,
   X,
@@ -20,10 +21,17 @@ import {
   Check,
   AlertCircle,
   RotateCcw,
+  Server,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
 import { documentService } from '@/services/data/hybrid'
+
+// Python backend imports
+import { usePythonDocumentUpload } from '@/hooks/usePythonDocumentUpload'
+import { checkPythonBackendHealth } from '@/services/file/python-document-upload'
+import { getPythonBackendConfig } from '@/config/python-backend'
 
 interface FileUploaderProps {
   projectId: string
@@ -34,10 +42,13 @@ interface FileUploaderProps {
 interface FileUploadItem {
   file: File
   id: string
-  status: 'pending' | 'uploading' | 'completed' | 'failed'
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'failed'
   progress: number
   error?: string
   processingMessage?: string
+  documentId?: string // Database document ID
+  pythonDocumentId?: string // Python backend document ID
+  backend?: 'python' | 'existing'
 }
 
 export const FileUploader = (props: FileUploaderProps) => {
@@ -52,52 +63,230 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [processingMessages, setProcessingMessages] = useState<
     Record<string, string>
   >({})
+  const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
+  const [currentBackend, setCurrentBackend] = useState<'python' | 'existing'>(
+    'python',
+  )
+
+  // Ref to store mapping between Python document IDs and file items for immediate access
+  const pythonDocumentMapping = useRef<
+    Map<string, { fileItemId: string; databaseDocumentId: string }>
+  >(new Map())
+
   const { toast } = useToast()
 
-  // Capture console logs for processing progress
-  React.useEffect(() => {
-    const originalConsoleLog = console.log
+  // Python document upload hook
+  const pythonUpload = usePythonDocumentUpload({
+    projectId,
+    companyId,
+    onUploadComplete: async result => {
+      console.log('FileUploader received upload complete result:', result)
 
-    console.log = (...args: unknown[]) => {
-      const message = String(args.join(' '))
-
-      // Capture processing messages
-      if (
-        message.includes('Processing chunk batch') ||
-        message.includes('Created') ||
-        message.includes('chunks') ||
-        message.includes('embedding') ||
-        message.includes('processing')
-      ) {
-        // Try to find which file this message is for
-        const currentUploadingFile = selectedFiles.find(
-          f => f.status === 'uploading',
+      // Use the ref mapping to find the file item and database document ID
+      const mapping = pythonDocumentMapping.current.get(result.documentId)
+      if (!mapping) {
+        console.error(
+          'Could not find mapping for Python document ID:',
+          result.documentId,
         )
-        if (currentUploadingFile) {
-          setProcessingMessages(prev => ({
-            ...prev,
-            [currentUploadingFile.id]: message,
-          }))
+        console.log(
+          'Available mappings:',
+          Array.from(pythonDocumentMapping.current.entries()),
+        )
 
-          // Update the file item with the processing message
-          setSelectedFiles(prev =>
-            prev.map(file =>
-              file.id === currentUploadingFile.id
-                ? { ...file, processingMessage: message }
-                : file,
-            ),
+        // Try to find the file item by Python document ID as fallback
+        const fileItem = selectedFiles.find(
+          f => f.pythonDocumentId === result.documentId,
+        )
+        if (!fileItem) {
+          console.error(
+            'Could not find file item for Python document ID:',
+            result.documentId,
           )
+          return
+        }
+
+        // Create a basic document record without database ID
+        const document: Document = {
+          id: result.documentId, // Use Python document ID as fallback
+          name: fileItem.file.name,
+          type: fileItem.file.type,
+          size: fileItem.file.size,
+          status:
+            result.processingStatus === 'completed'
+              ? 'processed'
+              : 'processing',
+          url: result.s3Url,
+          key: result.s3Key,
+          content: '',
+          projectId: projectId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+
+        onUploadComplete(document)
+        return
+      }
+
+      // Find the file item using the stored file item ID
+      const fileItem = selectedFiles.find(f => f.id === mapping.fileItemId)
+      if (!fileItem) {
+        console.error('Could not find file item for ID:', mapping.fileItemId)
+        return
+      }
+
+      // Update the file item status
+      setSelectedFiles(prev =>
+        prev.map(file =>
+          file.id === mapping.fileItemId
+            ? {
+                ...file,
+                status:
+                  result.processingStatus === 'completed'
+                    ? 'completed'
+                    : 'processing',
+                progress: result.processingStatus === 'completed' ? 100 : 75,
+                processingMessage: result.message,
+              }
+            : file,
+        ),
+      )
+
+      // Create document record for the parent component using the database document ID
+      const document: Document = {
+        id: mapping.databaseDocumentId, // Use the database document ID from mapping
+        name: fileItem.file.name,
+        type: fileItem.file.type,
+        size: fileItem.file.size,
+        status:
+          result.processingStatus === 'completed' ? 'processed' : 'processing',
+        url: result.s3Url,
+        key: result.s3Key,
+        content: '',
+        projectId: projectId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      // Update the database document status if processing is completed
+      if (result.processingStatus === 'completed') {
+        try {
+          await documentService.updateDocument(
+            companyId,
+            projectId,
+            mapping.databaseDocumentId, // Use the database document ID from mapping
+            {
+              status: 'processed',
+            },
+          )
+        } catch (error) {
+          console.error('Failed to update document status in database:', error)
         }
       }
 
-      // Call original console.log
-      originalConsoleLog.apply(console, args)
+      onUploadComplete(document)
+    },
+    onUploadError: error => {
+      toast({
+        title: 'Upload failed',
+        description: error,
+        variant: 'destructive',
+      })
+    },
+    onStatusUpdate: status => {
+      // Update processing messages for all uploading files
+      setProcessingMessages(prev => ({
+        ...prev,
+        [status]: status,
+      }))
+    },
+  })
+
+  // Update file progress based on Python upload progress
+  React.useEffect(() => {
+    if (currentBackend === 'python' && pythonUpload.uploadProgress) {
+      // Find the currently uploading file and update its progress
+      setSelectedFiles(prev =>
+        prev.map(file => {
+          if (file.status === 'uploading' && file.backend === 'python') {
+            return {
+              ...file,
+              progress: pythonUpload.uploadProgress.percentage,
+              processingMessage: pythonUpload.uploadProgress.stage,
+            }
+          }
+          return file
+        }),
+      )
+    }
+  }, [pythonUpload.uploadProgress, currentBackend])
+
+  // Check backend health on component mount
+  React.useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const config = getPythonBackendConfig()
+        console.log('Python backend config:', config)
+        const isHealthy = await checkPythonBackendHealth()
+        console.log('Python backend health check result:', isHealthy)
+        setBackendHealth(isHealthy)
+        setCurrentBackend(isHealthy ? 'python' : 'existing')
+      } catch (error) {
+        console.error('Backend health check failed:', error)
+        setBackendHealth(false)
+        setCurrentBackend('existing')
+      }
     }
 
-    return () => {
-      console.log = originalConsoleLog
+    checkHealth()
+  }, [])
+
+  // Capture console logs for processing progress (for existing backend)
+  React.useEffect(() => {
+    if (currentBackend === 'existing') {
+      const originalConsoleLog = console.log
+
+      console.log = (...args: unknown[]) => {
+        const message = String(args.join(' '))
+
+        // Capture processing messages
+        if (
+          message.includes('Processing chunk batch') ||
+          message.includes('Created') ||
+          message.includes('chunks') ||
+          message.includes('embedding') ||
+          message.includes('processing')
+        ) {
+          // Try to find which file this message is for
+          const currentUploadingFile = selectedFiles.find(
+            f => f.status === 'uploading',
+          )
+          if (currentUploadingFile) {
+            setProcessingMessages(prev => ({
+              ...prev,
+              [currentUploadingFile.id]: message,
+            }))
+
+            // Update the file item with the processing message
+            setSelectedFiles(prev =>
+              prev.map(file =>
+                file.id === currentUploadingFile.id
+                  ? { ...file, processingMessage: message }
+                  : file,
+              ),
+            )
+          }
+        }
+
+        // Call original console.log
+        originalConsoleLog.apply(console, args)
+      }
+
+      return () => {
+        console.log = originalConsoleLog
+      }
     }
-  }, [selectedFiles])
+  }, [selectedFiles, currentBackend])
 
   const validateFile = (file: File): { valid: boolean; error?: string } => {
     const allowedTypes = [
@@ -145,6 +334,7 @@ export const FileUploader = (props: FileUploaderProps) => {
           id: `${file.name}-${Date.now()}-${i}`,
           status: 'pending',
           progress: 0,
+          backend: currentBackend,
         })
       } else {
         invalidFiles.push(`${file.name}: ${validation.error}`)
@@ -177,98 +367,185 @@ export const FileUploader = (props: FileUploaderProps) => {
     setSelectedFiles(prev =>
       prev.map(f =>
         f.id === fileItem.id
-          ? { ...f, status: 'uploading' as const, progress: 0 }
+          ? { ...f, status: 'uploading' as const, progress: 10 }
           : f,
       ),
     )
 
     try {
-      const result = await uploadDocumentToS3(
-        fileItem.file,
-        projectId,
-        companyId,
-        progress => {
-          setSelectedFiles(prev =>
-            prev.map(f => (f.id === fileItem.id ? { ...f, progress } : f)),
-          )
-        },
+      console.log(
+        'Uploading file with backend:',
+        currentBackend,
+        'health:',
+        backendHealth,
       )
+      if (currentBackend === 'python' && backendHealth) {
+        // Use Python backend
+        console.log('Using Python backend for upload')
+        const result = await pythonUpload.uploadDocument(
+          fileItem.file,
+          fileItem.file.name,
+        )
 
-      const newDocument = await documentService.createDocument(
-        companyId,
-        projectId,
-        {
+        if (!result) {
+          throw new Error('Upload failed')
+        }
+
+        // Create database record for the document first
+        const newDocument = await documentService.createDocument(
+          companyId,
+          projectId,
+          {
+            name: fileItem.file.name,
+            type: fileItem.file.type,
+            size: fileItem.file.size,
+            status:
+              result.processingStatus === 'completed'
+                ? 'processed'
+                : 'processing',
+            url: result.s3Url,
+            s3Key: result.s3Key,
+          },
+        )
+
+        // Store mapping in ref for immediate access by completion handler
+        pythonDocumentMapping.current.set(result.documentId, {
+          fileItemId: fileItem.id,
+          databaseDocumentId: newDocument.id,
+        })
+
+        // Update file with both Python and database document IDs
+        setSelectedFiles(prev =>
+          prev.map(f =>
+            f.id === fileItem.id
+              ? {
+                  ...f,
+                  pythonDocumentId: result.documentId, // Store Python backend ID
+                  documentId: newDocument.id, // Store database ID
+                  status:
+                    result.processingStatus === 'completed'
+                      ? ('completed' as const)
+                      : ('processing' as const),
+                  progress: result.processingStatus === 'completed' ? 100 : 75,
+                  processingMessage: result.message,
+                }
+              : f,
+          ),
+        )
+
+        // Create document record for the parent component
+        const document: Document = {
+          id: newDocument.id, // Use database ID
+          projectId: projectId,
           name: fileItem.file.name,
           type: fileItem.file.type,
-          size: result.size,
-          status: 'processing',
-          url: result.url,
-          s3Key: result.key,
-        },
-      )
+          size: fileItem.file.size,
+          status:
+            result.processingStatus === 'completed'
+              ? 'processed'
+              : 'processing',
+          url: result.s3Url,
+          key: result.s3Key,
+          content: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
 
-      onUploadComplete(newDocument as Document)
-
-      // Update file status to completed
-      setSelectedFiles(prev =>
-        prev.map(f =>
-          f.id === fileItem.id
-            ? { ...f, status: 'completed' as const, progress: 100 }
-            : f,
-        ),
-      )
-
-      // Process embedding in background - console logs will show progress
-      if (newDocument?.id) {
-        try {
-          const fileText = await extractTextFromFile(fileItem.file)
-          if (fileText && fileText.trim().length > 0) {
-            await processEmbeddingOnly(fileText, projectId, newDocument.id, {
-              name: fileItem.file.name,
-              type: fileItem.file.type,
-              url: result.url,
-              s3Key: result.key,
-              companyId,
-              size: result.size,
-            })
-
-            await documentService.updateDocument(
-              companyId,
-              projectId,
-              newDocument.id,
-              {
-                status: 'processed',
-                content: fileText,
-              },
+        onUploadComplete(document)
+        return
+      } else {
+        // Fallback to existing upload method
+        console.log('Fallback to existing upload method')
+        const result = await uploadDocumentToS3(
+          fileItem.file,
+          projectId,
+          companyId,
+          progress => {
+            setSelectedFiles(prev =>
+              prev.map(f => (f.id === fileItem.id ? { ...f, progress } : f)),
             )
+          },
+        )
 
-            // Notify parent component of status update
-            const updatedDocument = {
-              ...newDocument,
-              status: 'processed' as const,
-              content: fileText,
-            }
-            onUploadComplete(updatedDocument as Document)
-          } else {
-            // No text content extracted, keeping status as processing
-          }
-        } catch (embeddingError) {
-          // Update document status to failed due to processing error
+        const newDocument = await documentService.createDocument(
+          companyId,
+          projectId,
+          {
+            name: fileItem.file.name,
+            type: fileItem.file.type,
+            size: result.size,
+            status: 'processing',
+            url: result.url,
+            s3Key: result.key,
+          },
+        )
+
+        onUploadComplete(newDocument as Document)
+
+        // Update file status to completed
+        setSelectedFiles(prev =>
+          prev.map(f =>
+            f.id === fileItem.id
+              ? { ...f, status: 'completed' as const, progress: 100 }
+              : f,
+          ),
+        )
+
+        // Process embedding in background - console logs will show progress
+        if (newDocument?.id) {
           try {
-            await documentService.updateDocument(
-              companyId,
-              projectId,
-              newDocument.id,
-              {
-                status: 'failed',
-              },
-            )
+            const fileText = await extractTextFromFile(fileItem.file)
+            if (fileText && fileText.trim().length > 0) {
+              await processEmbeddingOnly(fileText, projectId, newDocument.id, {
+                name: fileItem.file.name,
+                type: fileItem.file.type,
+                url: result.url,
+                s3Key: result.key,
+                companyId,
+                size: result.size,
+              })
 
-            // Notify parent component of status update
-            const failedDocument = { ...newDocument, status: 'failed' as const }
-            onUploadComplete(failedDocument as Document)
-          } catch (updateError) {
-            // Failed to update document status
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'processed',
+                  content: fileText,
+                },
+              )
+
+              // Notify parent component of status update
+              const updatedDocument = {
+                ...newDocument,
+                status: 'processed' as const,
+                content: fileText,
+              }
+              onUploadComplete(updatedDocument as Document)
+            } else {
+              // No text content extracted, keeping status as processing
+            }
+          } catch (embeddingError) {
+            // Update document status to failed due to processing error
+            try {
+              await documentService.updateDocument(
+                companyId,
+                projectId,
+                newDocument.id,
+                {
+                  status: 'failed',
+                },
+              )
+
+              // Notify parent component of status update
+              const failedDocument = {
+                ...newDocument,
+                status: 'failed' as const,
+              }
+              onUploadComplete(failedDocument as Document)
+            } catch (updateError) {
+              // Failed to update document status
+            }
           }
         }
       }
@@ -403,6 +680,12 @@ export const FileUploader = (props: FileUploaderProps) => {
   }
 
   const removeFile = (id: string) => {
+    // Clean up mapping when file is removed
+    const fileToRemove = selectedFiles.find(f => f.id === id)
+    if (fileToRemove?.pythonDocumentId) {
+      pythonDocumentMapping.current.delete(fileToRemove.pythonDocumentId)
+    }
+
     setSelectedFiles(prev => prev.filter(file => file.id !== id))
   }
 
@@ -474,6 +757,8 @@ export const FileUploader = (props: FileUploaderProps) => {
   }
 
   const removeAllFiles = () => {
+    // Clean up all mappings when all files are removed
+    pythonDocumentMapping.current.clear()
     setSelectedFiles([])
   }
 
@@ -541,8 +826,27 @@ export const FileUploader = (props: FileUploaderProps) => {
     return Math.round(totalProgress / selectedFiles.length)
   }
 
+  const getBackendBadge = () => {
+    if (backendHealth === null) {
+      return <Badge variant="secondary">Checking backend...</Badge>
+    }
+
+    return (
+      <Badge variant={backendHealth ? 'default' : 'destructive'}>
+        <Server className="h-3 w-3 mr-1" />
+        {backendHealth ? 'Python Backend' : 'Existing Backend'}
+      </Badge>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Backend Status */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Upload Documents</h3>
+        {getBackendBadge()}
+      </div>
+
       {/* Upload Area */}
       <div
         onDragOver={handleDragOver}
