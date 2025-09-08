@@ -811,26 +811,26 @@ export const FileUploader = (props: FileUploaderProps) => {
     return Math.round(totalProgress / selectedFiles.length)
   }
 
-  const getBackendBadge = () => {
-    if (backendHealth === null) {
-      return <Badge variant="secondary">Checking backend...</Badge>
-    }
+  // const getBackendBadge = () => {
+  //   if (backendHealth === null) {
+  //     return <Badge variant="secondary">Checking backend...</Badge>
+  //   }
 
-    return (
-      <Badge variant={backendHealth ? 'default' : 'destructive'}>
-        <Server className="h-3 w-3 mr-1" />
-        {backendHealth ? 'Python Backend' : 'Existing Backend'}
-      </Badge>
-    )
-  }
+  //   return (
+  //     <Badge variant={backendHealth ? 'default' : 'destructive'}>
+  //       <Server className="h-3 w-3 mr-1" />
+  //       {backendHealth ? 'Python Backend' : 'Existing Backend'}
+  //     </Badge>
+  //   )
+  // }
 
   return (
     <div className="space-y-6">
       {/* Backend Status */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Upload Documents</h3>
         {getBackendBadge()}
-      </div>
+      </div> */}
 
       {/* Upload Area */}
       <div
