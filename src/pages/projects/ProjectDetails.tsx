@@ -969,7 +969,7 @@ const ProjectDetails = () => {
             </h2>
 
             <div className="flex gap-2">
-              <Button
+              {/* <Button
                 size="sm"
                 variant="outline"
                 onClick={forceRefreshDocuments}
@@ -980,7 +980,7 @@ const ProjectDetails = () => {
                   className={`h-4 w-4 mr-1 ${isDocumentsLoading ? 'animate-spin' : ''}`}
                 />
                 Refresh
-              </Button>
+              </Button> */}
 
               <Dialog
                 open={isUploadDialogOpen}
