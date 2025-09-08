@@ -26,6 +26,7 @@ export interface PythonUploadOptions {
   onProgress?: (progress: number) => void
   onStatusUpdate?: (status: string) => void
   onError?: (error: string) => void
+  onStorageComplete?: (result: PythonUploadResult) => void // NEW: Called when storage upload finishes
   documentName?: string
 }
 
@@ -38,7 +39,13 @@ export async function uploadDocumentToPythonBackend(
   companyId: string,
   options: PythonUploadOptions = {},
 ): Promise<PythonUploadResult> {
-  const { onProgress, onStatusUpdate, onError, documentName } = options
+  const {
+    onProgress,
+    onStatusUpdate,
+    onError,
+    onStorageComplete,
+    documentName,
+  } = options
 
   try {
     onProgress?.(5)
@@ -76,9 +83,24 @@ export async function uploadDocumentToPythonBackend(
 
     const uploadData = response.data
     onProgress?.(50)
-    onStatusUpdate?.('Upload completed, processing started...')
+    onStatusUpdate?.('File uploaded, extracting text...')
 
-    // Start monitoring processing status
+    // Create storage upload result
+    const storageResult = {
+      documentId: uploadData.document_id,
+      originalFilename: uploadData.original_filename,
+      sanitizedFilename: uploadData.sanitized_filename,
+      s3Key: uploadData.s3_key,
+      s3Url: uploadData.s3_url,
+      processingStatus: 'uploaded' as const, // Storage upload complete, processing may be ongoing
+      estimatedProcessingTime: uploadData.estimated_processing_time,
+      message: 'Storage upload completed',
+    }
+
+    // Call storage complete callback immediately - this allows modal to close
+    onStorageComplete?.(storageResult)
+
+    // Start monitoring processing status (this continues in background)
     let finalProcessingStatus = uploadData.processing_status
     console.log('Initial processing status:', uploadData.processing_status)
 

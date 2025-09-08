@@ -79,112 +79,97 @@ export const FileUploader = (props: FileUploaderProps) => {
   const pythonUpload = usePythonDocumentUpload({
     projectId,
     companyId,
-    onUploadComplete: async result => {
-      console.log('FileUploader received upload complete result:', result)
+    onStorageComplete: async storageResult => {
+      console.log('Storage upload completed:', storageResult)
 
-      // Use the ref mapping to find the file item and database document ID
-      const mapping = pythonDocumentMapping.current.get(result.documentId)
+      // Find the file item and database document using the mapping
+      const mapping = pythonDocumentMapping.current.get(
+        storageResult.documentId,
+      )
       if (!mapping) {
         console.error(
           'Could not find mapping for Python document ID:',
-          result.documentId,
+          storageResult.documentId,
         )
-        console.log(
-          'Available mappings:',
-          Array.from(pythonDocumentMapping.current.entries()),
-        )
-
-        // Try to find the file item by Python document ID as fallback
-        const fileItem = selectedFiles.find(
-          f => f.pythonDocumentId === result.documentId,
-        )
-        if (!fileItem) {
-          console.error(
-            'Could not find file item for Python document ID:',
-            result.documentId,
-          )
-          return
-        }
-
-        // Create a basic document record without database ID
-        const document: Document = {
-          id: result.documentId, // Use Python document ID as fallback
-          name: fileItem.file.name,
-          type: fileItem.file.type,
-          size: fileItem.file.size,
-          status:
-            result.processingStatus === 'completed'
-              ? 'processed'
-              : 'processing',
-          url: result.s3Url,
-          key: result.s3Key,
-          content: '',
-          projectId: projectId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-
-        onUploadComplete(document)
         return
       }
 
-      // Find the file item using the stored file item ID
-      const fileItem = selectedFiles.find(f => f.id === mapping.fileItemId)
-      if (!fileItem) {
-        console.error('Could not find file item for ID:', mapping.fileItemId)
-        return
-      }
-
-      // Update the file item status
+      // Update file status to completed in modal (storage upload done)
       setSelectedFiles(prev =>
-        prev.map(file =>
-          file.id === mapping.fileItemId
+        prev.map(f =>
+          f.id === mapping.fileItemId
             ? {
-                ...file,
-                status:
-                  result.processingStatus === 'completed'
-                    ? 'completed'
-                    : 'processing',
-                progress: result.processingStatus === 'completed' ? 100 : 75,
-                processingMessage: result.message,
+                ...f,
+                status: 'completed' as const,
+                progress: 100,
               }
-            : file,
+            : f,
         ),
       )
 
-      // Create document record for the parent component using the database document ID
-      const document: Document = {
-        id: mapping.databaseDocumentId, // Use the database document ID from mapping
-        name: fileItem.file.name,
-        type: fileItem.file.type,
-        size: fileItem.file.size,
-        status:
-          result.processingStatus === 'completed' ? 'processed' : 'processing',
-        url: result.s3Url,
-        key: result.s3Key,
-        content: '',
-        projectId: projectId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      // Get the database document and call onUploadComplete so document appears in list
+      try {
+        const existingDoc = await documentService.getDocument(
+          companyId,
+          projectId,
+          mapping.databaseDocumentId,
+        )
+        if (existingDoc) {
+          const document: Document = {
+            id: existingDoc.id,
+            name: existingDoc.name,
+            type: existingDoc.type,
+            size: existingDoc.size,
+            status: 'processing', // Always processing - document list will handle status updates
+            url: storageResult.s3Url,
+            key: storageResult.s3Key,
+            content: existingDoc.content || '',
+            projectId: existingDoc.projectId,
+            createdAt: existingDoc.createdAt,
+            updatedAt: new Date().toISOString(),
+          }
 
-      // Update the database document status if processing is completed
-      if (result.processingStatus === 'completed') {
+          console.log(
+            'Calling onUploadComplete after storage upload:',
+            document.id,
+          )
+          onUploadComplete(document)
+        }
+      } catch (error) {
+        console.error(
+          'Failed to get database document after storage upload:',
+          error,
+        )
+      }
+    },
+    onUploadComplete: async result => {
+      console.log('Full processing completed:', result)
+      // This is called when processing is fully complete
+      // We can update the database status here, but document list polling will handle display
+
+      const mapping = pythonDocumentMapping.current.get(result.documentId)
+      if (mapping) {
         try {
           await documentService.updateDocument(
             companyId,
             projectId,
-            mapping.databaseDocumentId, // Use the database document ID from mapping
+            mapping.databaseDocumentId,
             {
-              status: 'processed',
+              status:
+                result.processingStatus === 'completed'
+                  ? 'processed'
+                  : 'failed',
             },
           )
+          console.log(
+            'Updated document status after processing:',
+            mapping.databaseDocumentId,
+            result.processingStatus,
+          )
         } catch (error) {
-          console.error('Failed to update document status in database:', error)
+          console.error('Failed to update document status:', error)
         }
       }
-
-      onUploadComplete(document)
     },
     onUploadError: error => {
       toast({
@@ -1032,13 +1017,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                     {fileItem.status === 'uploading' && (
                       <>
                         <span>•</span>
-                        <span>Uploading to secure storage</span>
-                      </>
-                    )}
-                    {fileItem.status === 'uploading' &&
-                      fileItem.processingMessage && (
-                        <>
-                          <span>•</span>
+                        {fileItem.processingMessage ? (
                           <span className="text-amber-600 font-medium">
                             {fileItem.processingMessage.includes(
                               'Processing chunk batch',
@@ -1052,8 +1031,11 @@ export const FileUploader = (props: FileUploaderProps) => {
                                   '...'
                                 : fileItem.processingMessage}
                           </span>
-                        </>
-                      )}
+                        ) : (
+                          <span>Uploading to secure storage</span>
+                        )}
+                      </>
+                    )}
                     {fileItem.status === 'failed' && fileItem.error && (
                       <div className="flex items-start gap-1 mt-1">
                         <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
