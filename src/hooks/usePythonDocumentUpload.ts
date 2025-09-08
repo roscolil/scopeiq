@@ -15,6 +15,7 @@ export interface UsePythonDocumentUploadOptions {
   projectId: string
   companyId: string
   onUploadComplete?: (result: PythonUploadResult) => void
+  onStorageComplete?: (result: PythonUploadResult) => void // NEW: Called when storage upload finishes
   onUploadError?: (error: string) => void
   onStatusUpdate?: (status: string) => void
 }
@@ -33,6 +34,7 @@ export function usePythonDocumentUpload(
     projectId,
     companyId,
     onUploadComplete,
+    onStorageComplete,
     onUploadError,
     onStatusUpdate,
   } = options
@@ -97,6 +99,15 @@ export function usePythonDocumentUpload(
               }))
               onStatusUpdate?.(status)
             },
+            onStorageComplete: storageResult => {
+              // Storage upload complete - update progress and call callback
+              setUploadProgress({
+                percentage: 50, // Storage upload complete
+                stage: 'Beginning text extraction...',
+                status: 'uploading', // Still uploading stage for modal
+              })
+              onStorageComplete?.(storageResult)
+            },
             onError: error => {
               setUploadProgress(prev => ({
                 ...prev,
@@ -132,7 +143,14 @@ export function usePythonDocumentUpload(
         setIsUploading(false)
       }
     },
-    [projectId, companyId, onUploadComplete, onUploadError, onStatusUpdate],
+    [
+      projectId,
+      companyId,
+      onUploadComplete,
+      onStorageComplete,
+      onUploadError,
+      onStatusUpdate,
+    ],
   )
 
   const getDocumentProgress = useCallback(

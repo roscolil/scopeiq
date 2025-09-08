@@ -5,6 +5,7 @@ This guide explains how to integrate the separate Python AI backend with your ex
 ## Overview
 
 The Python backend integration provides:
+
 - **Enhanced PDF processing** with advanced chunking and analysis
 - **Intelligent search** with structured document understanding
 - **Conversational AI** with context-aware responses
@@ -27,17 +28,20 @@ Frontend (React/TypeScript) ←→ Python AI Backend (FastAPI)
 ## Key Features
 
 ### **Smart Backend Selection**
+
 - Automatic detection of Python backend availability
 - Seamless fallback to existing services
 - Configurable backend preferences
 
 ### **Enhanced Document Processing**
+
 - Advanced PDF text extraction
 - Intelligent chunking with context preservation
 - Structured element extraction (doors, windows, rooms, etc.)
 - Real-time processing progress updates
 
 ### **Conversational AI**
+
 - Context-aware responses using conversation history
 - Multi-turn conversations with document context
 - Source attribution and confidence scoring
@@ -46,22 +50,27 @@ Frontend (React/TypeScript) ←→ Python AI Backend (FastAPI)
 ## Implementation Files
 
 ### Core Services
+
 - `src/services/ai/python-api-client.ts` - Python backend API client with comprehensive error handling
 - `src/services/ai/python-chat-service.ts` - Chat/conversation service with fallback support
 - `src/services/ai/enhanced-ai-workflow-python.ts` - Enhanced workflow with Python integration
 - `src/services/file/python-document-upload.ts` - Document upload service with progress tracking
 
 ### React Hooks
+
 - `src/hooks/usePythonChat.ts` - Chat functionality hook with conversation history
 - `src/hooks/usePythonDocumentUpload.ts` - Document upload hook with progress monitoring
 
 ### Components
+
 - `src/components/ai/AIActionsPython.tsx` - Enhanced AI actions component with backend status
 
 ### Configuration
+
 - `src/config/python-backend.ts` - Backend configuration management with validation
 
 ### Type Definitions
+
 - `src/types/services.d.ts` - Updated with Python backend types
 - `src/types/components.d.ts` - Updated with new component interfaces
 
@@ -102,13 +111,13 @@ VITE_DEBUG_PYTHON_BACKEND=false
 import { usePythonChat } from '@/hooks/usePythonChat'
 
 function ChatComponent() {
-  const { 
-    sendMessage, 
-    messages, 
-    loading, 
-    error, 
+  const {
+    sendMessage,
+    messages,
+    loading,
+    error,
     currentStage,
-    clearMessages 
+    clearMessages
   } = usePythonChat({
     projectId: 'your-project-id',
     documentId: 'optional-document-id',
@@ -121,7 +130,7 @@ function ChatComponent() {
     const result = await sendMessage('How many doors are in this project?', (stage) => {
       console.log('Processing stage:', stage)
     })
-    
+
     if (result) {
       console.log('AI Response:', result.response)
       console.log('Sources used:', result.metadata.sourcesUsed)
@@ -135,7 +144,7 @@ function ChatComponent() {
           Status: {currentStage}
         </div>
       )}
-      
+
       {messages.map(message => (
         <div key={message.id} className={`message ${message.type}`}>
           <strong>{message.type}:</strong> {message.content}
@@ -146,11 +155,11 @@ function ChatComponent() {
           )}
         </div>
       ))}
-      
+
       <button onClick={handleSendMessage} disabled={loading}>
         {loading ? 'Sending...' : 'Send Message'}
       </button>
-      
+
       <button onClick={clearMessages} disabled={loading}>
         Clear Chat
       </button>
@@ -165,11 +174,11 @@ function ChatComponent() {
 import { usePythonDocumentUpload } from '@/hooks/usePythonDocumentUpload'
 
 function UploadComponent() {
-  const { 
-    uploadDocument, 
-    uploadProgress, 
+  const {
+    uploadDocument,
+    uploadProgress,
     isUploading,
-    uploadError 
+    uploadError
   } = usePythonDocumentUpload({
     projectId: 'your-project-id',
     companyId: 'your-company-id',
@@ -197,7 +206,7 @@ function UploadComponent() {
           console.log('Custom progress handler:', progress)
         }
       })
-      
+
       if (result) {
         console.log('Document uploaded successfully:', result.documentId)
         console.log('S3 URL:', result.s3Url)
@@ -210,18 +219,18 @@ function UploadComponent() {
 
   return (
     <div>
-      <input 
-        type="file" 
+      <input
+        type="file"
         accept=".pdf"
         onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
         disabled={isUploading}
       />
-      
+
       {isUploading && (
         <div className="upload-progress">
           <div className="progress-bar">
-            <div 
-              className="progress-fill" 
+            <div
+              className="progress-fill"
               style={{ width: `${uploadProgress.percentage}%` }}
             />
           </div>
@@ -230,7 +239,7 @@ function UploadComponent() {
           </div>
         </div>
       )}
-      
+
       {uploadError && (
         <div className="error-message">
           Error: {uploadError}
@@ -259,6 +268,7 @@ function DocumentViewer() {
 ```
 
 **Features of AIActionsPython Component:**
+
 - **Backend Status Display**: Shows current backend (Python/Existing) with health indicators
 - **Conversation History**: Maintains chat history with timestamps and metadata
 - **Voice Input/Output**: Supports voice commands and text-to-speech responses
@@ -283,15 +293,15 @@ const uploadResult = await pythonAPIClient.uploadDocument({
   file: pdfFile,
   project_id: 'project-123',
   company_id: 'company-456',
-  document_name: 'Custom Document Name'
+  document_name: 'Custom Document Name',
 })
 
 if (uploadResult.success) {
   console.log('Document ID:', uploadResult.data?.document_id)
-  
+
   // Monitor processing progress
   const progressResult = await pythonAPIClient.getDocumentProgress(
-    uploadResult.data?.document_id
+    uploadResult.data?.document_id,
   )
   console.log('Processing status:', progressResult.data?.status)
 }
@@ -306,10 +316,10 @@ const chatResult = await pythonAPIClient.chatConversation({
     {
       role: 'user',
       content: 'What is this document about?',
-      timestamp: '2024-01-15T10:00:00Z'
-    }
+      timestamp: '2024-01-15T10:00:00Z',
+    },
   ],
-  include_search_results: true
+  include_search_results: true,
 })
 
 if (chatResult.success) {
@@ -325,9 +335,9 @@ The system supports intelligent backend selection with automatic fallback:
 ### **Smart Backend Selection**
 
 ```typescript
-import { 
+import {
   handleEnhancedAIQueryWithPython,
-  getBackendConfig 
+  getBackendConfig,
 } from '@/services/ai/enhanced-ai-workflow-python'
 
 // Get current backend configuration
@@ -341,13 +351,13 @@ const result = await handleEnhancedAIQueryWithPython({
   documentId: 'doc-456',
   projectName: 'My Construction Project',
   queryScope: 'project',
-  onProgress: (stage) => {
+  onProgress: stage => {
     console.log('Processing stage:', stage)
   },
   options: {
     usePythonBackend: true,
     fallbackToExisting: true, // Enable automatic fallback
-    onBackendSwitch: (backend) => {
+    onBackendSwitch: backend => {
       console.log(`Switched to ${backend} backend`)
     },
   },
@@ -373,9 +383,9 @@ if (!isPythonAvailable) {
 ### **Backend Configuration**
 
 ```typescript
-import { 
+import {
   getPythonBackendConfig,
-  validatePythonBackendConfig 
+  validatePythonBackendConfig,
 } from '@/config/python-backend'
 
 // Get configuration
@@ -434,7 +444,7 @@ setInterval(async () => {
 The system handles various error types:
 
 - **Network Errors**: Connection timeouts, DNS failures
-- **API Errors**: Invalid requests, authentication failures  
+- **API Errors**: Invalid requests, authentication failures
 - **Processing Errors**: Document processing failures, embedding generation errors
 - **Service Errors**: Pinecone unavailability, OpenAI API issues
 - **Validation Errors**: Invalid file types, missing required fields
@@ -446,7 +456,7 @@ The system handles various error types:
 const result = await pythonAPIClient.chatConversation({
   query: 'Your question',
   project_id: 'project-123',
-  context_type: 'document'
+  context_type: 'document',
 })
 
 // The client automatically retries failed requests based on configuration
@@ -455,20 +465,24 @@ const result = await pythonAPIClient.chatConversation({
 ## Configuration Options
 
 ### **Backend Selection**
+
 - `auto` - Automatically select the best available backend (recommended)
 - `python` - Prefer Python backend, fallback to existing if unavailable
 - `existing` - Use existing backend only
 
 ### **Fallback Behavior**
+
 - `VITE_ENABLE_AI_BACKEND_FALLBACK=true` - Enable automatic fallback (recommended)
 - `VITE_ENABLE_AI_BACKEND_FALLBACK=false` - Disable fallback (fail if Python backend unavailable)
 
 ### **Performance Tuning**
+
 - `VITE_PYTHON_AI_TIMEOUT` - Request timeout (default: 30000ms)
 - `VITE_PYTHON_AI_RETRY_ATTEMPTS` - Retry attempts (default: 3)
 - `VITE_PYTHON_AI_RETRY_DELAY` - Retry delay (default: 1000ms)
 
 ### **Debug Configuration**
+
 - `VITE_DEBUG_PYTHON_BACKEND=true` - Enable debug logging
 - `VITE_DEBUG_PYTHON_BACKEND=false` - Disable debug logging (default)
 
@@ -494,7 +508,7 @@ try {
     error: error.message,
     request: request,
     timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent
+    userAgent: navigator.userAgent,
   })
 }
 ```

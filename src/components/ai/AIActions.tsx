@@ -44,6 +44,15 @@ import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
 
+// Python backend imports
+import { usePythonChat } from '@/hooks/usePythonChat'
+import {
+  handleEnhancedAIQueryWithPython,
+  getBackendConfig,
+  type BackendConfig,
+} from '@/services/ai/enhanced-ai-workflow-python'
+import { isPythonChatAvailable } from '@/services/ai/python-chat-service'
+
 interface AIActionsProps {
   documentId: string
   projectId?: string
@@ -88,6 +97,13 @@ export const AIActions = ({
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
+
+  // Python backend state - enhancing existing functionality
+  const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null)
+  const [currentBackend, setCurrentBackend] = useState<
+    'python' | 'existing' | 'unknown'
+  >('unknown')
+  const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
 
   // Mobile-only voice recognition (when VoiceInput is not available)
   const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
@@ -279,6 +295,31 @@ export const AIActions = ({
       }
     }
   }, [documentId, projectId, companyId, silenceTimer])
+
+  // Python backend health checking and configuration
+  useEffect(() => {
+    const initializeBackend = async () => {
+      try {
+        const config = await getBackendConfig()
+        setBackendConfig(config)
+
+        // Check Python backend availability
+        if (isPythonChatAvailable()) {
+          setCurrentBackend('python')
+          setBackendHealth(true)
+        } else {
+          setCurrentBackend('existing')
+          setBackendHealth(false)
+        }
+      } catch (error) {
+        console.warn('Failed to initialize Python backend:', error)
+        setCurrentBackend('existing')
+        setBackendHealth(false)
+      }
+    }
+
+    initializeBackend()
+  }, [])
 
   // Get status badge component similar to DocumentList
   const getStatusBadge = (status: Document['status']) => {
@@ -549,7 +590,38 @@ export const AIActions = ({
             }
           }
 
-          const response = await callOpenAI(queryToUse, context)
+          // Try Python backend first, fallback to existing OpenAI
+          let response: string
+          try {
+            if (currentBackend === 'python' && backendHealth) {
+              const pythonResponse = await handleEnhancedAIQueryWithPython({
+                query: queryToUse,
+                projectId: projectId,
+                documentId: queryScope === 'document' ? documentId : undefined,
+                projectName,
+                document: document || undefined,
+                queryScope,
+                onProgress: stage => {
+                  console.log('Enhanced AI Progress:', stage)
+                },
+                options: {
+                  usePythonBackend: true,
+                  fallbackToExisting: true,
+                  onBackendSwitch: backend => {
+                    setCurrentBackend(backend)
+                    console.log(`Switched to ${backend} backend`)
+                  },
+                },
+              })
+              response = pythonResponse.response
+            } else {
+              response = await callOpenAI(queryToUse, context)
+            }
+          } catch (error) {
+            console.warn('Primary backend failed, falling back:', error)
+            // Fallback to existing system
+            response = await callOpenAI(queryToUse, context)
+          }
 
           // Add user message to chat history
           const userMessage: ChatMessage = {
@@ -736,6 +808,8 @@ export const AIActions = ({
       setResults,
       setQuery,
       setIsLoading,
+      currentBackend,
+      backendHealth,
     ],
   )
 
@@ -938,7 +1012,7 @@ export const AIActions = ({
       if (!isMobile) {
         toast({
           title: 'Voice input started',
-          description: 'Voice recording has been started.',
+          description: 'Speak your question now...',
         })
       }
     } else {
@@ -951,13 +1025,7 @@ export const AIActions = ({
         }
       }
 
-      // Only show toast on desktop, not mobile
-      if (!isMobile) {
-        toast({
-          title: 'Voice input started',
-          description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
-        })
-      }
+      // No toast when stopping - user will see results or feedback from query processing
     }
   }, [isListening, silenceTimer, isMobile, toast])
 

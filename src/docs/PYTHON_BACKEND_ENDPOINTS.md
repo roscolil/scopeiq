@@ -7,12 +7,15 @@ The Python backend provides a comprehensive AI service with enhanced document pr
 ## **Core Endpoints**
 
 ### **1. Health Check**
+
 ```
 GET /api/v1/health
 ```
+
 **Purpose**: Monitor backend health and service status
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -21,7 +24,7 @@ GET /api/v1/health
     "version": "1.0.0",
     "services": {
       "database": "up" | "down",
-      "vector_store": "up" | "down", 
+      "vector_store": "up" | "down",
       "ai_models": "up" | "down"
     },
     "uptime_seconds": 3600
@@ -30,24 +33,29 @@ GET /api/v1/health
 ```
 
 **Implementation Notes**:
+
 - Checks Pinecone connection status
 - Verifies OpenAI API connectivity
 - Returns uptime since server start
 - Sets appropriate HTTP status codes (200 for healthy, 503 for unhealthy)
 
 ### **2. Document Upload**
+
 ```
 POST /api/v1/documents/upload
 ```
+
 **Purpose**: Upload PDF documents for AI processing and indexing
 
 **Request:** `multipart/form-data`
+
 - `file`: PDF file (required, max 100MB)
 - `project_id`: string (required)
 - `company_id`: string (required)
 - `document_name`: string (optional)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -65,6 +73,7 @@ POST /api/v1/documents/upload
 ```
 
 **Implementation Requirements**:
+
 1. **File Validation**: Ensure file is PDF, check size limits (100MB max)
 2. **S3 Upload**: Store file in S3 with proper naming convention
 3. **Background Processing**: Start async processing pipeline
@@ -79,12 +88,15 @@ POST /api/v1/documents/upload
 6. **Return**: Document ID and initial processing status
 
 ### **3. Document Progress**
+
 ```
 GET /api/v1/documents/{document_id}/progress
 ```
+
 **Purpose**: Check processing status and progress of uploaded documents
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -105,6 +117,7 @@ GET /api/v1/documents/{document_id}/progress
 ```
 
 **Implementation Requirements**:
+
 1. **Status Tracking**: Track processing stages (uploaded → processing → completed/failed)
 2. **Progress Calculation**: Calculate percentage based on completed steps
 3. **Stage Information**: Provide human-readable current stage
@@ -113,12 +126,15 @@ GET /api/v1/documents/{document_id}/progress
 6. **Caching**: Use Redis or in-memory cache for real-time updates
 
 ### **4. Chat Conversation (Primary Endpoint)**
+
 ```
 POST /api/v1/chat/conversation
 ```
+
 **Purpose**: Handle AI conversations with document context and search capabilities
 
 **Request:**
+
 ```json
 {
   "query": "How many windows are on the north wall?",
@@ -142,6 +158,7 @@ POST /api/v1/chat/conversation
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -155,6 +172,7 @@ POST /api/v1/chat/conversation
 ```
 
 **Implementation Requirements**:
+
 1. **Query Processing**: Analyze the user's question and context
 2. **Pinecone Search**: Search the vector database directly for relevant chunks
 3. **Context Building**: Combine search results with conversation history

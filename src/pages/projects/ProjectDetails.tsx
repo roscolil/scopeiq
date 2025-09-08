@@ -29,7 +29,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { Project, Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
-import { AIActionsPython as AIActions } from '@/components/ai/AIActionsPython'
+import { AIActions } from '@/components/ai/AIActions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ProjectSelector } from '@/components/projects/ProjectSelector'
 import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
@@ -969,7 +969,7 @@ const ProjectDetails = () => {
             </h2>
 
             <div className="flex gap-2">
-              <Button
+              {/* <Button
                 size="sm"
                 variant="outline"
                 onClick={forceRefreshDocuments}
@@ -980,7 +980,7 @@ const ProjectDetails = () => {
                   className={`h-4 w-4 mr-1 ${isDocumentsLoading ? 'animate-spin' : ''}`}
                 />
                 Refresh
-              </Button>
+              </Button> */}
 
               <Dialog
                 open={isUploadDialogOpen}
