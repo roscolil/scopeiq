@@ -194,8 +194,8 @@ export const useVoiceRecognition = ({
           clearTimeout(debounceTimeoutRef.current)
         }
 
-        // Use shorter timeout on mobile for better responsiveness
-        const silenceTimeout = isMobile ? 1500 : 2500
+        // Use 1.5 seconds silence timeout for both mobile and desktop for better responsiveness
+        const silenceTimeout = 1500
         debounceTimeoutRef.current = setTimeout(() => {
           console.log(
             'Silence detected, sending complete transcript:',
