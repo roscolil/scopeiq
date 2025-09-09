@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
-import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { VoiceShazamButton } from '@/components/voice/VoiceShazamButtonSelfContained'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
@@ -1137,7 +1137,7 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
-    // DISABLED: Mobile voice recognition now handled by VoiceShazamButton Safari logic
+    // DISABLED: Using VoiceShazamButtonSelfContained instead
     return
 
     if (!isMobile) return // Only for mobile
@@ -1768,8 +1768,6 @@ export const AIActions = ({
       {/* Shazam-style voice button - primary voice input on mobile */}
       {!hideShazamButton && isMobile && (
         <VoiceShazamButton
-          isListening={isListening}
-          toggleListening={toggleListening}
           showTranscript={query || undefined}
           isProcessing={isLoading}
           isMobileOnly={true}

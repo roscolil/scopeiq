@@ -1,31 +1,204 @@
 import { useState, useEffect, useRef } from 'react'
-import { Mic, MicOff, Loader2, Brain } from 'lucide-react'
+import { Mic, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 interface VoiceShazamButtonProps {
-  isListening: boolean
-  toggleListening: () => void
+  isListening?: boolean
+  toggleListening?: () => void
   isMobileOnly?: boolean
   showTranscript?: string
   isProcessing?: boolean
   onHide?: () => void
+  onTranscript?: (text: string) => void // For passing transcript to parent
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionType = any
+
 export const VoiceShazamButton = ({
-  isListening,
-  toggleListening,
   isMobileOnly = true,
   showTranscript,
   isProcessing = false,
   onHide,
+  onTranscript,
 }: VoiceShazamButtonProps) => {
+  console.log('🎯 VoiceShazamButtonSelfContained rendered', { isProcessing })
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
-  // Use the built-in mobile detection hook
   const isMobileView = useIsMobile()
+
+  // SELF-CONTAINED SAFARI VOICE LOGIC (from working SafariVoiceDebug)
+  const [isListening, setIsListening] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  const [status, setStatus] = useState('Ready')
+  const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
+    null,
+  )
+
+  // Initialize speech recognition (EXACT COPY from SafariVoiceDebug)
+  useEffect(() => {
+    console.log('🎯 Speech recognition initialization useEffect running')
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const windowWithSR = window as any
+      const SpeechRecognitionAPI =
+        windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
+
+      console.log('🎯 SpeechRecognition API available:', !!SpeechRecognitionAPI)
+
+      if (SpeechRecognitionAPI) {
+        console.log('🎯 Creating recognition instance')
+        const recognitionInstance = new SpeechRecognitionAPI()
+
+        // Safari mobile detection (EXACT COPY from SafariVoiceDebug)
+        const isSafari = /^((?!chrome|android).)*safari/i.test(
+          navigator.userAgent,
+        )
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+        console.log('🍎 Browser detection:', {
+          isSafari,
+          isMobile,
+          userAgent: navigator.userAgent,
+        })
+
+        if (isSafari && isMobile) {
+          // Safari mobile configuration (EXACT COPY from SafariVoiceDebug)
+          recognitionInstance.continuous = false
+          recognitionInstance.interimResults = false
+          recognitionInstance.lang = 'en-US'
+          console.log('🍎 Configured for Safari mobile')
+        } else {
+          // Standard configuration
+          recognitionInstance.continuous = true
+          recognitionInstance.interimResults = true
+          recognitionInstance.lang = 'en-US'
+          console.log('🎤 Configured for standard browser')
+        }
+
+        // Event handlers (EXACT COPY from SafariVoiceDebug)
+        recognitionInstance.onstart = () => {
+          console.log('✅ Speech recognition started')
+          setStatus('Listening...')
+        }
+
+        recognitionInstance.onend = () => {
+          console.log('⏹️ Speech recognition ended')
+          setStatus('Stopped')
+          setIsListening(false)
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        recognitionInstance.onerror = (event: any) => {
+          console.error('❌ Speech recognition error:', event.error)
+          setStatus(`Error: ${event.error}`)
+          setIsListening(false)
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        recognitionInstance.onresult = (event: any) => {
+          console.log('📝 Speech recognition result:', event)
+
+          const results = Array.from(event.results)
+          const finalTranscript = results
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((result: any) => result.isFinal)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((result: any) => result[0].transcript)
+            .join('')
+            .trim()
+
+          if (finalTranscript) {
+            console.log('✅ Final transcript:', finalTranscript)
+            setTranscript(finalTranscript)
+            setStatus('Got result!')
+            // Stop listening immediately when we get a result
+            setIsListening(false)
+            if (recognitionInstance) {
+              try {
+                recognitionInstance.stop()
+              } catch (error) {
+                console.log('Recognition already stopped')
+              }
+            }
+            // Pass transcript to parent component
+            if (onTranscript) {
+              onTranscript(finalTranscript)
+            }
+          }
+        }
+
+        setRecognition(recognitionInstance)
+        setStatus('Initialized')
+      } else {
+        setStatus('Speech Recognition not supported')
+        console.error('❌ Speech Recognition API not supported')
+      }
+    }
+  }, [onTranscript]) // Include onTranscript dependency
+
+  // Toggle listening function (EXACT COPY from SafariVoiceDebug)
+  const toggleListening = async () => {
+    console.log('🎯 toggleListening called', {
+      recognition: !!recognition,
+      isListening,
+    })
+    if (!recognition) {
+      console.error('❌ No recognition instance')
+      return
+    }
+
+    if (isListening) {
+      console.log('🛑 Stopping recognition...')
+      recognition.stop()
+      setIsListening(false)
+    } else {
+      console.log('🎤 Starting recognition...')
+
+      // Safari mobile - request permissions first (EXACT COPY from SafariVoiceDebug)
+      const isSafari = /^((?!chrome|android).)*safari/i.test(
+        navigator.userAgent,
+      )
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+      if (isSafari && isMobile) {
+        try {
+          console.log('🍎 Requesting microphone permissions...')
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          })
+          console.log('✅ Microphone permission granted')
+          stream.getTracks().forEach(track => track.stop())
+
+          setTimeout(() => {
+            try {
+              recognition.start()
+              setIsListening(true)
+              setStatus('Starting...')
+            } catch (error) {
+              console.error('🍎 Safari start error:', error)
+              setStatus(`Start error: ${error}`)
+            }
+          }, 300)
+        } catch (error) {
+          console.error('🍎 Permission error:', error)
+          setStatus(`Permission error: ${error}`)
+        }
+      } else {
+        try {
+          recognition.start()
+          setIsListening(true)
+          setStatus('Starting...')
+        } catch (error) {
+          console.error('❌ Start error:', error)
+          setStatus(`Start error: ${error}`)
+        }
+      }
+    }
+  }
 
   // Start pulse animation when listening
   useEffect(() => {
@@ -110,7 +283,7 @@ export const VoiceShazamButton = ({
         {/* Help message */}
         {showHelpMessage && !isListening && (
           <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-            🎤 Tap to speak • Auto-submits after silence
+            🎤 Tap to speak • Powered by SafariVoiceDebug logic
           </div>
         )}
 
@@ -123,7 +296,10 @@ export const VoiceShazamButton = ({
         )}
         <div ref={containerRef}>
           <Button
-            onClick={toggleListening}
+            onClick={() => {
+              console.log('🎯 Button clicked!')
+              toggleListening()
+            }}
             disabled={isProcessing}
             className={cn(
               'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
