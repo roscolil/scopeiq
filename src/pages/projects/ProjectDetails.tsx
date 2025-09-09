@@ -16,6 +16,7 @@ import {
   Plus,
   ChevronDown,
   RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import {
   Dialog,
@@ -57,8 +58,12 @@ const ProjectDetails = () => {
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
+  const [recentlyUploadedDocuments, setRecentlyUploadedDocuments] = useState<
+    Set<string>
+  >(new Set())
 
   // Handle document status updates for real-time feedback
   const handleDocumentStatusUpdate = useCallback(
@@ -286,9 +291,16 @@ const ProjectDetails = () => {
 
     const pollDocumentStatuses = async () => {
       try {
+        console.log('🔄 POLLING: Starting document status poll...')
         const documents = await documentService.getDocumentsByProject(
           project.id,
         )
+        console.log(
+          '🔄 POLLING: Retrieved',
+          documents?.length || 0,
+          'documents from database',
+        )
+
         const transformedDocuments: Document[] = (documents || []).map(doc => ({
           id: doc.id,
           name: doc.name || 'Untitled Document',
@@ -306,8 +318,24 @@ const ProjectDetails = () => {
           updatedAt: doc.updatedAt,
         }))
 
+        console.log(
+          '🔄 POLLING: Transformed documents:',
+          transformedDocuments.map(d => ({
+            id: d.id,
+            name: d.name,
+            status: d.status,
+          })),
+        )
+
         // Only update if there are actual changes to avoid unnecessary re-renders
         setProjectDocuments(prev => {
+          console.log(
+            '🔄 POLLING: Current list has',
+            prev.length,
+            'documents, new list has',
+            transformedDocuments.length,
+          )
+
           // Check for status changes
           const hasStatusChanges = prev.some((prevDoc, index) => {
             const newDoc = transformedDocuments.find(d => d.id === prevDoc.id)
@@ -320,24 +348,61 @@ const ProjectDetails = () => {
           // Check for completely different document sets (by IDs)
           const prevIds = new Set(prev.map(d => d.id))
           const newIds = new Set(transformedDocuments.map(d => d.id))
+
+          // Don't remove recently uploaded documents that might not be in DB yet
+          const recentlyUploadedIds = Array.from(recentlyUploadedDocuments)
+          const shouldPreserveRecentUploads = recentlyUploadedIds.some(
+            id => prevIds.has(id) && !newIds.has(id),
+          )
+
+          if (shouldPreserveRecentUploads) {
+            console.log(
+              '🔄 POLLING: Preserving recently uploaded documents:',
+              recentlyUploadedIds,
+            )
+            // Merge the database documents with recently uploaded ones that aren't in DB yet
+            const mergedDocuments = [...transformedDocuments]
+            recentlyUploadedIds.forEach(recentId => {
+              if (!newIds.has(recentId)) {
+                const recentDoc = prev.find(d => d.id === recentId)
+                if (recentDoc) {
+                  mergedDocuments.push(recentDoc)
+                  console.log(
+                    '🔄 POLLING: Preserved recently uploaded document:',
+                    recentDoc.name,
+                  )
+                }
+              }
+            })
+            setCachedDocumentsData(mergedDocuments)
+            return mergedDocuments
+          }
+
           const hasDocumentChanges =
             prevIds.size !== newIds.size ||
             [...prevIds].some(id => !newIds.has(id)) ||
             [...newIds].some(id => !prevIds.has(id))
 
           if (hasStatusChanges || hasCountChanges || hasDocumentChanges) {
-            console.log('📊 Document changes detected:', {
-              hasStatusChanges,
-              hasCountChanges,
-              hasDocumentChanges,
-              prevCount: prev.length,
-              newCount: transformedDocuments.length,
-            })
+            console.log(
+              '� POLLING: Document changes detected, updating list:',
+              {
+                hasStatusChanges,
+                hasCountChanges,
+                hasDocumentChanges,
+                prevCount: prev.length,
+                newCount: transformedDocuments.length,
+                prevIds: [...prevIds],
+                newIds: [...newIds],
+              },
+            )
             // Update cache when document list changes
             setCachedDocumentsData(transformedDocuments)
             return transformedDocuments
+          } else {
+            console.log('🔄 POLLING: No changes detected, keeping current list')
+            return prev
           }
-          return prev
         })
       } catch (error) {
         console.error('Error polling document statuses:', error)
@@ -364,7 +429,12 @@ const ProjectDetails = () => {
     return () => {
       clearInterval(intervalId)
     }
-  }, [project?.id, projectDocuments, setCachedDocumentsData])
+  }, [
+    project?.id,
+    projectDocuments,
+    setCachedDocumentsData,
+    recentlyUploadedDocuments,
+  ])
 
   const handleUpdateProject = async (data: {
     address: string
@@ -416,9 +486,10 @@ const ProjectDetails = () => {
   }
 
   const handleDeleteProject = async () => {
-    if (!project) return
+    if (!project || isDeleteLoading) return
 
     try {
+      setIsDeleteLoading(true)
       await projectService.deleteProject(companyId!, project.id)
 
       toast({
@@ -435,6 +506,8 @@ const ProjectDetails = () => {
           'There was an error deleting your project. Please try again.',
         variant: 'destructive',
       })
+    } finally {
+      setIsDeleteLoading(false)
     }
   }
 
@@ -443,24 +516,65 @@ const ProjectDetails = () => {
       '📄 Document upload completed:',
       uploadedDocument.name,
       uploadedDocument.id,
+      'Current list size:',
+      projectDocuments?.length || 0,
     )
+
+    // Track this document as recently uploaded to prevent polling conflicts
+    setRecentlyUploadedDocuments(
+      prev => new Set([...prev, uploadedDocument.id]),
+    )
+
+    // Remove from recently uploaded after 30 seconds to allow normal polling
+    setTimeout(() => {
+      setRecentlyUploadedDocuments(prev => {
+        const updated = new Set(prev)
+        updated.delete(uploadedDocument.id)
+        return updated
+      })
+    }, 30000)
 
     // Check if this document already exists (by ID) - if so, update it; otherwise add it
     const existingDocumentIndex =
       projectDocuments?.findIndex(doc => doc.id === uploadedDocument.id) ?? -1
+
+    console.log(
+      '🔍 Checking if document exists:',
+      existingDocumentIndex >= 0 ? 'YES (updating)' : 'NO (adding new)',
+      'Index:',
+      existingDocumentIndex,
+    )
 
     let updatedDocuments: Document[]
     if (existingDocumentIndex >= 0) {
       // Update existing document (e.g., status change from processing to processed)
       updatedDocuments = [...(projectDocuments || [])]
       updatedDocuments[existingDocumentIndex] = uploadedDocument
-      console.log('📄 Updated existing document in list')
+      console.log('📄 Updated existing document in list:', {
+        oldStatus: projectDocuments?.[existingDocumentIndex]?.status,
+        newStatus: uploadedDocument.status,
+        listSize: updatedDocuments.length,
+      })
     } else {
       // Add new document
       updatedDocuments = [...(projectDocuments || []), uploadedDocument]
-      console.log('📄 Added new document to list')
+      console.log('📄 Added new document to list:', {
+        name: uploadedDocument.name,
+        id: uploadedDocument.id,
+        status: uploadedDocument.status,
+        oldListSize: projectDocuments?.length || 0,
+        newListSize: updatedDocuments.length,
+      })
     }
 
+    console.log(
+      '🔄 Setting project documents to:',
+      updatedDocuments.map(d => ({
+        id: d.id,
+        name: d.name,
+        status: d.status,
+      })),
+    )
     setProjectDocuments(updatedDocuments)
 
     // Clear cache to force fresh data fetch on next load
@@ -529,11 +643,23 @@ const ProjectDetails = () => {
             transformedDocuments.length > 0 ||
             projectDocuments.length === 0
           ) {
+            console.log(
+              '✅ Updating document list:',
+              `${projectDocuments.length} → ${transformedDocuments.length}`,
+              transformedDocuments.map(d => ({
+                id: d.id,
+                name: d.name,
+                status: d.status,
+              })),
+            )
             setProjectDocuments(transformedDocuments)
             setCachedDocumentsData(transformedDocuments)
           } else {
             console.log(
-              '⚠️ No documents found in database, keeping current state',
+              '⚠️ No documents found in database, keeping current state:',
+              'Current list has',
+              projectDocuments.length,
+              'documents',
             )
           }
         } catch (error) {
@@ -889,8 +1015,16 @@ const ProjectDetails = () => {
                       <Button
                         variant="destructive"
                         onClick={handleDeleteProject}
+                        disabled={isDeleteLoading}
                       >
-                        Delete Project
+                        {isDeleteLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          'Delete Project'
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -954,8 +1088,19 @@ const ProjectDetails = () => {
                     >
                       Cancel
                     </Button>
-                    <Button variant="destructive" onClick={handleDeleteProject}>
-                      Delete Project
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteProject}
+                      disabled={isDeleteLoading}
+                    >
+                      {isDeleteLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete Project'
+                      )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

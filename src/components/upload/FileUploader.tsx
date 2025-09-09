@@ -129,10 +129,12 @@ export const FileUploader = (props: FileUploaderProps) => {
             updatedAt: new Date().toISOString(),
           }
 
-          console.log(
-            'Calling onUploadComplete after storage upload:',
-            document.id,
-          )
+          console.log('Calling onUploadComplete after storage upload:', {
+            documentId: document.id,
+            name: document.name,
+            status: document.status,
+            projectId: document.projectId,
+          })
           onUploadComplete(document)
         }
       } catch (error) {
