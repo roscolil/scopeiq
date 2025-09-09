@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/data'
-import type { Schema } from '../../amplify/data/resource'
+import type { Schema } from '../../../amplify/data/resource'
 import { getCurrentUser } from 'aws-amplify/auth'
 
 // Generate the Amplify client
@@ -245,7 +245,7 @@ export const databaseDocumentService = {
       }
 
       // Prepare the update data with proper type handling
-      const updateData: any = {
+      const updateData: { id: string; [key: string]: unknown } = {
         id: documentId,
       }
 
@@ -270,8 +270,10 @@ export const databaseDocumentService = {
       updateData.updatedAt = new Date().toISOString()
 
       // Perform the update
-      const { data: document, errors } =
-        await client.models.Document.update(updateData)
+      // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
+      const { data: document, errors } = await client.models.Document.update(
+        updateData as Parameters<typeof client.models.Document.update>[0],
+      )
 
       if (errors) {
         console.error('DB: Error updating document:', errors)
