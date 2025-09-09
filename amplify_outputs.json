@@ -48,7 +48,7 @@
   "data": {
     "url": "https://nekg4czaujge7fb2frv3xnasp4.appsync-api.ap-southeast-2.amazonaws.com/graphql",
     "aws_region": "ap-southeast-2",
-    "api_key": "da2-hrpxa4okxze35jfsmqn6m2ukva",
+    "api_key": "da2-oll23ih3wrhjjjtdeq5wterknq",
     "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
     "authorization_types": [
       "API_KEY",
@@ -1477,6 +1477,22 @@
         }
       },
       "nonModels": {},
+      "queries": {
+        "pineconeSearch": {
+          "name": "pineconeSearch",
+          "isArray": false,
+          "type": "AWSJSON",
+          "isRequired": false,
+          "arguments": {
+            "body": {
+              "name": "body",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      },
       "mutations": {
         "sendContactEmail": {
           "name": "sendContactEmail",
