@@ -949,13 +949,8 @@ export const AIActions = ({
                 .then(async () => {
                   console.log('🍎 iOS microphone permission granted')
 
-                  // Unlock audio for automatic speech responses
-                  try {
-                    await novaSonic.unlockAudio()
-                    console.log('🍎 Audio unlocked for automatic responses')
-                  } catch (error) {
-                    console.warn('🍎 Could not unlock audio:', error)
-                  }
+                  // Audio is ready for automatic speech responses
+                  console.log('🍎 Audio ready for automatic responses')
 
                   mobileRecognitionRef.current?.start()
                 })
@@ -1142,6 +1137,9 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
+    // DISABLED: Mobile voice recognition now handled by VoiceShazamButton Safari logic
+    return
+
     if (!isMobile) return // Only for mobile
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
@@ -1772,10 +1770,20 @@ export const AIActions = ({
         <VoiceShazamButton
           isListening={isListening}
           toggleListening={toggleListening}
-          showTranscript={isListening || query ? query : undefined}
+          showTranscript={query || undefined}
           isProcessing={isLoading}
           isMobileOnly={true}
           onHide={() => setHideShazamButton(true)}
+          onTranscript={text => {
+            console.log('🎯 Received transcript in AIActions:', text)
+            setQuery(text)
+            // Set loading immediately to show processing state
+            setIsLoading(true)
+            // Auto-submit the transcript
+            setTimeout(() => {
+              handleQuery(text)
+            }, 500)
+          }}
         />
       )}
 

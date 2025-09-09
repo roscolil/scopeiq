@@ -11,7 +11,11 @@ interface VoiceShazamButtonProps {
   showTranscript?: string
   isProcessing?: boolean
   onHide?: () => void
+  onTranscript?: (text: string) => void // For Safari mobile integration
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionType = any
 
 export const VoiceShazamButton = ({
   isListening,
@@ -20,12 +24,117 @@ export const VoiceShazamButton = ({
   showTranscript,
   isProcessing = false,
   onHide,
+  onTranscript,
 }: VoiceShazamButtonProps) => {
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   // Use the built-in mobile detection hook
   const isMobileView = useIsMobile()
+
+  // SAFARI MOBILE SPEECH RECOGNITION (from working SafariVoiceDebug)
+  const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
+    null,
+  )
+
+  // Initialize Safari speech recognition
+  useEffect(() => {
+    console.log('🎯 Speech recognition initialization for Safari mobile')
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const windowWithSR = window as any
+      const SpeechRecognitionAPI =
+        windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
+
+      if (SpeechRecognitionAPI) {
+        console.log('🎯 Creating recognition instance for Safari mobile')
+        const recognitionInstance = new SpeechRecognitionAPI()
+
+        // Safari mobile detection
+        const isSafari = /^((?!chrome|android).)*safari/i.test(
+          navigator.userAgent,
+        )
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+        console.log('🍎 Browser detection:', { isSafari, isMobile })
+
+        if (isSafari && isMobile) {
+          // Safari mobile configuration
+          recognitionInstance.continuous = false
+          recognitionInstance.interimResults = false
+          recognitionInstance.lang = 'en-US'
+          console.log('🍎 Configured for Safari mobile')
+
+          // Event handlers for Safari mobile
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recognitionInstance.onresult = (event: any) => {
+            console.log('📝 Safari speech recognition result:', event)
+            const results = Array.from(event.results)
+            const finalTranscript = results
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .filter((result: any) => result.isFinal)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .map((result: any) => result[0].transcript)
+              .join('')
+              .trim()
+
+            if (finalTranscript && onTranscript) {
+              console.log('✅ Safari final transcript:', finalTranscript)
+              onTranscript(finalTranscript)
+            }
+          }
+
+          recognitionInstance.onend = () => {
+            console.log('⏹️ Safari speech recognition ended')
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          recognitionInstance.onerror = (event: any) => {
+            console.error('❌ Safari speech recognition error:', event.error)
+          }
+
+          setRecognition(recognitionInstance)
+        }
+      }
+    }
+  }, [onTranscript])
+
+  // Enhanced toggleListening for Safari mobile
+  const handleToggleListening = async () => {
+    console.log('🎯 Enhanced toggle listening called')
+
+    // Safari mobile detection
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+    if (isSafari && isMobile && recognition && !isListening) {
+      console.log('🍎 Using Safari mobile speech recognition')
+      try {
+        // Request permissions first
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        })
+        console.log('✅ Safari microphone permission granted')
+        stream.getTracks().forEach(track => track.stop())
+
+        // Start recognition with delay
+        setTimeout(() => {
+          try {
+            recognition.start()
+            console.log('🍎 Safari recognition started')
+          } catch (error) {
+            console.error('🍎 Safari start error:', error)
+          }
+        }, 300)
+      } catch (error) {
+        console.error('🍎 Safari permission error:', error)
+      }
+    } else {
+      // Use the original toggleListening for non-Safari or desktop
+      console.log('🎤 Using standard speech recognition')
+      toggleListening()
+    }
+  }
 
   // Start pulse animation when listening
   useEffect(() => {
@@ -123,7 +232,7 @@ export const VoiceShazamButton = ({
         )}
         <div ref={containerRef}>
           <Button
-            onClick={toggleListening}
+            onClick={handleToggleListening}
             disabled={isProcessing}
             className={cn(
               'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',

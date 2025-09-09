@@ -671,13 +671,10 @@ export const AIActionsEnhanced = ({
                 .then(async () => {
                   console.log('🍎 iOS microphone permission granted (enhanced)')
 
-                  // Unlock audio for automatic speech responses
-                  try {
-                    await novaSonic.unlockAudio()
-                    console.log('🍎 Audio unlocked for automatic responses')
-                  } catch (error) {
-                    console.warn('🍎 Could not unlock audio:', error)
-                  }
+                  // Audio will be unlocked on first user interaction with speech
+                  console.log(
+                    '🍎 Audio will be unlocked on first speech interaction',
+                  )
 
                   mobileRecognitionRef.current?.start()
                 })
