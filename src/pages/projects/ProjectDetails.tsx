@@ -16,6 +16,7 @@ import {
   Plus,
   ChevronDown,
   RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import {
   Dialog,
@@ -57,6 +58,7 @@ const ProjectDetails = () => {
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false)
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
   const [showAITools, setShowAITools] = useState(true)
   const [recentlyUploadedDocuments, setRecentlyUploadedDocuments] = useState<
@@ -484,9 +486,10 @@ const ProjectDetails = () => {
   }
 
   const handleDeleteProject = async () => {
-    if (!project) return
+    if (!project || isDeleteLoading) return
 
     try {
+      setIsDeleteLoading(true)
       await projectService.deleteProject(companyId!, project.id)
 
       toast({
@@ -503,6 +506,8 @@ const ProjectDetails = () => {
           'There was an error deleting your project. Please try again.',
         variant: 'destructive',
       })
+    } finally {
+      setIsDeleteLoading(false)
     }
   }
 
@@ -1010,8 +1015,16 @@ const ProjectDetails = () => {
                       <Button
                         variant="destructive"
                         onClick={handleDeleteProject}
+                        disabled={isDeleteLoading}
                       >
-                        Delete Project
+                        {isDeleteLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          'Delete Project'
+                        )}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -1075,8 +1088,19 @@ const ProjectDetails = () => {
                     >
                       Cancel
                     </Button>
-                    <Button variant="destructive" onClick={handleDeleteProject}>
-                      Delete Project
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteProject}
+                      disabled={isDeleteLoading}
+                    >
+                      {isDeleteLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete Project'
+                      )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
