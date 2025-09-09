@@ -31,6 +31,8 @@ interface NovaSonicResponse {
 class NovaSonicService {
   private client: PollyClient | null = null
   private audioContextUnlocked: boolean = false
+  private userInteractionReceived: boolean = false
+  private pendingAudio: HTMLAudioElement | null = null
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -41,7 +43,7 @@ class NovaSonicService {
 
   constructor() {
     this.initializeClient()
-    this.setupAudioContextUnlocking()
+    this.setupUserInteractionTracking()
   }
 
   private initializeClient() {
