@@ -39,6 +39,8 @@ export const VoiceShazamButton = ({
   )
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const [hasTranscript, setHasTranscript] = useState(false)
+  const lastSubmittedTranscriptRef = useRef<string>('')
+  const hasSubmittedRef = useRef<boolean>(false)
 
   // Initialize speech recognition (EXACT COPY from SafariVoiceDebug)
   useEffect(() => {
@@ -129,6 +131,18 @@ export const VoiceShazamButton = ({
             setTranscript(currentTranscript)
             setHasTranscript(true)
 
+            // Skip if we've already submitted this exact transcript
+            if (
+              hasSubmittedRef.current &&
+              currentTranscript === lastSubmittedTranscriptRef.current
+            ) {
+              console.log(
+                '🔄 Skipping - already submitted this transcript:',
+                currentTranscript,
+              )
+              return
+            }
+
             // Clear existing silence timer on any speech activity
             setSilenceTimer(prevTimer => {
               if (prevTimer) {
@@ -141,12 +155,27 @@ export const VoiceShazamButton = ({
               // Start new silence timer - wait for 2 seconds of silence
               const newTimer = setTimeout(() => {
                 const trimmedTranscript = currentTranscript.trim()
+
+                // Double-check we haven't already submitted this transcript
+                if (
+                  hasSubmittedRef.current &&
+                  trimmedTranscript === lastSubmittedTranscriptRef.current
+                ) {
+                  console.log(
+                    '🔄 Timer expired but already submitted:',
+                    trimmedTranscript,
+                  )
+                  return
+                }
+
                 console.log(
                   '⏰ Silence detected, auto-submitting:',
                   trimmedTranscript,
                 )
                 setStatus('Got result!')
                 setIsListening(false)
+                hasSubmittedRef.current = true
+                lastSubmittedTranscriptRef.current = trimmedTranscript
 
                 // Stop recognition
                 try {
@@ -207,6 +236,8 @@ export const VoiceShazamButton = ({
       console.log('🛑 Stopping recognition...')
       recognition.stop()
       setIsListening(false)
+      hasSubmittedRef.current = false
+      lastSubmittedTranscriptRef.current = ''
       // Clear silence timer when stopping
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
@@ -220,6 +251,8 @@ export const VoiceShazamButton = ({
       // Reset state when starting
       setTranscript('')
       setHasTranscript(false)
+      hasSubmittedRef.current = false
+      lastSubmittedTranscriptRef.current = ''
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
           clearTimeout(prevTimer)
