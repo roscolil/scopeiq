@@ -967,28 +967,6 @@ export const AIActions = ({
     [speakWithStateTracking, toast],
   )
 
-  // Debug function to test voice synthesis
-  const testVoiceResponse = useCallback(async () => {
-    console.log('🧪 Testing voice response...')
-    try {
-      await speakWithStateTracking(
-        'This is a test of the voice response system.',
-        {
-          voice: 'Ruth',
-          stopListeningAfter: true,
-        },
-      )
-    } catch (error) {
-      console.error('Voice test error:', error)
-      toast({
-        title: 'Voice Test Failed',
-        description:
-          'Voice synthesis is not working. Check console for details.',
-        variant: 'destructive',
-      })
-    }
-  }, [speakWithStateTracking, toast])
-
   const toggleListening = useCallback(() => {
     const newListeningState = !isListening
     setIsListening(newListeningState)
@@ -1567,17 +1545,6 @@ export const AIActions = ({
                     isMobile={isMobile}
                   />
                 )}
-
-                {/* Debug voice test button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={testVoiceResponse}
-                  className="text-xs h-8 border border-gray-200 text-gray-600 hover:bg-gray-50"
-                  title="Test voice response"
-                >
-                  🔊 Test Voice
-                </Button>
 
                 {/* Voice status indicator */}
                 {isVoicePlaying && (
