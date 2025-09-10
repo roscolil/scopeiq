@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
-import { VoiceShazamButton } from '@/components/voice/VoiceShazamButtonSelfContained'
+import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
@@ -1815,6 +1815,7 @@ export const AIActions = ({
       {/* Shazam-style voice button - primary voice input on mobile */}
       {!hideShazamButton && isMobile && (
         <VoiceShazamButton
+          selfContained={true}
           showTranscript={query || undefined}
           isProcessing={isLoading}
           isMobileOnly={true}
