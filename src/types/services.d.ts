@@ -1,5 +1,5 @@
 /**
- * Service and API type definitions for ScopeIQ
+ * Service and API type definitions for Jacq of All Trades
  * Defines input/output types and service interfaces
  */
 

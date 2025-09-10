@@ -42,8 +42,7 @@ export class ChatEmailService {
 
       // Create default subject if not provided
       const emailSubject =
-        subject ||
-        `ScopeIQ Chat Conversation - ${new Date().toLocaleDateString()}`
+        subject || `Jacq Chat Conversation - ${new Date().toLocaleDateString()}`
 
       // For now, fallback to using contact email function with chat content
       // TODO: Implement dedicated sendChatEmail mutation in amplify/data/resource.ts
@@ -51,7 +50,7 @@ export class ChatEmailService {
         submissionId: `chat-${Date.now()}`,
         name: 'Chat Export User',
         email: recipientEmail,
-        company: 'ScopeIQ Chat Export',
+        company: 'Jacq Chat Export',
         message: `${emailSubject}\n\n${chatContent}`,
         submittedAt: new Date().toISOString(),
       })
@@ -117,10 +116,10 @@ export class ChatEmailService {
     if (firstUserMessage && firstUserMessage.content.length > 0) {
       const firstLine = firstUserMessage.content.split('\n')[0]
       if (firstLine.length > 10 && firstLine.length < 50) {
-        return `ScopeIQ Chat: ${firstLine} - ${today}`
+        return `Jacq Chat: ${firstLine} - ${today}`
       }
     }
 
-    return `ScopeIQ Chat Conversation (${messageCount} messages) - ${today}`
+    return `Jacq Chat Conversation (${messageCount} messages) - ${today}`
   }
 }

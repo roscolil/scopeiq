@@ -53,10 +53,10 @@ const Terms = () => {
                 1. Acceptance of Terms
               </h2>
               <p>
-                By accessing and using ScopeIQ ("the Service"), you accept and
-                agree to be bound by the terms and provision of this agreement.
-                If you do not agree to abide by the above, please do not use
-                this service.
+                By accessing and using Jacq of All Trades ("the Service"), you
+                accept and agree to be bound by the terms and provision of this
+                agreement. If you do not agree to abide by the above, please do
+                not use this service.
               </p>
             </section>
 
@@ -65,11 +65,11 @@ const Terms = () => {
                 2. Description of Service
               </h2>
               <p>
-                ScopeIQ is a document management and AI-powered analysis
-                platform that allows users to upload, organize, and query
-                documents using artificial intelligence. The Service includes
-                features for document storage, processing, and intelligent
-                search capabilities.
+                Jacq of All Trades is a document management and AI-powered
+                analysis platform that allows users to upload, organize, and
+                query documents using artificial intelligence. The Service
+                includes features for document storage, processing, and
+                intelligent search capabilities.
               </p>
             </section>
 
@@ -133,9 +133,9 @@ const Terms = () => {
                   Service.
                 </p>
                 <p>
-                  5.2. By uploading content, you grant ScopeIQ a limited license
-                  to process, store, and analyze your content to provide the
-                  Service.
+                  5.2. By uploading content, you grant Jacq of All Trades a
+                  limited license to process, store, and analyze your content to
+                  provide the Service.
                 </p>
                 <p>
                   5.3. You are solely responsible for the content you upload and
@@ -186,12 +186,12 @@ const Terms = () => {
                 8. Limitation of Liability
               </h2>
               <p>
-                To the maximum extent permitted by law, ScopeIQ shall not be
-                liable for any indirect, incidental, special, consequential, or
-                punitive damages, or any loss of profits or revenues, whether
-                incurred directly or indirectly, or any loss of data, use,
-                goodwill, or other intangible losses resulting from your use of
-                the Service.
+                To the maximum extent permitted by law, Jacq of All Trades shall
+                not be liable for any indirect, incidental, special,
+                consequential, or punitive damages, or any loss of profits or
+                revenues, whether incurred directly or indirectly, or any loss
+                of data, use, goodwill, or other intangible losses resulting
+                from your use of the Service.
               </p>
             </section>
 

@@ -79,7 +79,7 @@ async function generateDeviceKey(
   const credential = (await navigator.credentials.create({
     publicKey: {
       challenge,
-      rp: { name: 'ScopeIQ', id: rpId },
+      rp: { name: 'Jacq of All Trades', id: rpId },
       user: {
         id: new TextEncoder().encode(userId),
         name: userId,

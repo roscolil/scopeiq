@@ -1,5 +1,5 @@
 /**
- * Core entity type definitions for ScopeIQ
+ * Core entity type definitions for Jacq of All Trades
  * Defines the main data structures used throughout the application
  */
 
