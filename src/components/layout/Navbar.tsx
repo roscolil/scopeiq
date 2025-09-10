@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
-  FilePlus,
+  HardHat,
   FolderOpen,
   Home,
   Menu,
@@ -96,11 +96,11 @@ export const Navbar = () => {
             }`}
           >
             <div className="relative">
-              <FilePlus className="h-6 w-6 text-emerald-400" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+              <HardHat className="h-6 w-6 text-emerald-400" />
+              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
-            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-              ScopeIQ
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent text-2xl">
+              Jacq of All Trades
             </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}

@@ -200,7 +200,7 @@ export const contactService = {
           second: '2-digit',
         }),
         body: `
-NEW CONTACT FORM SUBMISSION - ScopeIQ
+NEW CONTACT FORM SUBMISSION - Jacq of All Trades
 =====================================
 
 👤 Name: ${submission.name}

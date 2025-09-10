@@ -1,4 +1,4 @@
-// Advanced Route Prefetching Strategy for ScopeIQ
+// Advanced Route Prefetching Strategy for Jacq of All Trades
 import { ComponentType, ReactElement } from 'react'
 
 // Define prefetch strategies

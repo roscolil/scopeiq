@@ -9,7 +9,7 @@
 
 ## Project Overview
 
-ScopeIQ is a React + TypeScript application with AWS Amplify backend for document analysis and AI-powered insights. The app features voice recognition, document processing, and intelligent search capabilities.
+Jacq of All Trades is a React + TypeScript application with AWS Amplify backend for document analysis and AI-powered insights. The app features voice recognition, document processing, and intelligent search capabilities.
 
 ## Tech Stack
 

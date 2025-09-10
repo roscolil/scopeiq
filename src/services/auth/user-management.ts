@@ -432,7 +432,7 @@ class UserManagementService {
       const emailData = {
         to: params.recipientEmail,
         from: 'invitations@scopeiq.ai',
-        subject: `🚀 You're invited to join ${params.companyName} on ScopeIQ`,
+        subject: `🚀 You're invited to join ${params.companyName} on Jacq of All Trades`,
         timestamp: new Date().toLocaleString('en-AU', {
           timeZone: 'Australia/Sydney',
           year: 'numeric',
@@ -443,12 +443,12 @@ class UserManagementService {
           second: '2-digit',
         }),
         body: `
-USER INVITATION - ScopeIQ
+USER INVITATION - Jacq of All Trades
 =========================
 
 Hi ${params.recipientName},
 
-${params.inviterName} has invited you to join ${params.companyName} on ScopeIQ as a ${params.role}.
+${params.inviterName} has invited you to join ${params.companyName} on Jacq of All Trades as a ${params.role}.
 
 🎯 Role: ${params.role}
 🏢 Company: ${params.companyName}
@@ -464,7 +464,7 @@ ${params.acceptUrl}
 This invitation will expire in 7 days.
 
 =========================
-ScopeIQ Team
+Jacq of All Trades Team
         `,
       }
 
