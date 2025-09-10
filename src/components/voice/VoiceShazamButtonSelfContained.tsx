@@ -37,10 +37,13 @@ export const VoiceShazamButton = ({
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
+  const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
+  const [hasTranscript, setHasTranscript] = useState(false)
 
   // Initialize speech recognition (EXACT COPY from SafariVoiceDebug)
   useEffect(() => {
     console.log('🎯 Speech recognition initialization useEffect running')
+
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const windowWithSR = window as any
@@ -66,11 +69,11 @@ export const VoiceShazamButton = ({
         })
 
         if (isSafari && isMobile) {
-          // Safari mobile configuration (EXACT COPY from SafariVoiceDebug)
-          recognitionInstance.continuous = false
-          recognitionInstance.interimResults = false
+          // Safari mobile configuration - enable interim results for silence detection
+          recognitionInstance.continuous = true // Changed to true for better silence detection
+          recognitionInstance.interimResults = true // Enable interim results
           recognitionInstance.lang = 'en-US'
-          console.log('🍎 Configured for Safari mobile')
+          console.log('🍎 Configured for Safari mobile with interim results')
         } else {
           // Standard configuration
           recognitionInstance.continuous = true
@@ -103,31 +106,71 @@ export const VoiceShazamButton = ({
           console.log('📝 Speech recognition result:', event)
 
           const results = Array.from(event.results)
-          const finalTranscript = results
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .filter((result: any) => result.isFinal)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .map((result: any) => result[0].transcript)
-            .join('')
-            .trim()
 
-          if (finalTranscript) {
-            console.log('✅ Final transcript:', finalTranscript)
-            setTranscript(finalTranscript)
-            setStatus('Got result!')
-            // Stop listening immediately when we get a result
-            setIsListening(false)
-            if (recognitionInstance) {
-              try {
-                recognitionInstance.stop()
-              } catch (error) {
-                console.log('Recognition already stopped')
+          // Get both interim and final transcripts
+          let interimTranscript = ''
+          let finalTranscript = ''
+
+          for (let i = 0; i < results.length; i++) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const result = results[i] as any
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript
+            } else {
+              interimTranscript += result[0].transcript
+            }
+          }
+
+          // Combine both for current display
+          const currentTranscript = (finalTranscript + interimTranscript).trim()
+
+          if (currentTranscript) {
+            console.log('🎤 Current transcript:', currentTranscript)
+            setTranscript(currentTranscript)
+            setHasTranscript(true)
+
+            // Clear existing silence timer on any speech activity
+            setSilenceTimer(prevTimer => {
+              if (prevTimer) {
+                clearTimeout(prevTimer)
+                console.log(
+                  '🔄 Speech activity detected, resetting silence timer',
+                )
               }
-            }
-            // Pass transcript to parent component
-            if (onTranscript) {
-              onTranscript(finalTranscript)
-            }
+
+              // Start new silence timer - wait for 2 seconds of silence
+              const newTimer = setTimeout(() => {
+                const trimmedTranscript = currentTranscript.trim()
+                console.log(
+                  '⏰ Silence detected, auto-submitting:',
+                  trimmedTranscript,
+                )
+                setStatus('Got result!')
+                setIsListening(false)
+
+                // Stop recognition
+                try {
+                  recognitionInstance.stop()
+                } catch (error) {
+                  console.log('Recognition already stopped')
+                }
+
+                // Pass transcript to parent component after silence
+                if (onTranscript && trimmedTranscript) {
+                  console.log(
+                    '🎯 Calling onTranscript after silence:',
+                    trimmedTranscript,
+                  )
+                  onTranscript(trimmedTranscript)
+                }
+              }, 2000) // 2 second silence detection
+
+              console.log(
+                '⏰ Started 2s silence timer for:',
+                currentTranscript.slice(0, 50),
+              )
+              return newTimer
+            })
           }
         }
 
@@ -138,7 +181,16 @@ export const VoiceShazamButton = ({
         console.error('❌ Speech Recognition API not supported')
       }
     }
-  }, [onTranscript]) // Include onTranscript dependency
+  }, [onTranscript]) // Only depend on onTranscript - not on state variables
+
+  // Cleanup silence timer on unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+      }
+    }
+  }, [silenceTimer])
 
   // Toggle listening function (EXACT COPY from SafariVoiceDebug)
   const toggleListening = async () => {
@@ -155,8 +207,25 @@ export const VoiceShazamButton = ({
       console.log('🛑 Stopping recognition...')
       recognition.stop()
       setIsListening(false)
+      // Clear silence timer when stopping
+      setSilenceTimer(prevTimer => {
+        if (prevTimer) {
+          clearTimeout(prevTimer)
+        }
+        return null
+      })
+      setHasTranscript(false)
     } else {
       console.log('🎤 Starting recognition...')
+      // Reset state when starting
+      setTranscript('')
+      setHasTranscript(false)
+      setSilenceTimer(prevTimer => {
+        if (prevTimer) {
+          clearTimeout(prevTimer)
+        }
+        return null
+      })
 
       // Safari mobile - request permissions first (EXACT COPY from SafariVoiceDebug)
       const isSafari = /^((?!chrome|android).)*safari/i.test(
@@ -283,7 +352,7 @@ export const VoiceShazamButton = ({
         {/* Help message */}
         {showHelpMessage && !isListening && (
           <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-            🎤 Tap to speak • Powered by SafariVoiceDebug logic
+            🎤 Tap to speak • 2s silence auto-submits
           </div>
         )}
 

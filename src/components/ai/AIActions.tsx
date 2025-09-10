@@ -92,6 +92,9 @@ export const AIActions = ({
   const [shouldResumeListening, setShouldResumeListening] = useState(false)
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
   const [interimTranscript, setInterimTranscript] = useState<string>('')
+  const [lastProcessedTranscript, setLastProcessedTranscript] =
+    useState<string>('')
+  const [lastSpokenResponse, setLastSpokenResponse] = useState<string>('')
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -162,7 +165,22 @@ export const AIActions = ({
       prompt: string,
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
-      if (!novaSonic.isAvailable()) return
+      console.log('🎵 speakWithStateTracking called with:', {
+        promptLength: prompt.length,
+        isVoicePlaying,
+        novaSonicAvailable: novaSonic.isAvailable(),
+      })
+
+      if (!novaSonic.isAvailable()) {
+        console.log('❌ Nova Sonic not available')
+        return
+      }
+
+      // Prevent overlapping voice responses
+      if (isVoicePlaying) {
+        console.log('🔄 Skipping voice response - already playing audio')
+        return
+      }
 
       try {
         // Remember if we were listening before voice output
@@ -202,7 +220,10 @@ export const AIActions = ({
           setShouldResumeListening(false)
         }
       } catch (error) {
-        console.error('Voice synthesis error:', error)
+        console.error('❌ Voice synthesis error:', error)
+        // Reset voice playing state on error
+        setIsVoicePlaying(false)
+        setCurrentSpeakingText('')
       } finally {
         // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
@@ -210,7 +231,7 @@ export const AIActions = ({
         console.log('🔄 Voice playing set to false')
       }
     },
-    [isListening, silenceTimer],
+    [isListening, silenceTimer, isVoicePlaying],
   )
 
   // Fetch document status on component mount and set up live polling
@@ -533,6 +554,8 @@ export const AIActions = ({
       })
       setIsLoading(true)
       setResults(null)
+      setLastSpokenResponse('') // Clear previous spoken response for new queries
+      setIsVoicePlaying(false) // Reset voice playing state for new queries
 
       try {
         if (isQuestion(queryToUse)) {
@@ -660,14 +683,35 @@ export const AIActions = ({
           }
 
           // Provide voice feedback with the actual AI answer
-          if (response && response.length > 0) {
+          if (
+            response &&
+            response.length > 0 &&
+            response !== lastSpokenResponse
+          ) {
+            console.log(
+              '🎵 Preparing to speak AI response:',
+              response.substring(0, 50) + '...',
+            )
+            setLastSpokenResponse(response) // Mark this response as being spoken
+
             setTimeout(() => {
-              // Speak the full answer - no truncation
-              speakWithStateTracking(response, {
-                voice: 'Ruth',
-                stopListeningAfter: true,
-              }).catch(console.error)
+              // Check if we should speak (not already playing and this is still the current response)
+              if (!isVoicePlaying) {
+                console.log('🗣️ Starting voice response playback')
+                // Speak the full answer - no truncation
+                speakWithStateTracking(response, {
+                  voice: 'Ruth',
+                  stopListeningAfter: true,
+                }).catch(console.error)
+              } else {
+                console.log('🔄 Skipping voice response - already speaking')
+              }
             }, 1000)
+          } else if (response === lastSpokenResponse) {
+            console.log(
+              '🔄 Skipping duplicate voice response:',
+              response.substring(0, 50) + '...',
+            )
           }
         } else {
           // Handle as semantic search with proper document scoping
@@ -810,6 +854,9 @@ export const AIActions = ({
       setIsLoading,
       currentBackend,
       backendHealth,
+      isVoicePlaying,
+      lastSpokenResponse,
+      setLastSpokenResponse,
     ],
   )
 
@@ -1774,13 +1821,19 @@ export const AIActions = ({
           onHide={() => setHideShazamButton(true)}
           onTranscript={text => {
             console.log('🎯 Received transcript in AIActions:', text)
+
+            // Prevent duplicate processing
+            if (text === lastProcessedTranscript) {
+              console.log('🔄 Duplicate transcript detected, skipping:', text)
+              return
+            }
+
+            setLastProcessedTranscript(text)
             setQuery(text)
             // Set loading immediately to show processing state
             setIsLoading(true)
-            // Auto-submit the transcript
-            setTimeout(() => {
-              handleQuery(text)
-            }, 500)
+            // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
+            handleQuery(text)
           }}
         />
       )}
