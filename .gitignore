@@ -36,6 +36,7 @@ config/secrets.json
 *.njsproj
 *.sln
 *.sw?
+# .github/copilot-instructions.md
 
 # amplify
 .amplify
