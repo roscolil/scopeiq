@@ -1022,7 +1022,7 @@ export const AIActionsEnhanced = ({
         toast({
           title: 'Enhanced voice input resumed',
           description: 'Ready for your next enhanced question...',
-          duration: 2000,
+          duration: 1500,
         })
       }, 1500)
 

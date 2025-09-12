@@ -219,7 +219,7 @@ export const VoiceShazamButton = ({
                   )
                   onTranscript(trimmedTranscript)
                 }
-              }, 2000) // 2 second silence detection
+              }, 1500) // 1.5 second silence detection
 
               console.log(
                 '⏰ Started 2s silence timer for:',
