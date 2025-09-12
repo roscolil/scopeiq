@@ -1644,12 +1644,15 @@ export const AIActions = ({
                                 <Square className="h-4 w-4 relative z-10" />
                               </>
                             )}
+                            {state === 'idle' && (
+                              <RotateCcw className="h-4 w-4 opacity-50" />
+                            )}
                             {state === 'replay' && (
                               <RotateCcw className="h-4 w-4" />
                             )}
-                            {state === 'idle' && (
+                            {/* {state === 'idle' && (
                               <Volume2 className="h-4 w-4" />
-                            )}
+                            )} */}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top" sideOffset={6}>
