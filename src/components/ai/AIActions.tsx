@@ -19,6 +19,9 @@ import {
   Loader2,
   Mic,
   Volume2,
+  Square,
+  RotateCcw,
+  AudioLines,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -37,6 +40,12 @@ import {
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/ai/openai'
 import { novaSonic } from '@/services/api/nova-sonic'
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/components/ui/tooltip'
 import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/ai/embedding'
@@ -958,13 +967,19 @@ export const AIActions = ({
     if (isVoicePlaying) {
       const stopped = novaSonic.stopCurrentPlayback?.()
       if (stopped) {
+        // Immediately reflect stopped state & enable replay
+        setIsVoicePlaying(false)
+        setCurrentSpeakingText('')
+        if (lastSpokenResponse) {
+          setCanReplay(true)
+        }
         toast({
           title: 'Playback Stopped',
           description: 'AI speech playback has been stopped.',
         })
       }
     }
-  }, [isVoicePlaying, toast])
+  }, [isVoicePlaying, toast, lastSpokenResponse])
 
   // Replay last spoken response (only if not currently speaking and we have content)
   const handleReplay = useCallback(() => {
@@ -1555,7 +1570,7 @@ export const AIActions = ({
               />
 
               {/* Show text being spoken */}
-              {currentSpeakingText && (
+              {/* {currentSpeakingText && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
                   <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
@@ -1565,7 +1580,7 @@ export const AIActions = ({
                     {currentSpeakingText}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
@@ -1585,34 +1600,65 @@ export const AIActions = ({
                 )}
 
                 {/* Voice status indicator */}
-                {isVoicePlaying && (
-                  <div className="flex items-center gap-1 text-blue-600 text-sm">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                    Speaking...
-                  </div>
-                )}
-                {!isVoicePlaying && lastSpokenResponse && canReplay && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={handleReplay}
-                    >
-                      Replay
-                    </Button>
-                  </div>
-                )}
-                {isVoicePlaying && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs ml-2"
-                    onClick={cancelSpeech}
-                  >
-                    Stop
-                  </Button>
-                )}
+                {/* Unified Speech Control Button */}
+                <TooltipProvider>
+                  {(() => {
+                    const canShowReplay =
+                      !isVoicePlaying && lastSpokenResponse && canReplay
+                    const state: 'playing' | 'replay' | 'idle' = isVoicePlaying
+                      ? 'playing'
+                      : canShowReplay
+                        ? 'replay'
+                        : 'idle'
+
+                    const tooltipLabel =
+                      state === 'playing'
+                        ? 'Stop playback'
+                        : state === 'replay'
+                          ? 'Replay response'
+                          : 'Waiting for response'
+
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={tooltipLabel}
+                            disabled={state === 'idle'}
+                            onClick={() => {
+                              if (state === 'playing') {
+                                cancelSpeech()
+                              } else if (state === 'replay') {
+                                handleReplay()
+                              }
+                            }}
+                            className={`relative h-10 w-10 rounded-full transition-all shadow-soft focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none group
+                              ${state === 'playing' ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground hover:shadow-medium' : ''}
+                              ${state === 'replay' ? 'bg-gradient-to-br from-secondary/70 to-secondary/40 hover:from-secondary/80 hover:to-secondary/50 text-foreground' : ''}
+                              ${state === 'idle' ? 'opacity-0 pointer-events-none' : ''}`}
+                          >
+                            {state === 'playing' && (
+                              <>
+                                <div className="absolute inset-0 rounded-full ring-2 ring-primary/40 animate-pulse" />
+                                <Square className="h-4 w-4 relative z-10" />
+                              </>
+                            )}
+                            {state === 'replay' && (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                            {state === 'idle' && (
+                              <Volume2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6}>
+                          {tooltipLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })()}
+                </TooltipProvider>
                 {shouldResumeListening && !isVoicePlaying && (
                   <div className="flex items-center gap-1 text-orange-600 text-sm">
                     <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce"></div>

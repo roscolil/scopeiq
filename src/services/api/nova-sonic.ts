@@ -314,9 +314,9 @@ class NovaSonicService {
         const audioUrl = URL.createObjectURL(blob)
 
         // Create audio element
-  const audio = new Audio()
-  // Store reference for cancellation
-  this.currentAudio = audio
+        const audio = new Audio()
+        // Store reference for cancellation
+        this.currentAudio = audio
 
         // Safari/iOS specific configuration
         if (isSafari || isIOS) {
@@ -425,7 +425,10 @@ class NovaSonicService {
       try {
         this.currentAudio.pause()
         // Attempt to revoke object URL if present
-        if (this.currentAudio.src && this.currentAudio.src.startsWith('blob:')) {
+        if (
+          this.currentAudio.src &&
+          this.currentAudio.src.startsWith('blob:')
+        ) {
           try {
             URL.revokeObjectURL(this.currentAudio.src)
           } catch (_) {
@@ -433,6 +436,13 @@ class NovaSonicService {
           }
         }
         this.currentAudio.currentTime = 0
+        // Emulate an 'ended' event for listeners relying on it
+        try {
+          const endedEvent = new Event('ended')
+          this.currentAudio.dispatchEvent(endedEvent)
+        } catch (_) {
+          // Ignore if dispatch fails
+        }
         this.currentAudio = null
         console.log('🛑 Audio playback stopped by user')
         return true
