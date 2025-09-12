@@ -52,6 +52,9 @@ import { semanticSearch } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
+import useWakeWordPreference, {
+  WAKEWORD_PREF_EVENT,
+} from '@/hooks/useWakeWordPreference'
 
 // Python backend imports
 import { usePythonChat } from '@/hooks/usePythonChat'
@@ -111,6 +114,14 @@ export const AIActions = ({
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
+
+  // Broadcast dictation activity so wake word listener can suspend to avoid dual recognizers
+  useEffect(() => {
+    const evtName = isListening ? 'dictation:start' : 'dictation:stop'
+    window.dispatchEvent(new Event(evtName))
+    // Debug
+    console.log('[dictation-activity] dispatched', evtName)
+  }, [isListening])
 
   // Python backend state - enhancing existing functionality
   const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null)
@@ -182,6 +193,27 @@ export const AIActions = ({
         novaSonicAvailable: novaSonic.isAvailable(),
       })
 
+      // --- Autoplay / Audio Unlock Gating ---------------------------------
+      // Browsers may block programmatic audio (TTS) before a user gesture.
+      // We maintain a simple unlock flag & queue one pending utterance.
+      // --------------------------------------------------------------------
+      // Refs declared outside callback (hoisted below)
+      if (!audioUnlockedRef.current) {
+        console.log('🔒 Audio locked (no user gesture yet). Queuing speech.')
+        // Keep only the most recent pending request
+        pendingSpeechRef.current = { prompt, options }
+        if (!audioUnlockToastShownRef.current) {
+          audioUnlockToastShownRef.current = true
+          toast({
+            title: 'Enable Audio Playback',
+            description:
+              'Tap or press any key once to allow AI voice responses.',
+            duration: 4000,
+          })
+        }
+        return
+      }
+
       if (!novaSonic.isAvailable()) {
         console.log('❌ Nova Sonic not available')
         return
@@ -232,6 +264,25 @@ export const AIActions = ({
         }
       } catch (error) {
         console.error('❌ Voice synthesis error:', error)
+        // Handle autoplay block gracefully & requeue
+        if (
+          error instanceof DOMException &&
+          (error.name === 'NotAllowedError' ||
+            /notallowed/i.test(error.message))
+        ) {
+          console.log('🔐 Detected autoplay block, marking audio as locked')
+          audioUnlockedRef.current = false
+          pendingSpeechRef.current = { prompt, options }
+          if (!audioUnlockToastShownRef.current) {
+            audioUnlockToastShownRef.current = true
+            toast({
+              title: 'Tap to Enable Sound',
+              description:
+                'Your browser blocked audio. Tap the page once to hear AI responses.',
+              duration: 5000,
+            })
+          }
+        }
         // Reset voice playing state on error
         setIsVoicePlaying(false)
         setCurrentSpeakingText('')
@@ -240,10 +291,51 @@ export const AIActions = ({
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
         console.log('🔄 Voice playing set to false')
+        try {
+          window.dispatchEvent(new CustomEvent('ai:speech:complete'))
+        } catch {
+          /* noop */
+        }
       }
     },
-    [isListening, silenceTimer, isVoicePlaying],
+    [isListening, silenceTimer, isVoicePlaying, toast],
   )
+
+  // --- Audio Unlock Management --------------------------------------------
+  // Tracks whether the user has interacted (pointer/keyboard) enabling audio.
+  // ------------------------------------------------------------------------
+  const audioUnlockedRef = useRef<boolean>(false)
+  const pendingSpeechRef = useRef<{
+    prompt: string
+    options: { voice?: VoiceId; stopListeningAfter?: boolean }
+  } | null>(null)
+  const audioUnlockToastShownRef = useRef(false)
+
+  useEffect(() => {
+    const unlock = () => {
+      if (!audioUnlockedRef.current) {
+        audioUnlockedRef.current = true
+        console.log('🔓 Audio unlocked via user interaction')
+        // Flush queued speech if present & not already playing
+        if (pendingSpeechRef.current && !isVoicePlaying) {
+          const { prompt, options } = pendingSpeechRef.current
+          ;(async () => {
+            // small delay to ensure gesture registration fully propagated
+            await new Promise(res => setTimeout(res, 50))
+            console.log('▶️ Playing previously queued speech after unlock')
+            pendingSpeechRef.current = null
+            speakWithStateTracking(prompt, options).catch(console.error)
+          })()
+        }
+      }
+    }
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('keydown', unlock)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [isVoicePlaying, speakWithStateTracking])
 
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
@@ -696,40 +788,24 @@ export const AIActions = ({
             })
           }
 
-          // Provide voice feedback with the actual AI answer
-          if (
-            response &&
-            response.length > 0 &&
-            response !== lastSpokenResponse
-          ) {
-            console.log(
-              '🎵 Preparing to speak AI response:',
-              response.substring(0, 50) + '...',
-            )
-            setLastSpokenResponse(response) // Mark this response as being spoken
-
-            setTimeout(() => {
-              // Check if we should speak (not already playing and this is still the current response)
-              if (!isVoicePlaying) {
-                console.log('🗣️ Starting voice response playback')
-                // Speak the full answer - no truncation
+          // Always try to speak AI response (queued if audio locked). Deduplicate only if identical text already queued & playing.
+          if (response && response.length > 0) {
+            const shouldSpeak =
+              response !== lastSpokenResponse || !isVoicePlaying
+            if (shouldSpeak) {
+              console.log(
+                '🗣️ Speaking AI response (always-on):',
+                response.slice(0, 80),
+              )
+              setLastSpokenResponse(response)
+              setTimeout(() => {
                 speakWithStateTracking(response, {
                   voice: 'Ruth',
                   stopListeningAfter: true,
                 }).catch(console.error)
-                // Allow replay after initial playback finishes (delay approximate to speech start)
-                setTimeout(() => {
-                  setCanReplay(true)
-                }, 1500)
-              } else {
-                console.log('🔄 Skipping voice response - already speaking')
-              }
-            }, 1000)
-          } else if (response === lastSpokenResponse) {
-            console.log(
-              '🔄 Skipping duplicate voice response:',
-              response.substring(0, 50) + '...',
-            )
+                setTimeout(() => setCanReplay(true), 1500)
+              }, 400) // slightly shorter delay now that we always speak
+            }
           }
         } else {
           // Handle as semantic search with proper document scoping
@@ -788,6 +864,12 @@ export const AIActions = ({
               searchResults: searchResponse as typeof searchResults,
             })
 
+            // Always speak the summary (will queue if locked)
+            speakWithStateTracking(searchSummary, {
+              voice: 'Ruth',
+              stopListeningAfter: true,
+            }).catch(console.error)
+
             // Clear the query field after successful search
             setQuery('')
           } else {
@@ -801,11 +883,12 @@ export const AIActions = ({
             }
 
             // Add no results message to chat history
+            const noResultsMsg =
+              "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question."
             const aiMessage: ChatMessage = {
               id: `ai-no-results-${Date.now()}`,
               type: 'ai',
-              content:
-                "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
+              content: noResultsMsg,
               timestamp: new Date(),
             }
 
@@ -818,6 +901,12 @@ export const AIActions = ({
                 'Try rephrasing your search or asking a different question.',
               variant: 'destructive',
             })
+
+            // Speak the no results message
+            speakWithStateTracking(noResultsMsg, {
+              voice: 'Ruth',
+              stopListeningAfter: true,
+            }).catch(console.error)
 
             // Clear the query field
             setQuery('')
@@ -937,7 +1026,7 @@ export const AIActions = ({
         toast({
           title: 'Voice input resumed',
           description: 'Ready for your next question...',
-          duration: 2000,
+          duration: 1500,
         })
       }, 1500) // Slightly longer delay for more reliability
 
@@ -1124,6 +1213,25 @@ export const AIActions = ({
     }
   }, [isListening, silenceTimer, isMobile, toast])
 
+  // Programmatic activation via custom event (e.g., wake word)
+  useEffect(() => {
+    const handler = () => {
+      // Only start if not already listening and not currently playing voice
+      if (!isListening && !isVoicePlaying) {
+        // Provide subtle hint only on desktop
+        if (!isMobile) {
+          toast({
+            title: 'Listening…',
+            description: 'Wake word activated. Speak your question.',
+          })
+        }
+        toggleListening()
+      }
+    }
+    window.addEventListener('wakeword:activate-mic', handler)
+    return () => window.removeEventListener('wakeword:activate-mic', handler)
+  }, [isListening, isVoicePlaying, isMobile, toast, toggleListening])
+
   const handleTranscript = useCallback(
     (text: string) => {
       // In preventLoop mode, this should rarely be called since we avoid final transcript submission
@@ -1190,7 +1298,7 @@ export const AIActions = ({
               isListening
             ) {
               console.log(
-                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
+                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '2s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
               // Set loading state immediately to prevent button flash
@@ -1213,7 +1321,7 @@ export const AIActions = ({
               })
             }
           },
-          isMobile ? 1500 : 3000,
+          isMobile ? 1500 : 1500,
         ) // Shorter timeout on mobile for better responsiveness
 
         setSilenceTimer(timer)
@@ -1397,6 +1505,23 @@ export const AIActions = ({
     await handleQuery()
   }
 
+  // Subtle passive wake word indicator (reads preference; listening state managed in ProjectDetails)
+  const { enabled: wakeEnabled, consent: wakeConsent } = useWakeWordPreference()
+  const [wakeListeningState, setWakeListeningState] = useState<
+    'active' | 'off'
+  >('off')
+  useEffect(() => {
+    const update = () => {
+      // We can't easily read internal state of the hook here without prop drilling; treat enabled+consent as active proxy
+      setWakeListeningState(
+        wakeEnabled && wakeConsent === 'true' ? 'active' : 'off',
+      )
+    }
+    update()
+    window.addEventListener(WAKEWORD_PREF_EVENT, update)
+    return () => window.removeEventListener(WAKEWORD_PREF_EVENT, update)
+  }, [wakeEnabled, wakeConsent])
+
   return (
     <>
       <Card className="mb-16 md:mb-0 animate-fade-in">
@@ -1511,6 +1636,22 @@ export const AIActions = ({
                       ? 'Document scope'
                       : 'Project scope'}
                   </Badge>
+                  {/* Wake word status (non-interactive) */}
+                  {wakeConsent === 'true' && (
+                    <div
+                      className={`hidden md:flex items-center gap-1 rounded-full px-2 py-0.5 border text-[10px] tracking-wide ${wakeListeningState === 'active' ? 'border-emerald-500/40 text-emerald-500' : 'border-muted text-muted-foreground'}`}
+                      title={
+                        wakeListeningState === 'active'
+                          ? 'Hands-free wake phrase enabled'
+                          : 'Hands-free disabled (toggle in Settings > Voice)'
+                      }
+                    >
+                      <span
+                        className={`inline-block h-1.5 w-1.5 rounded-full ${wakeListeningState === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}
+                      />
+                      Hey Jacq
+                    </div>
+                  )}
                   {/* Show scope selector when we have both options */}
                   {documentId && document && (
                     <Button

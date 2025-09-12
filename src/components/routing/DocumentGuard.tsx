@@ -167,16 +167,16 @@ export const DocumentGuard = () => {
     }
   }, [companyId, projectId, documentId])
 
-  if (state === 'checking') {
-    return (
-      <div className="min-h-[30vh] flex flex-col items-center justify-center gap-3 animate-fade-in">
-        <div className="w-40 h-2 rounded-full bg-gradient-to-r from-gray-800 via-gray-600 to-gray-800 bg-[length:200%_100%] animate-shimmer" />
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">
-          {fastPath ? 'Revalidating…' : 'Validating document…'}
-        </p>
-      </div>
-    )
-  }
+  // if (state === 'checking') {
+  //   return (
+  //     <div className="min-h-[30vh] flex flex-col items-center justify-center gap-3 animate-fade-in">
+  //       <div className="w-40 h-2 rounded-full bg-gradient-to-r from-gray-800 via-gray-600 to-gray-800 bg-[length:200%_100%] animate-shimmer" />
+  //       <p className="text-[10px] uppercase tracking-wider text-gray-500">
+  //         {fastPath ? 'Revalidating…' : 'Validating document…'}
+  //       </p>
+  //     </div>
+  //   )
+  // }
   if (state === 'invalid') return <NotFound />
   return <Outlet />
 }

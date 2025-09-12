@@ -117,14 +117,14 @@ export const ProjectGuard = () => {
     }
   }, [projectId])
 
-  if (state === 'checking') {
-    return (
-      <IQPageLoader
-        message={fastPath ? 'Revalidating project' : 'Validating project'}
-        subMessage={fastPath ? 'Optimistic access granted' : 'Ensuring access'}
-      />
-    )
-  }
+  // if (state === 'checking') {
+  //   return (
+  //     <IQPageLoader
+  //       message={fastPath ? 'Revalidating project' : 'Validating project'}
+  //       subMessage={fastPath ? 'Optimistic access granted' : 'Ensuring access'}
+  //     />
+  //   )
+  // }
 
   if (state === 'invalid') return <NotFound />
   return <Outlet />
