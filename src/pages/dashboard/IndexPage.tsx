@@ -30,7 +30,7 @@ const Index = () => {
   const [hasShownWelcome, setHasShownWelcome] = useState(false)
 
   useEffect(() => {
-    // Show welcome message for authenticated users (only once)
+    // Show welcome message for authenticated users (only once). Redirect is now handled by RootRoute.
     if (
       isAuthenticated &&
       user &&
@@ -44,13 +44,8 @@ const Index = () => {
       })
       localStorage.setItem('hasWelcomed', 'true')
       setHasShownWelcome(true)
-
-      // Redirect to dashboard after showing welcome (only on fresh sign-in)
-      setTimeout(() => {
-        navigate(`/${user.companyId?.toLowerCase() || 'default'}`)
-      }, 1500) // 1.5 second delay to show the welcome message
     }
-  }, [isAuthenticated, user, hasShownWelcome, navigate])
+  }, [isAuthenticated, user, hasShownWelcome])
 
   // Remove the separate redirect effect since it's now handled above
 
