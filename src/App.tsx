@@ -2,6 +2,9 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import CompanyGuard from '@/components/routing/CompanyGuard'
+import ProjectGuard from '@/components/routing/ProjectGuard'
+import DocumentGuard from '@/components/routing/DocumentGuard'
 import { Suspense, lazy, useEffect } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider } from './hooks/aws-auth'
@@ -189,14 +192,10 @@ const App = () => {
                 }
               />
 
-              {/* Authenticated routes - lazy loaded with enhanced fallbacks */}
+              {/* Authenticated routes - company scoped */}
               <Route element={<AuthenticatedLayout />}>
-                {/* Company dashboard */}
-                <Route path="/:companyId">
-                  <Route
-                    index
-                    element={<Dashboard />} // No Suspense needed for eagerly loaded component
-                  />
+                <Route path=":companyId" element={<CompanyGuard />}>
+                  <Route index element={<Dashboard />} />
                   <Route
                     path="settings"
                     element={
@@ -205,8 +204,6 @@ const App = () => {
                       </EnhancedSuspense>
                     }
                   />
-
-                  {/* All documents view */}
                   <Route
                     path="documents"
                     element={
@@ -215,9 +212,7 @@ const App = () => {
                       </EnhancedSuspense>
                     }
                   />
-
-                  {/* Direct project routes */}
-                  <Route path=":projectId">
+                  <Route path=":projectId" element={<ProjectGuard />}>
                     <Route
                       index
                       element={
@@ -226,16 +221,17 @@ const App = () => {
                         </EnhancedSuspense>
                       }
                     />
-                    {/* Direct document routes */}
-                    <Route
-                      path=":documentId"
-                      element={
-                        <EnhancedSuspense fallbackType="documents">
-                          <Viewer />
-                        </EnhancedSuspense>
-                      }
-                    />
-                    {/* Documents listing for specific project */}
+                    <Route path=":documentId" element={<DocumentGuard />}>
+                      {/* Direct element inside guard for clarity */}
+                      <Route
+                        index
+                        element={
+                          <EnhancedSuspense fallbackType="documents">
+                            <Viewer />
+                          </EnhancedSuspense>
+                        }
+                      />
+                    </Route>
                     <Route
                       path="documents"
                       element={
@@ -244,14 +240,28 @@ const App = () => {
                         </EnhancedSuspense>
                       }
                     />
+                    <Route
+                      path="*"
+                      element={
+                        <EnhancedSuspense fallbackType="default">
+                          <NotFound />
+                        </EnhancedSuspense>
+                      }
+                    />
                   </Route>
-
-                  {/* Projects index still needed */}
                   <Route
                     path="projects"
                     element={
                       <EnhancedSuspense fallbackType="projects">
                         <Projects />
+                      </EnhancedSuspense>
+                    }
+                  />
+                  <Route
+                    path="*"
+                    element={
+                      <EnhancedSuspense fallbackType="default">
+                        <NotFound />
                       </EnhancedSuspense>
                     }
                   />
