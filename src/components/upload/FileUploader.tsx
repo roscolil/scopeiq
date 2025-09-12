@@ -882,7 +882,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                 Drag & drop your documents here
               </p>
               <p className="text-xs text-muted-foreground">
-                Support for PDF, DOCX, TXT, JPG, PNG (max 50MB each) • Multiple
+                Support for PDF, DOCX, TXT (max 50MB each) • Multiple
                 files supported
               </p>
             </div>
@@ -895,7 +895,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                   className="hidden"
                   multiple
                   onChange={handleFileChange}
-                  accept=".pdf,.docx,.txt,.doc,.jpg,.jpeg,.png"
+                  accept=".pdf,.docx,.txt,.doc"
                 />
                 <Button
                   variant="outline"

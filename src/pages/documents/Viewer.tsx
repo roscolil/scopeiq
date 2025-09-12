@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
 import {
@@ -18,14 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import {
-  ArrowLeft,
-  Download,
-  Share2,
-  FileText,
-  Brain,
-  Trash2,
-} from 'lucide-react'
+import { ArrowLeft, Download, Share2, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/ui/navigation'
 import { Document as DocumentType } from '@/types'
@@ -39,10 +32,9 @@ const Viewer = () => {
   }>()
 
   const navigate = useNavigate()
-  const location = useLocation()
   const { toast } = useToast()
 
-  const [viewMode, setViewMode] = useState<'document' | 'ai'>('ai')
+  // Removed viewMode / AI Analysis – only showing document body
   const [document, setDocument] = useState<DocumentType | null>(null)
   const [projectName, setProjectName] = useState<string>('')
   const [companyName, setCompanyName] = useState<string>('')
@@ -69,16 +61,7 @@ const Viewer = () => {
   }, [])
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // React to hash changes for AI/Document toggle
-  useEffect(() => {
-    const hash = location.hash
-    if (hash === '#document') {
-      setViewMode('document')
-    } else {
-      // Default to 'ai' when no hash or #ai hash
-      setViewMode('ai')
-    }
-  }, [location.hash])
+  // Removed hash-based toggle logic
 
   // Fetch document info from API
   useEffect(() => {
@@ -383,17 +366,7 @@ const Viewer = () => {
     }
   }
 
-  const handleTabChange = (value: string) => {
-    setViewMode(value as 'document' | 'ai')
-
-    // Update URL hash for bookmarking/sharing
-    if (value === 'document') {
-      window.history.replaceState(null, '', `${location.pathname}#document`)
-    } else {
-      // For 'ai' mode, remove hash (since it's the default)
-      window.history.replaceState(null, '', location.pathname)
-    }
-  }
+  // Removed tab change handler
 
   return (
     <>
@@ -537,49 +510,14 @@ const Viewer = () => {
             </div>
           </div>
 
-          {/* Update the view toggle to include document type info */}
-          <div className="inline-flex h-12 items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm p-1.5 text-slate-600 border border-white/50 shadow-lg mb-6">
-            <div className="flex space-x-1 w-full">
-              <button
-                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
-                  viewMode === 'ai'
-                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
-                    : 'hover:bg-white/60 hover:text-slate-800'
-                }`}
-                onClick={() => setViewMode('ai')}
-              >
-                <Brain className="h-4 w-4" />
-                <span>AI Analysis</span>
-              </button>
-              <button
-                className={`flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 space-x-2 ${
-                  viewMode === 'document'
-                    ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg'
-                    : 'hover:bg-white/60 hover:text-slate-800'
-                }`}
-                onClick={() => setViewMode('document')}
-              >
-                <FileText className="h-4 w-4" />
-                <span>
-                  {document?.type?.includes('pdf')
-                    ? 'PDF Document'
-                    : document?.type?.includes('image')
-                      ? 'Image'
-                      : document?.type?.includes('text')
-                        ? 'Text Document'
-                        : 'Document'}
-                </span>
-              </button>
-            </div>
-          </div>
+          {/* Tabs & AI analysis removed – simplified viewer */}
 
           <div className="mt-0">
             <DocumentViewer
               documentId={document?.id || documentId}
               projectId={resolvedProject?.id || projectId}
               companyId={companyId}
-              viewMode={viewMode}
-              document={document} // Pass the resolved document data
+              document={document}
             />
           </div>
         </div>

@@ -46,12 +46,12 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+      {/* <CardHeader> */}
+      {/* <CardTitle className="text-lg flex items-center gap-2">
           📄 {document.name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </CardTitle> */}
+      {/* </CardHeader> */}
+      <CardContent className="space-y-4 pt-6">
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button
