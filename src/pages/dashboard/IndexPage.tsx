@@ -96,7 +96,26 @@ const Index = () => {
         <div className="relative space-y-32">
           {/* Hero Section */}
           <div className="text-center py-24 px-6">
-            <div className="max-w-6xl mx-auto">
+            {/* Show subtle loading indicator when checking auth */}
+            {isLoading && (
+              <div className="my-8 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-100"></div>
+                <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-200"></div>
+                <span className="ml-3 text-sm">Checking authentication...</span>
+              </div>
+            )}
+
+            {/* Show redirection message only when redirecting after sign-in */}
+            {hasShownWelcome && (
+              <div className="my-8 flex items-center justify-center gap-3 text-emerald-400 animate-fade-in">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+                <span className="text-sm">
+                  Redirecting to your dashboard...
+                </span>
+              </div>
+            )}
+            <div className="max-w-6xl mt-14 mx-auto">
               {/* Enhanced badge */}
               <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-semibold mb-12 shadow-xl animate-fade-in">
                 <div className="p-1.5 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-full">
@@ -145,28 +164,6 @@ const Index = () => {
                   >
                     <span className="text-gray-200">View Pricing</span>
                   </Button>
-                </div>
-              )}
-
-              {/* Show subtle loading indicator when checking auth */}
-              {isLoading && (
-                <div className="mt-12 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-100"></div>
-                  <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-200"></div>
-                  <span className="ml-3 text-sm">
-                    Checking authentication...
-                  </span>
-                </div>
-              )}
-
-              {/* Show redirection message only when redirecting after sign-in */}
-              {hasShownWelcome && (
-                <div className="mt-12 flex items-center justify-center gap-3 text-emerald-400 animate-fade-in">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
-                  <span className="text-sm">
-                    Redirecting to your dashboard...
-                  </span>
                 </div>
               )}
             </div>
