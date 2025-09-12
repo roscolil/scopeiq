@@ -585,123 +585,13 @@ const ProjectDetails = () => {
     // Set cache with fresh data for immediate use
     setCachedDocumentsData(updatedDocuments)
 
-    // Only close the dialog for new documents, not status updates
+    // For batch uploads we no longer auto-close here; rely on onBatchComplete.
     if (existingDocumentIndex < 0) {
-      setIsUploadDialogOpen(false)
-
-      // Force a refresh of the document list after a short delay
-      // This ensures the database has been updated
-      setTimeout(async () => {
-        try {
-          console.log('🔄 Refreshing document list from database...')
-
-          // Use the project ID consistently
-          const targetProjectId = project?.id || projectId
-          if (!targetProjectId) {
-            console.error('❌ No project ID available for refresh')
-            return
-          }
-
-          console.log(
-            `🔍 Fetching documents for project ID: ${targetProjectId}`,
-          )
-          const freshDocuments =
-            await documentService.getDocumentsByProject(targetProjectId)
-
-          console.log(`📋 Raw documents from database:`, freshDocuments)
-
-          const transformedDocuments: Document[] = (freshDocuments || []).map(
-            doc => ({
-              id: doc.id,
-              name: doc.name || 'Untitled Document',
-              type: doc.type || 'unknown',
-              size:
-                typeof doc.size === 'number'
-                  ? doc.size
-                  : parseInt(String(doc.size)) || 0,
-              status: doc.status || 'processing',
-              url: doc.url,
-              thumbnailUrl: doc.thumbnailUrl,
-              projectId: doc.projectId,
-              content: doc.content,
-              createdAt: doc.createdAt,
-              updatedAt: doc.updatedAt,
-            }),
-          )
-
-          console.log(
-            `📊 Found ${transformedDocuments.length} documents in database`,
-            transformedDocuments.map(d => ({
-              id: d.id,
-              name: d.name,
-              status: d.status,
-            })),
-          )
-
-          // Only update if we actually got documents or if the count changed
-          if (
-            transformedDocuments.length > 0 ||
-            projectDocuments.length === 0
-          ) {
-            console.log(
-              '✅ Updating document list:',
-              `${projectDocuments.length} → ${transformedDocuments.length}`,
-              transformedDocuments.map(d => ({
-                id: d.id,
-                name: d.name,
-                status: d.status,
-              })),
-            )
-            setProjectDocuments(transformedDocuments)
-            setCachedDocumentsData(transformedDocuments)
-          } else {
-            console.log(
-              '⚠️ No documents found in database, keeping current state:',
-              'Current list has',
-              projectDocuments.length,
-              'documents',
-            )
-          }
-        } catch (error) {
-          console.error('❌ Error refreshing document list:', error)
-          // If refresh fails, try again after a longer delay
-          setTimeout(async () => {
-            try {
-              console.log('🔄 Retrying document refresh after error...')
-              const targetProjectId = project?.id || projectId
-              if (targetProjectId) {
-                const retryDocuments =
-                  await documentService.getDocumentsByProject(targetProjectId)
-                const retryTransformed: Document[] = (retryDocuments || []).map(
-                  doc => ({
-                    id: doc.id,
-                    name: doc.name || 'Untitled Document',
-                    type: doc.type || 'unknown',
-                    size:
-                      typeof doc.size === 'number'
-                        ? doc.size
-                        : parseInt(String(doc.size)) || 0,
-                    status: doc.status || 'processing',
-                    url: doc.url,
-                    thumbnailUrl: doc.thumbnailUrl,
-                    projectId: doc.projectId,
-                    content: doc.content,
-                    createdAt: doc.createdAt,
-                    updatedAt: doc.updatedAt,
-                  }),
-                )
-                console.log(
-                  `📊 Retry found ${retryTransformed.length} documents`,
-                )
-                setProjectDocuments(retryTransformed)
-                setCachedDocumentsData(retryTransformed)
-              }
-            } catch (retryError) {
-              console.error('❌ Retry also failed:', retryError)
-            }
-          }, 3000) // 3 second delay for retry
-        }
-      }, 3000) // Increased delay to 3 seconds to ensure database consistency
+      // Delayed refresh disabled: polling + optimistic update handle state.
+      // Rationale: multiple overlapping delayed refreshes caused race conditions
+      // where a just-added optimistic document vanished if the DB query lagged.
+      // If needed later, implement a debounced single refresh using latest refs.
+      console.log('� Skipping delayed DB refresh (using optimistic + polling).')
     }
   }
 
@@ -1150,6 +1040,22 @@ const ProjectDetails = () => {
                     projectId={project.id}
                     companyId={companyId || 'default-company'}
                     onUploadComplete={handleUploadDocument}
+                    onBatchComplete={(docs, summary) => {
+                      // Close dialog after batch completes
+                      setIsUploadDialogOpen(false)
+                      if (summary.success > 0) {
+                        toast({
+                          title: 'Batch upload complete',
+                          description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
+                        })
+                      } else if (summary.failed) {
+                        toast({
+                          title: 'Batch failed',
+                          description: 'All uploads failed. Please try again.',
+                          variant: 'destructive',
+                        })
+                      }
+                    }}
                   />
                 </DialogContent>
               </Dialog>

@@ -58,41 +58,96 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
-      console.log(`🔍 DB: Fetching documents for project ID: ${projectId}`)
+      console.log(`🔍 DB: Fetching ALL documents for project ID: ${projectId}`)
 
-      const { data: documents, errors } = await client.models.Document.list({
-        filter: { projectId: { eq: projectId } },
-      })
-
-      if (errors) {
-        console.error('DB: Error fetching documents:', errors)
-        throw new Error(
-          `Database error: ${errors.map(e => e.message).join(', ')}`,
-        )
+      // Accumulate all raw document model items (Amplify returns generated model objects)
+      interface RawDoc {
+        id: string | string[]
+        name: string | string[]
+        type: string | string[]
+        size: number | string | string[]
+        status: string | string[]
+        s3Key: string | string[]
+        s3Url?: string | string[] | null
+        thumbnailS3Key?: string | string[] | null
+        thumbnailUrl?: string | string[] | null
+        projectId: string | string[]
+        mimeType?: string | string[] | null
+        content?: string | string[] | null
+        tags?: string[] | string
+        createdAt?: string | string[] | null
+        updatedAt?: string | string[] | null
       }
 
-      console.log(`📋 DB: Raw documents from database:`, documents)
+      const all: RawDoc[] = []
+
+      let nextToken: string | undefined = undefined
+      let page = 0
+      do {
+        page++
+        const {
+          data: pageData,
+          errors,
+          nextToken: newToken,
+        } = await client.models.Document.list({
+          filter: { projectId: { eq: projectId } },
+          nextToken,
+        })
+
+        if (errors) {
+          console.error('DB: Error fetching documents page:', page, errors)
+          throw new Error(
+            `Database error (page ${page}): ${errors
+              .map(e => e.message)
+              .join(', ')}`,
+          )
+        }
+
+        console.log(
+          `� DB: Page ${page} fetched ${pageData.length} documents (nextToken=${newToken ? 'yes' : 'no'})`,
+        )
+        all.push(...pageData)
+        nextToken = newToken as string | undefined
+      } while (nextToken)
+
       console.log(
-        `📊 DB: Found ${documents.length} documents for project ${projectId}`,
+        `📊 DB: Aggregated total ${all.length} documents for project ${projectId}`,
       )
 
-      const mappedDocuments = documents.map(doc => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
-        status: doc.status as 'processed' | 'processing' | 'failed',
-        s3Key: doc.s3Key,
-        s3Url: doc.s3Url,
-        thumbnailS3Key: doc.thumbnailS3Key,
-        thumbnailUrl: doc.thumbnailUrl,
-        projectId: doc.projectId,
-        mimeType: doc.mimeType,
-        content: doc.content,
-        tags: doc.tags,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      }))
+      const mappedDocuments: DatabaseDocument[] = all.map(raw => {
+        // Some generated Amplify model fields may appear as arrays due to codegen quirks; normalize scalars.
+        const norm = <T = unknown>(val: unknown): T => {
+          if (Array.isArray(val)) {
+            return val[0] as unknown as T
+          }
+          return val as T
+        }
+        return {
+          id: norm(raw.id) as string,
+          name: norm(raw.name) as string,
+          type: norm(raw.type) as string,
+          // size may come back as string; coerce to number safely
+          size:
+            typeof raw.size === 'number'
+              ? raw.size
+              : parseInt(norm(raw.size) || '0', 10),
+          status: norm(raw.status) as 'processed' | 'processing' | 'failed',
+          s3Key: norm(raw.s3Key) as string,
+          s3Url: norm(raw.s3Url) || undefined,
+          thumbnailS3Key: norm(raw.thumbnailS3Key) || undefined,
+          thumbnailUrl: norm(raw.thumbnailUrl) || undefined,
+          projectId: norm(raw.projectId) as string,
+          mimeType: norm(raw.mimeType) || undefined,
+          content: norm(raw.content) || undefined,
+          tags: Array.isArray(raw.tags)
+            ? raw.tags
+            : raw.tags
+              ? [raw.tags]
+              : undefined,
+          createdAt: norm(raw.createdAt) || new Date().toISOString(),
+          updatedAt: norm(raw.updatedAt) || undefined,
+        }
+      })
 
       console.log(
         `📋 DB: Mapped documents:`,

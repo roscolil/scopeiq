@@ -457,17 +457,28 @@ const Documents = () => {
                     projectId={resolvedProject?.id || projectId}
                     companyId={companyId || 'default-company'}
                     onUploadComplete={doc => {
-                      // Add the uploaded document to the current list
-                      setDocuments(prev => [...prev, doc])
-
-                      // Close the dialog
+                      setDocuments(prev => {
+                        // Avoid duplicate entries by ID
+                        if (prev.some(d => d.id === doc.id)) {
+                          return prev.map(d => (d.id === doc.id ? doc : d))
+                        }
+                        return [...prev, doc]
+                      })
+                    }}
+                    onBatchComplete={(docs, summary) => {
                       setIsUploadDialogOpen(false)
-
-                      // Show success toast
-                      // toast({
-                      //   title: 'Document uploaded',
-                      //   description: `${doc.name} has been added to this project.`,
-                      // })
+                      if (summary.success > 0) {
+                        toast({
+                          title: 'Batch upload complete',
+                          description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
+                        })
+                      } else if (summary.failed) {
+                        toast({
+                          title: 'Batch failed',
+                          description: 'All uploads failed. Please try again.',
+                          variant: 'destructive',
+                        })
+                      }
                     }}
                   />
                 </DialogContent>
