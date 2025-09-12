@@ -1,5 +1,6 @@
 import { useParams, Outlet } from 'react-router-dom'
 import { useMemo } from 'react'
+import { measureGuardPerformance } from '@/utils/performance'
 
 // CompanyGuard now supports literal (URL-encoded) company names with spaces & punctuation.
 // It only blocks obviously unsafe control characters. A derived slug is available if needed.

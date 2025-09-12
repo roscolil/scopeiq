@@ -37,6 +37,14 @@ interface FileUploaderProps {
   projectId: string
   companyId: string
   onUploadComplete: (uploadedFile: Document) => void
+  /**
+   * Optional callback invoked after a user-triggered batch (Upload / Upload All) finishes
+   * (successfully or partially). Provides the set of successfully uploaded documents and a summary.
+   */
+  onBatchComplete?: (
+    uploadedFiles: Document[],
+    summary: { success: number; failed: number },
+  ) => void
 }
 
 interface FileUploadItem {
@@ -51,8 +59,15 @@ interface FileUploadItem {
   backend?: 'python' | 'existing'
 }
 
+// Add new interfaces near existing ones
+interface RejectedFileInfo {
+  name: string
+  size: number
+  reason: string
+}
+
 export const FileUploader = (props: FileUploaderProps) => {
-  const { projectId, companyId, onUploadComplete } = props
+  const { projectId, companyId, onUploadComplete, onBatchComplete } = props
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -67,6 +82,12 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [currentBackend, setCurrentBackend] = useState<'python' | 'existing'>(
     'python',
   )
+  const [selectionSummary, setSelectionSummary] = useState<{
+    total: number
+    accepted: number
+    rejected: RejectedFileInfo[]
+  } | null>(null)
+  const [showRejected, setShowRejected] = useState(false)
 
   // Ref to store mapping between Python document IDs and file items for immediate access
   const pythonDocumentMapping = useRef<
@@ -276,7 +297,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   }, [selectedFiles, currentBackend])
 
   const validateFile = (file: File): { valid: boolean; error?: string } => {
-    const allowedTypes = [
+    const allowedMimeTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
@@ -286,20 +307,34 @@ export const FileUploader = (props: FileUploaderProps) => {
       'image/jpeg',
       'image/png',
     ]
+    const allowedExtensions = [
+      '.pdf',
+      '.docx',
+      '.doc',
+      '.txt',
+      '.rtf',
+      '.jpeg',
+      '.jpg',
+      '.png',
+    ]
 
-    if (!allowedTypes.includes(file.type)) {
-      return {
-        valid: false,
-        error:
-          'Invalid file type. Please upload PDF, Word, text, or image files only.',
+    const lowerName = file.name.toLowerCase()
+    const hasAllowedExtension = allowedExtensions.some(ext =>
+      lowerName.endsWith(ext),
+    )
+
+    // Some browsers may leave type empty for certain folder selections; fallback to extension
+    if (!allowedMimeTypes.includes(file.type)) {
+      if (!hasAllowedExtension) {
+        return {
+          valid: false,
+          error: 'Unsupported type (by MIME/extension)',
+        }
       }
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      return {
-        valid: false,
-        error: 'File too large. Please upload files smaller than 50MB.',
-      }
+      return { valid: false, error: 'File too large (>50MB)' }
     }
 
     return { valid: true }
@@ -309,7 +344,7 @@ export const FileUploader = (props: FileUploaderProps) => {
     if (!files || files.length === 0) return
 
     const newFiles: FileUploadItem[] = []
-    const invalidFiles: string[] = []
+    const rejected: RejectedFileInfo[] = []
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -324,18 +359,41 @@ export const FileUploader = (props: FileUploaderProps) => {
           backend: currentBackend,
         })
       } else {
-        invalidFiles.push(`${file.name}: ${validation.error}`)
+        rejected.push({
+          name: file.name,
+          size: file.size,
+          reason: validation.error || 'Invalid',
+        })
       }
     }
 
-    if (invalidFiles.length > 0) {
+    setSelectionSummary({
+      total: files.length,
+      accepted: newFiles.length,
+      rejected,
+    })
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Uploader] Selection summary:', {
+        total: files.length,
+        accepted: newFiles.length,
+        rejectedCount: rejected.length,
+        rejected,
+      })
+    }
+
+    if (rejected.length > 0) {
       toast({
-        title: 'Some files were invalid',
+        title:
+          rejected.length === 1
+            ? 'A file was skipped'
+            : `${rejected.length} files were skipped`,
         description:
-          invalidFiles.slice(0, 3).join('\n') +
-          (invalidFiles.length > 3
-            ? `\n...and ${invalidFiles.length - 3} more`
-            : ''),
+          rejected
+            .slice(0, 3)
+            .map(r => `${r.name}: ${r.reason}`)
+            .join('\n') +
+          (rejected.length > 3 ? `\n...and ${rejected.length - 3} more` : ''),
         variant: 'destructive',
       })
     }
@@ -344,12 +402,19 @@ export const FileUploader = (props: FileUploaderProps) => {
       setSelectedFiles(prev => [...prev, ...newFiles])
       toast({
         title: 'Files added',
-        description: `${newFiles.length} file${newFiles.length > 1 ? 's' : ''} ready to upload.`,
+        description: `${newFiles.length} of ${files.length} accepted.`,
       })
     }
   }
 
+  // Backwards compatible wrapper to maintain existing calls before refactor (unused internally after rename)
   const uploadSingleFile = async (fileItem: FileUploadItem) => {
+    return uploadSingleFileInternal(fileItem)
+  }
+  // Upload a single file and return the created/updated Document (initial DB record)
+  const uploadSingleFileInternal = async (
+    fileItem: FileUploadItem,
+  ): Promise<Document | null> => {
     // Update file status to uploading
     setSelectedFiles(prev =>
       prev.map(f =>
@@ -439,7 +504,7 @@ export const FileUploader = (props: FileUploaderProps) => {
         }
 
         onUploadComplete(document)
-        return
+        return document
       } else {
         // Fallback to existing upload method
         console.log('Fallback to existing upload method')
@@ -550,6 +615,9 @@ export const FileUploader = (props: FileUploaderProps) => {
       )
       throw error
     }
+    // Existing backend path already invoked onUploadComplete for initial and subsequent status changes.
+    // Return null to avoid double counting in batch array (python path returns the initial created document).
+    return null
   }
 
   const uploadAllFiles = async () => {
@@ -562,18 +630,23 @@ export const FileUploader = (props: FileUploaderProps) => {
     const pendingFiles = selectedFiles.filter(f => f.status === 'pending')
     let successCount = 0
     let failCount = 0
+    const successfulDocuments: Document[] = []
 
     try {
       // Upload files sequentially to avoid overwhelming the server
       for (const fileItem of pendingFiles) {
         try {
-          await uploadSingleFile(fileItem)
+          const doc = await uploadSingleFileInternal(fileItem)
+          if (doc) {
+            successfulDocuments.push(doc)
+          }
           successCount++
         } catch (error) {
           failCount++
         }
       }
 
+      // Show summary toast
       // Show summary toast
       if (successCount > 0 && failCount === 0) {
         toast({
@@ -591,6 +664,14 @@ export const FileUploader = (props: FileUploaderProps) => {
           title: 'Upload failed',
           description: 'All uploads failed. Please try again.',
           variant: 'destructive',
+        })
+      }
+
+      // Fire batch completion callback (if provided)
+      if (onBatchComplete) {
+        onBatchComplete(successfulDocuments, {
+          success: successCount,
+          failed: failCount,
         })
       }
 
@@ -637,7 +718,7 @@ export const FileUploader = (props: FileUploaderProps) => {
 
     for (const fileItem of failedFiles) {
       try {
-        await uploadSingleFile(fileItem)
+        await uploadSingleFileInternal(fileItem)
         retrySuccessCount++
       } catch (error) {
         console.error(`Error retrying file ${fileItem.file.name}:`, error)
@@ -699,7 +780,7 @@ export const FileUploader = (props: FileUploaderProps) => {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // Retry the upload
-      await uploadSingleFile(fileItem)
+      await uploadSingleFileInternal(fileItem)
 
       toast({
         title: 'Retry started',
@@ -882,8 +963,8 @@ export const FileUploader = (props: FileUploaderProps) => {
                 Drag & drop your documents here
               </p>
               <p className="text-xs text-muted-foreground">
-                Support for PDF, DOCX, TXT (max 50MB each) • Multiple
-                files supported
+                Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
+                supported
               </p>
             </div>
 
@@ -982,6 +1063,7 @@ export const FileUploader = (props: FileUploaderProps) => {
           </div>
 
           {/* Overall Progress */}
+          {/* Overall Progress */}
           {isUploading && (
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
@@ -994,6 +1076,15 @@ export const FileUploader = (props: FileUploaderProps) => {
               </div>
               <Progress value={getOverallProgress()} className="w-full h-2" />
             </div>
+          )}
+
+          {/* Batch info message */}
+          {!isUploading && selectedFiles.length > 1 && (
+            <p className="text-[11px] text-muted-foreground">
+              Click <span className="font-medium">Upload All</span> to process
+              these {selectedFiles.length} files. The dialog will remain open
+              until the batch finishes.
+            </p>
           )}
 
           {/* Individual File List */}
@@ -1082,6 +1173,48 @@ export const FileUploader = (props: FileUploaderProps) => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Selection Summary */}
+      {selectionSummary && (
+        <div className="text-xs rounded-md border p-3 bg-muted/30 space-y-1">
+          <div className="flex flex-wrap gap-3 items-center">
+            <span className="font-medium">Selection:</span>
+            <span>{selectionSummary.accepted} accepted</span>
+            <span>
+              {selectionSummary.rejected.length > 0
+                ? `${selectionSummary.rejected.length} skipped`
+                : '0 skipped'}
+            </span>
+            <span>({selectionSummary.total} total)</span>
+            {selectionSummary.rejected.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowRejected(s => !s)}
+                className="underline text-amber-600 hover:text-amber-700"
+              >
+                {showRejected ? 'Hide skipped' : 'View skipped'}
+              </button>
+            )}
+          </div>
+          {showRejected && selectionSummary.rejected.length > 0 && (
+            <ul className="mt-1 space-y-0.5 max-h-28 overflow-y-auto pr-1">
+              {selectionSummary.rejected.map(r => (
+                <li
+                  key={r.name}
+                  className="flex justify-between gap-2 text-[11px]"
+                >
+                  <span className="truncate" title={r.name}>
+                    {r.name}
+                  </span>
+                  <span className="text-red-500 flex-shrink-0" title={r.reason}>
+                    {r.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

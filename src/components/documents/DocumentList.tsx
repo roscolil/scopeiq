@@ -46,6 +46,7 @@ import {
   processingMessageBroadcaster,
   type ProcessingMessage,
 } from '@/services/utils/processing-messages'
+import { PrefetchDocumentLink } from '@/components/shared/PrefetchLinks'
 
 interface DocumentListProps {
   documents: Document[]
@@ -55,6 +56,10 @@ interface DocumentListProps {
   projectId: string
   companyId: string
   projectName?: string
+  /** Enable pagination automatically when documents length exceeds this number (default 5) */
+  paginationThreshold?: number
+  /** Page size when pagination active (default 10) */
+  pageSize?: number
 }
 
 export const DocumentList = ({
@@ -65,6 +70,8 @@ export const DocumentList = ({
   projectId,
   companyId,
   projectName,
+  paginationThreshold = 5,
+  pageSize = 5,
 }: DocumentListProps) => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -76,6 +83,39 @@ export const DocumentList = ({
   const [processingMessages, setProcessingMessages] = React.useState<
     ProcessingMessage[]
   >([])
+  const [page, setPage] = React.useState(1)
+
+  // Reset to first page whenever document list changes length (new upload/delete)
+  React.useEffect(() => {
+    setPage(1)
+  }, [documents.length])
+
+  const paginationEnabled = documents.length > paginationThreshold
+  const totalPages = paginationEnabled
+    ? Math.max(1, Math.ceil(documents.length / pageSize))
+    : 1
+  const safePage = Math.min(page, totalPages)
+  const startIndex = paginationEnabled ? (safePage - 1) * pageSize : 0
+  const endIndex = paginationEnabled ? startIndex + pageSize : documents.length
+  const visibleDocuments = paginationEnabled
+    ? documents.slice(startIndex, endIndex)
+    : documents
+
+  const goToPage = (p: number) => {
+    setPage(prev => {
+      const next = Math.min(Math.max(1, p), totalPages)
+      if (next !== prev) {
+        // Smooth scroll to top of list for better UX
+        requestAnimationFrame(() => {
+          const el = document.getElementById('document-list-top')
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        })
+      }
+      return next
+    })
+  }
 
   // Subscribe to processing messages
   React.useEffect(() => {
@@ -322,174 +362,278 @@ export const DocumentList = ({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4">
-        {documents.length === 0 ? (
+      <div id="document-list-top" className="grid grid-cols-1 gap-4">
+        {visibleDocuments.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="pt-6 text-center">
               <p className="text-gray-400">No documents found</p>
             </CardContent>
           </Card>
         ) : (
-          documents.map(doc => (
-            <Card
-              key={doc.id}
-              className={cn(
-                'overflow-hidden transition-all duration-300 relative',
-                doc.status === 'processing' &&
-                  'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
-              )}
-            >
-              {/* Subtle shimmer overlay for processing documents */}
-              {doc.status === 'processing' && (
-                <div className="absolute inset-0 shimmer-processing pointer-events-none opacity-15"></div>
-              )}
-              <CardHeader className="p-4 pb-0">
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3">
-                    <div className="relative">
-                      <FileTypeIcon
-                        mimeType={doc.type}
-                        fileName={doc.name}
-                        size={32}
-                      />
-                      {doc.status === 'processing' && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
-                          <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>
+          visibleDocuments.map(doc => (
+            <div key={doc.id} className="relative">
+              <PrefetchDocumentLink
+                companyId={companyId}
+                projectId={projectId}
+                documentId={doc.id}
+                to={routes.company.project.document(
+                  companyId,
+                  projectId,
+                  doc.id,
+                  projectName,
+                  doc.name,
+                )}
+                className="block"
+              >
+                <Card
+                  className={cn(
+                    'overflow-hidden transition-all duration-300 relative cursor-pointer hover:shadow-md',
+                    doc.status === 'processing' &&
+                      'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
+                  )}
+                >
+                  {/* Subtle shimmer overlay for processing documents */}
+                  {doc.status === 'processing' && (
+                    <div className="absolute inset-0 shimmer-processing pointer-events-none opacity-15"></div>
+                  )}
+                  <CardHeader className="p-4 pb-0">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3">
+                        <div className="relative">
+                          <FileTypeIcon
+                            mimeType={doc.type}
+                            fileName={doc.name}
+                            size={32}
+                          />
+                          {doc.status === 'processing' && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
+                              <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <CardTitle
-                        className={cn(
-                          'text-base font-medium',
-                          doc.status === 'processing'
-                            ? 'text-white'
-                            : 'text-black',
-                        )}
-                      >
-                        {doc.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-gray-500">
-                        {typeof doc.size === 'number'
-                          ? `${(doc.size / 1024).toFixed(2)} KB`
-                          : doc.size}{' '}
-                        •{' '}
-                        {doc.createdAt
-                          ? new Date(doc.createdAt).toLocaleDateString()
-                          : 'No date'}
-                        {/* {doc.status === 'processing' && (
+                        <div>
+                          <CardTitle
+                            className={cn(
+                              'text-base font-medium',
+                              doc.status === 'processing'
+                                ? 'text-white'
+                                : 'text-black',
+                            )}
+                          >
+                            {doc.name}
+                          </CardTitle>
+                          <CardDescription className="text-xs text-gray-500">
+                            {typeof doc.size === 'number'
+                              ? `${(doc.size / 1024).toFixed(2)} KB`
+                              : doc.size}{' '}
+                            •{' '}
+                            {doc.createdAt
+                              ? new Date(doc.createdAt).toLocaleDateString()
+                              : 'No date'}
+                            {/* {doc.status === 'processing' && (
                           <span className="ml-2 text-amber-700 text-xs font-semibold">
                             • {getProcessingInfo(doc)}
                           </span>
                         )} */}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={doc.status === 'processing'}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">More options</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => viewDocument(doc.id, doc.name)}
-                        disabled={doc.status === 'processing'}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </DropdownMenuItem>
-                      {doc.status === 'failed' && (
-                        <DropdownMenuItem
-                          onClick={() => retryProcessing(doc)}
-                          className="text-amber-600 hover:text-amber-700"
-                        >
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Retry Processing
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => downloadDocument(doc)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDeleteClick(doc)}
-                        disabled={doc.status === 'processing'}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(doc.status)}
-                  {doc.status === 'processing' && (
-                    <div className="text-xs text-amber-700 flex ml-2 items-center gap-2 font-medium">
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 max-w-xs">
-                        <span className="truncate">
-                          {getProcessingInfo(doc)}
-                        </span>
-                        {getProcessingProgress(doc) !== undefined && (
-                          <div className="flex items-center gap-1 ml-1">
-                            <div className="w-16 h-1 bg-amber-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-amber-500 transition-all duration-300"
-                                style={{
-                                  width: `${getProcessingProgress(doc)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs text-amber-600">
-                              {getProcessingProgress(doc)}%
-                            </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={doc.status === 'processing'}
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              viewDocument(doc.id, doc.name)
+                            }}
+                            disabled={doc.status === 'processing'}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          {doc.status === 'failed' && (
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                retryProcessing(doc)
+                              }}
+                              className="text-amber-600 hover:text-amber-700"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Retry Processing
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              downloadDocument(doc)
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteClick(doc)
+                            }}
+                            disabled={doc.status === 'processing'}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(doc.status)}
+                      {doc.status === 'processing' && (
+                        <div className="text-xs text-amber-700 flex ml-2 items-center gap-2 font-medium">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                           </div>
-                        )}
-                      </div>
+                          <div className="flex items-center gap-2 max-w-xs">
+                            <span className="truncate">
+                              {getProcessingInfo(doc)}
+                            </span>
+                            {getProcessingProgress(doc) !== undefined && (
+                              <div className="flex items-center gap-1 ml-1">
+                                <div className="w-16 h-1 bg-amber-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-amber-500 transition-all duration-300"
+                                    style={{
+                                      width: `${getProcessingProgress(doc)}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs text-amber-600">
+                                  {getProcessingProgress(doc)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {doc.status === 'processed' && (
-                  <div className="flex items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => viewDocument(doc.id, doc.name)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                  </div>
-                )}
+                    {doc.status === 'processed' && (
+                      <div className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            viewDocument(doc.id, doc.name)
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    )}
 
-                {doc.status === 'processing' && onCancelProcessing && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCancelProcessing(doc.id)}
-                    className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
+                    {doc.status === 'processing' && onCancelProcessing && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={e => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onCancelProcessing(doc.id)
+                        }}
+                        className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </PrefetchDocumentLink>
+            </div>
           ))
         )}
       </div>
+
+      {paginationEnabled && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+          <div className="text-muted-foreground">
+            Showing {startIndex + 1}–{Math.min(endIndex, documents.length)} of{' '}
+            {documents.length}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage === 1}
+              onClick={() => goToPage(safePage - 1)}
+              className="h-7 px-2"
+            >
+              Prev
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => {
+                // Show first, last, current, neighbors; collapse middle with ellipsis logic
+                if (totalPages <= 7) return true
+                if (p === 1 || p === totalPages) return true
+                if (Math.abs(p - safePage) <= 1) return true
+                if (safePage <= 3 && p <= 5) return true
+                if (safePage >= totalPages - 2 && p >= totalPages - 4)
+                  return true
+                return false
+              })
+              .map((p, idx, arr) => {
+                const prevVal = arr[idx - 1]
+                const showEllipsis = prevVal && p - (prevVal as number) > 1
+                return (
+                  <React.Fragment key={p}>
+                    {showEllipsis && (
+                      <span className="px-1 text-muted-foreground">…</span>
+                    )}
+                    <Button
+                      variant={p === safePage ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn('h-7 px-3', p === safePage && 'font-bold')}
+                      onClick={() => goToPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  </React.Fragment>
+                )
+              })}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage === totalPages}
+              onClick={() => goToPage(safePage + 1)}
+              className="h-7 px-2"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog - Outside of DropdownMenu to avoid portal conflicts */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
