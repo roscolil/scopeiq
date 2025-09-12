@@ -33,6 +33,8 @@ class NovaSonicService {
   private audioContextUnlocked: boolean = false
   private userInteractionReceived: boolean = false
   private pendingAudio: HTMLAudioElement | null = null
+  // Track the currently playing audio element so we can stop/cancel playback early
+  private currentAudio: HTMLAudioElement | null = null
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -312,7 +314,9 @@ class NovaSonicService {
         const audioUrl = URL.createObjectURL(blob)
 
         // Create audio element
-        const audio = new Audio()
+  const audio = new Audio()
+  // Store reference for cancellation
+  this.currentAudio = audio
 
         // Safari/iOS specific configuration
         if (isSafari || isIOS) {
@@ -365,12 +369,18 @@ class NovaSonicService {
         audio.onended = () => {
           console.log('✅ Audio playback completed')
           URL.revokeObjectURL(audioUrl)
+          if (this.currentAudio === audio) {
+            this.currentAudio = null
+          }
           resolve()
         }
 
         audio.onerror = error => {
           console.error('❌ Audio playback error:', error)
           URL.revokeObjectURL(audioUrl)
+          if (this.currentAudio === audio) {
+            this.currentAudio = null
+          }
           reject(new Error('Failed to play audio'))
         }
 
@@ -404,6 +414,33 @@ class NovaSonicService {
         reject(error)
       }
     })
+  }
+
+  /**
+   * Stop (cancel) the currently playing audio, if any.
+   * Returns true if playback was stopped.
+   */
+  stopCurrentPlayback(): boolean {
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause()
+        // Attempt to revoke object URL if present
+        if (this.currentAudio.src && this.currentAudio.src.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(this.currentAudio.src)
+          } catch (_) {
+            // Ignore failures revoking object URL
+          }
+        }
+        this.currentAudio.currentTime = 0
+        this.currentAudio = null
+        console.log('🛑 Audio playback stopped by user')
+        return true
+      } catch (error) {
+        console.warn('⚠️ Failed to stop current audio:', error)
+      }
+    }
+    return false
   }
 
   /**

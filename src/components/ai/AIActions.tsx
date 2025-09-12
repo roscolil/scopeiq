@@ -95,6 +95,8 @@ export const AIActions = ({
   const [lastProcessedTranscript, setLastProcessedTranscript] =
     useState<string>('')
   const [lastSpokenResponse, setLastSpokenResponse] = useState<string>('')
+  // Local UI speech replay state (separate from isVoicePlaying to support replay after completion)
+  const [canReplay, setCanReplay] = useState(false)
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -671,6 +673,9 @@ export const AIActions = ({
             query: queryToUse,
           })
 
+          // Prepare replay availability
+          setCanReplay(false)
+
           // Clear the query field after successful AI response
           setQuery('')
 
@@ -703,6 +708,10 @@ export const AIActions = ({
                   voice: 'Ruth',
                   stopListeningAfter: true,
                 }).catch(console.error)
+                // Allow replay after initial playback finishes (delay approximate to speech start)
+                setTimeout(() => {
+                  setCanReplay(true)
+                }, 1500)
               } else {
                 console.log('🔄 Skipping voice response - already speaking')
               }
@@ -943,6 +952,35 @@ export const AIActions = ({
       description: 'The text has been copied to your clipboard.',
     })
   }
+
+  // Stop current speech playback if any
+  const cancelSpeech = useCallback(() => {
+    if (isVoicePlaying) {
+      const stopped = novaSonic.stopCurrentPlayback?.()
+      if (stopped) {
+        toast({
+          title: 'Playback Stopped',
+          description: 'AI speech playback has been stopped.',
+        })
+      }
+    }
+  }, [isVoicePlaying, toast])
+
+  // Replay last spoken response (only if not currently speaking and we have content)
+  const handleReplay = useCallback(() => {
+    if (!isVoicePlaying && lastSpokenResponse) {
+      setCanReplay(false)
+      speakWithStateTracking(lastSpokenResponse, {
+        voice: 'Ruth',
+        stopListeningAfter: true,
+      })
+        .then(() => {
+          // Re-enable replay after short cooldown
+          setTimeout(() => setCanReplay(true), 1000)
+        })
+        .catch(error => console.error('Replay error:', error))
+    }
+  }, [isVoicePlaying, lastSpokenResponse, speakWithStateTracking])
 
   // iOS-specific function to play response with user interaction
   const playResponseWithUserGesture = useCallback(
@@ -1552,6 +1590,28 @@ export const AIActions = ({
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                     Speaking...
                   </div>
+                )}
+                {!isVoicePlaying && lastSpokenResponse && canReplay && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleReplay}
+                    >
+                      Replay
+                    </Button>
+                  </div>
+                )}
+                {isVoicePlaying && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs ml-2"
+                    onClick={cancelSpeech}
+                  >
+                    Stop
+                  </Button>
                 )}
                 {shouldResumeListening && !isVoicePlaying && (
                   <div className="flex items-center gap-1 text-orange-600 text-sm">
