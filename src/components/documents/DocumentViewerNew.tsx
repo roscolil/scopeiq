@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
-import { FileText, File, FileImage, Loader2 } from 'lucide-react'
+import { FileText, File, FileImage, Loader2, Download } from 'lucide-react'
 import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/data/hybrid'
+// DOCX rendering (client-side) using mammoth - converts .docx to HTML
+// We provide a lightweight ambient type declaration separately if TS types are missing.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - types supplied via custom declaration if not present
+import * as mammoth from 'mammoth'
 // Removed Card/Badge imports (simplified viewer)
 
 // Text File Viewer Component
@@ -78,6 +83,91 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
     </div>
   )
 }
+
+// DOCX File Viewer Component
+const DocxFileViewer = ({ document }: { document: DocumentType }) => {
+  const [html, setHtml] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      if (!document?.url) {
+        setError('No document URL available')
+        setIsLoading(false)
+        return
+      }
+      try {
+        setIsLoading(true)
+        setError(null)
+        const resp = await fetch(document.url)
+        if (!resp.ok) throw new Error(`Failed to fetch file (${resp.status})`)
+        const arrayBuffer = await resp.arrayBuffer()
+        // Convert to HTML via mammoth
+        const { value } = await mammoth.convertToHtml({ arrayBuffer })
+        if (!cancelled) setHtml(value || '<p><em>No readable content.</em></p>')
+      } catch (e) {
+        console.warn('DOCX render error', e)
+        if (!cancelled)
+          setError(
+            'Unable to render this .docx file. You can still download it directly below.',
+          )
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [document])
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-xs text-gray-500 italic bg-muted/40 rounded-md border">
+        Converting .docx to HTML...
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="p-4 text-xs bg-red-50/70 dark:bg-red-950/30 border border-red-300/40 dark:border-red-700/40 rounded-md">
+        <p className="text-red-600 dark:text-red-300 mb-2 font-medium">{error}</p>
+        <a
+          href={document.url}
+          download={document.name}
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition"
+        >
+          <Download className="h-3 w-3" /> Download File
+        </a>
+      </div>
+    )
+  }
+  return (
+    <div className="docx-render prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-4 border overflow-auto max-h-[70vh]" dangerouslySetInnerHTML={{ __html: html }} />
+  )
+}
+
+// Legacy .doc (binary) unsupported inline; show fallback
+const LegacyDocFallback = ({ document }: { document: DocumentType }) => (
+  <div className="p-4 text-xs bg-amber-50 dark:bg-amber-900/20 border border-amber-300/40 dark:border-amber-600/40 rounded-md space-y-3">
+    <p className="text-amber-700 dark:text-amber-300 font-medium">
+      Inline preview for legacy .doc files is not supported.
+    </p>
+    <p className="text-amber-600/80 dark:text-amber-200/70">
+      You can download and open this document locally. Converting it to .docx
+      will enable inline viewing here in the future.
+    </p>
+    <a
+      href={document.url}
+      download={document.name}
+      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition"
+    >
+      <Download className="h-3 w-3" /> Download .doc File
+    </a>
+  </div>
+)
 
 // Utility functions
 const formatFileSize = (size: string | number): string => {
@@ -234,7 +324,8 @@ export const DocumentViewer = ({
       return <FileImage className="h-5 w-5 text-blue-500" />
     } else if (
       document.type.includes('word') ||
-      document.type.includes('doc')
+      document.type.includes('doc') ||
+      document.name?.toLowerCase().endsWith('.docx')
     ) {
       return <FileText className="h-5 w-5 text-blue-700" />
     } else if (
@@ -329,6 +420,13 @@ export const DocumentViewer = ({
           </div>
         ) : document.type.includes('pdf') ? (
           <PDFViewer document={document} />
+        ) : document.name?.toLowerCase().endsWith('.docx') ||
+          document.type.includes('officedocument.wordprocessingml.document') ||
+          document.type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ? (
+          <DocxFileViewer document={document} />
+        ) : document.name?.toLowerCase().endsWith('.doc') ||
+          document.type === 'application/msword' ? (
+          <LegacyDocFallback document={document} />
         ) : document.type.includes('text') ||
           document.type.includes('txt') ||
           document.type.includes('rtf') ||
