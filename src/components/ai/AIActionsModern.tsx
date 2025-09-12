@@ -127,7 +127,8 @@ export const AIActionsModern = ({
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
   const [interimTranscript, setInterimTranscript] = useState<string>('')
   const [enhancedSearchActive, setEnhancedSearchActive] = useState(true)
-  const [autoSpeechEnabled, setAutoSpeechEnabled] = useState(true)
+  // Auto speech is always enabled now (toggle removed)
+  const autoSpeechEnabled = true
 
   // Python backend state - preserving from AIActionsPython
   const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null)
@@ -793,18 +794,7 @@ export const AIActionsModern = ({
                     Enhanced
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAutoSpeechEnabled(!autoSpeechEnabled)}
-                    className={
-                      autoSpeechEnabled ? 'bg-green-50 border-green-200' : ''
-                    }
-                    title="Toggle automatic text-to-speech for AI responses"
-                  >
-                    <Volume2 className="h-4 w-4 mr-1" />
-                    Auto TTS
-                  </Button>
+                  {/* Auto TTS always on: toggle removed */}
                 </div>
 
                 <Button

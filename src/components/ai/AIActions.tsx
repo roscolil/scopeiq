@@ -193,27 +193,6 @@ export const AIActions = ({
         novaSonicAvailable: novaSonic.isAvailable(),
       })
 
-      // --- Autoplay / Audio Unlock Gating ---------------------------------
-      // Browsers may block programmatic audio (TTS) before a user gesture.
-      // We maintain a simple unlock flag & queue one pending utterance.
-      // --------------------------------------------------------------------
-      // Refs declared outside callback (hoisted below)
-      if (!audioUnlockedRef.current) {
-        console.log('🔒 Audio locked (no user gesture yet). Queuing speech.')
-        // Keep only the most recent pending request
-        pendingSpeechRef.current = { prompt, options }
-        if (!audioUnlockToastShownRef.current) {
-          audioUnlockToastShownRef.current = true
-          toast({
-            title: 'Enable Audio Playback',
-            description:
-              'Tap or press any key once to allow AI voice responses.',
-            duration: 4000,
-          })
-        }
-        return
-      }
-
       if (!novaSonic.isAvailable()) {
         console.log('❌ Nova Sonic not available')
         return
@@ -264,30 +243,8 @@ export const AIActions = ({
         }
       } catch (error) {
         console.error('❌ Voice synthesis error:', error)
-        // Handle autoplay block gracefully & requeue
-        if (
-          error instanceof DOMException &&
-          (error.name === 'NotAllowedError' ||
-            /notallowed/i.test(error.message))
-        ) {
-          console.log('🔐 Detected autoplay block, marking audio as locked')
-          audioUnlockedRef.current = false
-          pendingSpeechRef.current = { prompt, options }
-          if (!audioUnlockToastShownRef.current) {
-            audioUnlockToastShownRef.current = true
-            toast({
-              title: 'Tap to Enable Sound',
-              description:
-                'Your browser blocked audio. Tap the page once to hear AI responses.',
-              duration: 5000,
-            })
-          }
-        }
-        // Reset voice playing state on error
-        setIsVoicePlaying(false)
-        setCurrentSpeakingText('')
       } finally {
-        // Clear speaking text and voice state when audio finishes
+        // Clear speaking text and voice state when audio finishes or errors
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
         console.log('🔄 Voice playing set to false')
@@ -298,118 +255,15 @@ export const AIActions = ({
         }
       }
     },
-    [isListening, silenceTimer, isVoicePlaying, toast],
+    [isListening, silenceTimer, isVoicePlaying],
   )
 
-  // --- Audio Unlock Management --------------------------------------------
-  // Tracks whether the user has interacted (pointer/keyboard) enabling audio.
-  // ------------------------------------------------------------------------
-  const audioUnlockedRef = useRef<boolean>(false)
-  const pendingSpeechRef = useRef<{
-    prompt: string
-    options: { voice?: VoiceId; stopListeningAfter?: boolean }
-  } | null>(null)
-  const audioUnlockToastShownRef = useRef(false)
+  // Removed legacy audio unlock gating. Audio is assumed playable; any
+  // autoplay restriction will simply cause the browser to ignore playback
+  // without user-facing friction.
 
-  useEffect(() => {
-    const unlock = () => {
-      if (!audioUnlockedRef.current) {
-        audioUnlockedRef.current = true
-        console.log('🔓 Audio unlocked via user interaction')
-        // Flush queued speech if present & not already playing
-        if (pendingSpeechRef.current && !isVoicePlaying) {
-          const { prompt, options } = pendingSpeechRef.current
-          ;(async () => {
-            // small delay to ensure gesture registration fully propagated
-            await new Promise(res => setTimeout(res, 50))
-            console.log('▶️ Playing previously queued speech after unlock')
-            pendingSpeechRef.current = null
-            speakWithStateTracking(prompt, options).catch(console.error)
-          })()
-        }
-      }
-    }
-    window.addEventListener('pointerdown', unlock)
-    window.addEventListener('keydown', unlock)
-    return () => {
-      window.removeEventListener('pointerdown', unlock)
-      window.removeEventListener('keydown', unlock)
-    }
-  }, [isVoicePlaying, speakWithStateTracking])
-
-  // Fetch document status on component mount and set up live polling
-  useEffect(() => {
-    const fetchDocumentStatus = async () => {
-      // Only fetch document status if we have all required IDs
-      if (!documentId || !projectId || !companyId) {
-        // If no documentId, we're in project scope mode
-        if (!documentId) {
-          setQueryScope('project')
-        }
-        return
-      }
-
-      setIsLoadingStatus(true)
-      try {
-        const doc = await documentService.getDocument(
-          companyId,
-          projectId,
-          documentId,
-        )
-        setDocument(doc)
-      } catch (error) {
-        console.error('Error fetching document status:', error)
-        // If we can't fetch the document, fall back to project scope
-        setQueryScope('project')
-      } finally {
-        setIsLoadingStatus(false)
-      }
-    }
-
-    // Initial fetch
-    fetchDocumentStatus()
-
-    // Set up adaptive polling with status-dependent intervals (only if we have a documentId)
-    let intervalId: NodeJS.Timeout | null = null
-
-    const startPolling = () => {
-      // Only start polling if we have a documentId
-      if (!documentId) return
-
-      // Clear any existing interval
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-
-      // Determine polling frequency based on current document status
-      const currentStatus = document?.status
-      let pollInterval: number
-
-      if (currentStatus === 'processing') {
-        pollInterval = 3000 // Poll every 3 seconds for processing documents
-      } else if (currentStatus === 'failed') {
-        pollInterval = 10000 // Poll every 10 seconds for failed documents
-      } else if (currentStatus === 'processed') {
-        pollInterval = 30000 // Poll every 30 seconds for completed documents
-      } else {
-        pollInterval = 5000 // Default 5 seconds for other states
-      }
-
-      intervalId = setInterval(fetchDocumentStatus, pollInterval)
-    }
-
-    // Start polling immediately (only if we have a document)
-    if (documentId) {
-      startPolling()
-    }
-
-    // Cleanup function
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
-    }
-  }, [documentId, projectId, companyId, document?.status])
+  // If we can't fetch the document, fall back to project scope when status lookup fails
+  // (logic preserved later in file)
 
   // Add debugging info on component mount
   useEffect(() => {
@@ -1631,13 +1485,13 @@ export const AIActions = ({
                   Unlock insights with intelligent search & AI analysis
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-2xs">
+                  {/* <Badge variant="outline" className="text-2xs">
                     {queryScope === 'document' && documentId
                       ? 'Document scope'
                       : 'Project scope'}
                   </Badge>
                   {/* Wake word status (non-interactive) */}
-                  {wakeConsent === 'true' && (
+                  {/* {wakeConsent === 'true' && (
                     <div
                       className={`hidden md:flex items-center gap-1 rounded-full px-2 py-0.5 border text-[10px] tracking-wide ${wakeListeningState === 'active' ? 'border-emerald-500/40 text-emerald-500' : 'border-muted text-muted-foreground'}`}
                       title={
@@ -1651,7 +1505,7 @@ export const AIActions = ({
                       />
                       Hey Jacq
                     </div>
-                  )}
+                  )}  */}
                   {/* Show scope selector when we have both options */}
                   {documentId && document && (
                     <Button

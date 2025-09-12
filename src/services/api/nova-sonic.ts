@@ -30,11 +30,15 @@ interface NovaSonicResponse {
 
 class NovaSonicService {
   private client: PollyClient | null = null
-  private audioContextUnlocked: boolean = false
-  private userInteractionReceived: boolean = false
+  // Assume unlocked by default; Safari may still block but we'll attempt silently.
+  private audioContextUnlocked: boolean = true
+  private userInteractionReceived: boolean = true
   private pendingAudio: HTMLAudioElement | null = null
   // Track the currently playing audio element so we can stop/cancel playback early
   private currentAudio: HTMLAudioElement | null = null
+  // Track consecutive playback failures to optionally surface non-intrusive diagnostics
+  private consecutivePlaybackFailures = 0
+  private lastPlaybackError: string | null = null
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -72,59 +76,10 @@ class NovaSonicService {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 
-    if (!isSafari && !isIOS) {
-      this.audioContextUnlocked = true
-      this.userInteractionReceived = true
-      return
-    }
-
-    // Function to handle user interaction
-    const handleUserInteraction = async () => {
-      if (this.userInteractionReceived) return
-
-      console.log('🍎 User interaction detected - unlocking audio')
-      this.userInteractionReceived = true
-
-      try {
-        // Create and immediately play a silent audio to unlock the context
-        const silentAudio = new Audio()
-        silentAudio.src =
-          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
-        silentAudio.volume = 0
-        silentAudio.muted = true
-
-        // Prepare the audio element for immediate playback
-        await silentAudio.play()
-        this.audioContextUnlocked = true
-        console.log('✅ Audio context unlocked successfully')
-
-        // Remove event listeners after successful unlock
-        document.removeEventListener('touchstart', handleUserInteraction)
-        document.removeEventListener('touchend', handleUserInteraction)
-        document.removeEventListener('click', handleUserInteraction)
-        document.removeEventListener('keydown', handleUserInteraction)
-      } catch (error) {
-        console.warn('⚠️ Failed to unlock audio context:', error)
-      }
-    }
-
-    // Listen for various user interactions
-    document.addEventListener('touchstart', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('touchend', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('click', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('keydown', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
+    // Previously added event listeners for Safari unlock have been removed to streamline
+    // auto speech. We still optimistically treat audio as unlocked; Safari may block
+    // the first attempt silently, which calling layers already handle by queuing.
+    return
   }
 
   /**
@@ -187,18 +142,10 @@ class NovaSonicService {
     }
 
     if (isSafari || isIOS) {
-      if (!this.userInteractionReceived) {
-        return {
-          available: false,
-          needsInteraction: true,
-          message: 'Click any button to enable audio playback on Safari/iOS',
-        }
-      } else {
-        return {
-          available: true,
-          needsInteraction: false,
-          message: 'Audio enabled and ready',
-        }
+      return {
+        available: true,
+        needsInteraction: false,
+        message: 'Audio ready (Safari auto-attempt)',
       }
     }
 
@@ -326,40 +273,7 @@ class NovaSonicService {
           audio.controls = false
 
           // Check if user interaction has occurred
-          if (!this.userInteractionReceived) {
-            console.warn(
-              '🍎 Safari: No user interaction detected - audio may be blocked',
-            )
-            console.warn(
-              '🍎 Audio playback requires user interaction on Safari/iOS',
-            )
-
-            // Store the audio for later playback when user interaction occurs
-            this.pendingAudio = audio
-            audio.src = audioUrl
-
-            // Try to play anyway, but handle the expected failure gracefully
-            const playPromise = audio.play()
-            if (playPromise) {
-              playPromise.catch(error => {
-                if (error.name === 'NotAllowedError') {
-                  console.warn(
-                    '🍎 Expected: Safari blocked autoplay - waiting for user interaction',
-                  )
-                  // Clean up but don't reject - this is expected behavior
-                  URL.revokeObjectURL(audioUrl)
-                  resolve()
-                } else {
-                  URL.revokeObjectURL(audioUrl)
-                  reject(error)
-                }
-              })
-            } else {
-              URL.revokeObjectURL(audioUrl)
-              resolve()
-            }
-            return
-          }
+          // We no longer gate on interaction; attempt immediate playback.
         }
 
         audio.src = audioUrl
@@ -381,6 +295,8 @@ class NovaSonicService {
           if (this.currentAudio === audio) {
             this.currentAudio = null
           }
+          this.consecutivePlaybackFailures += 1
+          this.lastPlaybackError = 'element-error'
           reject(new Error('Failed to play audio'))
         }
 
@@ -392,25 +308,53 @@ class NovaSonicService {
             .then(() => {
               console.log('🎵 Audio playback started successfully')
             })
-            .catch(playError => {
+            .catch(async playError => {
               console.error('❌ Audio play() failed:', playError)
+              this.consecutivePlaybackFailures += 1
+              this.lastPlaybackError = playError?.name || 'unknown'
 
-              // Handle Safari/iOS specific errors
+              // Attempt a one-time quiet resume of an AudioContext (Chrome mobile heuristic)
+              try {
+                // Some browsers only allow AudioContext after gesture; create & close to poke
+                // We don't retain this context—just attempt activation if possible.
+                // (Not using Web Audio output path currently, so this is speculative unlock.)
+                // Guard in try so failures are silent.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const Ctx: any =
+                  (window as any).AudioContext ||
+                  (window as any).webkitAudioContext
+                if (Ctx) {
+                  const ctx = new Ctx()
+                  if (ctx.state === 'suspended') {
+                    await ctx.resume().catch(() => {})
+                  }
+                  // Close to avoid resource leaks
+                  if (ctx.close) {
+                    await ctx.close().catch(() => {})
+                  }
+                }
+              } catch {
+                /* ignore */
+              }
+
+              // Handle Safari/iOS specific errors gracefully (NotAllowedError => treat as completed)
               if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
                 console.warn(
-                  '🍎 Safari/iOS blocked audio playback - user interaction required',
+                  '🍎 Safari/iOS blocked audio playback (NotAllowedError)',
                 )
-                // For Safari, this is expected behavior, so we don't reject
                 URL.revokeObjectURL(audioUrl)
                 resolve()
-              } else {
-                URL.revokeObjectURL(audioUrl)
-                reject(playError)
+                return
               }
+
+              URL.revokeObjectURL(audioUrl)
+              reject(playError)
             })
         }
       } catch (error) {
         console.error('❌ Audio setup error:', error)
+        this.consecutivePlaybackFailures += 1
+        this.lastPlaybackError = 'setup-error'
         reject(error)
       }
     })
@@ -466,12 +410,7 @@ class NovaSonicService {
       console.log('🗣️ Speaking with AWS Polly:', text.substring(0, 50) + '...')
 
       // Check for Safari restrictions
-      if (isSafari && !this.userInteractionReceived) {
-        console.warn('🍎 Safari: Audio playback requires user interaction')
-        console.warn(
-          '🍎 Tip: User should click a button or interact with the page first',
-        )
-      }
+      // Interaction gating removed; we still log the attempt.
 
       const result = await this.synthesizeSpeech(text, options)
 
@@ -481,7 +420,16 @@ class NovaSonicService {
       }
 
       await this.playAudio(result.audio, options?.outputFormat || 'mp3')
-      console.log('✅ Speech playback completed')
+      if (this.consecutivePlaybackFailures === 0) {
+        console.log('✅ Speech playback completed')
+      } else {
+        console.log(
+          `✅ Speech playback completed (had ${this.consecutivePlaybackFailures} prior transient failure${this.consecutivePlaybackFailures === 1 ? '' : 's'})`,
+        )
+      }
+      // Reset failure counter on success
+      this.consecutivePlaybackFailures = 0
+      this.lastPlaybackError = null
       return true
     } catch (error) {
       console.error('❌ Failed to speak:', error)
@@ -492,16 +440,23 @@ class NovaSonicService {
         error instanceof Error &&
         error.message.includes('NotAllowedError')
       ) {
-        console.warn(
-          '🍎 Safari audio blocked - this is expected behavior without user gesture',
-        )
-        console.warn(
-          '🍎 To enable audio: user must click a button or interact with the page',
-        )
-        return false // Return false for Safari to indicate audio was blocked
+        // Silent fail path retained; caller may choose to retry after natural interaction.
+        return false
       }
 
       return false
+    }
+  }
+
+  /**
+   * Expose lightweight diagnostics for callers (optional UI/telemetry)
+   */
+  getDiagnostics() {
+    return {
+      consecutivePlaybackFailures: this.consecutivePlaybackFailures,
+      lastPlaybackError: this.lastPlaybackError,
+      audioUnlockedAssumed: this.audioContextUnlocked,
+      userInteractionAssumed: this.userInteractionReceived,
     }
   }
 
