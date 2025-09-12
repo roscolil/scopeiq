@@ -22,12 +22,17 @@ import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
+import { usePrefetch } from '@/utils/performance'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
     projectId?: string
   }>()
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
+
   const [documents, setDocuments] = React.useState<Document[]>([])
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
     Array<{

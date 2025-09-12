@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/ui/navigation'
 import { projectService, documentService } from '@/services/data/hybrid'
+import { usePrefetch } from '@/utils/performance'
 
 const ProjectDetails = () => {
   const { companyId, projectId } = useParams<{
@@ -51,6 +52,9 @@ const ProjectDetails = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const isMobile = useIsMobile()
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])

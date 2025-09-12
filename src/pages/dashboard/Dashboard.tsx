@@ -55,6 +55,7 @@ import {
   userActivityService,
   UserActivity,
 } from '@/services/auth/user-activity'
+import { usePrefetch } from '@/utils/performance'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -64,6 +65,9 @@ const Dashboard = () => {
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
 
   // Cache key for stats
   const STATS_CACHE_KEY = `dashboardStats_${companyId}`
