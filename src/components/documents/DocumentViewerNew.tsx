@@ -9,6 +9,7 @@ import { documentService } from '@/services/data/hybrid'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - types supplied via custom declaration if not present
 import * as mammoth from 'mammoth'
+import { transformDocxHtml, defaultDocxTransformConfig } from './docxStyles'
 // Removed Card/Badge imports (simplified viewer)
 
 // Text File Viewer Component
@@ -105,8 +106,18 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
         if (!resp.ok) throw new Error(`Failed to fetch file (${resp.status})`)
         const arrayBuffer = await resp.arrayBuffer()
         // Convert to HTML via mammoth
-        const { value } = await mammoth.convertToHtml({ arrayBuffer })
-        if (!cancelled) setHtml(value || '<p><em>No readable content.</em></p>')
+        const { value } = await mammoth.convertToHtml(
+          { arrayBuffer },
+          { styleMap: defaultDocxTransformConfig.styleMap },
+        )
+        const transformed = defaultDocxTransformConfig.enabled
+          ? transformDocxHtml(value || '')
+          : value
+        if (!cancelled)
+          setHtml(
+            transformed ||
+              '<p><em>No readable content in this document.</em></p>',
+          )
       } catch (e) {
         console.warn('DOCX render error', e)
         if (!cancelled)
