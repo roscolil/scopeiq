@@ -22,8 +22,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
   FileText,
-  Image,
-  File,
   MoreVertical,
   Eye,
   Download,
@@ -31,6 +29,7 @@ import {
   Loader2,
   RotateCcw,
 } from 'lucide-react'
+import { FileTypeIcon } from '@/components/documents/FileTypeIcon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,15 +101,7 @@ export const DocumentList = ({
     return unsubscribe
   }, [projectId])
 
-  const getFileIcon = (type: string) => {
-    if (type.includes('pdf')) {
-      return <FileText className="h-8 w-8 text-red-500" />
-    } else if (type.includes('image')) {
-      return <Image className="h-8 w-8 text-blue-500" />
-    } else {
-      return <File className="h-8 w-8 text-green-500" />
-    }
-  }
+  // Removed old getFileIcon - unified via FileTypeIcon
 
   const getStatusBadge = (status: Document['status']) => {
     switch (status) {
@@ -356,7 +347,11 @@ export const DocumentList = ({
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3">
                     <div className="relative">
-                      {getFileIcon(doc.type)}
+                      <FileTypeIcon
+                        mimeType={doc.type}
+                        fileName={doc.name}
+                        size={32}
+                      />
                       {doc.status === 'processing' && (
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
                           <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>

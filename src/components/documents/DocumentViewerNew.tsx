@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FileText, File, FileImage, Loader2, Download } from 'lucide-react'
+import { FileTypeIcon } from '@/components/documents/FileTypeIcon'
 import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
 import { Document as DocumentType } from '@/types'
@@ -331,36 +332,7 @@ export const DocumentViewer = ({
     fetchDocument()
   }, [documentId, projectId, companyId, preResolvedDocument])
 
-  const getFileIcon = () => {
-    if (!document) return <File className="h-5 w-5 text-primary" />
-
-    if (document.type.includes('pdf')) {
-      return <FileText className="h-5 w-5 text-red-500" />
-    } else if (document.type.includes('image')) {
-      return <FileImage className="h-5 w-5 text-blue-500" />
-    } else if (
-      document.type.includes('word') ||
-      document.type.includes('doc') ||
-      document.name?.toLowerCase().endsWith('.docx')
-    ) {
-      return <FileText className="h-5 w-5 text-blue-700" />
-    } else if (
-      document.type.includes('excel') ||
-      document.type.includes('sheet') ||
-      document.type.includes('xls')
-    ) {
-      return <FileText className="h-5 w-5 text-green-600" />
-    } else if (
-      document.type.includes('text') ||
-      document.type.includes('txt') ||
-      document.type.includes('rtf') ||
-      document.type.includes('plain')
-    ) {
-      return <FileText className="h-5 w-5 text-gray-600" />
-    } else {
-      return <File className="h-5 w-5 text-primary" />
-    }
-  }
+  // getFileIcon replaced with FileTypeIcon
 
   if (isLoading) {
     return <DocumentViewerSkeleton />
@@ -393,7 +365,11 @@ export const DocumentViewer = ({
   return (
     <div className="bg-white border rounded-lg overflow-hidden">
       <div className="p-3 border-b bg-muted/20 flex items-center gap-2">
-        {getFileIcon()}
+        <FileTypeIcon
+          mimeType={document.type}
+          fileName={document.name}
+          size={20}
+        />
         <h2 className="text-sm font-medium truncate">{document.name}</h2>
       </div>
       <div className="p-4 space-y-4">
