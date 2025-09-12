@@ -133,7 +133,9 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
   if (error) {
     return (
       <div className="p-4 text-xs bg-red-50/70 dark:bg-red-950/30 border border-red-300/40 dark:border-red-700/40 rounded-md">
-        <p className="text-red-600 dark:text-red-300 mb-2 font-medium">{error}</p>
+        <p className="text-red-600 dark:text-red-300 mb-2 font-medium">
+          {error}
+        </p>
         <a
           href={document.url}
           download={document.name}
@@ -145,7 +147,10 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
     )
   }
   return (
-    <div className="docx-render prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-4 border overflow-auto max-h-[70vh]" dangerouslySetInnerHTML={{ __html: html }} />
+    <div
+      className="docx-render prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-4 border overflow-auto max-h-[70vh]"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }
 
@@ -422,7 +427,9 @@ export const DocumentViewer = ({
           <PDFViewer document={document} />
         ) : document.name?.toLowerCase().endsWith('.docx') ||
           document.type.includes('officedocument.wordprocessingml.document') ||
-          document.type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ? (
+          document.type.includes(
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ) ? (
           <DocxFileViewer document={document} />
         ) : document.name?.toLowerCase().endsWith('.doc') ||
           document.type === 'application/msword' ? (
