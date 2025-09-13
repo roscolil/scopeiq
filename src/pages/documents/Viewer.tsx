@@ -232,99 +232,99 @@ const Viewer = () => {
     )
   }
 
-  const handleDownload = async () => {
-    if (document?.url) {
-      try {
-        // Fetch the file as a blob to force download behavior
-        console.log('Fetching file from URL:', document.url)
-        const response = await fetch(document.url)
+  // const handleDownload = async () => {
+  //   if (document?.url) {
+  //     try {
+  //       // Fetch the file as a blob to force download behavior
+  //       console.log('Fetching file from URL:', document.url)
+  //       const response = await fetch(document.url)
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! status: ${response.status}`)
+  //       }
 
-        const blob = await response.blob()
-        console.log('File fetched successfully, size:', blob.size)
+  //       const blob = await response.blob()
+  //       console.log('File fetched successfully, size:', blob.size)
 
-        // Create object URL for the blob
-        const blobUrl = window.URL.createObjectURL(blob)
+  //       // Create object URL for the blob
+  //       const blobUrl = window.URL.createObjectURL(blob)
 
-        // Create temporary anchor element to trigger download
-        const link = window.document.createElement('a')
-        link.href = blobUrl
-        link.download = document.name || 'document' // Force download instead of opening in new tab
+  //       // Create temporary anchor element to trigger download
+  //       const link = window.document.createElement('a')
+  //       link.href = blobUrl
+  //       link.download = document.name || 'document' // Force download instead of opening in new tab
 
-        // Temporarily add to DOM and click
-        window.document.body?.appendChild(link)
-        link.click()
-        window.document.body?.removeChild(link)
+  //       // Temporarily add to DOM and click
+  //       window.document.body?.appendChild(link)
+  //       link.click()
+  //       window.document.body?.removeChild(link)
 
-        // Clean up the object URL
-        window.URL.revokeObjectURL(blobUrl)
+  //       // Clean up the object URL
+  //       window.URL.revokeObjectURL(blobUrl)
 
-        toast({
-          title: 'Download started',
-          description: 'Your document download has been initiated.',
-        })
-      } catch (error) {
-        console.error('Error downloading document:', error)
+  //       toast({
+  //         title: 'Download started',
+  //         description: 'Your document download has been initiated.',
+  //       })
+  //     } catch (error) {
+  //       console.error('Error downloading document:', error)
 
-        // Fallback: try the direct link approach
-        console.log('Falling back to direct link approach')
-        try {
-          const link = window.document.createElement('a')
-          link.href = document.url
-          link.download = document.name || 'document'
-          link.target = '_blank' // As fallback, open in new tab
-          window.document.body?.appendChild(link)
-          link.click()
-          window.document.body?.removeChild(link)
+  //       // Fallback: try the direct link approach
+  //       console.log('Falling back to direct link approach')
+  //       try {
+  //         const link = window.document.createElement('a')
+  //         link.href = document.url
+  //         link.download = document.name || 'document'
+  //         link.target = '_blank' // As fallback, open in new tab
+  //         window.document.body?.appendChild(link)
+  //         link.click()
+  //         window.document.body?.removeChild(link)
 
-          toast({
-            title: 'Download started',
-            description:
-              'Your document download has been initiated (fallback method).',
-          })
-        } catch (fallbackError) {
-          console.error('Fallback download also failed:', fallbackError)
-          toast({
-            title: 'Download failed',
-            description: 'Unable to download the document. Please try again.',
-            variant: 'destructive',
-          })
-        }
-      }
-    } else {
-      toast({
-        title: 'Download failed',
-        description: 'Document URL is not available.',
-        variant: 'destructive',
-      })
-    }
-  }
+  //         toast({
+  //           title: 'Download started',
+  //           description:
+  //             'Your document download has been initiated (fallback method).',
+  //         })
+  //       } catch (fallbackError) {
+  //         console.error('Fallback download also failed:', fallbackError)
+  //         toast({
+  //           title: 'Download failed',
+  //           description: 'Unable to download the document. Please try again.',
+  //           variant: 'destructive',
+  //         })
+  //       }
+  //     }
+  //   } else {
+  //     toast({
+  //       title: 'Download failed',
+  //       description: 'Document URL is not available.',
+  //       variant: 'destructive',
+  //     })
+  //   }
+  // }
 
-  const handleShare = () => {
-    const shareUrl = window.location.href
+  // const handleShare = () => {
+  //   const shareUrl = window.location.href
 
-    // Try to use the clipboard API
-    if (navigator.clipboard) {
-      navigator.clipboard
-        .writeText(shareUrl)
-        .then(() => {
-          toast({
-            title: 'Share link copied',
-            description: 'The link has been copied to your clipboard.',
-          })
-        })
-        .catch(() => {
-          // Fallback
-          prompt('Copy this link to share the document:', shareUrl)
-        })
-    } else {
-      // Fallback for browsers without clipboard API
-      prompt('Copy this link to share the document:', shareUrl)
-    }
-  }
+  //   // Try to use the clipboard API
+  //   if (navigator.clipboard) {
+  //     navigator.clipboard
+  //       .writeText(shareUrl)
+  //       .then(() => {
+  //         toast({
+  //           title: 'Share link copied',
+  //           description: 'The link has been copied to your clipboard.',
+  //         })
+  //       })
+  //       .catch(() => {
+  //         // Fallback
+  //         prompt('Copy this link to share the document:', shareUrl)
+  //       })
+  //   } else {
+  //     // Fallback for browsers without clipboard API
+  //     prompt('Copy this link to share the document:', shareUrl)
+  //   }
+  // }
 
   const handleDelete = async () => {
     if (!document || !resolvedProject || !companyId) return
@@ -447,7 +447,7 @@ const Viewer = () => {
             </div>
 
             <div className="flex space-x-2 mt-4 md:mt-0">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
@@ -455,8 +455,8 @@ const Viewer = () => {
               >
                 <Download className="h-4 w-4" />
                 <span>Download</span>
-              </Button>
-              <Button
+              </Button> */}
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleShare}
@@ -464,7 +464,7 @@ const Viewer = () => {
               >
                 <Share2 className="h-4 w-4" />
                 <span>Share</span>
-              </Button>
+              </Button> */}
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>

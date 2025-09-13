@@ -1505,13 +1505,13 @@ export const AIActions = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Unlock insights with intelligent search & AI analysis
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                {/* <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-2xs">
                     {queryScope === 'document' && documentId
                       ? 'Document scope'
                       : 'Project scope'}
                   </Badge>
-                  {/* Show scope selector when we have both options */}
+                  {/* Show scope selector when we have both options 
                   {documentId && document && (
                     <Button
                       variant="ghost"
@@ -1527,7 +1527,7 @@ export const AIActions = ({
                       {queryScope === 'document' ? 'Project' : 'Document'}
                     </Button>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
 
