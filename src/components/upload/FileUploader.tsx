@@ -991,7 +991,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                 </Button>
               </label>
 
-              <label htmlFor="folder-upload" className="flex justify-center">
+              {/* <label htmlFor="folder-upload" className="flex justify-center">
                 <Input
                   id="folder-upload"
                   type="file"
@@ -1012,7 +1012,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                     Browse Folder
                   </span>
                 </Button>
-              </label>
+              </label> */}
             </div>
           </div>
         </div>
