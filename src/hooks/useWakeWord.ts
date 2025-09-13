@@ -121,6 +121,8 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
   // Minimal typing for recognition to avoid lib conflicts
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any | null>(null)
+  // Prevent concurrent / duplicate start attempts that produce InvalidStateError
+  const startingRef = useRef<boolean>(false)
   const cooldownRef = useRef<NodeJS.Timeout | null>(null)
   const restartRef = useRef<NodeJS.Timeout | null>(null)
   const lastTriggerTimeRef = useRef<number>(0)
@@ -387,14 +389,21 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       log('Not starting (manually suspended)')
       return
     }
-    if (requireUserInteraction && !userInteractedRef.current) {
-      // Allow bypass if we've previously had permission & user enabled
-      if (!priorPermissionGranted) {
-        log('Waiting for user interaction before starting')
-        return
-      } else {
-        log('Bypassing user interaction gate (prior permission)')
-      }
+    if (startingRef.current) {
+      log('Start suppressed (already starting)')
+      return
+    }
+    if (state === 'listening') {
+      log('Start suppressed (already listening)')
+      return
+    }
+    if (
+      requireUserInteraction &&
+      !userInteractedRef.current &&
+      !priorPermissionGranted
+    ) {
+      log('Waiting for user interaction before starting')
+      return
     }
     if (document.hidden) {
       log('Page hidden - delaying start')
@@ -406,6 +415,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     const rec = recognitionRef.current
     if (!rec) return
     try {
+      startingRef.current = true
       rec.start()
       setState('listening')
       setActive(true)
@@ -414,8 +424,17 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       setHasPermission(true)
     } catch (e) {
       log('Start error', e)
-      setError((e as Error).message)
-      setState('error')
+      const msg = (e as Error).message
+      setError(msg)
+      // Normalize InvalidStateError => already started
+      if (e instanceof Error && /InvalidStateError/i.test(e.name)) {
+        setState('listening')
+        setActive(true)
+      } else {
+        setState('error')
+      }
+    } finally {
+      startingRef.current = false
     }
   }, [
     enabled,
@@ -424,6 +443,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     requireUserInteraction,
     setupRecognition,
     priorPermissionGranted,
+    state,
   ])
   attemptStartRef.current = attemptStart
 
@@ -507,9 +527,12 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
         ) {
           // Avoid interfering if currently in cooldown (let cooldown finish)
           if (state === 'cooldown') return
-          // Attempt restart
-          log('Watchdog attempting restart (state=', state, ')')
-          attemptStartRef.current()
+          if (!startingRef.current) {
+            log('Watchdog attempting restart (state=', state, ')')
+            attemptStartRef.current()
+          } else {
+            log('Watchdog skip - start in progress')
+          }
           try {
             window.dispatchEvent(new CustomEvent('wakeword:watchdog-restart'))
           } catch {

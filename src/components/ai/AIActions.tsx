@@ -248,8 +248,15 @@ export const AIActions = ({
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
         console.log('🔄 Voice playing set to false')
+        // Only dispatch completion if playback really occurred (not just queued due to autoplay block)
         try {
-          window.dispatchEvent(new CustomEvent('ai:speech:complete'))
+          if (!novaSonic.hasQueuedPlayback()) {
+            window.dispatchEvent(new CustomEvent('ai:speech:complete'))
+          } else {
+            console.log(
+              '⏳ Skipping ai:speech:complete (queued playback pending)',
+            )
+          }
         } catch {
           /* noop */
         }
