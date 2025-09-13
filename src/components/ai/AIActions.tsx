@@ -1190,7 +1190,7 @@ export const AIActions = ({
               isListening
             ) {
               console.log(
-                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
+                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '2s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
               // Set loading state immediately to prevent button flash
@@ -1213,14 +1213,14 @@ export const AIActions = ({
               })
             }
           },
-          isMobile ? 1500 : 3000,
+          isMobile ? 1500 : 2000,
         ) // Shorter timeout on mobile for better responsiveness
 
         setSilenceTimer(timer)
         console.log(
           '⏰ Started silence timer for:',
           text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '3s'} timeout)`,
+          `(${isMobile ? '1.5s' : '2s'} timeout)`,
         )
       }
     },
@@ -1393,9 +1393,9 @@ export const AIActions = ({
     handleTranscript,
   ])
 
-  const handleAskAI = async () => {
-    await handleQuery()
-  }
+  // const handleAskAI = async () => {
+  //   await handleQuery()
+  // }
 
   return (
     <>
