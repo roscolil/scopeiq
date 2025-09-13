@@ -1113,6 +1113,8 @@ export const AIActions = ({
       hasTranscriptRef.current = false
       // Initialize mobile recognition on demand
       if (isMobile) {
+        // Proactively warm audio so immediate TTS of next AI response has higher success chance
+        novaSonic.warmAudio().catch(() => {})
         await initMobileRecognition()
         if (mobileRecognitionRef.current) {
           try {
@@ -1179,6 +1181,23 @@ export const AIActions = ({
     window.addEventListener('dictation:start', finalize)
     return () => window.removeEventListener('dictation:start', finalize)
   }, [cancelWakeActivationAttempts])
+
+  useEffect(() => {
+    // Toast / hint if playback blocked so user can tap once; only show once per session
+    let shown = false
+    const blockedHandler = () => {
+      if (shown) return
+      shown = true
+      toast({
+        title: 'Tap to hear responses',
+        description:
+          'Your browser blocked auto audio. Interact once (tap/scroll) to enable speech.',
+        duration: 5000,
+      })
+    }
+    window.addEventListener('ai:speech:blocked', blockedHandler)
+    return () => window.removeEventListener('ai:speech:blocked', blockedHandler)
+  }, [toast])
 
   useEffect(() => {
     function attemptStart(attempt: number) {

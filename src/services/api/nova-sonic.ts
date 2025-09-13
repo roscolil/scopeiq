@@ -119,6 +119,20 @@ class NovaSonicService {
   }
 
   /**
+   * Best-effort proactive audio unlock / warm-up. Safe to call repeatedly.
+   * Returns true if we believe audio is now unlocked or was already.
+   */
+  async warmAudio(): Promise<boolean> {
+    if (this.audioContextUnlocked) return true
+    try {
+      await this.attemptSilentUnlock()
+    } catch {
+      /* ignore */
+    }
+    return this.audioContextUnlocked
+  }
+
+  /**
    * Try to silently unlock audio by creating a muted, zero-length playback or AudioContext.
    * This won't always work (needs gesture in many cases) but is safe & cheap.
    */
@@ -537,6 +551,12 @@ class NovaSonicService {
       }
 
       await this.playAudio(result.audio, options?.outputFormat || 'mp3')
+      try {
+        // Explicit playback event already emitted in playAudio success path; this is a safeguard
+        window.dispatchEvent(new CustomEvent('ai:speech:auto-play-attempt'))
+      } catch {
+        /* noop */
+      }
       if (this.consecutivePlaybackFailures === 0) {
         console.log('✅ Speech playback completed')
       } else {
@@ -550,6 +570,23 @@ class NovaSonicService {
       return true
     } catch (error) {
       console.error('❌ Failed to speak:', error)
+
+      // Fallback: if autoplay blocked and no queued playback, optionally try Web Speech API once
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const errName =
+          error instanceof Error && (error as Error).name ? error.name : ''
+        if (/NotAllowedError/i.test(errName) && !this.queuedBlockedPlayback) {
+          try {
+            const utter = new SpeechSynthesisUtterance(text)
+            utter.rate = 1
+            utter.pitch = 1
+            speechSynthesis.speak(utter)
+            console.log('🔁 Used speechSynthesis fallback for TTS')
+          } catch (e) {
+            console.warn('Fallback speechSynthesis failed:', e)
+          }
+        }
+      }
 
       // Safari specific handling
       if (error instanceof Error && /NotAllowedError/i.test(error.message)) {

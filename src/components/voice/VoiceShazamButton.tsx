@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Mic, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,123 @@ export const VoiceShazamButton = ({
   const isListening = selfContained
     ? internalIsListening
     : externalIsListening || false
+
+  // Stable self-contained toggle listening function
+  const internalToggleListening = useCallback(async () => {
+    if (!selfContained || !recognition) {
+      console.error('❌ No recognition instance or not in self-contained mode')
+      return
+    }
+
+    console.log('🎯 toggleListening called', {
+      recognition: !!recognition,
+      isListening: internalIsListening,
+    })
+
+    if (internalIsListening) {
+      console.log('🛑 Stopping recognition...')
+      recognition.stop()
+      setInternalIsListening(false)
+      hasSubmittedRef.current = false
+      lastSubmittedTranscriptRef.current = ''
+      // Clear silence timer when stopping
+      setSilenceTimer(prevTimer => {
+        if (prevTimer) {
+          clearTimeout(prevTimer)
+        }
+        return null
+      })
+      setHasTranscript(false)
+    } else {
+      console.log('🎤 Starting recognition...')
+      // Reset state when starting
+      setTranscript('')
+      setHasTranscript(false)
+      hasSubmittedRef.current = false
+      lastSubmittedTranscriptRef.current = ''
+      setSilenceTimer(prevTimer => {
+        if (prevTimer) {
+          clearTimeout(prevTimer)
+        }
+        return null
+      })
+
+      // Platform-specific permission handling
+      const isSafari = /^((?!chrome|android).)*safari/i.test(
+        navigator.userAgent,
+      )
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+      if (isSafari && isMobile) {
+        try {
+          console.log('🍎 Requesting microphone permissions...')
+          ;(
+            await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            })
+          )
+            .getTracks()
+            .forEach(track => track.stop())
+          console.log('✅ Microphone permission granted')
+
+          setTimeout(() => {
+            try {
+              recognition.start()
+              setInternalIsListening(true)
+              setStatus('Starting...')
+            } catch (error) {
+              console.error('🍎 Safari start error:', error)
+              setStatus(`Start error: ${error}`)
+            }
+          }, 300)
+        } catch (error) {
+          console.error('🍎 Permission error:', error)
+          setStatus(`Permission error: ${error}`)
+        }
+      } else {
+        try {
+          recognition.start()
+          setInternalIsListening(true)
+          setStatus('Starting...')
+        } catch (error) {
+          console.error('❌ Start error:', error)
+          setStatus(`Start error: ${error}`)
+        }
+      }
+    }
+  }, [selfContained, recognition, internalIsListening])
+
+  // Sync with global wakeword → dictation events so the UI reflects passive activation
+  useEffect(() => {
+    if (!selfContained) return
+    const handleWakeActivate = () => {
+      if (internalIsListening) return
+      console.log('[shazam] wakeword:activate-mic received -> auto-start')
+      internalToggleListening().catch(err =>
+        console.warn('[shazam] auto-start failed', err),
+      )
+    }
+    const handleDictationStart = () => {
+      if (!internalIsListening) {
+        console.log('[shazam] dictation:start observed -> mark listening')
+        setInternalIsListening(true)
+      }
+    }
+    const handleDictationStop = () => {
+      if (internalIsListening) {
+        console.log('[shazam] dictation:stop observed -> mark not listening')
+        setInternalIsListening(false)
+      }
+    }
+    window.addEventListener('wakeword:activate-mic', handleWakeActivate)
+    window.addEventListener('dictation:start', handleDictationStart)
+    window.addEventListener('dictation:stop', handleDictationStop)
+    return () => {
+      window.removeEventListener('wakeword:activate-mic', handleWakeActivate)
+      window.removeEventListener('dictation:start', handleDictationStart)
+      window.removeEventListener('dictation:stop', handleDictationStop)
+    }
+  }, [selfContained, internalIsListening, internalToggleListening])
 
   // Initialize speech recognition for self-contained mode
   useEffect(() => {
@@ -249,88 +366,6 @@ export const VoiceShazamButton = ({
       }
     }
   }, [silenceTimer, selfContained])
-
-  // Self-contained toggle listening function
-  const internalToggleListening = async () => {
-    if (!selfContained || !recognition) {
-      console.error('❌ No recognition instance or not in self-contained mode')
-      return
-    }
-
-    console.log('🎯 toggleListening called', {
-      recognition: !!recognition,
-      isListening: internalIsListening,
-    })
-
-    if (internalIsListening) {
-      console.log('🛑 Stopping recognition...')
-      recognition.stop()
-      setInternalIsListening(false)
-      hasSubmittedRef.current = false
-      lastSubmittedTranscriptRef.current = ''
-      // Clear silence timer when stopping
-      setSilenceTimer(prevTimer => {
-        if (prevTimer) {
-          clearTimeout(prevTimer)
-        }
-        return null
-      })
-      setHasTranscript(false)
-    } else {
-      console.log('🎤 Starting recognition...')
-      // Reset state when starting
-      setTranscript('')
-      setHasTranscript(false)
-      hasSubmittedRef.current = false
-      lastSubmittedTranscriptRef.current = ''
-      setSilenceTimer(prevTimer => {
-        if (prevTimer) {
-          clearTimeout(prevTimer)
-        }
-        return null
-      })
-
-      // Platform-specific permission handling
-      const isSafari = /^((?!chrome|android).)*safari/i.test(
-        navigator.userAgent,
-      )
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-
-      if (isSafari && isMobile) {
-        try {
-          console.log('🍎 Requesting microphone permissions...')
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          })
-          console.log('✅ Microphone permission granted')
-          stream.getTracks().forEach(track => track.stop())
-
-          setTimeout(() => {
-            try {
-              recognition.start()
-              setInternalIsListening(true)
-              setStatus('Starting...')
-            } catch (error) {
-              console.error('🍎 Safari start error:', error)
-              setStatus(`Start error: ${error}`)
-            }
-          }, 300)
-        } catch (error) {
-          console.error('🍎 Permission error:', error)
-          setStatus(`Permission error: ${error}`)
-        }
-      } else {
-        try {
-          recognition.start()
-          setInternalIsListening(true)
-          setStatus('Starting...')
-        } catch (error) {
-          console.error('❌ Start error:', error)
-          setStatus(`Start error: ${error}`)
-        }
-      }
-    }
-  }
 
   // Determine which toggle function to use
   const toggleListening = selfContained
