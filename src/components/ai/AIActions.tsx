@@ -93,6 +93,11 @@ export const AIActions = ({
     query?: string
   } | null>(null)
   const [isListening, setIsListening] = useState(false)
+  // Stable refs to avoid stale closure issues inside retry / timers
+  const isListeningRef = useRef(false)
+  const isVoicePlayingRef = useRef(false)
+  const wakeInitiatedRef = useRef(false)
+  // Effects must appear after isVoicePlaying is declared; we update these refs later once isVoicePlaying exists
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
     documentId ? 'document' : 'project', // Default to project scope if no documentId
   )
@@ -101,6 +106,14 @@ export const AIActions = ({
   const [isLoadingStatus, setIsLoadingStatus] = useState(false)
   const [hideShazamButton, setHideShazamButton] = useState(false)
   const [isVoicePlaying, setIsVoicePlaying] = useState(false)
+
+  // Keep refs in sync (defined after isVoicePlaying to avoid temporal dead zone issues in dependency evaluation)
+  useEffect(() => {
+    isListeningRef.current = isListening
+  }, [isListening])
+  useEffect(() => {
+    isVoicePlayingRef.current = isVoicePlaying
+  }, [isVoicePlaying])
   const [shouldResumeListening, setShouldResumeListening] = useState(false)
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
   const [interimTranscript, setInterimTranscript] = useState<string>('')
@@ -131,7 +144,40 @@ export const AIActions = ({
   const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
 
   // Mobile-only voice recognition (when VoiceInput is not available)
-  const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
+  // Minimal compatible interface for browser SpeechRecognition to satisfy TS without lib dom experimental types
+  interface BrowserSpeechRecognition extends EventTarget {
+    lang: string
+    continuous: boolean
+    interimResults: boolean
+    maxAlternatives: number
+    start: () => void
+    stop: () => void
+    onresult:
+      | ((this: BrowserSpeechRecognition, ev: SpeechRecognitionEvent) => void)
+      | null
+    onerror:
+      | ((
+          this: BrowserSpeechRecognition,
+          ev: SpeechRecognitionErrorEvent,
+        ) => void)
+      | null
+    onend: (() => void) | null
+    onstart: (() => void) | null
+  }
+  // Fallback event type (subset)
+  interface SpeechRecognitionResultLike {
+    0: { transcript: string }
+    isFinal: boolean
+    length: number
+  }
+  interface SpeechRecognitionEvent {
+    results: SpeechRecognitionResultLike[]
+  }
+  interface SpeechRecognitionErrorEvent {
+    error?: string
+    message?: string
+  }
+  const mobileRecognitionRef = useRef<BrowserSpeechRecognition | null>(null)
 
   // Chat history state
   interface ChatMessage {
@@ -970,9 +1016,93 @@ export const AIActions = ({
     [speakWithStateTracking, toast],
   )
 
-  const toggleListening = useCallback(() => {
-    const newListeningState = !isListening
+  const initMobileRecognition = useCallback(async () => {
+    if (!isMobile) return
+    if (mobileRecognitionRef.current) return
+    const speechWindow = window as unknown as {
+      SpeechRecognition?: new () => BrowserSpeechRecognition
+      webkitSpeechRecognition?: new () => BrowserSpeechRecognition
+    }
+    const SpeechRecognitionAPI =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) {
+      console.log('[voice] Mobile SpeechRecognition not supported')
+      return
+    }
+    try {
+      const recognition: BrowserSpeechRecognition = new SpeechRecognitionAPI()
+      const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      recognition.continuous = false
+      recognition.interimResults = !isiOS // disable interim on iOS for stability
+      recognition.lang = 'en-US'
+      recognition.maxAlternatives = 1
+      let mobileTranscript = ''
+      recognition.onstart = () => {
+        console.log(
+          '[voice] mobile recognition started (wakeInitiated=',
+          wakeInitiatedRef.current,
+          ')',
+        )
+      }
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        if (isVoicePlayingRef.current) return
+        const results = Array.from(
+          event.results as SpeechRecognitionResultLike[],
+        )
+        let completeTranscript = ''
+        for (let i = 0; i < results.length; i++) {
+          completeTranscript += results[i][0].transcript
+        }
+        mobileTranscript = completeTranscript
+        console.log('📱 Mobile voice transcript:', completeTranscript)
+        setQuery(completeTranscript)
+        setInterimTranscript(completeTranscript)
+        if (completeTranscript.trim()) {
+          hasTranscriptRef.current = true
+          if (silenceTimer) {
+            clearTimeout(silenceTimer)
+          }
+          const transcriptToSubmit = completeTranscript
+          const t = setTimeout(() => {
+            const trimmed = transcriptToSubmit.trim()
+            if (trimmed) {
+              setQuery(trimmed)
+              setIsLoading(true)
+              setIsListening(false)
+              isListeningRef.current = false
+              setTimeout(() => handleQuery(trimmed), 250)
+            }
+          }, 1200)
+          setSilenceTimer(t)
+        }
+      }
+      recognition.onerror = (ev: SpeechRecognitionErrorEvent) => {
+        const err = ev.error
+        console.warn('📱 mobile recognition error:', err)
+        if (err === 'not-allowed') {
+          toast({
+            title: 'Microphone Permission Required',
+            description: 'Please allow microphone access to use voice input.',
+            variant: 'destructive',
+          })
+        }
+        if (mobileTranscript.trim()) setQuery(mobileTranscript)
+        setIsListening(false)
+        isListeningRef.current = false
+      }
+      recognition.onend = () => {
+        console.log('[voice] mobile recognition ended')
+      }
+      mobileRecognitionRef.current = recognition
+    } catch (e) {
+      console.error('[voice] failed to init mobile recognition', e)
+    }
+  }, [isMobile, silenceTimer, handleQuery, toast])
+
+  const toggleListening = useCallback(async () => {
+    const newListeningState = !isListeningRef.current
     setIsListening(newListeningState)
+    isListeningRef.current = newListeningState
 
     if (silenceTimer) {
       clearTimeout(silenceTimer)
@@ -981,75 +1111,21 @@ export const AIActions = ({
 
     if (newListeningState) {
       hasTranscriptRef.current = false
-
-      // Start mobile recognition when listening begins
-      if (isMobile && mobileRecognitionRef.current) {
-        try {
-          // iOS Safari fix: Ensure we have user gesture and permissions
-          if (
-            navigator.userAgent.includes('iPhone') ||
-            navigator.userAgent.includes('iPad')
-          ) {
-            console.log('🍎 Starting iOS voice recognition with user gesture')
-
-            // Request microphone permission explicitly on iOS
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              navigator.mediaDevices
-                .getUserMedia({ audio: true })
-                .then(async () => {
-                  console.log('🍎 iOS microphone permission granted')
-
-                  // Audio is ready for automatic speech responses
-                  console.log('🍎 Audio ready for automatic responses')
-
-                  mobileRecognitionRef.current?.start()
-                })
-                .catch(error => {
-                  console.error('🍎 iOS microphone permission denied:', error)
-                  toast({
-                    title: 'Microphone Permission Required',
-                    description:
-                      'Please allow microphone access in Safari settings to use voice input.',
-                    variant: 'destructive',
-                  })
-                  setIsListening(false)
-                })
-            } else {
-              // Fallback for older iOS versions
-              mobileRecognitionRef.current.start()
+      // Initialize mobile recognition on demand
+      if (isMobile) {
+        await initMobileRecognition()
+        if (mobileRecognitionRef.current) {
+          try {
+            // Request permission proactively when wake initiated or first manual use
+            if (navigator.mediaDevices?.getUserMedia) {
+              await navigator.mediaDevices.getUserMedia({ audio: true })
             }
-          } else {
-            // Non-iOS devices
             mobileRecognitionRef.current.start()
+          } catch (e) {
+            console.warn('[voice] start failed', e)
+            setIsListening(false)
+            isListeningRef.current = false
           }
-        } catch (error) {
-          console.error('Error starting mobile recognition:', error)
-
-          if (error instanceof DOMException) {
-            if (error.name === 'NotAllowedError') {
-              toast({
-                title: 'Microphone Permission Denied',
-                description:
-                  'Please allow microphone access to use voice input.',
-                variant: 'destructive',
-              })
-            } else if (error.name === 'NotSupportedError') {
-              toast({
-                title: 'Voice Recognition Not Supported',
-                description: 'Your browser does not support voice recognition.',
-                variant: 'destructive',
-              })
-            } else {
-              toast({
-                title: 'Voice Recognition Error',
-                description:
-                  'Unable to start voice recognition. Please try again.',
-                variant: 'destructive',
-              })
-            }
-          }
-
-          setIsListening(false)
         }
       }
 
@@ -1072,26 +1148,114 @@ export const AIActions = ({
 
       // No toast when stopping - user will see results or feedback from query processing
     }
-  }, [isListening, silenceTimer, isMobile, toast])
+  }, [isMobile, silenceTimer, toast, initMobileRecognition])
 
   // Programmatic activation via custom event (e.g., wake word)
+  const wakeActivationRef = useRef<{
+    attempt: number
+    timer: number | null
+    active: boolean
+  } | null>(null)
+
+  // Cancel any pending wake activation attempts
+  const cancelWakeActivationAttempts = useCallback(() => {
+    if (wakeActivationRef.current) {
+      if (wakeActivationRef.current.timer) {
+        clearTimeout(wakeActivationRef.current.timer)
+      }
+      wakeActivationRef.current.active = false
+      wakeActivationRef.current = null
+    }
+  }, [])
+
+  // Listen for dictation:start to finalize wake activation early
   useEffect(() => {
+    const finalize = () => {
+      if (wakeActivationRef.current?.active) {
+        console.log('[wake-mic] dictation:start observed – stopping retries')
+        cancelWakeActivationAttempts()
+      }
+    }
+    window.addEventListener('dictation:start', finalize)
+    return () => window.removeEventListener('dictation:start', finalize)
+  }, [cancelWakeActivationAttempts])
+
+  useEffect(() => {
+    function attemptStart(attempt: number) {
+      // Already listening or playing – nothing to do
+      if (isListeningRef.current || isVoicePlayingRef.current) {
+        cancelWakeActivationAttempts()
+        return
+      }
+
+      if (!wakeActivationRef.current) {
+        wakeActivationRef.current = { attempt, timer: null, active: true }
+      } else {
+        wakeActivationRef.current.attempt = attempt
+      }
+
+      const maxAttempts = 3
+      const backoff = attempt === 0 ? 300 : attempt === 1 ? 600 : 900
+
+      console.log(
+        '[wake-mic] activation attempt',
+        attempt + 1,
+        'of',
+        maxAttempts,
+        {
+          listening: isListeningRef.current,
+          voicePlaying: isVoicePlayingRef.current,
+          wakeInitiated: wakeInitiatedRef.current,
+        },
+      )
+
+      // First action: try toggling listening (async to allow on-demand init)
+      toggleListening()
+
+      // Schedule verification / retry
+      wakeActivationRef.current.timer = window.setTimeout(() => {
+        // If listening succeeded, we're done
+        if (isListeningRef.current || isVoicePlayingRef.current) {
+          console.log('[wake-mic] activation successful (state observed)')
+          cancelWakeActivationAttempts()
+          return
+        }
+
+        if (attempt + 1 < maxAttempts) {
+          attemptStart(attempt + 1)
+        } else {
+          console.warn('[wake-mic] activation failed after retries')
+          cancelWakeActivationAttempts()
+        }
+      }, backoff)
+    }
+
     const handler = () => {
+      console.log('[wake-mic] event received wakeword:activate-mic')
+      // Ignore if another activation cycle is active
+      if (wakeActivationRef.current?.active) {
+        console.log('[wake-mic] activation already in progress – ignoring')
+        return
+      }
       // Only start if not already listening and not currently playing voice
-      if (!isListening && !isVoicePlaying) {
-        // Provide subtle hint only on desktop
+      if (!isListeningRef.current && !isVoicePlayingRef.current) {
         if (!isMobile) {
           toast({
             title: 'Listening…',
             description: 'Wake word activated. Speak your question.',
           })
         }
-        toggleListening()
+        wakeInitiatedRef.current = true
+        attemptStart(0)
       }
     }
+
     window.addEventListener('wakeword:activate-mic', handler)
-    return () => window.removeEventListener('wakeword:activate-mic', handler)
-  }, [isListening, isVoicePlaying, isMobile, toast, toggleListening])
+    return () => {
+      window.removeEventListener('wakeword:activate-mic', handler)
+      cancelWakeActivationAttempts()
+    }
+  }, [isMobile, toast, toggleListening, cancelWakeActivationAttempts])
 
   const handleTranscript = useCallback(
     (text: string) => {
