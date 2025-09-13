@@ -55,11 +55,20 @@ export const VoiceShazamButton = ({
     attempts: 0,
   })
   const forceStopRef = useRef(false)
+  // Prevent brief flash of idle (mic) icon between listening -> processing
+  const [recentlyStoppedListening, setRecentlyStoppedListening] =
+    useState(false)
+  // Will assign after isListening is derived
+  const prevListeningRef = useRef<boolean>(false)
 
   // Determine which listening state to use
   const isListening = selfContained
     ? internalIsListening
     : externalIsListening || false
+  // Initialize previous ref once we know current state
+  if (prevListeningRef.current === false && isListening) {
+    prevListeningRef.current = isListening
+  }
 
   // Initialize speech recognition for self-contained mode
   useEffect(() => {
@@ -396,6 +405,23 @@ export const VoiceShazamButton = ({
     }
   }, [isListening])
 
+  // Grace window: if we transition from listening -> not listening while processing hasn't started yet,
+  // keep showing the listening visual briefly to avoid mic flash.
+  useEffect(() => {
+    const wasListening = prevListeningRef.current
+    if (wasListening && !isListening && !isProcessing) {
+      setRecentlyStoppedListening(true)
+      const timeout = setTimeout(() => setRecentlyStoppedListening(false), 300)
+      prevListeningRef.current = isListening
+      return () => clearTimeout(timeout)
+    }
+    if (isProcessing) {
+      // Once processing starts, clear grace state immediately
+      setRecentlyStoppedListening(false)
+    }
+    prevListeningRef.current = isListening
+  }, [isListening, isProcessing])
+
   // Hide help message after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -482,155 +508,170 @@ export const VoiceShazamButton = ({
           </div>
         )}
         <div ref={containerRef}>
-          <Button
-            onClick={toggleListening}
-            disabled={isProcessing}
-            className={cn(
-              'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
-              'border-4 border-background transition-all duration-300',
-              isProcessing
-                ? 'bg-transparent hover:bg-transparent ring-8 ring-orange-400 scale-105 !opacity-100' // Processing state - highest priority
-                : isListening
-                  ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105' // Listening state
-                  : 'bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95', // Normal state
-              pulseAnimation && 'animate-pulse shadow-2xl',
-              isProcessing && 'animate-pulse shadow-2xl', // Add pulse animation during processing
-            )}
-            style={{
-              boxShadow: isProcessing
-                ? '0 0 40px rgba(234, 88, 12, 0.6)' // Orange glow when processing - highest priority
-                : isListening
-                  ? '0 0 40px rgba(16, 185, 129, 0.6)' // Emerald glow when listening
-                  : '0 0 30px rgba(0,0,0,0.5)', // Default glow
-              position: 'relative',
-              zIndex: 200,
-            }}
-            aria-label={
-              isProcessing
-                ? 'Processing voice input...'
-                : isListening
-                  ? 'Listening... Speak now and stop when done'
-                  : 'Tap to start voice input'
-            }
-          >
-            {/* Solid background overlay for processing state */}
-            {isProcessing && (
-              <div
-                className="absolute inset-0 bg-orange-600 rounded-full z-0"
-                style={{ backgroundColor: '#d97706' }}
-              />
-            )}
-
-            <div
-              className={cn(
-                'absolute inset-0 rounded-full',
-                isProcessing
-                  ? 'bg-orange-600 opacity-50 animate-pulse' // Processing state - highest priority
-                  : isListening
-                    ? 'bg-emerald-500 opacity-40 animate-ping' // Listening state
-                    : pulseAnimation
-                      ? 'bg-primary opacity-40 animate-ping' // Default pulse animation
-                      : 'hidden', // Hidden when none of the above
-              )}
-            />
-            {/* Additional processing animation ring */}
-            {isProcessing && (
-              <div className="absolute inset-0 rounded-full bg-orange-400 opacity-30 animate-ping animation-delay-200" />
-            )}
-            <div
-              className="flex items-center justify-center overflow-visible relative z-10"
-              style={{ width: '96px', height: '96px' }}
-            >
-              {isProcessing ? (
-                <div className="relative flex items-center justify-center">
-                  {/* AI Processing Brain */}
+          {(() => {
+            const showProcessing = isProcessing
+            const showListeningVisual =
+              isListening || (!showProcessing && recentlyStoppedListening)
+            return (
+              <Button
+                onClick={toggleListening}
+                disabled={isProcessing}
+                className={cn(
+                  'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
+                  'border-4 border-background transition-all duration-300',
+                  showProcessing
+                    ? 'bg-transparent hover:bg-transparent ring-8 ring-orange-400 scale-105 !opacity-100'
+                    : showListeningVisual
+                      ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105'
+                      : 'bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95',
+                  pulseAnimation &&
+                    showListeningVisual &&
+                    'animate-pulse shadow-2xl',
+                  showProcessing && 'animate-pulse shadow-2xl',
+                )}
+                style={{
+                  boxShadow: showProcessing
+                    ? '0 0 40px rgba(234, 88, 12, 0.6)'
+                    : showListeningVisual
+                      ? '0 0 40px rgba(16, 185, 129, 0.6)'
+                      : '0 0 30px rgba(0,0,0,0.5)',
+                  position: 'relative',
+                  zIndex: 200,
+                }}
+                aria-label={
+                  showProcessing
+                    ? 'Processing voice input...'
+                    : showListeningVisual
+                      ? 'Listening... Speak now and stop when done'
+                      : 'Tap to start voice input'
+                }
+              >
+                {/* Solid background overlay for processing state */}
+                {showProcessing && (
                   <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      animation: 'brain-glow 2s ease-in-out infinite',
-                    }}
+                    className="absolute inset-0 bg-orange-600 rounded-full z-0"
+                    style={{ backgroundColor: '#d97706' }}
                   />
-                  <Brain
-                    className="text-white"
-                    strokeWidth={1.5}
-                    style={{
-                      animation: 'brain-pulse 1.5s ease-in-out infinite',
-                    }}
-                  />
-                </div>
-              ) : isListening ? (
-                <div className="relative flex items-center justify-center">
-                  {/* Listening with Sound Waves */}
-                  <div className="relative">
-                    {/* Sound wave bars representing voice listening */}
-                    <div className="absolute -left-6 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '8px',
-                          animation: 'pulse-height-1 1.2s ease-in-out infinite',
-                          animationDelay: '0ms',
-                        }}
-                      ></div>
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '16px',
-                          animation: 'pulse-height-2 1.0s ease-in-out infinite',
-                          animationDelay: '150ms',
-                        }}
-                      ></div>
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '12px',
-                          animation: 'pulse-height-1 1.4s ease-in-out infinite',
-                          animationDelay: '300ms',
-                        }}
-                      ></div>
-                    </div>
+                )}
 
-                    <div className="absolute -right-6 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '12px',
-                          animation: 'pulse-height-2 1.1s ease-in-out infinite',
-                          animationDelay: '200ms',
-                        }}
-                      ></div>
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '16px',
-                          animation: 'pulse-height-1 1.3s ease-in-out infinite',
-                          animationDelay: '400ms',
-                        }}
-                      ></div>
-                      <div
-                        className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
-                        style={{
-                          height: '8px',
-                          animation: 'pulse-height-2 1.0s ease-in-out infinite',
-                          animationDelay: '550ms',
-                        }}
-                      ></div>
-                    </div>
-
-                    {/* No microphone icon in listening state - just the soundwaves */}
-                  </div>
-                </div>
-              ) : (
-                <Mic
-                  className="text-white"
-                  strokeWidth={1.5}
-                  width="100%"
-                  height="100%"
-                  style={{ transform: 'scale(3)' }}
+                <div
+                  className={cn(
+                    'absolute inset-0 rounded-full',
+                    showProcessing
+                      ? 'bg-orange-600 opacity-50 animate-pulse' // Processing state - highest priority
+                      : showListeningVisual
+                        ? 'bg-emerald-500 opacity-40 animate-ping' // Listening state
+                        : pulseAnimation
+                          ? 'bg-primary opacity-40 animate-ping' // Default pulse animation
+                          : 'hidden', // Hidden when none of the above
+                  )}
                 />
-              )}
-            </div>
-          </Button>
+                {/* Additional processing animation ring */}
+                {showProcessing && (
+                  <div className="absolute inset-0 rounded-full bg-orange-400 opacity-30 animate-ping animation-delay-200" />
+                )}
+                <div
+                  className="flex items-center justify-center overflow-visible relative z-10"
+                  style={{ width: '96px', height: '96px' }}
+                >
+                  {showProcessing ? (
+                    <div className="relative flex items-center justify-center">
+                      {/* AI Processing Brain */}
+                      <div
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          animation: 'brain-glow 2s ease-in-out infinite',
+                        }}
+                      />
+                      <Brain
+                        className="text-white"
+                        strokeWidth={1.5}
+                        style={{
+                          animation: 'brain-pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    </div>
+                  ) : showListeningVisual ? (
+                    <div className="relative flex items-center justify-center">
+                      {/* Listening with Sound Waves */}
+                      <div className="relative">
+                        {/* Sound wave bars representing voice listening */}
+                        <div className="absolute -left-6 top-1/2 transform -translate-y-1/2 flex space-x-1">
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '8px',
+                              animation:
+                                'pulse-height-1 1.2s ease-in-out infinite',
+                              animationDelay: '0ms',
+                            }}
+                          ></div>
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '16px',
+                              animation:
+                                'pulse-height-2 1.0s ease-in-out infinite',
+                              animationDelay: '150ms',
+                            }}
+                          ></div>
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '12px',
+                              animation:
+                                'pulse-height-1 1.4s ease-in-out infinite',
+                              animationDelay: '300ms',
+                            }}
+                          ></div>
+                        </div>
+
+                        <div className="absolute -right-6 top-1/2 transform -translate-y-1/2 flex space-x-1">
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '12px',
+                              animation:
+                                'pulse-height-2 1.1s ease-in-out infinite',
+                              animationDelay: '200ms',
+                            }}
+                          ></div>
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '16px',
+                              animation:
+                                'pulse-height-1 1.3s ease-in-out infinite',
+                              animationDelay: '400ms',
+                            }}
+                          ></div>
+                          <div
+                            className="w-1 bg-white rounded-full transition-all duration-300 ease-in-out"
+                            style={{
+                              height: '8px',
+                              animation:
+                                'pulse-height-2 1.0s ease-in-out infinite',
+                              animationDelay: '550ms',
+                            }}
+                          ></div>
+                        </div>
+
+                        {/* No microphone icon in listening state - just the soundwaves */}
+                      </div>
+                    </div>
+                  ) : (
+                    <Mic
+                      className="text-white"
+                      strokeWidth={1.5}
+                      width="100%"
+                      height="100%"
+                      style={{ transform: 'scale(3)' }}
+                    />
+                  )}
+                </div>
+              </Button>
+            )
+          })()}
         </div>
       </div>
     </>
