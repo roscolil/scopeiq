@@ -1,13 +1,13 @@
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import CompanyGuard from '@/components/routing/CompanyGuard'
 import ProjectGuard from '@/components/routing/ProjectGuard'
 import DocumentGuard from '@/components/routing/DocumentGuard'
 import { Suspense, lazy, useEffect } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
-import { AuthProvider } from './hooks/aws-auth'
+import { AuthProvider, useAuth } from './hooks/aws-auth'
 import {
   prefetchOnIdle,
   cleanupPrefetchObserver,
@@ -63,6 +63,21 @@ const EnhancedSuspense = ({
   </Suspense>
 )
 
+// RootRedirect decides whether to show the marketing HomePage or redirect an authenticated user to their dashboard
+const RootRedirect = () => {
+  const { isAuthenticated, isLoading, user } = useAuth()
+
+  // While loading initial auth state, show landing page (keeps perceived performance high)
+  if (isLoading) return <HomePage />
+
+  if (isAuthenticated && user?.companyId) {
+    const companySegment = (user.companyId || 'default').toLowerCase()
+    return <Navigate to={`/${companySegment}`} replace />
+  }
+
+  return <HomePage />
+}
+
 const App = () => {
   useEffect(() => {
     prefetchOnIdle()
@@ -96,7 +111,13 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public routes - eagerly loaded */}
-              <Route path="/" element={<HomePage />} />
+              <Route
+                path="/"
+                element={
+                  // Inline component to decide between landing page or dashboard redirect
+                  <RootRedirect />
+                }
+              />
               <Route path="/auth">
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
