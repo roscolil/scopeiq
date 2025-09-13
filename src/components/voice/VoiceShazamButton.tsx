@@ -50,6 +50,11 @@ export const VoiceShazamButton = ({
   const [hasTranscript, setHasTranscript] = useState(false)
   const lastSubmittedTranscriptRef = useRef<string>('')
   const hasSubmittedRef = useRef<boolean>(false)
+  const endLoopGuardRef = useRef<{ lastEnd: number; attempts: number }>({
+    lastEnd: 0,
+    attempts: 0,
+  })
+  const forceStopRef = useRef(false)
 
   // Determine which listening state to use
   const isListening = selfContained
@@ -121,6 +126,49 @@ export const VoiceShazamButton = ({
           console.log('⏹️ Speech recognition ended')
           setStatus('Stopped')
           setInternalIsListening(false)
+
+          if (forceStopRef.current) {
+            console.log('Force stop active, skipping auto-restart')
+            forceStopRef.current = false
+            return
+          }
+
+          const now = Date.now()
+          const sinceLast = now - endLoopGuardRef.current.lastEnd
+          if (sinceLast < 800) {
+            endLoopGuardRef.current.attempts += 1
+          } else {
+            endLoopGuardRef.current.attempts = 0
+          }
+          endLoopGuardRef.current.lastEnd = now
+
+          if (endLoopGuardRef.current.attempts > 5) {
+            console.warn(
+              'Too many rapid end events, halting to prevent STT loop',
+            )
+            forceStopRef.current = true
+            return
+          }
+
+          // Optional: auto restart for continuous capture (only if user was listening)
+          if (internalIsListening) {
+            const delay = Math.min(
+              150 * 2 ** endLoopGuardRef.current.attempts,
+              3000,
+            )
+            console.log('Scheduling restart after', delay, 'ms')
+            setTimeout(() => {
+              if (!forceStopRef.current && !internalIsListening) {
+                try {
+                  recognitionInstance.start()
+                  setInternalIsListening(true)
+                  setStatus('Listening...')
+                } catch (error) {
+                  console.error('Restart failed:', error)
+                }
+              }
+            }, delay)
+          }
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -237,7 +285,7 @@ export const VoiceShazamButton = ({
         console.error('❌ Speech Recognition API not supported')
       }
     }
-  }, [onTranscript, selfContained]) // Only depend on onTranscript and selfContained
+  }, [onTranscript, selfContained, internalIsListening]) // Added internalIsListening for restart guard logic
 
   // Cleanup silence timer on unmount
   useEffect(() => {
@@ -268,6 +316,7 @@ export const VoiceShazamButton = ({
       setInternalIsListening(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
+      forceStopRef.current = true
       // Clear silence timer when stopping
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
@@ -283,6 +332,7 @@ export const VoiceShazamButton = ({
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
+      forceStopRef.current = false
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
           clearTimeout(prevTimer)
