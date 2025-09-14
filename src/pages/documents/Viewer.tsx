@@ -410,6 +410,25 @@ const Viewer = () => {
 
       <Layout>
         <div className="space-y-4">
+          {isDeleting && (
+            <div
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 backdrop-blur-sm text-white"
+              role="alert"
+              aria-live="assertive"
+            >
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-lg font-semibold tracking-wide">
+                  Deleting document…
+                </p>
+                <p className="text-xs text-white/60 max-w-sm text-center">
+                  {document?.name
+                    ? `Removing "${document.name}" and cleaning associated data`
+                    : 'Removing file and cleaning associated data'}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center space-x-4 mb-4">
             <Button
               variant="outline"
