@@ -1177,7 +1177,7 @@ export const FileUploader = (props: FileUploaderProps) => {
       )}
 
       {/* Selection Summary */}
-      {selectionSummary && (
+      {/* {selectionSummary && (
         <div className="text-xs rounded-md border p-3 bg-muted/30 space-y-1">
           <div className="flex flex-wrap gap-3 items-center">
             <span className="font-medium">Selection:</span>
@@ -1216,7 +1216,7 @@ export const FileUploader = (props: FileUploaderProps) => {
             </ul>
           )}
         </div>
-      )}
+      )} */}
     </div>
   )
 }
