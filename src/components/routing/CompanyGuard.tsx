@@ -1,5 +1,6 @@
 import { useParams, Outlet } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/hooks/aws-auth'
 import NotFound from '@/pages/core/NotFound'
 import { measureGuardPerformance } from '@/utils/performance'
 
@@ -7,14 +8,30 @@ import { measureGuardPerformance } from '@/utils/performance'
 // It only blocks obviously unsafe control characters. A derived slug is available if needed.
 export const CompanyGuard = () => {
   const { companyId } = useParams()
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
   const [decoded, setDecoded] = useState('')
 
   // Decode & validate only once per companyId change
   useEffect(() => {
     let cancelled = false
+  const start = performance.now()
+  const MIN_SKELETON_MS = 90
     const run = async () => {
       if (!companyId) {
+        setState('invalid')
+        return
+      }
+
+      // If auth still loading, wait for user context before validating company mismatch
+      if (authLoading) {
+        // Defer until auth finishes; effect will re-run due to dependency array
+        return
+      }
+
+      // If not authenticated we still allow showing the internal NotFound (guarded routes are behind AuthenticatedLayout)
+      // But we rely on outer auth layout to redirect if needed; here we just treat lack of user as invalid context.
+      if (!isAuthenticated || !user) {
         setState('invalid')
         return
       }
@@ -28,24 +45,50 @@ export const CompanyGuard = () => {
       }
       setDecoded(localDecoded)
 
-      const invalid = hasControlChars(localDecoded)
-      if (invalid) {
+      const invalidSyntax = hasControlChars(localDecoded)
+      if (invalidSyntax) {
+        setState('invalid')
+        return
+      }
+
+      // Normalize both route param and user.companyId for comparison
+      const normalize = (v: string) =>
+        v
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+
+      const paramNormalized = normalize(localDecoded)
+      const userNormalized = normalize(user.companyId || '')
+
+      if (paramNormalized !== userNormalized && user.companyId !== localDecoded) {
+        // Neither normalized nor raw matches; treat as invalid (prevents access to other companies)
         setState('invalid')
         return
       }
 
       // Potential future async company existence check hook (e.g. via service)
       await measureGuardPerformance('CompanyGuard', async () => {
-        // Currently we accept any syntactically valid company identifier.
-        // Placeholder for future network validation.
+        // Placeholder: plug real existence check here if desired.
       })
-      if (!cancelled) setState('ok')
+      if (cancelled) return
+
+      const elapsed = performance.now() - start
+      if (elapsed < MIN_SKELETON_MS) {
+        // Ensure at least a perceptible skeleton display without feeling laggy
+        setTimeout(() => {
+          if (!cancelled) setState('ok')
+        }, MIN_SKELETON_MS - elapsed)
+      } else {
+        setState('ok')
+      }
     }
     run()
     return () => {
       cancelled = true
     }
-  }, [companyId])
+  }, [companyId, authLoading, isAuthenticated, user])
 
   const derivedSlug = useMemo(
     () =>
