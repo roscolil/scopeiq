@@ -15,8 +15,8 @@ export const CompanyGuard = () => {
   // Decode & validate only once per companyId change
   useEffect(() => {
     let cancelled = false
-  const start = performance.now()
-  const MIN_SKELETON_MS = 90
+    const start = performance.now()
+    const MIN_SKELETON_MS = 90
     const run = async () => {
       if (!companyId) {
         setState('invalid')
@@ -62,7 +62,10 @@ export const CompanyGuard = () => {
       const paramNormalized = normalize(localDecoded)
       const userNormalized = normalize(user.companyId || '')
 
-      if (paramNormalized !== userNormalized && user.companyId !== localDecoded) {
+      if (
+        paramNormalized !== userNormalized &&
+        user.companyId !== localDecoded
+      ) {
         // Neither normalized nor raw matches; treat as invalid (prevents access to other companies)
         setState('invalid')
         return
