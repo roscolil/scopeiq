@@ -144,36 +144,55 @@ export const VoiceShazamButton = ({
 
           const now = Date.now()
           const sinceLast = now - endLoopGuardRef.current.lastEnd
-          if (sinceLast < 800) {
+
+          // More aggressive loop detection for mobile
+          if (sinceLast < 1000) {
+            // Increased from 800ms to 1000ms
             endLoopGuardRef.current.attempts += 1
           } else {
             endLoopGuardRef.current.attempts = 0
           }
           endLoopGuardRef.current.lastEnd = now
 
-          if (endLoopGuardRef.current.attempts > 5) {
+          // Reduced max attempts for mobile stability
+          if (endLoopGuardRef.current.attempts > 3) {
+            // Reduced from 5 to 3
             console.warn(
               'Too many rapid end events, halting to prevent STT loop',
             )
             forceStopRef.current = true
+            setInternalIsListening(false)
+            return
+          }
+
+          // Don't auto-restart if we already have a transcript or have submitted
+          if (hasSubmittedRef.current || hasTranscript) {
+            console.log(
+              'Skipping restart - already have transcript or submitted',
+            )
             return
           }
 
           // Optional: auto restart for continuous capture (only if user was listening)
           if (internalIsListening) {
             const delay = Math.min(
-              150 * 2 ** endLoopGuardRef.current.attempts,
-              3000,
+              300 * 2 ** endLoopGuardRef.current.attempts, // Increased base delay from 150ms to 300ms
+              5000, // Increased max delay from 3000ms to 5000ms
             )
             console.log('Scheduling restart after', delay, 'ms')
             setTimeout(() => {
-              if (!forceStopRef.current && !internalIsListening) {
+              if (
+                !forceStopRef.current &&
+                internalIsListening &&
+                !hasSubmittedRef.current
+              ) {
                 try {
                   recognitionInstance.start()
                   setInternalIsListening(true)
                   setStatus('Listening...')
                 } catch (error) {
                   console.error('Restart failed:', error)
+                  setInternalIsListening(false)
                 }
               }
             }, delay)
@@ -215,15 +234,25 @@ export const VoiceShazamButton = ({
             setTranscript(currentTranscript)
             setHasTranscript(true)
 
-            // Android duplicate prevention - skip if we've already submitted this exact transcript
-            if (
-              hasSubmittedRef.current &&
+            // Enhanced duplicate prevention - check multiple conditions
+            const isExactDuplicate =
               currentTranscript === lastSubmittedTranscriptRef.current
-            ) {
-              console.log(
-                '🔄 Skipping - already submitted this transcript:',
-                currentTranscript,
+            const isSimilarDuplicate =
+              lastSubmittedTranscriptRef.current &&
+              currentTranscript.length > 5 &&
+              lastSubmittedTranscriptRef.current.includes(
+                currentTranscript.slice(0, -2),
               )
+            const isAlreadySubmitted = hasSubmittedRef.current
+
+            if (
+              isAlreadySubmitted &&
+              (isExactDuplicate || isSimilarDuplicate)
+            ) {
+              console.log('🔄 Skipping duplicate/similar transcript:', {
+                current: currentTranscript,
+                last: lastSubmittedTranscriptRef.current,
+              })
               return
             }
 
@@ -240,14 +269,29 @@ export const VoiceShazamButton = ({
               const newTimer = setTimeout(() => {
                 const trimmedTranscript = currentTranscript.trim()
 
-                // Double-check we haven't already submitted this transcript (Android protection)
+                // Triple-check we haven't already submitted this or similar transcript
+                const finalIsExactDuplicate =
+                  trimmedTranscript === lastSubmittedTranscriptRef.current
+                const finalIsSimilarDuplicate =
+                  lastSubmittedTranscriptRef.current &&
+                  trimmedTranscript.length > 5 &&
+                  (lastSubmittedTranscriptRef.current.includes(
+                    trimmedTranscript.slice(0, -2),
+                  ) ||
+                    trimmedTranscript.includes(
+                      lastSubmittedTranscriptRef.current.slice(0, -2),
+                    ))
+
                 if (
                   hasSubmittedRef.current &&
-                  trimmedTranscript === lastSubmittedTranscriptRef.current
+                  (finalIsExactDuplicate || finalIsSimilarDuplicate)
                 ) {
                   console.log(
-                    '🔄 Timer expired but already submitted:',
-                    trimmedTranscript,
+                    '🔄 Timer expired but transcript is duplicate/similar:',
+                    {
+                      current: trimmedTranscript,
+                      last: lastSubmittedTranscriptRef.current,
+                    },
                   )
                   return
                 }
@@ -261,7 +305,8 @@ export const VoiceShazamButton = ({
                 hasSubmittedRef.current = true
                 lastSubmittedTranscriptRef.current = trimmedTranscript
 
-                // Stop recognition
+                // Stop recognition with force flag to prevent restart
+                forceStopRef.current = true
                 try {
                   recognitionInstance.stop()
                 } catch (error) {
@@ -294,7 +339,7 @@ export const VoiceShazamButton = ({
         console.error('❌ Speech Recognition API not supported')
       }
     }
-  }, [onTranscript, selfContained, internalIsListening]) // Added internalIsListening for restart guard logic
+  }, [onTranscript, selfContained, internalIsListening, hasTranscript]) // Added hasTranscript for restart guard logic
 
   // Cleanup silence timer on unmount
   useEffect(() => {
@@ -317,6 +362,7 @@ export const VoiceShazamButton = ({
     console.log('🎯 toggleListening called', {
       recognition: !!recognition,
       isListening: internalIsListening,
+      hasSubmitted: hasSubmittedRef.current,
     })
 
     if (internalIsListening) {
@@ -334,14 +380,16 @@ export const VoiceShazamButton = ({
         return null
       })
       setHasTranscript(false)
+      setTranscript('') // Clear transcript when stopping
     } else {
       console.log('🎤 Starting recognition...')
-      // Reset state when starting
+      // Reset all state when starting
       setTranscript('')
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
       forceStopRef.current = false
+      endLoopGuardRef.current = { lastEnd: 0, attempts: 0 } // Reset loop guard
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
           clearTimeout(prevTimer)

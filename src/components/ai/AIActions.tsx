@@ -106,6 +106,8 @@ export const AIActions = ({
   const [lastSpokenResponse, setLastSpokenResponse] = useState<string>('')
   // Local UI speech replay state (separate from isVoicePlaying to support replay after completion)
   const [canReplay, setCanReplay] = useState(false)
+  // Rate limiting for mobile devices
+  const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0)
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -507,6 +509,19 @@ export const AIActions = ({
       const queryToUse = queryText || query
       if (!queryToUse.trim()) return
 
+      // Rate limiting - prevent submissions faster than 2 seconds apart on mobile
+      const now = Date.now()
+      if (isMobile && now - lastSubmissionTime < 2000) {
+        console.log('🔄 Rate limiting: Submission too fast, skipping')
+        toast({
+          title: 'Please wait',
+          description: 'Please wait a moment before asking another question.',
+          duration: 1500,
+        })
+        return
+      }
+      setLastSubmissionTime(now)
+
       if (!projectId) {
         toast({
           title: 'Project Required',
@@ -875,6 +890,7 @@ export const AIActions = ({
       isVoicePlaying,
       lastSpokenResponse,
       setLastSpokenResponse,
+      lastSubmissionTime,
     ],
   )
 
@@ -1932,18 +1948,38 @@ export const AIActions = ({
           onTranscript={text => {
             console.log('🎯 Received transcript in AIActions:', text)
 
-            // Prevent duplicate processing
-            if (text === lastProcessedTranscript) {
-              console.log('🔄 Duplicate transcript detected, skipping:', text)
+            // Enhanced duplicate prevention
+            const trimmedText = text.trim()
+            const isExactDuplicate = trimmedText === lastProcessedTranscript
+            const isSimilarDuplicate =
+              lastProcessedTranscript &&
+              trimmedText.length > 5 &&
+              (lastProcessedTranscript.includes(trimmedText.slice(0, -2)) ||
+                trimmedText.includes(lastProcessedTranscript.slice(0, -2)))
+
+            if (isExactDuplicate || isSimilarDuplicate) {
+              console.log(
+                '🔄 Duplicate/similar transcript detected, skipping:',
+                { current: trimmedText, last: lastProcessedTranscript },
+              )
               return
             }
 
-            setLastProcessedTranscript(text)
-            setQuery(text)
+            // Prevent processing if already loading
+            if (isLoading) {
+              console.log(
+                '🔄 Already processing query, skipping transcript:',
+                trimmedText,
+              )
+              return
+            }
+
+            setLastProcessedTranscript(trimmedText)
+            setQuery(trimmedText)
             // Set loading immediately to show processing state
             setIsLoading(true)
             // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
-            handleQuery(text)
+            handleQuery(trimmedText)
           }}
         />
       )}
