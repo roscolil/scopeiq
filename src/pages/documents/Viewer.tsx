@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
-import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
+// import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
+import { UniversalViewer } from '@/components/documents/UniversalViewer'
 import {
   PageHeaderSkeleton,
   DocumentViewerSkeleton,
@@ -558,13 +559,8 @@ const Viewer = () => {
 
           {/* Tabs & AI analysis removed – simplified viewer */}
 
-          <div className="mt-0">
-            <DocumentViewer
-              documentId={document?.id || documentId}
-              projectId={resolvedProject?.id || projectId}
-              companyId={companyId}
-              document={document}
-            />
+          <div className="mt-0 border rounded-lg bg-white/5 p-2 backdrop-blur-sm">
+            <UniversalViewer document={document} />
           </div>
         </div>
       </Layout>
