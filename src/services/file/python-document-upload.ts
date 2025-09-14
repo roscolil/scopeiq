@@ -62,7 +62,7 @@ export async function uploadDocumentToPythonBackend(
     }
 
     onProgress?.(10)
-    onStatusUpdate?.('Uploading to Python backend...')
+    onStatusUpdate?.('Uploading to secure storage...')
 
     // Prepare upload request
     const uploadRequest: DocumentUploadRequest = {

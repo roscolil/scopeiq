@@ -1,5 +1,6 @@
 import { useParams, Outlet } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import NotFound from '@/pages/core/NotFound'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { createSlug } from '@/utils/ui/navigation'
@@ -50,6 +51,7 @@ export const DocumentGuard = () => {
   const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
   const [fastPath, setFastPath] = useState(false)
   const revalidatedRef = useRef(false)
+  const location = useLocation()
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +180,7 @@ export const DocumentGuard = () => {
   //   )
   // }
   if (state === 'invalid') return <NotFound />
+  if (state === 'checking') return null
   return <Outlet />
 }
 

@@ -8,6 +8,7 @@ import DocumentGuard from '@/components/routing/DocumentGuard'
 import { Suspense, lazy, useEffect } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
+import MobileAuthCTA from '@/components/auth/MobileAuthCTA'
 import {
   prefetchOnIdle,
   cleanupPrefetchObserver,
@@ -299,6 +300,8 @@ const App = () => {
                 }
               />
             </Routes>
+            {/* Mobile unauthenticated CTA */}
+            <MobileAuthCTA />
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>

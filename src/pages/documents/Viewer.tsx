@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
-import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
+// import { DocumentViewer } from '@/components/documents/DocumentViewerNew'
+import { UniversalViewer } from '@/components/documents/UniversalViewer'
 import {
   PageHeaderSkeleton,
   DocumentViewerSkeleton,
@@ -23,6 +24,7 @@ import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/ui/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/data/hybrid'
+import { documentDeletionEvents } from '@/services/utils/document-events'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -328,32 +330,52 @@ const Viewer = () => {
 
   const handleDelete = async () => {
     if (!document || !resolvedProject || !companyId) return
-
     try {
       setIsDeleting(true)
+      const start = performance.now()
 
-      // Delete the document using the hybrid service
       await documentService.deleteDocument(
         companyId,
         resolvedProject.id,
         document.id,
       )
 
+      // Broadcast deletion event so project lists can prune without full refetch delay
+      documentDeletionEvents.emitDeletion({
+        projectId: resolvedProject.id,
+        documentId: document.id,
+        companyId,
+        name: document.name,
+      })
+
+      // Invalidate cached documents for the project (ProjectDetails uses this key pattern)
+      try {
+        localStorage.removeItem(`documents_${resolvedProject.id}`)
+      } catch (e) {
+        // ignore cache removal errors (quota / private mode)
+      }
+
       toast({
         title: 'Document deleted',
         description: `"${document.name}" has been permanently deleted.`,
       })
 
-      // Redirect back to the project details page
-      if (companyId && projectId) {
-        navigate(
-          routes.company.project.details(companyId, projectId, projectName),
-        )
-      } else if (companyId) {
-        navigate(routes.company.projects.list(companyId))
-      } else {
-        navigate('/')
-      }
+      // Ensure deleting state is visible for a minimum duration
+      const MIN_VISIBLE_MS = 600
+      const elapsed = performance.now() - start
+      const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed)
+
+      setTimeout(() => {
+        if (companyId && projectId) {
+          navigate(
+            routes.company.project.details(companyId, projectId, projectName),
+          )
+        } else if (companyId) {
+          navigate(routes.company.projects.list(companyId))
+        } else {
+          navigate('/')
+        }
+      }, remaining)
     } catch (error) {
       console.error('Error deleting document:', error)
       toast({
@@ -361,7 +383,6 @@ const Viewer = () => {
         description: 'Failed to delete the document. Please try again.',
         variant: 'destructive',
       })
-    } finally {
       setIsDeleting(false)
     }
   }
@@ -390,6 +411,25 @@ const Viewer = () => {
 
       <Layout>
         <div className="space-y-4">
+          {isDeleting && (
+            <div
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 backdrop-blur-sm text-white"
+              role="alert"
+              aria-live="assertive"
+            >
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-lg font-semibold tracking-wide">
+                  Deleting document…
+                </p>
+                <p className="text-xs text-white/60 max-w-sm text-center">
+                  {document?.name
+                    ? `Removing "${document.name}" and cleaning associated data`
+                    : 'Removing file and cleaning associated data'}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center space-x-4 mb-4">
             <Button
               variant="outline"
@@ -502,7 +542,14 @@ const Viewer = () => {
                       disabled={isDeleting}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      {isDeleting ? 'Deleting...' : 'Delete Document'}
+                      {isDeleting ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                          Deleting…
+                        </span>
+                      ) : (
+                        'Delete Document'
+                      )}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -512,13 +559,8 @@ const Viewer = () => {
 
           {/* Tabs & AI analysis removed – simplified viewer */}
 
-          <div className="mt-0">
-            <DocumentViewer
-              documentId={document?.id || documentId}
-              projectId={resolvedProject?.id || projectId}
-              companyId={companyId}
-              document={document}
-            />
+          <div className="mt-0 border rounded-lg bg-white/5 p-2 backdrop-blur-sm">
+            <UniversalViewer document={document} />
           </div>
         </div>
       </Layout>
