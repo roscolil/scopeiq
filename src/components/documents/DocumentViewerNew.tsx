@@ -1,25 +1,17 @@
 import { useEffect, useState } from 'react'
-import {
-  FileText,
-  File,
-  FileImage,
-  Loader2,
-  Brain,
-  AlertCircle,
-} from 'lucide-react'
+import { FileText, File, FileImage, Loader2, Download } from 'lucide-react'
+import { FileTypeIcon } from '@/components/documents/FileTypeIcon'
 import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
-import { AIActions } from '@/components/ai/AIActions'
 import { Document as DocumentType } from '@/types'
 import { documentService } from '@/services/data/hybrid'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+// DOCX rendering (client-side) using mammoth - converts .docx to HTML
+// We provide a lightweight ambient type declaration separately if TS types are missing.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - types supplied via custom declaration if not present
+import * as mammoth from 'mammoth'
+import { transformDocxHtml, defaultDocxTransformConfig } from './docxStyles'
+// Removed Card/Badge imports (simplified viewer)
 
 // Text File Viewer Component
 const TextFileViewer = ({ document }: { document: DocumentType }) => {
@@ -94,6 +86,106 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
   )
 }
 
+// DOCX File Viewer Component
+const DocxFileViewer = ({ document }: { document: DocumentType }) => {
+  const [html, setHtml] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      if (!document?.url) {
+        setError('No document URL available')
+        setIsLoading(false)
+        return
+      }
+      try {
+        setIsLoading(true)
+        setError(null)
+        const resp = await fetch(document.url)
+        if (!resp.ok) throw new Error(`Failed to fetch file (${resp.status})`)
+        const arrayBuffer = await resp.arrayBuffer()
+        // Convert to HTML via mammoth
+        const { value } = await mammoth.convertToHtml(
+          { arrayBuffer },
+          { styleMap: defaultDocxTransformConfig.styleMap },
+        )
+        const transformed = defaultDocxTransformConfig.enabled
+          ? transformDocxHtml(value || '')
+          : value
+        if (!cancelled)
+          setHtml(
+            transformed ||
+              '<p><em>No readable content in this document.</em></p>',
+          )
+      } catch (e) {
+        console.warn('DOCX render error', e)
+        if (!cancelled)
+          setError(
+            'Unable to render this .docx file. You can still download it directly below.',
+          )
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [document])
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-xs text-gray-500 italic bg-muted/40 rounded-md border">
+        Converting .docx to HTML...
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="p-4 text-xs bg-red-50/70 dark:bg-red-950/30 border border-red-300/40 dark:border-red-700/40 rounded-md">
+        <p className="text-red-600 dark:text-red-300 mb-2 font-medium">
+          {error}
+        </p>
+        <a
+          href={document.url}
+          download={document.name}
+          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition"
+        >
+          <Download className="h-3 w-3" /> Download File
+        </a>
+      </div>
+    )
+  }
+  return (
+    <div
+      className="docx-render prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-4 border overflow-auto max-h-[70vh]"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
+// Legacy .doc (binary) unsupported inline; show fallback
+const LegacyDocFallback = ({ document }: { document: DocumentType }) => (
+  <div className="p-4 text-xs bg-amber-50 dark:bg-amber-900/20 border border-amber-300/40 dark:border-amber-600/40 rounded-md space-y-3">
+    <p className="text-amber-700 dark:text-amber-300 font-medium">
+      Inline preview for legacy .doc files is not supported.
+    </p>
+    <p className="text-amber-600/80 dark:text-amber-200/70">
+      You can download and open this document locally. Converting it to .docx
+      will enable inline viewing here in the future.
+    </p>
+    <a
+      href={document.url}
+      download={document.name}
+      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition"
+    >
+      <Download className="h-3 w-3" /> Download .doc File
+    </a>
+  </div>
+)
+
 // Utility functions
 const formatFileSize = (size: string | number): string => {
   if (typeof size === 'string') return size
@@ -117,7 +209,7 @@ interface DocumentViewerProps {
   documentId: string
   projectId: string
   companyId: string
-  viewMode?: 'document' | 'ai'
+  // Removed viewMode + AI analysis integration for simplified viewer
   document?: DocumentType | null
 }
 
@@ -125,7 +217,6 @@ export const DocumentViewer = ({
   documentId,
   projectId,
   companyId,
-  viewMode = 'document',
   document: preResolvedDocument,
 }: DocumentViewerProps) => {
   const [isLoading, setIsLoading] = useState(true)
@@ -241,35 +332,7 @@ export const DocumentViewer = ({
     fetchDocument()
   }, [documentId, projectId, companyId, preResolvedDocument])
 
-  const getFileIcon = () => {
-    if (!document) return <File className="h-5 w-5 text-primary" />
-
-    if (document.type.includes('pdf')) {
-      return <FileText className="h-5 w-5 text-red-500" />
-    } else if (document.type.includes('image')) {
-      return <FileImage className="h-5 w-5 text-blue-500" />
-    } else if (
-      document.type.includes('word') ||
-      document.type.includes('doc')
-    ) {
-      return <FileText className="h-5 w-5 text-blue-700" />
-    } else if (
-      document.type.includes('excel') ||
-      document.type.includes('sheet') ||
-      document.type.includes('xls')
-    ) {
-      return <FileText className="h-5 w-5 text-green-600" />
-    } else if (
-      document.type.includes('text') ||
-      document.type.includes('txt') ||
-      document.type.includes('rtf') ||
-      document.type.includes('plain')
-    ) {
-      return <FileText className="h-5 w-5 text-gray-600" />
-    } else {
-      return <File className="h-5 w-5 text-primary" />
-    }
-  }
+  // getFileIcon replaced with FileTypeIcon
 
   if (isLoading) {
     return <DocumentViewerSkeleton />
@@ -300,212 +363,76 @@ export const DocumentViewer = ({
   }
 
   return (
-    <div className="space-y-4">
-      {viewMode === 'document' ? (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <div className="p-4 border-b bg-muted/20">
-            <div className="flex items-center gap-2">
-              {getFileIcon()}
-              <h2 className="text-lg font-medium">{document.name}</h2>
-            </div>
-          </div>
-
-          <div className="p-5">
-            {/* Document Info Panel */}
-            <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  {getFileIcon()}
-                  Document Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <div className="text-gray-400 mb-1">File Name</div>
-                    <div className="font-medium">{document.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 mb-1">File Size</div>
-                    <div className="font-medium">
-                      {formatFileSize(document.size)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 mb-1">Date</div>
-                    <div className="font-medium">
-                      {document.createdAt
-                        ? formatDate(document.createdAt)
-                        : 'Unknown date'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400 mb-1">Status</div>
-                    <div className="font-medium capitalize flex items-center gap-1">
-                      {document.status === 'processing' && (
-                        <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                      )}
-                      {document.status}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Document Preview */}
-            <div className="p-4 bg-background rounded-md border">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium">
-                    {document?.name || 'Document'}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {document?.type && (
-                    <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1 rounded-full">
-                      {document.type.split('/')[1]?.toUpperCase() ||
-                        document.type}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Document content based on type */}
-              {document?.type?.includes('image') ? (
-                <div className="space-y-6">
-                  <div className="flex justify-center">
-                    <img
-                      src={document.url}
-                      alt={document.name || 'Document image'}
-                      className="max-w-full max-h-[600px] object-contain rounded-lg shadow-lg"
-                    />
-                  </div>
-
-                  {/* AI Analysis Results for Images */}
-                  {document.content && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                          AI Image Analysis
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          GPT-4 Turbo Vision
-                        </Badge>
-                        {document.content.includes(
-                          'STANDALONE IMAGE ANALYSIS',
-                        ) && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs bg-green-50 text-green-700 border-green-200"
-                          >
-                            Standalone Image
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300">
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                          {document.content}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Processing status for images */}
-                  {!document.content && document.status === 'processing' && (
-                    <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
-                        <span className="font-medium text-amber-900 dark:text-amber-100">
-                          Analyzing Image with AI
-                        </span>
-                      </div>
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        GPT-4 Turbo Vision is processing this image to extract
-                        text, identify objects, and provide
-                        construction-specific insights. This usually takes 1-2
-                        minutes.
-                      </p>
-                    </div>
-                  )}
-
-                  {!document.content && document.status === 'failed' && (
-                    <div className="bg-red-50 dark:bg-red-950/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <span className="font-medium text-red-900 dark:text-red-100">
-                          Image Analysis Failed
-                        </span>
-                      </div>
-                      <p className="text-sm text-red-700 dark:text-red-300">
-                        Failed to analyze this image. Please try re-uploading
-                        the image or contact support if the issue persists.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : document?.type?.includes('pdf') ? (
-                <div className="space-y-4">
-                  <PDFViewer document={document} />
-
-                  {/* PDF Image Detection Notice */}
-                  {document.content?.includes('IMAGE DETECTED ON PAGE') && (
-                    <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileImage className="h-4 w-4 text-amber-600" />
-                        <span className="font-medium text-amber-900 dark:text-amber-100">
-                          Images Detected in PDF
-                        </span>
-                      </div>
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        This PDF contains embedded images (blueprints, diagrams,
-                        or photos). For complete analysis of visual content,
-                        consider extracting and uploading images separately.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : document?.type?.includes('text') ||
-                document?.type?.includes('txt') ||
-                document?.type?.includes('rtf') ||
-                document?.type?.includes('plain') ? (
-                <TextFileViewer document={document} />
-              ) : (
-                <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
-                  {document?.content ||
-                    `This document (${document?.name || 'Unknown'}) has been uploaded successfully.
-                   
-Content extraction is in progress.
-       
-You can use the AI Analysis tab to analyze this document.`}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <Brain className="h-5 w-5 text-primary" />
-                AI Analysis
-              </CardTitle>
-              <CardDescription>
-                Analyze this document using AI-powered tools
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      )}
-
-      {viewMode === 'ai' && documentId && projectId && (
-        <AIActions
-          documentId={documentId}
-          projectId={projectId}
-          companyId={companyId}
+    <div className="bg-white border rounded-lg overflow-hidden">
+      <div className="p-3 border-b bg-muted/20 flex items-center gap-2">
+        <FileTypeIcon
+          mimeType={document.type}
+          fileName={document.name}
+          size={20}
         />
-      )}
+        <h2 className="text-sm font-medium truncate">{document.name}</h2>
+      </div>
+      <div className="p-4 space-y-4">
+        {/* Metadata Panel (reinstated, AI analysis still removed) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-muted/40 rounded-md p-3 border">
+          <div>
+            <div className="text-gray-500 mb-0.5">File Name</div>
+            <div className="font-medium truncate" title={document.name}>
+              {document.name}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 mb-0.5">File Size</div>
+            <div className="font-medium">{formatFileSize(document.size)}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 mb-0.5">Date</div>
+            <div className="font-medium">
+              {document.createdAt ? formatDate(document.createdAt) : 'Unknown'}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 mb-0.5">Status</div>
+            <div className="font-medium flex items-center gap-1 capitalize">
+              {document.status === 'processing' && (
+                <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+              )}
+              {document.status || 'unknown'}
+            </div>
+          </div>
+        </div>
+
+        {document.type.includes('image') ? (
+          <div className="flex justify-center">
+            <img
+              src={document.url}
+              alt={document.name || 'Document image'}
+              className="max-w-full max-h-[80vh] object-contain rounded-md shadow"
+            />
+          </div>
+        ) : document.type.includes('pdf') ? (
+          <PDFViewer document={document} />
+        ) : document.name?.toLowerCase().endsWith('.docx') ||
+          document.type.includes('officedocument.wordprocessingml.document') ||
+          document.type.includes(
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ) ? (
+          <DocxFileViewer document={document} />
+        ) : document.name?.toLowerCase().endsWith('.doc') ||
+          document.type === 'application/msword' ? (
+          <LegacyDocFallback document={document} />
+        ) : document.type.includes('text') ||
+          document.type.includes('txt') ||
+          document.type.includes('rtf') ||
+          document.type.includes('plain') ? (
+          <TextFileViewer document={document} />
+        ) : (
+          <div className="whitespace-pre-wrap bg-muted p-4 rounded-md max-h-[70vh] overflow-auto text-sm">
+            {document.content ||
+              `This document (${document.name || 'Unknown'}) has been uploaded successfully. Content extraction is in progress.`}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

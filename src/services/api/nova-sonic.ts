@@ -30,6 +30,11 @@ interface NovaSonicResponse {
 
 class NovaSonicService {
   private client: PollyClient | null = null
+  private audioContextUnlocked: boolean = false
+  private userInteractionReceived: boolean = false
+  private pendingAudio: HTMLAudioElement | null = null
+  // Track the currently playing audio element so we can stop/cancel playback early
+  private currentAudio: HTMLAudioElement | null = null
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -40,6 +45,7 @@ class NovaSonicService {
 
   constructor() {
     this.initializeClient()
+    this.setupUserInteractionTracking()
   }
 
   private initializeClient() {
@@ -60,10 +66,178 @@ class NovaSonicService {
   }
 
   /**
+   * Setup user interaction tracking for Safari audio restrictions
+   */
+  private setupUserInteractionTracking() {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+    if (!isSafari && !isIOS) {
+      this.audioContextUnlocked = true
+      this.userInteractionReceived = true
+      return
+    }
+
+    // Function to handle user interaction
+    const handleUserInteraction = async () => {
+      if (this.userInteractionReceived) return
+
+      console.log('🍎 User interaction detected - unlocking audio')
+      this.userInteractionReceived = true
+
+      try {
+        // Create and immediately play a silent audio to unlock the context
+        const silentAudio = new Audio()
+        silentAudio.src =
+          'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
+        silentAudio.volume = 0
+        silentAudio.muted = true
+
+        // Prepare the audio element for immediate playback
+        await silentAudio.play()
+        this.audioContextUnlocked = true
+        console.log('✅ Audio context unlocked successfully')
+
+        // Remove event listeners after successful unlock
+        document.removeEventListener('touchstart', handleUserInteraction)
+        document.removeEventListener('touchend', handleUserInteraction)
+        document.removeEventListener('click', handleUserInteraction)
+        document.removeEventListener('keydown', handleUserInteraction)
+      } catch (error) {
+        console.warn('⚠️ Failed to unlock audio context:', error)
+      }
+    }
+
+    // Listen for various user interactions
+    document.addEventListener('touchstart', handleUserInteraction, {
+      once: true,
+      passive: true,
+    })
+    document.addEventListener('touchend', handleUserInteraction, {
+      once: true,
+      passive: true,
+    })
+    document.addEventListener('click', handleUserInteraction, {
+      once: true,
+      passive: true,
+    })
+    document.addEventListener('keydown', handleUserInteraction, {
+      once: true,
+      passive: true,
+    })
+  }
+
+  /**
    * Check if the service is available
    */
   isAvailable(): boolean {
     return this.client !== null
+  }
+
+  /**
+   * Check if audio context is unlocked for automatic playback
+   */
+  isAudioUnlocked(): boolean {
+    return this.audioContextUnlocked && this.userInteractionReceived
+  }
+
+  /**
+   * Check if user interaction has been received (required for Safari audio)
+   */
+  hasUserInteraction(): boolean {
+    return this.userInteractionReceived
+  }
+
+  /**
+   * Manually trigger audio playback (useful for Safari when user clicks a button)
+   */
+  async playPendingAudio(): Promise<boolean> {
+    if (!this.pendingAudio) {
+      return false
+    }
+
+    try {
+      await this.pendingAudio.play()
+      this.pendingAudio = null
+      return true
+    } catch (error) {
+      console.error('❌ Failed to play pending audio:', error)
+      this.pendingAudio = null
+      return false
+    }
+  }
+
+  /**
+   * Get user-friendly status about audio availability
+   */
+  getAudioStatus(): {
+    available: boolean
+    needsInteraction: boolean
+    message: string
+  } {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+    if (!this.client) {
+      return {
+        available: false,
+        needsInteraction: false,
+        message: 'Text-to-speech service not available',
+      }
+    }
+
+    if (isSafari || isIOS) {
+      if (!this.userInteractionReceived) {
+        return {
+          available: false,
+          needsInteraction: true,
+          message: 'Click any button to enable audio playback on Safari/iOS',
+        }
+      } else {
+        return {
+          available: true,
+          needsInteraction: false,
+          message: 'Audio enabled and ready',
+        }
+      }
+    }
+
+    return {
+      available: true,
+      needsInteraction: false,
+      message: 'Audio ready',
+    }
+  }
+
+  /**
+   * Enable audio for Safari by simulating user interaction
+   * Call this method in response to a user button click
+   */
+  async enableAudioForSafari(): Promise<boolean> {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
+    if (!isSafari) {
+      return true // Already enabled for non-Safari browsers
+    }
+
+    try {
+      // Create and play silent audio to unlock context
+      const silentAudio = new Audio()
+      silentAudio.src =
+        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
+      silentAudio.volume = 0
+      silentAudio.muted = true
+
+      await silentAudio.play()
+      this.audioContextUnlocked = true
+      this.userInteractionReceived = true
+
+      console.log('✅ Audio enabled for Safari')
+      return true
+    } catch (error) {
+      console.error('❌ Failed to enable audio for Safari:', error)
+      return false
+    }
   }
 
   /**
@@ -121,53 +295,120 @@ class NovaSonicService {
   }
 
   /**
-   * Play audio directly in the browser
+   * Play audio directly in the browser with Safari compatibility
    */
   async playAudio(
     audioData: Uint8Array,
     format: string = 'mp3',
   ): Promise<void> {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
     return new Promise((resolve, reject) => {
       try {
         // Create a blob from the audio data
         const buffer = new ArrayBuffer(audioData.length)
         const view = new Uint8Array(buffer)
         view.set(audioData)
-        const blob = new Blob([buffer], {
-          type: `audio/${format}`,
-        })
+        const blob = new Blob([buffer], { type: `audio/${format}` })
         const audioUrl = URL.createObjectURL(blob)
 
-        // Create audio element and play
-        const audio = new Audio(audioUrl)
+        // Create audio element
+        const audio = new Audio()
+        // Store reference for cancellation
+        this.currentAudio = audio
+
+        // Safari/iOS specific configuration
+        if (isSafari || isIOS) {
+          audio.preload = 'auto'
+          ;(audio as HTMLAudioElement & { playsInline: boolean }).playsInline =
+            true
+          audio.controls = false
+
+          // Check if user interaction has occurred
+          if (!this.userInteractionReceived) {
+            console.warn(
+              '🍎 Safari: No user interaction detected - audio may be blocked',
+            )
+            console.warn(
+              '🍎 Audio playback requires user interaction on Safari/iOS',
+            )
+
+            // Store the audio for later playback when user interaction occurs
+            this.pendingAudio = audio
+            audio.src = audioUrl
+
+            // Try to play anyway, but handle the expected failure gracefully
+            const playPromise = audio.play()
+            if (playPromise) {
+              playPromise.catch(error => {
+                if (error.name === 'NotAllowedError') {
+                  console.warn(
+                    '🍎 Expected: Safari blocked autoplay - waiting for user interaction',
+                  )
+                  // Clean up but don't reject - this is expected behavior
+                  URL.revokeObjectURL(audioUrl)
+                  resolve()
+                } else {
+                  URL.revokeObjectURL(audioUrl)
+                  reject(error)
+                }
+              })
+            } else {
+              URL.revokeObjectURL(audioUrl)
+              resolve()
+            }
+            return
+          }
+        }
+
+        audio.src = audioUrl
 
         console.log('🎵 Starting audio playback...')
 
         audio.onended = () => {
-          console.log('✅ Audio playback completed successfully')
+          console.log('✅ Audio playback completed')
           URL.revokeObjectURL(audioUrl)
+          if (this.currentAudio === audio) {
+            this.currentAudio = null
+          }
           resolve()
         }
 
         audio.onerror = error => {
           console.error('❌ Audio playback error:', error)
           URL.revokeObjectURL(audioUrl)
+          if (this.currentAudio === audio) {
+            this.currentAudio = null
+          }
           reject(new Error('Failed to play audio'))
         }
 
-        audio.onloadstart = () => {
-          console.log('🔄 Audio loading started...')
-        }
+        // Attempt to play with proper error handling
+        const playPromise = audio.play()
 
-        audio.oncanplay = () => {
-          console.log('🎶 Audio ready to play')
-        }
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('🎵 Audio playback started successfully')
+            })
+            .catch(playError => {
+              console.error('❌ Audio play() failed:', playError)
 
-        audio.play().catch(playError => {
-          console.error('❌ Audio play() failed:', playError)
-          URL.revokeObjectURL(audioUrl)
-          reject(playError)
-        })
+              // Handle Safari/iOS specific errors
+              if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
+                console.warn(
+                  '🍎 Safari/iOS blocked audio playback - user interaction required',
+                )
+                // For Safari, this is expected behavior, so we don't reject
+                URL.revokeObjectURL(audioUrl)
+                resolve()
+              } else {
+                URL.revokeObjectURL(audioUrl)
+                reject(playError)
+              }
+            })
+        }
       } catch (error) {
         console.error('❌ Audio setup error:', error)
         reject(error)
@@ -176,14 +417,61 @@ class NovaSonicService {
   }
 
   /**
-   * Synthesize and play speech in one call
+   * Stop (cancel) the currently playing audio, if any.
+   * Returns true if playback was stopped.
+   */
+  stopCurrentPlayback(): boolean {
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause()
+        // Attempt to revoke object URL if present
+        if (
+          this.currentAudio.src &&
+          this.currentAudio.src.startsWith('blob:')
+        ) {
+          try {
+            URL.revokeObjectURL(this.currentAudio.src)
+          } catch (_) {
+            // Ignore failures revoking object URL
+          }
+        }
+        this.currentAudio.currentTime = 0
+        // Emulate an 'ended' event for listeners relying on it
+        try {
+          const endedEvent = new Event('ended')
+          this.currentAudio.dispatchEvent(endedEvent)
+        } catch (_) {
+          // Ignore if dispatch fails
+        }
+        this.currentAudio = null
+        console.log('🛑 Audio playback stopped by user')
+        return true
+      } catch (error) {
+        console.warn('⚠️ Failed to stop current audio:', error)
+      }
+    }
+    return false
+  }
+
+  /**
+   * Synthesize and play speech in one call with Safari compatibility
    */
   async speak(
     text: string,
     options?: Partial<NovaSonicOptions>,
   ): Promise<boolean> {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
     try {
       console.log('🗣️ Speaking with AWS Polly:', text.substring(0, 50) + '...')
+
+      // Check for Safari restrictions
+      if (isSafari && !this.userInteractionReceived) {
+        console.warn('🍎 Safari: Audio playback requires user interaction')
+        console.warn(
+          '🍎 Tip: User should click a button or interact with the page first',
+        )
+      }
 
       const result = await this.synthesizeSpeech(text, options)
 
@@ -197,6 +485,22 @@ class NovaSonicService {
       return true
     } catch (error) {
       console.error('❌ Failed to speak:', error)
+
+      // Safari specific handling
+      if (
+        isSafari &&
+        error instanceof Error &&
+        error.message.includes('NotAllowedError')
+      ) {
+        console.warn(
+          '🍎 Safari audio blocked - this is expected behavior without user gesture',
+        )
+        console.warn(
+          '🍎 To enable audio: user must click a button or interact with the page',
+        )
+        return false // Return false for Safari to indicate audio was blocked
+      }
+
       return false
     }
   }

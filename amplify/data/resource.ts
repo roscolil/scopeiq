@@ -1,6 +1,7 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend'
 import { sendContactEmail } from '../functions/send-contact-email/resource'
 import { sendInvitationEmail } from '../functions/send-invitation-email/resource'
+import { pineconeSearch } from '../functions/pinecone-search/resource'
 
 const schema = a.schema({
   // Custom operation for sending contact emails
@@ -33,6 +34,16 @@ const schema = a.schema({
     .returns(a.json())
     .authorization(allow => [allow.groups(['Admin', 'Owner'])])
     .handler(a.handler.function(sendInvitationEmail)),
+
+  // Custom operation for Pinecone search proxy
+  pineconeSearch: a
+    .query()
+    .arguments({
+      body: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(pineconeSearch)),
 
   // Company model for multi-tenancy
   Company: a

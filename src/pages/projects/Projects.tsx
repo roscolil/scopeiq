@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
+import { usePrefetch } from '@/utils/performance'
 
 const Projects = () => {
   const navigate = useNavigate()
@@ -26,6 +27,9 @@ const Projects = () => {
   const { companyId } = useParams<{
     companyId: string
   }>()
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
@@ -288,7 +292,6 @@ const Projects = () => {
               projects={projects}
               companyId={(companyId || 'default-company').toLowerCase()}
               onCreateProject={() => setIsDialogOpen(true)}
-              onProjectDeleted={handleProjectDeleted}
             />
           )}
         </div>

@@ -138,7 +138,7 @@ const WorkWithUs = () => {
         {/* Company Culture */}
         <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg p-8 mb-16">
           <h2 className="text-2xl font-semibold mb-4 text-center text-white">
-            Why ScopeIQ?
+            Why Jacq?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>

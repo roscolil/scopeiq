@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/data'
-import type { Schema } from '../../amplify/data/resource'
+import type { Schema } from '../../../amplify/data/resource'
 import { getCurrentUser } from 'aws-amplify/auth'
 
 // Generate the Amplify client
@@ -58,34 +58,107 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
-      const { data: documents, errors } = await client.models.Document.list({
-        filter: { projectId: { eq: projectId } },
-      })
+      console.log(`🔍 DB: Fetching ALL documents for project ID: ${projectId}`)
 
-      if (errors) {
-        console.error('DB: Error fetching documents:', errors)
-        throw new Error(
-          `Database error: ${errors.map(e => e.message).join(', ')}`,
-        )
+      // Accumulate all raw document model items (Amplify returns generated model objects)
+      interface RawDoc {
+        id: string | string[]
+        name: string | string[]
+        type: string | string[]
+        size: number | string | string[]
+        status: string | string[]
+        s3Key: string | string[]
+        s3Url?: string | string[] | null
+        thumbnailS3Key?: string | string[] | null
+        thumbnailUrl?: string | string[] | null
+        projectId: string | string[]
+        mimeType?: string | string[] | null
+        content?: string | string[] | null
+        tags?: string[] | string
+        createdAt?: string | string[] | null
+        updatedAt?: string | string[] | null
       }
 
-      return documents.map(doc => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.type,
-        size: doc.size,
-        status: doc.status as 'processed' | 'processing' | 'failed',
-        s3Key: doc.s3Key,
-        s3Url: doc.s3Url,
-        thumbnailS3Key: doc.thumbnailS3Key,
-        thumbnailUrl: doc.thumbnailUrl,
-        projectId: doc.projectId,
-        mimeType: doc.mimeType,
-        content: doc.content,
-        tags: doc.tags,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      }))
+      const all: RawDoc[] = []
+
+      let nextToken: string | undefined = undefined
+      let page = 0
+      do {
+        page++
+        const {
+          data: pageData,
+          errors,
+          nextToken: newToken,
+        } = await client.models.Document.list({
+          filter: { projectId: { eq: projectId } },
+          nextToken,
+        })
+
+        if (errors) {
+          console.error('DB: Error fetching documents page:', page, errors)
+          throw new Error(
+            `Database error (page ${page}): ${errors
+              .map(e => e.message)
+              .join(', ')}`,
+          )
+        }
+
+        console.log(
+          `� DB: Page ${page} fetched ${pageData.length} documents (nextToken=${newToken ? 'yes' : 'no'})`,
+        )
+        all.push(...pageData)
+        nextToken = newToken as string | undefined
+      } while (nextToken)
+
+      console.log(
+        `📊 DB: Aggregated total ${all.length} documents for project ${projectId}`,
+      )
+
+      const mappedDocuments: DatabaseDocument[] = all.map(raw => {
+        // Some generated Amplify model fields may appear as arrays due to codegen quirks; normalize scalars.
+        const norm = <T = unknown>(val: unknown): T => {
+          if (Array.isArray(val)) {
+            return val[0] as unknown as T
+          }
+          return val as T
+        }
+        return {
+          id: norm(raw.id) as string,
+          name: norm(raw.name) as string,
+          type: norm(raw.type) as string,
+          // size may come back as string; coerce to number safely
+          size:
+            typeof raw.size === 'number'
+              ? raw.size
+              : parseInt(norm(raw.size) || '0', 10),
+          status: norm(raw.status) as 'processed' | 'processing' | 'failed',
+          s3Key: norm(raw.s3Key) as string,
+          s3Url: norm(raw.s3Url) || undefined,
+          thumbnailS3Key: norm(raw.thumbnailS3Key) || undefined,
+          thumbnailUrl: norm(raw.thumbnailUrl) || undefined,
+          projectId: norm(raw.projectId) as string,
+          mimeType: norm(raw.mimeType) || undefined,
+          content: norm(raw.content) || undefined,
+          tags: Array.isArray(raw.tags)
+            ? raw.tags
+            : raw.tags
+              ? [raw.tags]
+              : undefined,
+          createdAt: norm(raw.createdAt) || new Date().toISOString(),
+          updatedAt: norm(raw.updatedAt) || undefined,
+        }
+      })
+
+      console.log(
+        `📋 DB: Mapped documents:`,
+        mappedDocuments.map(d => ({
+          id: d.id,
+          name: d.name,
+          status: d.status,
+        })),
+      )
+
+      return mappedDocuments
     } catch (error) {
       console.error('DB: Error fetching documents by project:', error)
       throw error
@@ -138,6 +211,13 @@ export const databaseDocumentService = {
     documentData: Omit<DatabaseDocument, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<DatabaseDocument> {
     try {
+      console.log(`📝 DB: Creating document:`, {
+        name: documentData.name,
+        projectId: documentData.projectId,
+        status: documentData.status,
+        s3Key: documentData.s3Key,
+      })
+
       // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
       const { data: document, errors } = await client.models.Document.create({
         name: documentData.name as string & string[],
@@ -176,6 +256,13 @@ export const databaseDocumentService = {
         )
       }
 
+      console.log(`✅ DB: Document created successfully:`, {
+        id: document.id,
+        name: document.name,
+        projectId: document.projectId,
+        status: document.status,
+      })
+
       return {
         id: document.id,
         name: document.name,
@@ -205,12 +292,43 @@ export const databaseDocumentService = {
     updates: Partial<Omit<DatabaseDocument, 'id' | 'createdAt'>>,
   ): Promise<DatabaseDocument | null> {
     try {
-      // Temporary workaround for Amplify type generation bug (expects arrays for all fields)
-      // @ts-expect-error - Known issue with Amplify codegen, expecting string[] instead of string
-      const { data: document, errors } = await client.models.Document.update({
+      // First, get the current document to ensure it exists and we have the latest version
+      const currentDocument = await this.getDocument(documentId)
+      if (!currentDocument) {
+        console.error('DB: Document not found for update:', documentId)
+        return null
+      }
+
+      // Prepare the update data with proper type handling
+      const updateData: { id: string; [key: string]: unknown } = {
         id: documentId,
-        ...updates,
-      })
+      }
+
+      // Only include fields that are being updated and are not undefined
+      if (updates.name !== undefined) updateData.name = updates.name
+      if (updates.type !== undefined) updateData.type = updates.type
+      if (updates.size !== undefined) updateData.size = updates.size
+      if (updates.status !== undefined) updateData.status = updates.status
+      if (updates.s3Key !== undefined) updateData.s3Key = updates.s3Key
+      if (updates.s3Url !== undefined) updateData.s3Url = updates.s3Url
+      if (updates.thumbnailS3Key !== undefined)
+        updateData.thumbnailS3Key = updates.thumbnailS3Key
+      if (updates.thumbnailUrl !== undefined)
+        updateData.thumbnailUrl = updates.thumbnailUrl
+      if (updates.projectId !== undefined)
+        updateData.projectId = updates.projectId
+      if (updates.mimeType !== undefined) updateData.mimeType = updates.mimeType
+      if (updates.content !== undefined) updateData.content = updates.content
+      if (updates.tags !== undefined) updateData.tags = updates.tags
+
+      // Add updatedAt timestamp
+      updateData.updatedAt = new Date().toISOString()
+
+      // Perform the update
+      // Temporary workaround for Amplify type generation bug (expecting arrays instead of scalars)
+      const { data: document, errors } = await client.models.Document.update(
+        updateData as Parameters<typeof client.models.Document.update>[0],
+      )
 
       if (errors) {
         console.error('DB: Error updating document:', errors)

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
-  FilePlus,
+  HardHat,
   FolderOpen,
   Home,
   Menu,
@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/aws-auth'
+import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
 
 export const Navbar = () => {
   const location = useLocation()
@@ -96,19 +97,20 @@ export const Navbar = () => {
             }`}
           >
             <div className="relative">
-              <FilePlus className="h-6 w-6 text-emerald-400" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+              <HardHat className="h-6 w-6 text-emerald-400" />
+              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
-            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-              ScopeIQ
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent text-2xl">
+              Jacq of All Trades
             </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}
           <nav className="hidden md:flex items-center gap-1">
             {isAuthenticated &&
               menuItems.map(item => (
-                <Link
+                <PrefetchCompanyLink
                   key={item.name}
+                  companyId={companyId || ''}
                   to={item.path}
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive(item.path)
@@ -121,7 +123,7 @@ export const Navbar = () => {
                   }`}
                 >
                   {item.name}
-                </Link>
+                </PrefetchCompanyLink>
               ))}
           </nav>
         </div>
@@ -150,8 +152,9 @@ export const Navbar = () => {
               <nav className="flex flex-col gap-2 mt-8">
                 {isAuthenticated &&
                   menuItems.map(item => (
-                    <Link
+                    <PrefetchCompanyLink
                       key={item.path}
+                      companyId={companyId || ''}
                       to={item.path}
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(item.path)
@@ -161,7 +164,7 @@ export const Navbar = () => {
                     >
                       {item.icon}
                       {item.name}
-                    </Link>
+                    </PrefetchCompanyLink>
                   ))}
 
                 {isAuthenticated ? (

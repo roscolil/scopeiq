@@ -22,14 +22,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
   FileText,
-  Image,
-  File,
   MoreVertical,
   Eye,
   Download,
   Trash2,
   Loader2,
+  RotateCcw,
 } from 'lucide-react'
+import { FileTypeIcon } from '@/components/documents/FileTypeIcon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,70 +39,109 @@ import {
 import { Document } from '@/types'
 import { routes } from '@/utils/ui/navigation'
 import { cn } from '@/lib/utils'
+import { processEmbeddingOnly } from '@/services/ai/embedding'
+import { documentService } from '@/services/data/hybrid'
+import { useToast } from '@/hooks/use-toast'
+import {
+  processingMessageBroadcaster,
+  type ProcessingMessage,
+} from '@/services/utils/processing-messages'
+import { PrefetchDocumentLink } from '@/components/shared/PrefetchLinks'
 
 interface DocumentListProps {
   documents: Document[]
   onDelete?: (documentId: string) => void | Promise<void>
   onCancelProcessing?: (documentId: string) => void
+  onRetryProcessing?: (documentId: string) => void | Promise<void>
   projectId: string
   companyId: string
   projectName?: string
+  /** Enable pagination automatically when documents length exceeds this number (default 5) */
+  paginationThreshold?: number
+  /** Page size when pagination active (default 10) */
+  pageSize?: number
 }
 
 export const DocumentList = ({
   documents,
   onDelete,
   onCancelProcessing,
+  onRetryProcessing,
   projectId,
   companyId,
   projectName,
+  paginationThreshold = 5,
+  pageSize = 5,
 }: DocumentListProps) => {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [, forceUpdate] = React.useState(0)
-  const [consoleMessages, setConsoleMessages] = React.useState<string[]>([])
+  const [processingMessages, setProcessingMessages] = React.useState<
+    ProcessingMessage[]
+  >([])
+  const [page, setPage] = React.useState(1)
 
-  // Capture console logs in real-time
+  // Reset to first page whenever document list changes length (new upload/delete)
   React.useEffect(() => {
-    const originalConsoleLog = console.log
+    setPage(1)
+  }, [documents.length])
 
-    console.log = (...args: unknown[]) => {
-      const message = String(args.join(' '))
+  const paginationEnabled = documents.length > paginationThreshold
+  const totalPages = paginationEnabled
+    ? Math.max(1, Math.ceil(documents.length / pageSize))
+    : 1
+  const safePage = Math.min(page, totalPages)
+  const startIndex = paginationEnabled ? (safePage - 1) * pageSize : 0
+  const endIndex = paginationEnabled ? startIndex + pageSize : documents.length
+  const visibleDocuments = paginationEnabled
+    ? documents.slice(startIndex, endIndex)
+    : documents
 
-      // Add any processing-related message to our list
-      if (
-        message.includes('PDF') ||
-        message.includes('embedding') ||
-        message.includes('extraction') ||
-        message.includes('processing') ||
-        message.includes('OCR') ||
-        message.includes('Text length') ||
-        message.includes('Successfully')
-      ) {
-        setConsoleMessages(prev => [...prev.slice(-4), message]) // Keep last 5 messages
+  const goToPage = (p: number) => {
+    setPage(prev => {
+      const next = Math.min(Math.max(1, p), totalPages)
+      if (next !== prev) {
+        // Smooth scroll to top of list for better UX
+        requestAnimationFrame(() => {
+          const el = document.getElementById('document-list-top')
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        })
       }
-
-      // Call original console.log
-      originalConsoleLog.apply(console, args)
-    }
-
-    return () => {
-      console.log = originalConsoleLog
-    }
-  }, [])
-
-  const getFileIcon = (type: string) => {
-    if (type.includes('pdf')) {
-      return <FileText className="h-8 w-8 text-red-500" />
-    } else if (type.includes('image')) {
-      return <Image className="h-8 w-8 text-blue-500" />
-    } else {
-      return <File className="h-8 w-8 text-green-500" />
-    }
+      return next
+    })
   }
+
+  // Subscribe to processing messages
+  React.useEffect(() => {
+    const unsubscribe = processingMessageBroadcaster.subscribe(message => {
+      // Only show messages for documents in this project
+      if (!message.projectId || message.projectId === projectId) {
+        setProcessingMessages(prev => {
+          const newMessages = [...prev, message]
+          // Keep only the last 10 messages
+          return newMessages.slice(-10)
+        })
+      }
+    })
+
+    // Load recent messages for this project on mount
+    const recentMessages = processingMessageBroadcaster.getRecentMessages(
+      undefined,
+      projectId,
+      5,
+    )
+    setProcessingMessages(recentMessages)
+
+    return unsubscribe
+  }, [projectId])
+
+  // Removed old getFileIcon - unified via FileTypeIcon
 
   const getStatusBadge = (status: Document['status']) => {
     switch (status) {
@@ -140,6 +179,117 @@ export const DocumentList = ({
       documentName,
     )
     navigate(route)
+  }
+
+  const retryProcessing = async (document: Document) => {
+    if (!document.content) {
+      toast({
+        title: 'Cannot retry processing',
+        description:
+          'Document content is not available. Please re-upload the file.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      toast({
+        title: 'Retrying processing',
+        description: `Processing ${document.name}...`,
+      })
+
+      // Update document status to processing
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processing',
+      })
+
+      // Call the retry callback if provided
+      if (onRetryProcessing) {
+        await onRetryProcessing(document.id)
+      }
+
+      // Retry the embedding process
+      await processEmbeddingOnly(document.content, projectId, document.id, {
+        name: document.name,
+        type: document.type,
+        size: document.size,
+      })
+
+      // Update document status to processed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'processed',
+      })
+
+      toast({
+        title: 'Processing completed',
+        description: `${document.name} has been successfully processed.`,
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    } catch (error) {
+      console.error('Error retrying document processing:', error)
+
+      // Update document status back to failed
+      await documentService.updateDocument(companyId, projectId, document.id, {
+        status: 'failed',
+      })
+
+      toast({
+        title: 'Processing failed again',
+        description:
+          'The document processing failed. Please check the document and try again.',
+        variant: 'destructive',
+      })
+
+      // Force a re-render to show updated status
+      forceUpdate(prev => prev + 1)
+    }
+  }
+
+  const getProcessingInfo = (document: Document) => {
+    // Find the most recent processing message for this document
+    const relevantMessage = processingMessages
+      .slice() // Create a copy to avoid mutating
+      .reverse() // Get most recent first
+      .find(
+        msg =>
+          msg.documentId === document.id ||
+          (msg.type === 'progress' &&
+            (msg.message.includes('chunk batch') ||
+              msg.message.includes('Created') ||
+              msg.message.includes('Processing'))),
+      )
+
+    if (relevantMessage) {
+      // Extract batch information if available
+      if (relevantMessage.details?.batchInfo) {
+        const { current, total } = relevantMessage.details.batchInfo
+        return `Processing batch ${current} of ${total}`
+      }
+
+      // Return the message, truncated if needed
+      return relevantMessage.message.length > 50
+        ? relevantMessage.message.substring(0, 50) + '...'
+        : relevantMessage.message
+    }
+
+    return 'Processing document...'
+  }
+
+  const getProcessingProgress = (document: Document) => {
+    // Find the most recent progress message for this document
+    const progressMessage = processingMessages
+      .slice()
+      .reverse()
+      .find(
+        msg =>
+          msg.documentId === document.id &&
+          msg.type === 'progress' &&
+          msg.details?.progress !== undefined,
+      )
+
+    return progressMessage?.details?.progress
   }
 
   const downloadDocument = async (document: Document) => {
@@ -212,146 +362,278 @@ export const DocumentList = ({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4">
-        {documents.length === 0 ? (
+      <div id="document-list-top" className="grid grid-cols-1 gap-4">
+        {visibleDocuments.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="pt-6 text-center">
               <p className="text-gray-400">No documents found</p>
             </CardContent>
           </Card>
         ) : (
-          documents.map(doc => (
-            <Card
-              key={doc.id}
-              className={cn(
-                'overflow-hidden transition-all duration-300 relative',
-                doc.status === 'processing' &&
-                  'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
-              )}
-            >
-              {/* Subtle shimmer overlay for processing documents */}
-              {doc.status === 'processing' && (
-                <div className="absolute inset-0 shimmer-processing pointer-events-none opacity-15"></div>
-              )}
-              <CardHeader className="p-4 pb-0">
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3">
-                    <div className="relative">
-                      {getFileIcon(doc.type)}
-                      {doc.status === 'processing' && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
-                          <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>
+          visibleDocuments.map(doc => (
+            <div key={doc.id} className="relative">
+              <PrefetchDocumentLink
+                companyId={companyId}
+                projectId={projectId}
+                documentId={doc.id}
+                to={routes.company.project.document(
+                  companyId,
+                  projectId,
+                  doc.id,
+                  projectName,
+                  doc.name,
+                )}
+                className="block"
+              >
+                <Card
+                  className={cn(
+                    'overflow-hidden transition-all duration-300 relative cursor-pointer hover:shadow-md',
+                    doc.status === 'processing' &&
+                      'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
+                  )}
+                >
+                  {/* Subtle shimmer overlay for processing documents */}
+                  {doc.status === 'processing' && (
+                    <div className="absolute inset-0 shimmer-processing pointer-events-none opacity-15"></div>
+                  )}
+                  <CardHeader className="p-4 pb-0">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3">
+                        <div className="relative">
+                          <FileTypeIcon
+                            mimeType={doc.type}
+                            fileName={doc.name}
+                            size={32}
+                          />
+                          {doc.status === 'processing' && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-300 rounded-full animate-pulse">
+                              <div className="absolute inset-0 bg-amber-300 rounded-full animate-ping opacity-50"></div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <CardTitle
-                        className={cn(
-                          'text-base font-medium',
-                          doc.status === 'processing'
-                            ? 'text-white'
-                            : 'text-black',
-                        )}
-                      >
-                        {doc.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-gray-500">
-                        {typeof doc.size === 'number'
-                          ? `${(doc.size / 1024).toFixed(2)} KB`
-                          : doc.size}{' '}
-                        •{' '}
-                        {doc.createdAt
-                          ? new Date(doc.createdAt).toLocaleDateString()
-                          : 'No date'}
-                        {/* {doc.status === 'processing' && (
+                        <div>
+                          <CardTitle
+                            className={cn(
+                              'text-base font-medium',
+                              doc.status === 'processing'
+                                ? 'text-white'
+                                : 'text-black',
+                            )}
+                          >
+                            {doc.name}
+                          </CardTitle>
+                          <CardDescription className="text-xs text-gray-500">
+                            {typeof doc.size === 'number'
+                              ? `${(doc.size / 1024).toFixed(2)} KB`
+                              : doc.size}{' '}
+                            •{' '}
+                            {doc.createdAt
+                              ? new Date(doc.createdAt).toLocaleDateString()
+                              : 'No date'}
+                            {/* {doc.status === 'processing' && (
                           <span className="ml-2 text-amber-700 text-xs font-semibold">
                             • {getProcessingInfo(doc)}
                           </span>
                         )} */}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        disabled={doc.status === 'processing'}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">More options</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => viewDocument(doc.id, doc.name)}
-                        disabled={doc.status === 'processing'}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => downloadDocument(doc)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDeleteClick(doc)}
-                        disabled={doc.status === 'processing'}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(doc.status)}
-                  {doc.status === 'processing' && (
-                    <div className="text-xs text-amber-700 flex items-center gap-2 font-medium">
-                      <div className="flex space-x-1">
-                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                          </CardDescription>
+                        </div>
                       </div>
-                      <span className="ml-1 max-w-xs truncate">
-                        {consoleMessages.length > 0
-                          ? consoleMessages[consoleMessages.length - 1]
-                          : 'Processing document...'}
-                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={doc.status === 'processing'}
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              viewDocument(doc.id, doc.name)
+                            }}
+                            disabled={doc.status === 'processing'}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          {doc.status === 'failed' && (
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                retryProcessing(doc)
+                              }}
+                              className="text-amber-600 hover:text-amber-700"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Retry Processing
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              downloadDocument(doc)
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={e => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteClick(doc)
+                            }}
+                            disabled={doc.status === 'processing'}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  )}
-                </div>
+                  </CardHeader>
+                  <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(doc.status)}
+                      {doc.status === 'processing' && (
+                        <div className="text-xs text-amber-700 flex ml-2 items-center gap-2 font-medium">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                          </div>
+                          <div className="flex items-center gap-2 max-w-xs">
+                            <span className="truncate">
+                              {getProcessingInfo(doc)}
+                            </span>
+                            {getProcessingProgress(doc) !== undefined && (
+                              <div className="flex items-center gap-1 ml-1">
+                                <div className="w-16 h-1 bg-amber-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-amber-500 transition-all duration-300"
+                                    style={{
+                                      width: `${getProcessingProgress(doc)}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs text-amber-600">
+                                  {getProcessingProgress(doc)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                {doc.status === 'processed' && (
-                  <div className="flex items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => viewDocument(doc.id, doc.name)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                  </div>
-                )}
+                    {doc.status === 'processed' && (
+                      <div className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={e => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            viewDocument(doc.id, doc.name)
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    )}
 
-                {doc.status === 'processing' && onCancelProcessing && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onCancelProcessing(doc.id)}
-                    className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
+                    {doc.status === 'processing' && onCancelProcessing && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={e => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onCancelProcessing(doc.id)
+                        }}
+                        className="h-7 px-3 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 hover:text-red-800"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </PrefetchDocumentLink>
+            </div>
           ))
         )}
       </div>
+
+      {paginationEnabled && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+          <div className="text-muted-foreground">
+            Showing {startIndex + 1}–{Math.min(endIndex, documents.length)} of{' '}
+            {documents.length}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage === 1}
+              onClick={() => goToPage(safePage - 1)}
+              className="h-7 px-2"
+            >
+              Prev
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => {
+                // Show first, last, current, neighbors; collapse middle with ellipsis logic
+                if (totalPages <= 7) return true
+                if (p === 1 || p === totalPages) return true
+                if (Math.abs(p - safePage) <= 1) return true
+                if (safePage <= 3 && p <= 5) return true
+                if (safePage >= totalPages - 2 && p >= totalPages - 4)
+                  return true
+                return false
+              })
+              .map((p, idx, arr) => {
+                const prevVal = arr[idx - 1]
+                const showEllipsis = prevVal && p - (prevVal as number) > 1
+                return (
+                  <React.Fragment key={p}>
+                    {showEllipsis && (
+                      <span className="px-1 text-muted-foreground">…</span>
+                    )}
+                    <Button
+                      variant={p === safePage ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn('h-7 px-3', p === safePage && 'font-bold')}
+                      onClick={() => goToPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  </React.Fragment>
+                )
+              })}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safePage === totalPages}
+              onClick={() => goToPage(safePage + 1)}
+              className="h-7 px-2"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog - Outside of DropdownMenu to avoid portal conflicts */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

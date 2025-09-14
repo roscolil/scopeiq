@@ -1,5 +1,5 @@
 /**
- * ServiceError class for ScopeIQ services
+ * ServiceError class for Jacq of All Trades services
  * This needs to be in a separate .ts file since classes can't be declared in .d.ts files
  */
 

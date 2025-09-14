@@ -61,6 +61,11 @@ self.addEventListener('fetch', event => {
     return
   }
 
+  // Skip non-HTTP(S) requests (chrome-extension, etc.)
+  if (!request.url.startsWith('http')) {
+    return
+  }
+
   // Skip API calls and dynamic content
   if (
     url.pathname.startsWith('/api/') ||
@@ -94,9 +99,16 @@ self.addEventListener('fetch', event => {
           }
 
           return fetch(request).then(networkResponse => {
-            // Clone the response before caching
-            const responseClone = networkResponse.clone()
-            cache.put(request, responseClone)
+            // Only cache HTTP/HTTPS responses with valid status codes
+            if (
+              networkResponse.ok &&
+              request.url.startsWith('http') &&
+              !request.url.startsWith('chrome-extension:')
+            ) {
+              // Clone the response before caching
+              const responseClone = networkResponse.clone()
+              cache.put(request, responseClone)
+            }
             return networkResponse
           })
         })

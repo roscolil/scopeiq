@@ -18,6 +18,10 @@ import {
   RefreshCw,
   Loader2,
   Mic,
+  Volume2,
+  Square,
+  RotateCcw,
+  AudioLines,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
@@ -36,12 +40,27 @@ import {
 } from '@/components/ui/select'
 import { callOpenAI } from '@/services/ai/openai'
 import { novaSonic } from '@/services/api/nova-sonic'
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '@/components/ui/tooltip'
 import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
+
+// Python backend imports
+import { usePythonChat } from '@/hooks/usePythonChat'
+import {
+  handleEnhancedAIQueryWithPython,
+  getBackendConfig,
+  type BackendConfig,
+} from '@/services/ai/enhanced-ai-workflow-python'
+import { isPythonChatAvailable } from '@/services/ai/python-chat-service'
 
 interface AIActionsProps {
   documentId: string
@@ -82,10 +101,51 @@ export const AIActions = ({
   const [shouldResumeListening, setShouldResumeListening] = useState(false)
   const [currentSpeakingText, setCurrentSpeakingText] = useState<string>('')
   const [interimTranscript, setInterimTranscript] = useState<string>('')
+  const [lastProcessedTranscript, setLastProcessedTranscript] =
+    useState<string>('')
+  const [lastSpokenResponse, setLastSpokenResponse] = useState<string>('')
+  // Local UI speech replay state (separate from isVoicePlaying to support replay after completion)
+  const [canReplay, setCanReplay] = useState(false)
+  // Rate limiting for mobile devices
+  const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0)
+  // Android-specific transcript tracking for better duplicate prevention
+  const [androidTranscriptHistory, setAndroidTranscriptHistory] = useState<
+    string[]
+  >([])
+  // Enhanced AI progress tracking with minimum display duration
+  const [enhancedAIProgress, setEnhancedAIProgress] = useState<string>('')
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Map verbose progress messages to brief user-friendly ones
+  const formatProgressMessage = (stage: string): string => {
+    const progressMap: Record<string, string> = {
+      'Using Python backend...': 'Initializing...',
+      'Using existing backend...': 'Connecting...',
+      'Falling back to existing backend...': 'Reconnecting...',
+      'Preparing chat request...': 'Preparing...',
+      'Sending request to Python backend...': 'Sending...',
+      'Processing response...': 'Processing...',
+      'Analyzing query...': 'Analyzing...',
+      'Getting enhanced context...': 'Loading context...',
+      'Generating response...': 'Generating...',
+      'Searching documents...': 'Searching...',
+    }
+    const mapped = progressMap[stage] || stage
+    console.log(`🔄 Progress stage: "${stage}" → "${mapped}"`)
+    return mapped
+  }
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
+
+  // Python backend state - enhancing existing functionality
+  const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null)
+  const [currentBackend, setCurrentBackend] = useState<
+    'python' | 'existing' | 'unknown'
+  >('unknown')
+  const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
 
   // Mobile-only voice recognition (when VoiceInput is not available)
   const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
@@ -144,7 +204,22 @@ export const AIActions = ({
       prompt: string,
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
-      if (!novaSonic.isAvailable()) return
+      console.log('🎵 speakWithStateTracking called with:', {
+        promptLength: prompt.length,
+        isVoicePlaying,
+        novaSonicAvailable: novaSonic.isAvailable(),
+      })
+
+      if (!novaSonic.isAvailable()) {
+        console.log('❌ Nova Sonic not available')
+        return
+      }
+
+      // Prevent overlapping voice responses
+      if (isVoicePlaying) {
+        console.log('🔄 Skipping voice response - already playing audio')
+        return
+      }
 
       try {
         // Remember if we were listening before voice output
@@ -184,7 +259,10 @@ export const AIActions = ({
           setShouldResumeListening(false)
         }
       } catch (error) {
-        console.error('Voice synthesis error:', error)
+        console.error('❌ Voice synthesis error:', error)
+        // Reset voice playing state on error
+        setIsVoicePlaying(false)
+        setCurrentSpeakingText('')
       } finally {
         // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
@@ -192,7 +270,7 @@ export const AIActions = ({
         console.log('🔄 Voice playing set to false')
       }
     },
-    [isListening, silenceTimer],
+    [isListening, silenceTimer, isVoicePlaying],
   )
 
   // Fetch document status on component mount and set up live polling
@@ -275,8 +353,36 @@ export const AIActions = ({
       if (silenceTimer) {
         clearTimeout(silenceTimer)
       }
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current)
+      }
     }
   }, [documentId, projectId, companyId, silenceTimer])
+
+  // Python backend health checking and configuration
+  useEffect(() => {
+    const initializeBackend = async () => {
+      try {
+        const config = await getBackendConfig()
+        setBackendConfig(config)
+
+        // Check Python backend availability
+        if (isPythonChatAvailable()) {
+          setCurrentBackend('python')
+          setBackendHealth(true)
+        } else {
+          setCurrentBackend('existing')
+          setBackendHealth(false)
+        }
+      } catch (error) {
+        console.warn('Failed to initialize Python backend:', error)
+        setCurrentBackend('existing')
+        setBackendHealth(false)
+      }
+    }
+
+    initializeBackend()
+  }, [])
 
   // Get status badge component similar to DocumentList
   const getStatusBadge = (status: Document['status']) => {
@@ -432,6 +538,19 @@ export const AIActions = ({
       const queryToUse = queryText || query
       if (!queryToUse.trim()) return
 
+      // Rate limiting - prevent submissions faster than 2 seconds apart on mobile
+      const now = Date.now()
+      if (isMobile && now - lastSubmissionTime < 2000) {
+        console.log('🔄 Rate limiting: Submission too fast, skipping')
+        toast({
+          title: 'Please wait',
+          description: 'Please wait a moment before asking another question.',
+          duration: 1500,
+        })
+        return
+      }
+      setLastSubmissionTime(now)
+
       if (!projectId) {
         toast({
           title: 'Project Required',
@@ -490,6 +609,9 @@ export const AIActions = ({
       })
       setIsLoading(true)
       setResults(null)
+      setLastSpokenResponse('') // Clear previous spoken response for new queries
+      setIsVoicePlaying(false) // Reset voice playing state for new queries
+      setEnhancedAIProgress('') // Clear previous progress state
 
       try {
         if (isQuestion(queryToUse)) {
@@ -502,7 +624,7 @@ export const AIActions = ({
           } = {
             projectId: projectId,
             query: queryToUse,
-            topK: 3,
+            topK: 50, // Increased to capture more chunks - construction docs have many small chunks
           }
 
           // Only add documentId filter for document-specific queries if we have a valid document
@@ -547,7 +669,55 @@ export const AIActions = ({
             }
           }
 
-          const response = await callOpenAI(queryToUse, context)
+          // Try Python backend first, fallback to existing OpenAI
+          let response: string
+          try {
+            if (currentBackend === 'python' && backendHealth) {
+              const pythonResponse = await handleEnhancedAIQueryWithPython({
+                query: queryToUse,
+                projectId: projectId,
+                documentId: queryScope === 'document' ? documentId : undefined,
+                projectName,
+                document: document || undefined,
+                queryScope,
+                onProgress: stage => {
+                  console.log('Enhanced AI Progress:', stage)
+                  const formattedStage = formatProgressMessage(stage)
+
+                  // Clear any existing timer
+                  if (progressTimerRef.current) {
+                    clearTimeout(progressTimerRef.current)
+                  }
+
+                  // Set the new progress immediately
+                  setEnhancedAIProgress(formattedStage)
+
+                  // Set a minimum display duration for visibility
+                  progressTimerRef.current = setTimeout(() => {
+                    // Only clear if this is still the current stage
+                    setEnhancedAIProgress(prev =>
+                      prev === formattedStage ? prev : prev,
+                    )
+                  }, 800) // Keep each stage visible for at least 800ms
+                },
+                options: {
+                  usePythonBackend: true,
+                  fallbackToExisting: true,
+                  onBackendSwitch: backend => {
+                    setCurrentBackend(backend)
+                    console.log(`Switched to ${backend} backend`)
+                  },
+                },
+              })
+              response = pythonResponse.response
+            } else {
+              response = await callOpenAI(queryToUse, context)
+            }
+          } catch (error) {
+            console.warn('Primary backend failed, falling back:', error)
+            // Fallback to existing system
+            response = await callOpenAI(queryToUse, context)
+          }
 
           // Add user message to chat history
           const userMessage: ChatMessage = {
@@ -574,6 +744,9 @@ export const AIActions = ({
             query: queryToUse,
           })
 
+          // Prepare replay availability
+          setCanReplay(false)
+
           // Clear the query field after successful AI response
           setQuery('')
 
@@ -586,14 +759,39 @@ export const AIActions = ({
           }
 
           // Provide voice feedback with the actual AI answer
-          if (response && response.length > 0) {
+          if (
+            response &&
+            response.length > 0 &&
+            response !== lastSpokenResponse
+          ) {
+            console.log(
+              '🎵 Preparing to speak AI response:',
+              response.substring(0, 50) + '...',
+            )
+            setLastSpokenResponse(response) // Mark this response as being spoken
+
             setTimeout(() => {
-              // Speak the full answer - no truncation
-              speakWithStateTracking(response, {
-                voice: 'Ruth',
-                stopListeningAfter: true,
-              }).catch(console.error)
+              // Check if we should speak (not already playing and this is still the current response)
+              if (!isVoicePlaying) {
+                console.log('🗣️ Starting voice response playback')
+                // Speak the full answer - no truncation
+                speakWithStateTracking(response, {
+                  voice: 'Ruth',
+                  stopListeningAfter: true,
+                }).catch(console.error)
+                // Allow replay after initial playback finishes (delay approximate to speech start)
+                setTimeout(() => {
+                  setCanReplay(true)
+                }, 1500)
+              } else {
+                console.log('🔄 Skipping voice response - already speaking')
+              }
             }, 1000)
+          } else if (response === lastSpokenResponse) {
+            console.log(
+              '🔄 Skipping duplicate voice response:',
+              response.substring(0, 50) + '...',
+            )
           }
         } else {
           // Handle as semantic search with proper document scoping
@@ -718,6 +916,7 @@ export const AIActions = ({
         })
       } finally {
         setIsLoading(false)
+        setEnhancedAIProgress('') // Clear progress when query completes
       }
     },
     [
@@ -734,6 +933,12 @@ export const AIActions = ({
       setResults,
       setQuery,
       setIsLoading,
+      currentBackend,
+      backendHealth,
+      isVoicePlaying,
+      lastSpokenResponse,
+      setLastSpokenResponse,
+      lastSubmissionTime,
     ],
   )
 
@@ -821,6 +1026,64 @@ export const AIActions = ({
     })
   }
 
+  // Stop current speech playback if any
+  const cancelSpeech = useCallback(() => {
+    if (isVoicePlaying) {
+      const stopped = novaSonic.stopCurrentPlayback?.()
+      if (stopped) {
+        // Immediately reflect stopped state & enable replay
+        setIsVoicePlaying(false)
+        setCurrentSpeakingText('')
+        if (lastSpokenResponse) {
+          setCanReplay(true)
+        }
+        toast({
+          title: 'Playback Stopped',
+          description: 'AI speech playback has been stopped.',
+        })
+      }
+    }
+  }, [isVoicePlaying, toast, lastSpokenResponse])
+
+  // Replay last spoken response (only if not currently speaking and we have content)
+  const handleReplay = useCallback(() => {
+    if (!isVoicePlaying && lastSpokenResponse) {
+      setCanReplay(false)
+      speakWithStateTracking(lastSpokenResponse, {
+        voice: 'Ruth',
+        stopListeningAfter: true,
+      })
+        .then(() => {
+          // Re-enable replay after short cooldown
+          setTimeout(() => setCanReplay(true), 1000)
+        })
+        .catch(error => console.error('Replay error:', error))
+    }
+  }, [isVoicePlaying, lastSpokenResponse, speakWithStateTracking])
+
+  // iOS-specific function to play response with user interaction
+  const playResponseWithUserGesture = useCallback(
+    async (text: string) => {
+      if (!text) return
+
+      try {
+        console.log('🍎 iOS user-initiated speech playback')
+        await speakWithStateTracking(text, {
+          voice: 'Ruth',
+          stopListeningAfter: false,
+        })
+      } catch (error) {
+        console.error('Error playing response:', error)
+        toast({
+          title: 'Playback Error',
+          description: 'Unable to play the response. Please try again.',
+          variant: 'destructive',
+        })
+      }
+    },
+    [speakWithStateTracking, toast],
+  )
+
   const toggleListening = useCallback(() => {
     const newListeningState = !isListening
     setIsListening(newListeningState)
@@ -836,9 +1099,71 @@ export const AIActions = ({
       // Start mobile recognition when listening begins
       if (isMobile && mobileRecognitionRef.current) {
         try {
-          mobileRecognitionRef.current.start()
+          // iOS Safari fix: Ensure we have user gesture and permissions
+          if (
+            navigator.userAgent.includes('iPhone') ||
+            navigator.userAgent.includes('iPad')
+          ) {
+            console.log('🍎 Starting iOS voice recognition with user gesture')
+
+            // Request microphone permission explicitly on iOS
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              navigator.mediaDevices
+                .getUserMedia({ audio: true })
+                .then(async () => {
+                  console.log('🍎 iOS microphone permission granted')
+
+                  // Audio is ready for automatic speech responses
+                  console.log('🍎 Audio ready for automatic responses')
+
+                  mobileRecognitionRef.current?.start()
+                })
+                .catch(error => {
+                  console.error('🍎 iOS microphone permission denied:', error)
+                  toast({
+                    title: 'Microphone Permission Required',
+                    description:
+                      'Please allow microphone access in Safari settings to use voice input.',
+                    variant: 'destructive',
+                  })
+                  setIsListening(false)
+                })
+            } else {
+              // Fallback for older iOS versions
+              mobileRecognitionRef.current.start()
+            }
+          } else {
+            // Non-iOS devices
+            mobileRecognitionRef.current.start()
+          }
         } catch (error) {
           console.error('Error starting mobile recognition:', error)
+
+          if (error instanceof DOMException) {
+            if (error.name === 'NotAllowedError') {
+              toast({
+                title: 'Microphone Permission Denied',
+                description:
+                  'Please allow microphone access to use voice input.',
+                variant: 'destructive',
+              })
+            } else if (error.name === 'NotSupportedError') {
+              toast({
+                title: 'Voice Recognition Not Supported',
+                description: 'Your browser does not support voice recognition.',
+                variant: 'destructive',
+              })
+            } else {
+              toast({
+                title: 'Voice Recognition Error',
+                description:
+                  'Unable to start voice recognition. Please try again.',
+                variant: 'destructive',
+              })
+            }
+          }
+
+          setIsListening(false)
         }
       }
 
@@ -846,7 +1171,7 @@ export const AIActions = ({
       if (!isMobile) {
         toast({
           title: 'Voice input started',
-          description: 'Voice recording has been started.',
+          description: 'Speak your question now...',
         })
       }
     } else {
@@ -859,13 +1184,7 @@ export const AIActions = ({
         }
       }
 
-      // Only show toast on desktop, not mobile
-      if (!isMobile) {
-        toast({
-          title: 'Voice input started',
-          description: `Speak your query... Will auto-submit after ${isMobile ? '1.5s' : '2s'} of silence.`,
-        })
-      }
+      // No toast when stopping - user will see results or feedback from query processing
     }
   }, [isListening, silenceTimer, isMobile, toast])
 
@@ -935,7 +1254,7 @@ export const AIActions = ({
               isListening
             ) {
               console.log(
-                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '3s'} of silence:`,
+                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '2s'} of silence:`,
                 currentQuery.slice(0, 100),
               )
               // Set loading state immediately to prevent button flash
@@ -958,14 +1277,14 @@ export const AIActions = ({
               })
             }
           },
-          isMobile ? 1500 : 3000,
+          isMobile ? 1500 : 2000,
         ) // Shorter timeout on mobile for better responsiveness
 
         setSilenceTimer(timer)
         console.log(
           '⏰ Started silence timer for:',
           text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '3s'} timeout)`,
+          `(${isMobile ? '1.5s' : '2s'} timeout)`,
         )
       }
     },
@@ -982,6 +1301,9 @@ export const AIActions = ({
 
   // Mobile voice recognition setup (when VoiceInput component is not rendered)
   useEffect(() => {
+    // DISABLED: Using VoiceShazamButtonSelfContained instead
+    return
+
     if (!isMobile) return // Only for mobile
 
     if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
@@ -990,8 +1312,21 @@ export const AIActions = ({
 
       if (SpeechRecognitionAPI) {
         const recognition = new SpeechRecognitionAPI()
-        recognition.continuous = false // Disable continuous on mobile to prevent loops
-        recognition.interimResults = true
+
+        // iOS Safari specific optimizations
+        const isIOS =
+          navigator.userAgent.includes('iPhone') ||
+          navigator.userAgent.includes('iPad')
+
+        if (isIOS) {
+          console.log('🍎 Configuring voice recognition for iOS Safari')
+          recognition.continuous = false // iOS works better with non-continuous mode
+          recognition.interimResults = false // Disable interim results on iOS for stability
+        } else {
+          recognition.continuous = false // Disable continuous on mobile to prevent loops
+          recognition.interimResults = true
+        }
+
         recognition.lang = 'en-US'
         recognition.maxAlternatives = 1
 
@@ -1044,6 +1379,45 @@ export const AIActions = ({
 
         recognition.onerror = event => {
           console.error('📱 Mobile voice error:', event.error)
+
+          // iOS-specific error handling
+          const isIOS =
+            navigator.userAgent.includes('iPhone') ||
+            navigator.userAgent.includes('iPad')
+
+          if (event.error === 'not-allowed') {
+            if (isIOS) {
+              toast({
+                title: 'Microphone Access Required',
+                description:
+                  'Go to Safari Settings → Privacy & Security → Microphone → Allow this website',
+                variant: 'destructive',
+              })
+            } else {
+              toast({
+                title: 'Microphone Permission Denied',
+                description:
+                  'Please allow microphone access to use voice input.',
+                variant: 'destructive',
+              })
+            }
+          } else if (event.error === 'no-speech') {
+            // Don't show error for no-speech, just submit what we have
+            if (mobileTranscript.trim()) {
+              setQuery(mobileTranscript)
+            }
+          } else if (event.error === 'audio-capture') {
+            toast({
+              title: 'Audio Capture Error',
+              description: isIOS
+                ? 'Please check microphone permissions in Safari settings.'
+                : 'Unable to access microphone.',
+              variant: 'destructive',
+            })
+          } else {
+            console.log('📱 Other recognition error:', event.error)
+          }
+
           if (mobileTranscript.trim()) {
             setQuery(mobileTranscript)
           }
@@ -1083,9 +1457,9 @@ export const AIActions = ({
     handleTranscript,
   ])
 
-  const handleAskAI = async () => {
-    await handleQuery()
-  }
+  // const handleAskAI = async () => {
+  //   await handleQuery()
+  // }
 
   return (
     <>
@@ -1195,13 +1569,13 @@ export const AIActions = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Unlock insights with intelligent search & AI analysis
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                {/* <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-2xs">
                     {queryScope === 'document' && documentId
                       ? 'Document scope'
                       : 'Project scope'}
                   </Badge>
-                  {/* Show scope selector when we have both options */}
+                  {/* Show scope selector when we have both options 
                   {documentId && document && (
                     <Button
                       variant="ghost"
@@ -1217,7 +1591,7 @@ export const AIActions = ({
                       {queryScope === 'document' ? 'Project' : 'Document'}
                     </Button>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -1260,7 +1634,7 @@ export const AIActions = ({
               />
 
               {/* Show text being spoken */}
-              {currentSpeakingText && (
+              {/* {currentSpeakingText && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
                   <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
@@ -1270,7 +1644,7 @@ export const AIActions = ({
                     {currentSpeakingText}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
@@ -1290,12 +1664,68 @@ export const AIActions = ({
                 )}
 
                 {/* Voice status indicator */}
-                {isVoicePlaying && (
-                  <div className="flex items-center gap-1 text-blue-600 text-sm">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                    Speaking...
-                  </div>
-                )}
+                {/* Unified Speech Control Button */}
+                <TooltipProvider>
+                  {(() => {
+                    const canShowReplay =
+                      !isVoicePlaying && lastSpokenResponse && canReplay
+                    const state: 'playing' | 'replay' | 'idle' = isVoicePlaying
+                      ? 'playing'
+                      : canShowReplay
+                        ? 'replay'
+                        : 'idle'
+
+                    const tooltipLabel =
+                      state === 'playing'
+                        ? 'Stop playback'
+                        : state === 'replay'
+                          ? 'Replay response'
+                          : 'Waiting for response'
+
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={tooltipLabel}
+                            disabled={state === 'idle'}
+                            onClick={() => {
+                              if (state === 'playing') {
+                                cancelSpeech()
+                              } else if (state === 'replay') {
+                                handleReplay()
+                              }
+                            }}
+                            className={`relative h-10 w-10 rounded-full transition-all shadow-soft focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none group
+                              ${state === 'playing' ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground hover:shadow-medium' : ''}
+                              ${state === 'replay' ? 'bg-gradient-to-br from-secondary/70 to-secondary/40 hover:from-secondary/80 hover:to-secondary/50 text-foreground' : ''}
+                              ${state === 'idle' ? 'opacity-0 pointer-events-none' : ''}`}
+                          >
+                            {state === 'playing' && (
+                              <>
+                                <div className="absolute inset-0 rounded-full ring-2 ring-primary/40 animate-pulse" />
+                                <Square className="h-4 w-4 relative z-10" />
+                              </>
+                            )}
+                            {state === 'idle' && (
+                              <RotateCcw className="h-4 w-4 opacity-50" />
+                            )}
+                            {state === 'replay' && (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                            {/* {state === 'idle' && (
+                              <Volume2 className="h-4 w-4" />
+                            )} */}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6}>
+                          {tooltipLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })()}
+                </TooltipProvider>
                 {shouldResumeListening && !isVoicePlaying && (
                   <div className="flex items-center gap-1 text-orange-600 text-sm">
                     <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce"></div>
@@ -1319,7 +1749,9 @@ export const AIActions = ({
                   {isLoading ? (
                     <>
                       <div className="spinner" />
-                      <span className="animate-pulse">Analyzing...</span>
+                      <span className="animate-pulse">
+                        {enhancedAIProgress || 'Analyzing...'}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -1465,7 +1897,21 @@ export const AIActions = ({
                             {message.content}
                           </div>
                           {message.type === 'ai' && (
-                            <div className="flex justify-end mt-2">
+                            <div className="flex justify-end mt-2 gap-1">
+                              {/* iOS-specific Play Response button */}
+                              {isIOS && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-secondary/80 opacity-60 hover:opacity-100"
+                                  onClick={() =>
+                                    playResponseWithUserGesture(message.content)
+                                  }
+                                  title="Play Response (iOS)"
+                                >
+                                  <Volume2 className="h-3 w-3" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1544,12 +1990,76 @@ export const AIActions = ({
       {/* Shazam-style voice button - primary voice input on mobile */}
       {!hideShazamButton && isMobile && (
         <VoiceShazamButton
-          isListening={isListening}
-          toggleListening={toggleListening}
-          showTranscript={isListening || query ? query : undefined}
+          selfContained={true}
+          showTranscript={query || undefined}
           isProcessing={isLoading}
           isMobileOnly={true}
           onHide={() => setHideShazamButton(true)}
+          onTranscript={text => {
+            console.log('🎯 Received transcript in AIActions:', text)
+
+            const trimmedText = text.trim()
+            const isAndroid = /Android/i.test(navigator.userAgent)
+
+            // Android-specific enhanced duplicate prevention
+            if (isAndroid) {
+              // Check against recent Android transcripts (last 5)
+              const recentDuplicates = androidTranscriptHistory.slice(-5)
+              const isDuplicateInHistory = recentDuplicates.some(
+                historyText =>
+                  historyText === trimmedText ||
+                  (historyText.length > 5 &&
+                    trimmedText.length > 5 &&
+                    (historyText.includes(trimmedText.slice(0, -2)) ||
+                      trimmedText.includes(historyText.slice(0, -2)))),
+              )
+
+              if (isDuplicateInHistory) {
+                console.log(
+                  '🤖 Android: Transcript found in recent history, skipping:',
+                  { current: trimmedText, history: recentDuplicates },
+                )
+                return
+              }
+
+              // Add to Android history (keep last 10 entries)
+              setAndroidTranscriptHistory(prev =>
+                [...prev, trimmedText].slice(-10),
+              )
+            }
+
+            // Enhanced duplicate prevention for all platforms
+            const isExactDuplicate = trimmedText === lastProcessedTranscript
+            const isSimilarDuplicate =
+              lastProcessedTranscript &&
+              trimmedText.length > 5 &&
+              (lastProcessedTranscript.includes(trimmedText.slice(0, -2)) ||
+                trimmedText.includes(lastProcessedTranscript.slice(0, -2)))
+
+            if (isExactDuplicate || isSimilarDuplicate) {
+              console.log(
+                '🔄 Duplicate/similar transcript detected, skipping:',
+                { current: trimmedText, last: lastProcessedTranscript },
+              )
+              return
+            }
+
+            // Prevent processing if already loading
+            if (isLoading) {
+              console.log(
+                '🔄 Already processing query, skipping transcript:',
+                trimmedText,
+              )
+              return
+            }
+
+            setLastProcessedTranscript(trimmedText)
+            setQuery(trimmedText)
+            // Set loading immediately to show processing state
+            setIsLoading(true)
+            // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
+            handleQuery(trimmedText)
+          }}
         />
       )}
 

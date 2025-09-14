@@ -46,12 +46,12 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+      {/* <CardHeader> */}
+      {/* <CardTitle className="text-lg flex items-center gap-2">
           📄 {document.name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </CardTitle> */}
+      {/* </CardHeader> */}
+      <CardContent className="space-y-4 pt-6">
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button
@@ -63,7 +63,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
             Open in New Tab
           </Button>
 
-          <Button
+          {/* <Button
             variant="outline"
             onClick={async () => {
               try {
@@ -97,7 +97,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
           >
             <Download className="h-4 w-4 mr-2" />
             Download PDF
-          </Button>
+          </Button> */}
 
           {fallbackUrl && (
             <Button
@@ -112,7 +112,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
           )}
         </div>
 
-        {/* PDF Embed */}
+        {/* PDF Embed - Uses inline URL with Content-Disposition: inline */}
         {!embedError ? (
           <div className="border rounded-lg overflow-hidden">
             <iframe

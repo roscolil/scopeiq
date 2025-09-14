@@ -32,6 +32,7 @@ import {
   FileUp,
   Eye,
   Loader2,
+  Activity,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
@@ -50,6 +51,11 @@ import { projectService, documentService } from '@/services/data/hybrid'
 import { companyService, Company } from '@/services/api/company'
 import { routes, createSlug } from '@/utils/ui/navigation'
 import { useAuth } from '@/hooks/aws-auth'
+import {
+  userActivityService,
+  UserActivity,
+} from '@/services/auth/user-activity'
+import { usePrefetch } from '@/utils/performance'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -59,6 +65,9 @@ const Dashboard = () => {
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
 
   // Cache key for stats
   const STATS_CACHE_KEY = `dashboardStats_${companyId}`
@@ -223,10 +232,12 @@ const Dashboard = () => {
   const [company, setCompany] = useState<Company | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [documents, setDocuments] = useState<Document[]>([])
+  const [userActivities, setUserActivities] = useState<UserActivity[]>([])
   const [isLoadingCompany, setIsLoadingCompany] = useState(true) // Start with true for initial load
   const [isLoadingProjects, setIsLoadingProjects] = useState(true) // Start with true for initial load
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true) // Start with true for initial load
   const [isLoadingStats, setIsLoadingStats] = useState(true) // Start with true for initial load
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true) // Start with true for initial load
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
 
   // Cached stats state
@@ -494,6 +505,29 @@ const Dashboard = () => {
     setCachedDashboardDocuments,
   ])
 
+  // Load user activities
+  useEffect(() => {
+    const loadActivities = async () => {
+      if (!companyId) return
+
+      try {
+        setIsLoadingActivities(true)
+        const activities = await userActivityService.getRecentActivities(
+          companyId,
+          5,
+        )
+        setUserActivities(activities)
+      } catch (error) {
+        console.error('Error loading user activities:', error)
+        setUserActivities([])
+      } finally {
+        setIsLoadingActivities(false)
+      }
+    }
+
+    loadActivities()
+  }, [companyId])
+
   const upcomingTasks = [
     {
       id: 1,
@@ -742,88 +776,90 @@ const Dashboard = () => {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 max-h-96 overflow-y-auto">
                     {isLoadingProjects ? (
                       <ProjectRowsSkeleton itemCount={3} />
                     ) : projects.length > 0 ? (
-                      projects.slice(0, 3).map((project, index) => (
-                        <div key={project.id}>
-                          <div
-                            className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
-                            onClick={() => {
-                              // Use existing slug or generate from name
-                              const projectSlug =
-                                project.slug ||
-                                createSlug(
-                                  project.name ||
-                                    `project-${project.id.slice(0, 8)}`,
-                                )
-
-                              navigate(
-                                routes.company.project.details(
-                                  companyId,
-                                  project.id,
-                                  projectSlug,
-                                ),
-                              )
-                            }}
-                          >
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <div className="font-medium text-slate-800">
-                                  {project.name}
-                                </div>
-                                <div className="text-xs text-slate-600">
-                                  {project.documents?.length || 0} documents
-                                </div>
-                              </div>
-                              <div className="text-sm text-slate-600">
-                                {project.createdAt
-                                  ? new Date(
-                                      project.createdAt,
-                                    ).toLocaleDateString()
-                                  : 'Recently'}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="secondary"
-                                className="text-xs bg-blue-100 text-blue-700 border-blue-200"
-                              >
-                                {project.documents?.length || 0} files
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  // Use existing slug or generate from name
-                                  const projectSlug =
-                                    project.slug ||
-                                    createSlug(
-                                      project.name ||
-                                        `project-${project.id.slice(0, 8)}`,
-                                    )
-
-                                  navigate(
-                                    routes.company.project.details(
-                                      companyId,
-                                      project.id,
-                                      projectSlug,
-                                    ),
+                      <div className="space-y-0">
+                        {projects.slice(0, 5).map((project, index) => (
+                          <div key={project.id}>
+                            <div
+                              className="space-y-2 p-3 rounded-lg hover:bg-slate-50/50 transition-colors duration-200 cursor-pointer"
+                              onClick={() => {
+                                // Use existing slug or generate from name
+                                const projectSlug =
+                                  project.slug ||
+                                  createSlug(
+                                    project.name ||
+                                      `project-${project.id.slice(0, 8)}`,
                                   )
-                                }}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </Button>
+
+                                navigate(
+                                  routes.company.project.details(
+                                    companyId,
+                                    project.id,
+                                    projectSlug,
+                                  ),
+                                )
+                              }}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <div className="font-medium text-slate-800">
+                                    {project.name}
+                                  </div>
+                                  <div className="text-xs text-slate-600">
+                                    {project.documents?.length || 0} documents
+                                  </div>
+                                </div>
+                                <div className="text-sm text-slate-600">
+                                  {project.createdAt
+                                    ? new Date(
+                                        project.createdAt,
+                                      ).toLocaleDateString()
+                                    : 'Recently'}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs bg-blue-100 text-blue-700 border-blue-200"
+                                >
+                                  {project.documents?.length || 0} files
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    // Use existing slug or generate from name
+                                    const projectSlug =
+                                      project.slug ||
+                                      createSlug(
+                                        project.name ||
+                                          `project-${project.id.slice(0, 8)}`,
+                                      )
+
+                                    navigate(
+                                      routes.company.project.details(
+                                        companyId,
+                                        project.id,
+                                        projectSlug,
+                                      ),
+                                    )
+                                  }}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  View
+                                </Button>
+                              </div>
                             </div>
+                            {index < projects.slice(0, 5).length - 1 && (
+                              <div className="border-b border-gray-300 mx-3"></div>
+                            )}
                           </div>
-                          {index < projects.slice(0, 3).length - 1 && (
-                            <div className="border-b border-gray-300 mx-3"></div>
-                          )}
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8">
                         <Folders className="h-8 w-8 mx-auto mb-2 text-gray-400" />
@@ -846,46 +882,82 @@ const Dashboard = () => {
                   </CardFooter>
                 </Card>
 
-                {/* Tasks and Calendar */}
+                {/* User Activity */}
                 <Card className="md:col-span-3">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-primary" />
-                      <CardTitle>Upcoming Tasks</CardTitle>
+                      <Activity className="h-5 w-5 text-primary" />
+                      <CardTitle>Team Activity</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {upcomingTasks.map(task => (
-                        <div
-                          key={task.id}
-                          className="flex items-start justify-between"
-                        >
-                          <div className="space-y-1">
-                            <div className="font-medium">{task.title}</div>
-                            <div className="flex items-center text-xs text-gray-400">
-                              <Clock className="h-3 w-3 mr-1" /> {task.date}
+                  <CardContent className="space-y-4 max-h-80 overflow-y-auto">
+                    {isLoadingActivities ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3, 4].map(i => (
+                          <div
+                            key={i}
+                            className="flex items-start space-x-3 animate-pulse"
+                          >
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              task.priority === 'High'
-                                ? 'destructive'
-                                : task.priority === 'Medium'
-                                  ? 'default'
-                                  : 'outline'
-                            }
-                          >
-                            {task.priority}
-                          </Badge>
+                        ))}
+                      </div>
+                    ) : userActivities.length > 0 ? (
+                      userActivities.map(activity => (
+                        <div
+                          key={activity.id}
+                          className="flex items-start space-x-3 p-2 rounded-lg hover:bg-slate-50/50 transition-colors"
+                        >
+                          <div className="flex-shrink-0">
+                            <div
+                              className={`w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm ${userActivityService.getActivityColor(activity.action)}`}
+                            >
+                              {userActivityService.getActivityIcon(
+                                activity.action,
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm text-slate-800 line-clamp-1">
+                                  {activity.userName}
+                                </div>
+                                <div className="text-xs text-slate-600 line-clamp-2">
+                                  {activity.description}
+                                </div>
+                                {activity.metadata?.projectName && (
+                                  <div className="text-xs text-blue-600 mt-1">
+                                    📁 {activity.metadata.projectName}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-400 ml-2 flex-shrink-0">
+                                {userActivityService.formatRelativeTime(
+                                  activity.timestamp,
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-400">
+                          No recent activity
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                   <CardFooter>
                     <Button variant="outline" className="w-full">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      View Calendar
+                      <Activity className="h-4 w-4 mr-2" />
+                      View All Activity
                     </Button>
                   </CardFooter>
                 </Card>

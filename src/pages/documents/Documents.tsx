@@ -22,12 +22,17 @@ import { Document } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
+import { usePrefetch } from '@/utils/performance'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
     projectId?: string
   }>()
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
+
   const [documents, setDocuments] = React.useState<Document[]>([])
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
     Array<{
@@ -457,17 +462,28 @@ const Documents = () => {
                     projectId={resolvedProject?.id || projectId}
                     companyId={companyId || 'default-company'}
                     onUploadComplete={doc => {
-                      // Add the uploaded document to the current list
-                      setDocuments(prev => [...prev, doc])
-
-                      // Close the dialog
+                      setDocuments(prev => {
+                        // Avoid duplicate entries by ID
+                        if (prev.some(d => d.id === doc.id)) {
+                          return prev.map(d => (d.id === doc.id ? doc : d))
+                        }
+                        return [...prev, doc]
+                      })
+                    }}
+                    onBatchComplete={(docs, summary) => {
                       setIsUploadDialogOpen(false)
-
-                      // Show success toast
-                      // toast({
-                      //   title: 'Document uploaded',
-                      //   description: `${doc.name} has been added to this project.`,
-                      // })
+                      if (summary.success > 0) {
+                        toast({
+                          title: 'Batch upload complete',
+                          description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
+                        })
+                      } else if (summary.failed) {
+                        toast({
+                          title: 'Batch failed',
+                          description: 'All uploads failed. Please try again.',
+                          variant: 'destructive',
+                        })
+                      }
                     }}
                   />
                 </DialogContent>
@@ -485,6 +501,12 @@ const Documents = () => {
               companyId={companyId || 'default-company'}
               projectName={projectName}
               onDelete={handleDeleteDocument}
+              onRetryProcessing={async () => {
+                // Force refresh after retry
+                setTimeout(() => {
+                  window.location.reload()
+                }, 1000)
+              }}
             />
           ) : (
             <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
@@ -600,6 +622,12 @@ const Documents = () => {
                           companyId={companyId || 'default-company'}
                           projectName={project.name}
                           onDelete={handleDeleteDocument}
+                          onRetryProcessing={async () => {
+                            // Force refresh after retry
+                            setTimeout(() => {
+                              window.location.reload()
+                            }, 1000)
+                          }}
                         />
                       ) : (
                         <div className="text-center p-4 border rounded bg-secondary/10">
@@ -640,6 +668,12 @@ const Documents = () => {
                   companyId={companyId || 'default-company'}
                   projectName=""
                   onDelete={handleDeleteDocument}
+                  onRetryProcessing={async () => {
+                    // Force refresh after retry
+                    setTimeout(() => {
+                      window.location.reload()
+                    }, 1000)
+                  }}
                 />
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">

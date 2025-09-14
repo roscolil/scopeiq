@@ -1,5 +1,5 @@
 /**
- * Component-specific type definitions for ScopeIQ
+ * Component-specific type definitions for Jacq of All Trades
  * Defines props and state types for React components
  */
 
@@ -8,7 +8,7 @@
 // ================================
 
 export interface ImportMetaEnv {
-  readonly VITE_S3_BUCKET_NAME?: string
+  readonly VITE_AWS_S3_BUCKET?: string
   readonly VITE_AWS_REGION?: string
   // AWS credentials - defined with string indices to avoid secret detection
   readonly [key: string]: string | undefined
