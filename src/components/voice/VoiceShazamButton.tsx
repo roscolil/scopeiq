@@ -112,11 +112,14 @@ export const VoiceShazamButton = ({
           recognitionInstance.lang = 'en-US'
           console.log('🍎 Configured for Safari mobile with interim results')
         } else if (isAndroid) {
-          // Android Chrome configuration - optimized for Android
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
+          // Android Chrome configuration - specific fixes for duplicate issues
+          recognitionInstance.continuous = false // Disable continuous on Android to prevent loops
+          recognitionInstance.interimResults = false // Disable interim results on Android for stability
           recognitionInstance.lang = 'en-US'
-          console.log('🤖 Configured for Android Chrome')
+          recognitionInstance.maxAlternatives = 1
+          console.log(
+            '🤖 Configured for Android Chrome (non-continuous, final results only)',
+          )
         } else {
           // Standard desktop configuration
           recognitionInstance.continuous = true
@@ -132,13 +135,21 @@ export const VoiceShazamButton = ({
         }
 
         recognitionInstance.onend = () => {
-          console.log('⏹️ Speech recognition ended')
+          console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
 
           if (forceStopRef.current) {
             console.log('Force stop active, skipping auto-restart')
             forceStopRef.current = false
+            return
+          }
+
+          // Android-specific: Don't auto-restart in non-continuous mode
+          if (isAndroid) {
+            console.log(
+              '🤖 Android: Recognition ended, not restarting (non-continuous mode)',
+            )
             return
           }
 
@@ -208,11 +219,73 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
-          console.log('📝 Speech recognition result:', event)
+          console.log('📝 Speech recognition result:', event, { isAndroid })
 
           const results = Array.from(event.results)
 
-          // Get both interim and final transcripts
+          // Android-specific handling - different approach for non-continuous mode
+          if (isAndroid) {
+            // Android Chrome in non-continuous mode - get final result only
+            let finalTranscript = ''
+            for (let i = 0; i < results.length; i++) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const result = results[i] as any
+              if (result.isFinal) {
+                finalTranscript += result[0].transcript
+              }
+            }
+
+            const currentTranscript = finalTranscript.trim()
+
+            if (currentTranscript) {
+              console.log('🤖 Android final transcript:', currentTranscript)
+              setTranscript(currentTranscript)
+              setHasTranscript(true)
+
+              // Android-specific duplicate prevention - more aggressive
+              const isExactDuplicate =
+                currentTranscript === lastSubmittedTranscriptRef.current
+              const isAlreadySubmitted = hasSubmittedRef.current
+
+              if (isAlreadySubmitted && isExactDuplicate) {
+                console.log(
+                  '🔄 Android: Skipping exact duplicate transcript:',
+                  currentTranscript,
+                )
+                return
+              }
+
+              // Android: Submit immediately without silence timer (non-continuous mode)
+              console.log(
+                '🤖 Android: Submitting transcript immediately:',
+                currentTranscript,
+              )
+              setStatus('Got result!')
+              setInternalIsListening(false)
+              hasSubmittedRef.current = true
+              lastSubmittedTranscriptRef.current = currentTranscript
+
+              // Stop recognition with force flag
+              forceStopRef.current = true
+              try {
+                recognitionInstance.stop()
+              } catch (error) {
+                console.log('Recognition already stopped')
+              }
+
+              // Pass transcript to parent
+              if (onTranscript && currentTranscript) {
+                console.log(
+                  '🎯 Android: Calling onTranscript:',
+                  currentTranscript,
+                )
+                onTranscript(currentTranscript)
+              }
+            }
+            return
+          }
+
+          // Non-Android handling (iOS Safari, desktop) - use interim results and silence detection
           let interimTranscript = ''
           let finalTranscript = ''
 
@@ -402,6 +475,7 @@ export const VoiceShazamButton = ({
         navigator.userAgent,
       )
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isAndroid = /Android/i.test(navigator.userAgent)
 
       if (isSafari && isMobile) {
         try {
@@ -425,6 +499,17 @@ export const VoiceShazamButton = ({
         } catch (error) {
           console.error('🍎 Permission error:', error)
           setStatus(`Permission error: ${error}`)
+        }
+      } else if (isAndroid) {
+        // Android-specific start logic for non-continuous mode
+        try {
+          console.log('🤖 Android: Starting non-continuous recognition')
+          recognition.start()
+          setInternalIsListening(true)
+          setStatus('Starting...')
+        } catch (error) {
+          console.error('🤖 Android start error:', error)
+          setStatus(`Start error: ${error}`)
         }
       } else {
         try {
