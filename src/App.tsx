@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import CompanyGuard from '@/components/routing/CompanyGuard'
 import ProjectGuard from '@/components/routing/ProjectGuard'
 import DocumentGuard from '@/components/routing/DocumentGuard'
+import AdminGuard from '@/components/routing/AdminGuard'
 import { Suspense, lazy, useEffect } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
@@ -41,6 +42,7 @@ const CommonTermsManagement = lazy(
   () => import('./pages/admin/CommonTermsManagement'),
 )
 const AITrainingConsole = lazy(() => import('./pages/admin/AITrainingConsole'))
+const AdminConsole = lazy(() => import('./pages/admin/AdminConsole'))
 
 // Enhanced loading fallback components with modern design
 const PageLoadingFallback = ({
@@ -214,8 +216,20 @@ const App = () => {
                 }
               />
 
-              {/* Authenticated routes - company scoped */}
+              {/* Authenticated routes (global + company scoped) */}
               <Route element={<AuthenticatedLayout />}>
+                {/* Global admin route (not company-scoped) */}
+                {/* <Route element={<AdminGuard />}> */}
+                  <Route
+                    path="admin"
+                    element={
+                      <EnhancedSuspense fallbackType="default">
+                        <AdminConsole />
+                      </EnhancedSuspense>
+                    }
+                  />
+                {/* </Route> */}
+                {/* Company-scoped routes */}
                 <Route path=":companyId" element={<CompanyGuard />}>
                   <Route index element={<Dashboard />} />
                   <Route

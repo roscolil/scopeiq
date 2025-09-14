@@ -826,5 +826,3 @@ interface IntelligentSearchResult extends ScoredElement {
   documentId: string
   documentType: string
 }
-
-export { IntelligentSearchEngine }

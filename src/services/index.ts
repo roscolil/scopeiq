@@ -20,6 +20,7 @@ export * from './utils'
 export { novaSonic } from './api/nova-sonic'
 export { contactService } from './api/contact'
 export { companyService } from './api/company'
+export { adminTaxonomyService } from './api/admin-taxonomy'
 
 // Commonly used services (convenience exports)
 // Note: Import from specific directories to avoid conflicts
