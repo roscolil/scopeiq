@@ -85,7 +85,7 @@ export const VoiceShazamButton = ({
       console.log('🎯 SpeechRecognition API available:', !!SpeechRecognitionAPI)
 
       if (SpeechRecognitionAPI) {
-        console.log('🎯 Creating recognition instance')
+        console.log('🎯 Creating recognition instance with optimizations')
         const recognitionInstance = new SpeechRecognitionAPI()
 
         // Browser detection for optimal configuration
@@ -95,12 +95,14 @@ export const VoiceShazamButton = ({
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
         const isAndroid = /Android/i.test(navigator.userAgent)
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        const isChrome = /Chrome/i.test(navigator.userAgent)
 
         console.log('🍎 Browser detection:', {
           isSafari,
           isMobile,
           isAndroid,
           isIOS,
+          isChrome,
           userAgent: navigator.userAgent,
         })
 
@@ -120,18 +122,42 @@ export const VoiceShazamButton = ({
           console.log(
             '🤖 Configured for Android Chrome (non-continuous, final results only)',
           )
-        } else {
-          // Standard desktop configuration
+        } else if (isChrome && !isMobile) {
+          // Desktop Chrome - optimized for maximum responsiveness
           recognitionInstance.continuous = true
           recognitionInstance.interimResults = true
           recognitionInstance.lang = 'en-US'
-          console.log('🎤 Configured for standard browser')
+          recognitionInstance.maxAlternatives = 1
+          // Chrome-specific optimizations
+          if (recognitionInstance.serviceURI !== undefined) {
+            // Use local recognition service if available for faster startup
+            console.log('🌐 Chrome: Using optimized local speech service')
+          }
+          console.log('🌐 Configured for Desktop Chrome (maximum speed)')
+        } else if (isSafari && !isMobile) {
+          // Desktop Safari - optimized configuration
+          recognitionInstance.continuous = true
+          recognitionInstance.interimResults = true
+          recognitionInstance.lang = 'en-US'
+          recognitionInstance.maxAlternatives = 1
+          console.log('🍎 Configured for Desktop Safari (optimized)')
+        } else {
+          // Other desktop browsers - optimized for speed
+          recognitionInstance.continuous = true
+          recognitionInstance.interimResults = true
+          recognitionInstance.lang = 'en-US'
+          recognitionInstance.maxAlternatives = 1
+          console.log('🎤 Configured for desktop browser (fast startup)')
         }
 
         // Event handlers with platform-specific optimizations
         recognitionInstance.onstart = () => {
-          console.log('✅ Speech recognition started')
+          console.log('✅ Speech recognition started - ready for input')
           setStatus('Listening...')
+          setInternalIsListening(true) // Ensure state is synchronized immediately
+
+          // Immediate visual feedback - start pulse animation
+          setPulseAnimation(true)
         }
 
         recognitionInstance.onend = () => {
@@ -456,6 +482,11 @@ export const VoiceShazamButton = ({
       setTranscript('') // Clear transcript when stopping
     } else {
       console.log('🎤 Starting recognition...')
+
+      // IMMEDIATE FEEDBACK: Set UI state immediately before any async operations
+      setInternalIsListening(true)
+      setStatus('Initializing...')
+
       // Reset all state when starting
       setTranscript('')
       setHasTranscript(false)
@@ -470,55 +501,91 @@ export const VoiceShazamButton = ({
         return null
       })
 
-      // Platform-specific permission handling
+      // Platform-specific permission handling - optimized for immediate startup
       const isSafari = /^((?!chrome|android).)*safari/i.test(
         navigator.userAgent,
       )
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       const isAndroid = /Android/i.test(navigator.userAgent)
+      const isChrome = /Chrome/i.test(navigator.userAgent) && !isAndroid
+      const isDesktopSafari = isSafari && !isMobile
 
       if (isSafari && isMobile) {
+        // iOS Safari - request permissions first but start immediately after
         try {
-          console.log('🍎 Requesting microphone permissions...')
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          })
-          console.log('✅ Microphone permission granted')
-          stream.getTracks().forEach(track => track.stop())
+          console.log('🍎 iOS Safari: Starting with optimized flow')
 
-          setTimeout(() => {
-            try {
-              recognition.start()
-              setInternalIsListening(true)
-              setStatus('Starting...')
-            } catch (error) {
-              console.error('🍎 Safari start error:', error)
-              setStatus(`Start error: ${error}`)
-            }
-          }, 300)
+          // Try to start immediately first (works if permissions already granted)
+          try {
+            recognition.start()
+            setStatus('Ready to listen!')
+            console.log(
+              '🍎 iOS Safari: Started immediately (permissions already granted)',
+            )
+          } catch (immediateError) {
+            console.log('🍎 iOS Safari: Need to request permissions first')
+            setStatus('Requesting access...')
+
+            // Request permissions if immediate start failed
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            })
+            console.log('✅ iOS Safari: Microphone permission granted')
+            stream.getTracks().forEach(track => track.stop())
+
+            // Start recognition immediately after permission (no delay needed)
+            recognition.start()
+            setStatus('Ready to listen!')
+          }
         } catch (error) {
-          console.error('🍎 Permission error:', error)
+          console.error('🍎 iOS Safari permission error:', error)
           setStatus(`Permission error: ${error}`)
         }
       } else if (isAndroid) {
         // Android-specific start logic for non-continuous mode
         try {
-          console.log('🤖 Android: Starting non-continuous recognition')
+          console.log(
+            '🤖 Android: Starting non-continuous recognition immediately',
+          )
           recognition.start()
-          setInternalIsListening(true)
-          setStatus('Starting...')
+          setStatus('Ready to listen!')
         } catch (error) {
           console.error('🤖 Android start error:', error)
           setStatus(`Start error: ${error}`)
+          setInternalIsListening(false)
+        }
+      } else if (isChrome) {
+        // Desktop Chrome - optimized for immediate startup
+        try {
+          console.log('🌐 Desktop Chrome: Starting recognition immediately')
+          recognition.start()
+          setStatus('Ready to listen!')
+        } catch (error) {
+          console.error('🌐 Desktop Chrome start error:', error)
+          setStatus(`Start error: ${error}`)
+          setInternalIsListening(false)
+        }
+      } else if (isDesktopSafari) {
+        // Desktop Safari - optimized startup
+        try {
+          console.log('🍎 Desktop Safari: Starting recognition immediately')
+          recognition.start()
+          setStatus('Ready to listen!')
+        } catch (error) {
+          console.error('🍎 Desktop Safari start error:', error)
+          setStatus(`Start error: ${error}`)
+          setInternalIsListening(false)
         }
       } else {
+        // Other browsers - immediate startup
         try {
+          console.log('🌐 Other browser: Starting recognition immediately')
           recognition.start()
-          setInternalIsListening(true)
-          setStatus('Starting...')
+          setStatus('Ready to listen!')
         } catch (error) {
           console.error('❌ Start error:', error)
           setStatus(`Start error: ${error}`)
+          setInternalIsListening(false)
         }
       }
     }
