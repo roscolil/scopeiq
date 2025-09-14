@@ -112,6 +112,28 @@ export const AIActions = ({
   const [androidTranscriptHistory, setAndroidTranscriptHistory] = useState<
     string[]
   >([])
+  // Enhanced AI progress tracking with minimum display duration
+  const [enhancedAIProgress, setEnhancedAIProgress] = useState<string>('')
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Map verbose progress messages to brief user-friendly ones
+  const formatProgressMessage = (stage: string): string => {
+    const progressMap: Record<string, string> = {
+      'Using Python backend...': 'Initializing...',
+      'Using existing backend...': 'Connecting...',
+      'Falling back to existing backend...': 'Reconnecting...',
+      'Preparing chat request...': 'Preparing...',
+      'Sending request to Python backend...': 'Sending...',
+      'Processing response...': 'Processing...',
+      'Analyzing query...': 'Analyzing...',
+      'Getting enhanced context...': 'Loading context...',
+      'Generating response...': 'Generating...',
+      'Searching documents...': 'Searching...',
+    }
+    const mapped = progressMap[stage] || stage
+    console.log(`🔄 Progress stage: "${stage}" → "${mapped}"`)
+    return mapped
+  }
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -330,6 +352,9 @@ export const AIActions = ({
     return () => {
       if (silenceTimer) {
         clearTimeout(silenceTimer)
+      }
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current)
       }
     }
   }, [documentId, projectId, companyId, silenceTimer])
@@ -586,6 +611,7 @@ export const AIActions = ({
       setResults(null)
       setLastSpokenResponse('') // Clear previous spoken response for new queries
       setIsVoicePlaying(false) // Reset voice playing state for new queries
+      setEnhancedAIProgress('') // Clear previous progress state
 
       try {
         if (isQuestion(queryToUse)) {
@@ -656,6 +682,23 @@ export const AIActions = ({
                 queryScope,
                 onProgress: stage => {
                   console.log('Enhanced AI Progress:', stage)
+                  const formattedStage = formatProgressMessage(stage)
+
+                  // Clear any existing timer
+                  if (progressTimerRef.current) {
+                    clearTimeout(progressTimerRef.current)
+                  }
+
+                  // Set the new progress immediately
+                  setEnhancedAIProgress(formattedStage)
+
+                  // Set a minimum display duration for visibility
+                  progressTimerRef.current = setTimeout(() => {
+                    // Only clear if this is still the current stage
+                    setEnhancedAIProgress(prev =>
+                      prev === formattedStage ? prev : prev,
+                    )
+                  }, 800) // Keep each stage visible for at least 800ms
                 },
                 options: {
                   usePythonBackend: true,
@@ -873,6 +916,7 @@ export const AIActions = ({
         })
       } finally {
         setIsLoading(false)
+        setEnhancedAIProgress('') // Clear progress when query completes
       }
     },
     [
@@ -1705,7 +1749,9 @@ export const AIActions = ({
                   {isLoading ? (
                     <>
                       <div className="spinner" />
-                      <span className="animate-pulse">Analyzing...</span>
+                      <span className="animate-pulse">
+                        {enhancedAIProgress || 'Analyzing...'}
+                      </span>
                     </>
                   ) : (
                     <>
