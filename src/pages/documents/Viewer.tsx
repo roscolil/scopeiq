@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import { routes, createSlug } from '@/utils/ui/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/data/hybrid'
+import { documentDeletionEvents } from '@/services/utils/document-events'
 
 const Viewer = () => {
   const { companyId, projectId, documentId } = useParams<{
@@ -328,32 +329,52 @@ const Viewer = () => {
 
   const handleDelete = async () => {
     if (!document || !resolvedProject || !companyId) return
-
     try {
       setIsDeleting(true)
+      const start = performance.now()
 
-      // Delete the document using the hybrid service
       await documentService.deleteDocument(
         companyId,
         resolvedProject.id,
         document.id,
       )
 
+      // Broadcast deletion event so project lists can prune without full refetch delay
+      documentDeletionEvents.emitDeletion({
+        projectId: resolvedProject.id,
+        documentId: document.id,
+        companyId,
+        name: document.name,
+      })
+
+      // Invalidate cached documents for the project (ProjectDetails uses this key pattern)
+      try {
+        localStorage.removeItem(`documents_${resolvedProject.id}`)
+      } catch (e) {
+        // ignore cache removal errors (quota / private mode)
+      }
+
       toast({
         title: 'Document deleted',
         description: `"${document.name}" has been permanently deleted.`,
       })
 
-      // Redirect back to the project details page
-      if (companyId && projectId) {
-        navigate(
-          routes.company.project.details(companyId, projectId, projectName),
-        )
-      } else if (companyId) {
-        navigate(routes.company.projects.list(companyId))
-      } else {
-        navigate('/')
-      }
+      // Ensure deleting state is visible for a minimum duration
+      const MIN_VISIBLE_MS = 600
+      const elapsed = performance.now() - start
+      const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed)
+
+      setTimeout(() => {
+        if (companyId && projectId) {
+          navigate(
+            routes.company.project.details(companyId, projectId, projectName),
+          )
+        } else if (companyId) {
+          navigate(routes.company.projects.list(companyId))
+        } else {
+          navigate('/')
+        }
+      }, remaining)
     } catch (error) {
       console.error('Error deleting document:', error)
       toast({
@@ -361,7 +382,6 @@ const Viewer = () => {
         description: 'Failed to delete the document. Please try again.',
         variant: 'destructive',
       })
-    } finally {
       setIsDeleting(false)
     }
   }
@@ -502,7 +522,14 @@ const Viewer = () => {
                       disabled={isDeleting}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      {isDeleting ? 'Deleting...' : 'Delete Document'}
+                      {isDeleting ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                          Deleting…
+                        </span>
+                      ) : (
+                        'Delete Document'
+                      )}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

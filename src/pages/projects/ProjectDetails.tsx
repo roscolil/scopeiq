@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { routes } from '@/utils/ui/navigation'
 import { projectService, documentService } from '@/services/data/hybrid'
+import { documentDeletionEvents } from '@/services/utils/document-events'
 import { usePrefetch } from '@/utils/performance'
 
 const ProjectDetails = () => {
@@ -162,6 +163,51 @@ const ProjectDetails = () => {
     localStorage.removeItem(PROJECT_CACHE_KEY)
     localStorage.removeItem(DOCUMENTS_CACHE_KEY)
   }, [PROJECT_CACHE_KEY, DOCUMENTS_CACHE_KEY])
+
+  // Listen for document deletion events (emitted from viewer) to prune list immediately
+  useEffect(() => {
+    const unsubscribe = documentDeletionEvents.subscribe(evt => {
+      if (evt.projectId !== project?.id) return
+      setProjectDocuments(prev => prev.filter(d => d.id !== evt.documentId))
+      try {
+        // Invalidate cached documents for this project
+        localStorage.removeItem(DOCUMENTS_CACHE_KEY)
+      } catch (e) {
+        /* ignore */
+      }
+      // Immediate authoritative refetch for strongest consistency
+      if (project?.id) {
+        ;(async () => {
+          try {
+            const docs = await documentService.getDocumentsByProject(project.id)
+            const transformed: Document[] = (docs || []).map(doc => ({
+              id: doc.id,
+              name: doc.name || 'Untitled Document',
+              type: doc.type || 'unknown',
+              size:
+                typeof doc.size === 'number'
+                  ? doc.size
+                  : parseInt(String(doc.size)) || 0,
+              status: doc.status || 'processing',
+              url: doc.url,
+              thumbnailUrl: doc.thumbnailUrl,
+              projectId: doc.projectId,
+              content: doc.content,
+              createdAt: doc.createdAt,
+              updatedAt: doc.updatedAt,
+            }))
+            setProjectDocuments(transformed)
+            setCachedDocumentsData(transformed)
+          } catch (e) {
+            // silent refetch failure – rely on polling
+          }
+        })()
+      }
+    })
+    return () => {
+      unsubscribe()
+    }
+  }, [project?.id, DOCUMENTS_CACHE_KEY, setCachedDocumentsData])
 
   // Load cached data immediately on mount
   useEffect(() => {
@@ -494,6 +540,10 @@ const ProjectDetails = () => {
 
     try {
       setIsDeleteLoading(true)
+      // Close dialog so fullscreen overlay is clearly visible
+      setIsDeleteDialogOpen(false)
+      const start = performance.now()
+
       await projectService.deleteProject(companyId!, project.id)
 
       toast({
@@ -501,7 +551,13 @@ const ProjectDetails = () => {
         description: 'Your project has been deleted successfully.',
       })
 
-      navigate(routes.company.projects.list(companyId || ''))
+      // Ensure overlay is perceivable even on very fast deletes
+      const MIN_VISIBLE_MS = 600
+      const elapsed = performance.now() - start
+      const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed)
+      setTimeout(() => {
+        navigate(routes.company.projects.list(companyId || ''))
+      }, remaining)
     } catch (error) {
       console.error('Error deleting project:', error)
       toast({
@@ -668,13 +724,34 @@ const ProjectDetails = () => {
 
       await documentService.deleteDocument(companyId, project.id, documentId)
 
-      // Update the local state to remove the document
-      const updatedDocuments =
-        projectDocuments?.filter(doc => doc.id !== documentId) || []
-      setProjectDocuments(updatedDocuments)
-
-      // Immediately update the cache to reflect the deletion
-      setCachedDocumentsData(updatedDocuments)
+      // Attempt authoritative refetch for immediate consistency
+      try {
+        const docs = await documentService.getDocumentsByProject(project.id)
+        const transformed: Document[] = (docs || []).map(doc => ({
+          id: doc.id,
+          name: doc.name || 'Untitled Document',
+          type: doc.type || 'unknown',
+          size:
+            typeof doc.size === 'number'
+              ? doc.size
+              : parseInt(String(doc.size)) || 0,
+          status: doc.status || 'processing',
+          url: doc.url,
+          thumbnailUrl: doc.thumbnailUrl,
+          projectId: doc.projectId,
+          content: doc.content,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        }))
+        setProjectDocuments(transformed)
+        setCachedDocumentsData(transformed)
+      } catch (e) {
+        // Fallback to optimistic removal if refetch fails
+        const updatedDocuments =
+          projectDocuments?.filter(doc => doc.id !== documentId) || []
+        setProjectDocuments(updatedDocuments)
+        setCachedDocumentsData(updatedDocuments)
+      }
 
       toast({
         title: 'Document deleted',
@@ -779,6 +856,19 @@ const ProjectDetails = () => {
 
       <Layout>
         <div className="space-y-4 md:space-y-6">
+          {isDeleteLoading && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm text-white gap-4">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-lg font-semibold tracking-wide">
+                  Deleting project…
+                </p>
+                <p className="text-xs text-white/60">
+                  Removing project and associated documents
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -1049,7 +1139,7 @@ const ProjectDetails = () => {
                       setIsUploadDialogOpen(false)
                       if (summary.success > 0) {
                         toast({
-                          title: 'Batch upload complete',
+                          title: 'File upload complete',
                           description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
                         })
                       } else if (summary.failed) {
