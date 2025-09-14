@@ -108,6 +108,10 @@ export const AIActions = ({
   const [canReplay, setCanReplay] = useState(false)
   // Rate limiting for mobile devices
   const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0)
+  // Android-specific transcript tracking for better duplicate prevention
+  const [androidTranscriptHistory, setAndroidTranscriptHistory] = useState<
+    string[]
+  >([])
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -1948,8 +1952,37 @@ export const AIActions = ({
           onTranscript={text => {
             console.log('🎯 Received transcript in AIActions:', text)
 
-            // Enhanced duplicate prevention
             const trimmedText = text.trim()
+            const isAndroid = /Android/i.test(navigator.userAgent)
+
+            // Android-specific enhanced duplicate prevention
+            if (isAndroid) {
+              // Check against recent Android transcripts (last 5)
+              const recentDuplicates = androidTranscriptHistory.slice(-5)
+              const isDuplicateInHistory = recentDuplicates.some(
+                historyText =>
+                  historyText === trimmedText ||
+                  (historyText.length > 5 &&
+                    trimmedText.length > 5 &&
+                    (historyText.includes(trimmedText.slice(0, -2)) ||
+                      trimmedText.includes(historyText.slice(0, -2)))),
+              )
+
+              if (isDuplicateInHistory) {
+                console.log(
+                  '🤖 Android: Transcript found in recent history, skipping:',
+                  { current: trimmedText, history: recentDuplicates },
+                )
+                return
+              }
+
+              // Add to Android history (keep last 10 entries)
+              setAndroidTranscriptHistory(prev =>
+                [...prev, trimmedText].slice(-10),
+              )
+            }
+
+            // Enhanced duplicate prevention for all platforms
             const isExactDuplicate = trimmedText === lastProcessedTranscript
             const isSimilarDuplicate =
               lastProcessedTranscript &&
