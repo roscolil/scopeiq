@@ -79,6 +79,9 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [processingMessages, setProcessingMessages] = useState<
     Record<string, string>
   >({})
+  // Batch progress tracking (so counter increments instead of staying at 1)
+  const [batchTotal, setBatchTotal] = useState(0)
+  const [batchCurrent, setBatchCurrent] = useState(0) // 1-based index of current file in batch
   const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
   const [currentBackend, setCurrentBackend] = useState<'python' | 'existing'>(
     'python',
@@ -635,13 +638,18 @@ export const FileUploader = (props: FileUploaderProps) => {
     setProgressHistory([{ time: Date.now(), progress: 0 }])
 
     const pendingFiles = selectedFiles.filter(f => f.status === 'pending')
+    setBatchTotal(pendingFiles.length)
+    setBatchCurrent(0)
     let successCount = 0
     let failCount = 0
     const successfulDocuments: Document[] = []
 
     try {
       // Upload files sequentially to avoid overwhelming the server
-      for (const fileItem of pendingFiles) {
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const fileItem = pendingFiles[i]
+        // Update current counter (1-based) before starting this file
+        setBatchCurrent(i + 1)
         try {
           const doc = await uploadSingleFileInternal(fileItem)
           if (doc) {
@@ -689,6 +697,11 @@ export const FileUploader = (props: FileUploaderProps) => {
     } finally {
       setIsUploading(false)
       setProgressHistory([])
+      // Reset batch counters shortly after completion to avoid flicker
+      setTimeout(() => {
+        setBatchCurrent(0)
+        setBatchTotal(0)
+      }, 1200)
     }
   }
 
@@ -917,147 +930,152 @@ export const FileUploader = (props: FileUploaderProps) => {
   // }
 
   return (
-    <div className="space-y-6">
-      {/* Backend Status */}
-      {/* <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full max-h-[78vh] overflow-hidden">
+      {/* Static (non-scrolling) region: drag/drop area + category selector */}
+      <div className="space-y-6 flex-shrink-0">
+        {/* Backend Status */}
+        {/* <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Upload Documents</h3>
         {getBackendBadge()}
       </div> */}
 
-      {/* Upload Area */}
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={cn(
-          'border-2 border-dashed rounded-xl p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden',
-          isDragging
-            ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
-            : 'border-muted-foreground/20 hover:border-muted-foreground/40',
-          selectedFiles.length > 0
-            ? 'bg-gradient-to-br from-secondary/30 to-secondary/50 border-border/50'
-            : 'bg-gradient-to-br from-background/50 to-muted/20 hover:to-muted/30',
-        )}
-      >
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        {/* Upload Area */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            'border-2 border-dashed rounded-xl p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden',
+            isDragging
+              ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
+              : 'border-muted-foreground/20 hover:border-muted-foreground/40',
+            selectedFiles.length > 0
+              ? 'bg-gradient-to-br from-secondary/30 to-secondary/50 border-border/50'
+              : 'bg-gradient-to-br from-background/50 to-muted/20 hover:to-muted/30',
+          )}
+        >
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
-        <div className="relative flex flex-col items-center justify-center gap-4">
-          <div
-            className={cn(
-              'p-4 rounded-full transition-all duration-300',
-              isDragging
-                ? 'bg-primary/20 scale-110'
-                : selectedFiles.length > 0
-                  ? 'bg-green-100 dark:bg-green-900/30'
-                  : 'bg-muted/50 hover:bg-muted/70',
-            )}
-          >
-            {selectedFiles.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Upload className="h-10 w-10 text-green-600" />
-                <span className="text-sm font-medium text-green-700">
-                  {selectedFiles.length} file
-                  {selectedFiles.length > 1 ? 's' : ''} selected
-                </span>
-              </div>
-            ) : (
-              <Upload className="h-10 w-10 text-gray-400" />
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="text-center space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                Drag & drop your documents here
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
-                supported
-              </p>
+          <div className="relative flex flex-col items-center justify-center gap-4">
+            <div
+              className={cn(
+                'p-4 rounded-full transition-all duration-300',
+                isDragging
+                  ? 'bg-primary/20 scale-110'
+                  : selectedFiles.length > 0
+                    ? 'bg-green-100 dark:bg-green-900/30'
+                    : 'bg-muted/50 hover:bg-muted/70',
+              )}
+            >
+              {selectedFiles.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Upload className="h-10 w-10 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">
+                    {selectedFiles.length} file
+                    {selectedFiles.length > 1 ? 's' : ''} selected
+                  </span>
+                </div>
+              ) : (
+                <Upload className="h-10 w-10 text-gray-400" />
+              )}
             </div>
 
-            <div className="flex gap-2 justify-center">
-              <label htmlFor="file-upload" className="flex justify-center">
-                <Input
-                  id="file-upload"
-                  type="file"
-                  className="hidden"
-                  multiple
-                  onChange={handleFileChange}
-                  accept=".pdf,.docx,.txt,.doc"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
-                  asChild
-                >
-                  <span>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Browse Files
-                  </span>
-                </Button>
-              </label>
+            <div className="space-y-4">
+              <div className="text-center space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Drag & drop your documents here
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
+                  supported
+                </p>
+              </div>
 
-              {/* <label htmlFor="folder-upload" className="flex justify-center">
-                <Input
-                  id="folder-upload"
-                  type="file"
-                  className="hidden"
-                  // @ts-expect-error - webkitdirectory is not in TypeScript but works in browsers
-                  webkitdirectory=""
-                  multiple
-                  onChange={handleFolderChange}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hover:bg-secondary hover:text-secondary-foreground transition-all duration-200 hover:scale-105 border-dashed"
-                  asChild
-                >
-                  <span>
-                    <Folder className="h-4 w-4 mr-2" />
-                    Browse Folders
-                  </span>
-                </Button>
-              </label> */}
+              <div className="flex gap-2 justify-center">
+                <label htmlFor="file-upload" className="flex justify-center">
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={handleFileChange}
+                    accept=".pdf,.docx,.txt,.doc"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                    asChild
+                  >
+                    <span>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Browse Files
+                    </span>
+                  </Button>
+                </label>
+
+                <label htmlFor="folder-upload" className="flex justify-center">
+                  <Input
+                    id="folder-upload"
+                    type="file"
+                    className="hidden"
+                    // @ts-expect-error - webkitdirectory is not in TypeScript but works in browsers
+                    webkitdirectory=""
+                    multiple
+                    onChange={handleFolderChange}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover:bg-secondary hover:text-secondary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                    asChild
+                  >
+                    <span>
+                      <Folder className="h-4 w-4 mr-2" />
+                      Browse Folders
+                    </span>
+                  </Button>
+                </label>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Category Selection (required) */}
-      <div className="space-y-2">
-        <label className="text-xs font-semibold tracking-wide uppercase flex items-center gap-1">
-          <span className="text-muted-foreground">Categories</span>
-          <span className="text-red-500 text-[10px] font-medium">Required</span>
-        </label>
-        <CategoryMultiSelect
-          value={selectedCategoryIds}
-          onChange={vals => {
-            setSelectedCategoryIds(vals)
-            setCategoryTouched(true)
-          }}
-          max={5}
-          min={1}
-          placeholder="Select at least one category"
-        />
-        {categoryTouched && selectedCategoryIds.length === 0 && (
-          <p className="text-[10px] text-destructive mt-0.5">
-            Please select at least one category.
+        {/* Category Selection (required) */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold tracking-wide uppercase flex items-center gap-1">
+            <span className="text-muted-foreground">Categories</span>
+            <span className="text-red-500 text-[10px] font-medium">
+              Required
+            </span>
+          </label>
+          <CategoryMultiSelect
+            value={selectedCategoryIds}
+            onChange={vals => {
+              setSelectedCategoryIds(vals)
+              setCategoryTouched(true)
+            }}
+            max={5}
+            min={1}
+            placeholder="Select at least one category"
+          />
+          {categoryTouched && selectedCategoryIds.length === 0 && (
+            <p className="text-[10px] text-destructive mt-0.5">
+              Please select at least one category.
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Categories improve search accuracy and contextual AI analysis. All
+            selected files will share these categories; you can refine per file
+            later.
           </p>
-        )}
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          Categories improve search accuracy and contextual AI analysis. All
-          selected files will share these categories; you can refine per file
-          later.
-        </p>
+        </div>
       </div>
 
-      {/* File List */}
+      {/* Scrollable region containing dynamic file list & progress */}
       {selectedFiles.length > 0 && (
-        <div className="space-y-4">
+        <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">
               Selected Files ({selectedFiles.length})
@@ -1111,9 +1129,9 @@ export const FileUploader = (props: FileUploaderProps) => {
               <div className="flex justify-between text-xs">
                 <span>Upload Progress</span>
                 <span>
-                  Uploading{' '}
-                  {selectedFiles.filter(f => f.status === 'uploading').length}{' '}
-                  of {selectedFiles.length} files
+                  {batchCurrent > 0
+                    ? `Uploading ${batchCurrent} of ${batchTotal} files`
+                    : 'Preparing files...'}
                 </span>
               </div>
               <Progress value={getOverallProgress()} className="w-full h-2" />
@@ -1129,8 +1147,8 @@ export const FileUploader = (props: FileUploaderProps) => {
             </p>
           )}
 
-          {/* Individual File List */}
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          {/* Individual File List (takes natural height within scroll container) */}
+          <div className="space-y-2">
             {selectedFiles.map(fileItem => (
               <div
                 key={fileItem.id}
