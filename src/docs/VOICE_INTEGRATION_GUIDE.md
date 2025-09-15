@@ -276,3 +276,99 @@ aiWorkflowVoice.configure({
 4. **Customize announcements** based on your specific workflow needs
 
 Your OpenAI + Pinecone workflow is now voice-enabled! 🎵✨
+
+## iOS / Safari Autoplay Update (September 2025)
+
+Modern iOS & Safari block programmatic audio (including AWS Polly playback) until the first user gesture. The `novaSonic` service now implements an automatic unlock + queue so speech requested before a tap still plays later.
+
+### Behavior
+
+1. First gesture triggers a silent, muted WAV to unlock playback.
+2. Calls to `novaSonic.speak()` before unlock are queued (not lost).
+3. Queue flushes automatically after unlock (in order).
+4. Each playback has up to 2 retry attempts for transient iOS `NotAllowedError` issues.
+5. `playsInline` is enforced to avoid forced full‑screen players.
+
+### API Helpers
+
+| Method                            | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
+| `novaSonic.waitForUnlock()`       | Await until audio is permitted (optional) |
+| `novaSonic.stopCurrentPlayback()` | Stop current audio (existing)             |
+
+### Typical Usage (No Change Required)
+
+```ts
+await novaSonic.speak('Processing your request...')
+```
+
+If autoplay is blocked, the phrase is queued and plays once the user taps anywhere.
+
+### Explicit Unlock (Rarely Needed)
+
+```ts
+await novaSonic.waitForUnlock()
+await novaSonic.speak('Ready to assist you.')
+```
+
+### Edge Cases
+
+| Scenario                  | Result                             |
+| ------------------------- | ---------------------------------- |
+| Multiple queued responses | All play sequentially after unlock |
+| No user interaction ever  | Audio never plays (spec-compliant) |
+| Intermittent iOS failures | Automatic retry with jitter        |
+
+Use the `useSafariAudio` hook if you want to show a banner prompting the user to tap.
+
+---
+
+## Repeated Voice Query Reliability (iOS Focus)
+
+Frequent rapid queries on iOS could previously cause: overlapping attempts, dropped utterances, or blocked repeats of identical short phrases. The TTS layer now includes a managed playback queue and duplicate suppression.
+
+### New Behaviors
+
+| Feature               | Description                                                                                     |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Sequential Queue      | Multiple `speak()` calls are serialized; each completes before the next starts.                 |
+| Interrupt Mode        | Pass `{ interrupt: true }` (or set global mode) to clear current + queue and speak immediately. |
+| Duplicate Suppression | Identical text within 2s window is skipped silently (configurable).                             |
+| Queue Cap             | Oldest items dropped when queue exceeds default length (6). Prevents memory churn.              |
+
+### API Additions
+
+```ts
+// Adjust global playback behavior
+novaSonic.configurePlayback({
+  mode: 'queue', // or 'interrupt'
+  duplicateSuppressionMs: 1500,
+  maxQueueLength: 8,
+})
+
+// Interrupt current speech immediately
+await novaSonic.speak('New highest priority message', { interrupt: true })
+```
+
+### When To Use Interrupt
+
+Use `interrupt` for state changes (e.g., user cancels, error alerts) where stale audio would confuse the user.
+
+### Recommended Patterns
+
+| Scenario                            | Pattern                                    |
+| ----------------------------------- | ------------------------------------------ |
+| Status updates every few hundred ms | Let suppression skip repeats               |
+| User cancels a long narration       | `speak('Cancelled.', { interrupt: true })` |
+| High-priority warning               | `interrupt: true`                          |
+| Batch of guidance messages          | Plain sequential `speak()` calls           |
+
+### Troubleshooting
+
+| Symptom                        | Suggestion                                                                |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| Some identical phrases missing | Expected (duplicate suppression) – lower window if undesired.             |
+| Speech lags behind UI          | Consider `interrupt` for high-priority messages or reduce queue pressure. |
+| iOS drop after many fast calls | Queue cap prevents runaway; review if you should coalesce messages.       |
+
+---
