@@ -35,6 +35,8 @@ class NovaSonicService {
   private pendingAudio: HTMLAudioElement | null = null
   // Track the currently playing audio element so we can stop/cancel playback early
   private currentAudio: HTMLAudioElement | null = null
+  // Persistent reusable output element (improves iOS autoplay reliability)
+  private outputAudio: HTMLAudioElement | null = null
   // Queue of pending speak requests when autoplay blocked (iOS/Safari)
   private speakQueue: Array<{
     text: string
@@ -94,56 +96,45 @@ class NovaSonicService {
   }
 
   /**
-   * Setup user interaction tracking for Safari audio restrictions
+   * Track initial user interaction to unlock audio autoplay on iOS/Safari.
    */
   private setupUserInteractionTracking() {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 
     if (!isSafari && !isIOS) {
+      // Non‑restricted platforms: treat as immediately unlocked
       this.audioContextUnlocked = true
       this.userInteractionReceived = true
-      // Non restricted platforms: immediately resolve unlock promise
       this.unlockPromise = Promise.resolve()
       return
     }
 
-    // Create a promise which is resolved upon first successful unlock
+    // Promise that resolves on first unlock
     this.unlockPromise = new Promise<void>(res => {
       this.unlockPromiseResolver = res
     })
 
-    // Function to handle user interaction
     const handleUserInteraction = async () => {
       if (this.userInteractionReceived) return
-
       console.log('🍎 User interaction detected - unlocking audio')
       this.userInteractionReceived = true
-
       try {
-        // Create and immediately play a silent audio to unlock the context
         const silentAudio = new Audio()
         silentAudio.src =
           'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
         silentAudio.volume = 0
         silentAudio.muted = true
-
-        // Prepare the audio element for immediate playback
         await silentAudio.play()
         this.audioContextUnlocked = true
         console.log('✅ Audio context unlocked successfully')
-
-        // Resolve unlock promise and flush any queued speak requests
         if (this.unlockPromiseResolver) {
           this.unlockPromiseResolver()
           this.unlockPromiseResolver = null
         }
-        // Flush queued requests immediately
         this.flushSpeakQueue()
-        // Schedule a fallback re-attempt for any early playback that may have been silently blocked
         setTimeout(() => {
           if (!this.isAudioUnlocked()) return
-          // If nothing is currently playing but we had a previously pendingAudio, try again
           if (this.pendingAudio) {
             console.log(
               '🔁 Retrying pending audio play after unlock fallback window',
@@ -151,34 +142,36 @@ class NovaSonicService {
             this.playPendingAudio().catch(() => {})
           }
         }, 350)
-
-        // Remove event listeners after successful unlock
+      } catch (e) {
+        console.warn('⚠️ Failed to unlock audio context:', e)
+      } finally {
         document.removeEventListener('touchstart', handleUserInteraction)
         document.removeEventListener('touchend', handleUserInteraction)
         document.removeEventListener('click', handleUserInteraction)
         document.removeEventListener('keydown', handleUserInteraction)
-      } catch (error) {
-        console.warn('⚠️ Failed to unlock audio context:', error)
       }
     }
 
-    // Listen for various user interactions
-    document.addEventListener('touchstart', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('touchend', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('click', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
-    document.addEventListener('keydown', handleUserInteraction, {
-      once: true,
-      passive: true,
-    })
+    const opts: AddEventListenerOptions = { once: true, passive: true }
+    document.addEventListener('touchstart', handleUserInteraction, opts)
+    document.addEventListener('touchend', handleUserInteraction, opts)
+    document.addEventListener('click', handleUserInteraction, opts)
+    document.addEventListener('keydown', handleUserInteraction, { once: true })
+  }
+
+  /**
+   * Ensure a single persistent <audio> element is used for all playback (improves iOS reliability).
+   */
+  private ensureOutputAudio(): HTMLAudioElement {
+    if (this.outputAudio) return this.outputAudio
+    const audio = document.createElement('audio')
+    audio.preload = 'auto'
+    ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
+    audio.controls = false
+    audio.style.display = 'none'
+    document.body.appendChild(audio)
+    this.outputAudio = audio
+    return audio
   }
 
   /**
@@ -409,16 +402,18 @@ class NovaSonicService {
 
     return new Promise((resolve, reject) => {
       try {
-        // Create a blob from the audio data
-        const buffer = new ArrayBuffer(audioData.length)
-        const view = new Uint8Array(buffer)
+        // Prepare blob URL
+        const buf = new ArrayBuffer(audioData.length)
+        const view = new Uint8Array(buf)
         view.set(audioData)
-        const blob = new Blob([buffer], { type: `audio/${format}` })
+        const blob = new Blob([buf], { type: `audio/${format}` })
         const audioUrl = URL.createObjectURL(blob)
 
-        // Create audio element
-        const audio = new Audio()
-        // Store reference for cancellation
+        // Reuse persistent element
+        const audio = this.ensureOutputAudio()
+        if (this.currentAudio && this.currentAudio !== audio) {
+          this.stopCurrentPlayback()
+        }
         this.currentAudio = audio
 
         // Safari/iOS specific configuration
