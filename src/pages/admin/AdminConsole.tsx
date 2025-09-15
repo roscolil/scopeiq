@@ -148,6 +148,8 @@ const AdminConsole: React.FC = () => {
   }>(null)
   const bulkTimerRef = useRef<number | null>(null)
 
+  // Immediate overlay approach (no debounce) — overlays appear as soon as a refresh with existing data starts.
+
   // Clear any active timer on unmount
   useEffect(() => {
     const timerId = bulkTimerRef.current
@@ -497,8 +499,8 @@ const AdminConsole: React.FC = () => {
   }
 
   const renderCategories = () => {
-    if (categoriesState.loading) return <PageLoader type="default" />
-    if (categoriesState.error) {
+    const isLoading = categoriesState.loading
+    if (categoriesState.error && !isLoading) {
       return (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-sm text-destructive">
@@ -514,7 +516,7 @@ const AdminConsole: React.FC = () => {
         </div>
       )
     }
-    if (!categoriesState.data.length) {
+    if (!isLoading && !categoriesState.data.length) {
       return (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <p className="text-sm text-muted-foreground max-w-sm">
@@ -528,17 +530,25 @@ const AdminConsole: React.FC = () => {
       )
     }
 
-    const sorted = [...categoriesState.data].sort((a, b) => {
-      let cmp = 0
-      if (categoriesSortBy === 'name') {
-        cmp = a.name.localeCompare(b.name)
-      } else {
-        const av = a.abbreviationCount ?? 0
-        const bv = b.abbreviationCount ?? 0
-        cmp = av - bv
-      }
-      return categoriesSortDir === 'asc' ? cmp : -cmp
-    })
+    const sorted = [...categoriesState.data]
+      // Filter out any null/undefined defensive (shouldn't happen but prevents runtime errors)
+      .filter((c): c is AdminCategory => !!c && typeof c === 'object')
+      .sort((a, b) => {
+        let cmp = 0
+        if (categoriesSortBy === 'name') {
+          const an = (a?.name || '').toString()
+          const bn = (b?.name || '').toString()
+          // localeCompare safe even if empty strings
+          cmp = an.localeCompare(bn, undefined, { sensitivity: 'base' })
+        } else {
+          const av =
+            typeof a?.abbreviationCount === 'number' ? a.abbreviationCount : 0
+          const bv =
+            typeof b?.abbreviationCount === 'number' ? b.abbreviationCount : 0
+          cmp = av - bv
+        }
+        return categoriesSortDir === 'asc' ? cmp : -cmp
+      })
 
     const toggleSort = (col: 'name' | 'count') => {
       if (categoriesSortBy === col) {
@@ -551,7 +561,7 @@ const AdminConsole: React.FC = () => {
 
     return (
       <div className="space-y-4">
-        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur">
+        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur relative">
           <table className="w-full text-[15px]">
             <thead>
               <tr className="text-[12px] uppercase tracking-wide text-foreground/90 bg-muted/50">
@@ -604,15 +614,44 @@ const AdminConsole: React.FC = () => {
               </tr>
             </thead>
             <tbody>
+              {isLoading &&
+                categoriesState.data.length === 0 &&
+                // Skeleton rows (initial load)
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr
+                    key={`cat-skel-${idx}`}
+                    className={`border-t border-border/30 ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'}`}
+                  >
+                    <td className="px-2 py-2">
+                      <div className="h-4 w-4 rounded-sm bg-muted/50 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="h-4 w-40 max-w-full rounded bg-muted/50 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="space-y-2">
+                        <div className="h-3 w-64 max-w-full rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-52 max-w-full rounded bg-muted/30 animate-pulse" />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="h-4 w-8 ml-auto rounded bg-muted/40 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="h-6 w-16 ml-auto rounded bg-muted/40 animate-pulse" />
+                    </td>
+                  </tr>
+                ))}
               {sorted.map((cat, idx) => {
                 const dimmed =
                   pendingBulkDeletion &&
                   pendingBulkDeletion.type === 'categories' &&
                   pendingBulkDeletion.ids.includes(cat.id)
+                const refreshing = isLoading && categoriesState.data.length > 0
                 return (
                   <tr
                     key={cat.id}
-                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''}`}
+                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''} ${refreshing ? 'opacity-60' : ''}`}
                   >
                     <td className="px-2 py-2 align-middle">
                       <Checkbox
@@ -652,6 +691,7 @@ const AdminConsole: React.FC = () => {
                             variant="ghost"
                             className="h-8 w-8 p-0"
                             aria-label={`Actions for ${cat.name}`}
+                            disabled={refreshing}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
@@ -660,6 +700,7 @@ const AdminConsole: React.FC = () => {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => openEditCategory(cat)}
+                            disabled={refreshing}
                           >
                             <Edit3 className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
@@ -667,6 +708,7 @@ const AdminConsole: React.FC = () => {
                           <DropdownMenuItem
                             onClick={() => setPendingDeleteCategory(cat)}
                             className="text-destructive focus:text-destructive"
+                            disabled={refreshing}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -678,6 +720,19 @@ const AdminConsole: React.FC = () => {
               })}
             </tbody>
           </table>
+          {categoriesState.loading && categoriesState.data.length > 0 && (
+            <div
+              aria-label="Refreshing categories"
+              className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px] pointer-events-none animate-fade-in"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/70 border border-border shadow-sm transform scale-95 animate-[fade-in_0.25s_ease-out_forwards]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
+                  Refreshing
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
           <div className="text-xs text-muted-foreground">
@@ -730,8 +785,9 @@ const AdminConsole: React.FC = () => {
   const [abbrevSortDir, setAbbrevSortDir] = useState<'asc' | 'desc'>('asc')
 
   const renderAbbreviations = () => {
-    if (abbrevState.loading) return <PageLoader type="default" />
-    if (abbrevState.error) {
+    const isLoading = abbrevState.loading
+
+    if (abbrevState.error && !isLoading) {
       return (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-sm text-destructive">
@@ -747,23 +803,44 @@ const AdminConsole: React.FC = () => {
         </div>
       )
     }
+
+    if (!isLoading && !abbrevState.data.length) {
+      return (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <p className="text-sm text-muted-foreground max-w-sm">
+            No abbreviations yet. Abbreviations link domain terminology to full
+            expansions and examples for better context.
+          </p>
+          <Button size="sm" onClick={openCreateAbbrev}>
+            <Plus className="mr-2 h-4 w-4" /> New Abbreviation
+          </Button>
+        </div>
+      )
+    }
+
     const categoryNameById = new Map(
       categoriesState.data.map(c => [c.id, c.name]),
     )
 
-    const sorted = [...abbrevState.data].sort((a, b) => {
-      let cmp = 0
-      if (abbrevSortBy === 'term') {
-        cmp = a.term.localeCompare(b.term)
-      } else if (abbrevSortBy === 'expansion') {
-        cmp = a.expansion.localeCompare(b.expansion)
-      } else if (abbrevSortBy === 'category') {
-        const av = (a.categoryId && categoryNameById.get(a.categoryId)) || ''
-        const bv = (b.categoryId && categoryNameById.get(b.categoryId)) || ''
-        cmp = av.localeCompare(bv)
-      }
-      return abbrevSortDir === 'asc' ? cmp : -cmp
-    })
+    const sorted = [...abbrevState.data]
+      .filter((a): a is AdminAbbreviation => !!a && typeof a === 'object')
+      .sort((a, b) => {
+        let cmp = 0
+        if (abbrevSortBy === 'term') {
+          const at = (a?.term || '').toString()
+          const bt = (b?.term || '').toString()
+          cmp = at.localeCompare(bt, undefined, { sensitivity: 'base' })
+        } else if (abbrevSortBy === 'expansion') {
+          const ae = (a?.expansion || '').toString()
+          const be = (b?.expansion || '').toString()
+          cmp = ae.localeCompare(be, undefined, { sensitivity: 'base' })
+        } else if (abbrevSortBy === 'category') {
+          const av = (a?.categoryId && categoryNameById.get(a.categoryId)) || ''
+          const bv = (b?.categoryId && categoryNameById.get(b.categoryId)) || ''
+          cmp = av.localeCompare(bv, undefined, { sensitivity: 'base' })
+        }
+        return abbrevSortDir === 'asc' ? cmp : -cmp
+      })
 
     const toggleSort = (col: 'term' | 'expansion' | 'category') => {
       if (abbrevSortBy === col) {
@@ -774,9 +851,11 @@ const AdminConsole: React.FC = () => {
       }
     }
 
+    const refreshing = isLoading && abbrevState.data.length > 0
+
     return (
       <div className="space-y-4">
-        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur">
+        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur relative">
           <table className="w-full text-[15px]">
             <thead>
               <tr className="text-[12px] uppercase tracking-wide text-foreground/90 bg-muted/50">
@@ -812,7 +891,7 @@ const AdminConsole: React.FC = () => {
                   onClick={() => toggleSort('expansion')}
                 >
                   <span className="inline-flex items-center gap-1">
-                    Expansion
+                    Definition
                     {abbrevSortBy === 'expansion' && (
                       <span className="text-[10px] font-normal opacity-70">
                         {abbrevSortDir === 'asc' ? '▲' : '▼'}
@@ -842,15 +921,46 @@ const AdminConsole: React.FC = () => {
               </tr>
             </thead>
             <tbody>
+              {isLoading &&
+                abbrevState.data.length === 0 &&
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr
+                    key={`abbrev-skel-${idx}`}
+                    className={`border-t border-border/30 ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'}`}
+                  >
+                    <td className="px-2 py-2">
+                      <div className="h-4 w-4 rounded-sm bg-muted/50 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="h-4 w-36 rounded bg-muted/50 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="space-y-2">
+                        <div className="h-3 w-72 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-3 w-60 rounded bg-muted/30 animate-pulse" />
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="h-4 w-24 rounded bg-muted/40 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="h-4 w-10 ml-auto rounded bg-muted/40 animate-pulse" />
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="h-6 w-16 ml-auto rounded bg-muted/40 animate-pulse" />
+                    </td>
+                  </tr>
+                ))}
               {sorted.map((ab, idx) => {
                 const dimmed =
                   pendingBulkDeletion &&
                   pendingBulkDeletion.type === 'abbreviations' &&
                   pendingBulkDeletion.ids.includes(ab.id)
+                const refreshing = isLoading && abbrevState.data.length > 0
                 return (
                   <tr
                     key={ab.id}
-                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''}`}
+                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''} ${refreshing ? 'opacity-60' : ''}`}
                   >
                     <td className="px-2 py-2 align-middle">
                       <Checkbox
@@ -859,6 +969,7 @@ const AdminConsole: React.FC = () => {
                         onCheckedChange={val =>
                           toggleSelectAbbrev(ab.id, !!val)
                         }
+                        disabled={refreshing}
                       />
                     </td>
                     <td
@@ -900,19 +1011,24 @@ const AdminConsole: React.FC = () => {
                             variant="ghost"
                             className="h-8 w-8 p-0"
                             aria-label={`Actions for ${ab.term}`}
+                            disabled={refreshing}
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => openEditAbbrev(ab)}>
+                          <DropdownMenuItem
+                            onClick={() => openEditAbbrev(ab)}
+                            disabled={refreshing}
+                          >
                             <Edit3 className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => setPendingDeleteAbbrev(ab)}
                             className="text-destructive focus:text-destructive"
+                            disabled={refreshing}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
@@ -924,6 +1040,19 @@ const AdminConsole: React.FC = () => {
               })}
             </tbody>
           </table>
+          {abbrevState.loading && abbrevState.data.length > 0 && (
+            <div
+              aria-label="Refreshing abbreviations"
+              className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px] pointer-events-none animate-fade-in"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/70 border border-border shadow-sm transform scale-95 animate-[fade-in_0.25s_ease-out_forwards]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
+                  Refreshing
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
           <div className="text-xs text-muted-foreground">
@@ -971,6 +1100,15 @@ const AdminConsole: React.FC = () => {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
+      {/* Live region for screen readers announcing refresh state */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {categoriesState.loading &&
+          categoriesState.data.length > 0 &&
+          'Refreshing categories'}
+        {abbrevState.loading &&
+          abbrevState.data.length > 0 &&
+          ' Refreshing abbreviations'}
+      </div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-300 tracking-tight">
@@ -1190,7 +1328,7 @@ const AdminConsole: React.FC = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Expansion <span className="text-destructive">*</span>
+                Definition<span className="text-destructive">*</span>
               </label>
               <Input
                 value={abbrevForm.expansion}

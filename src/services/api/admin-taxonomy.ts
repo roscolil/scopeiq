@@ -164,19 +164,28 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Environment-Driven API Configuration (explicit version prefix required by backend)
-// Backend requires /api/v1; configurable in case of future version increment.
+// Unified Admin API Base
+// Prefer single base constant for all admin taxonomy endpoints. Supports either
+// VITE_ADMIN_API_BASE (new) or legacy VITE_TAXONOMY_API_VERSION_PREFIX fallback.
+// Ensures consistent prefix (default /api/v1) without duplicating logic.
 // ---------------------------------------------------------------------------
-const TAXONOMY_API_VERSION_PREFIX = (
-  import.meta.env.VITE_TAXONOMY_API_VERSION_PREFIX || '/api/v1'
+const ADMIN_API_BASE = (
+  import.meta.env.VITE_ADMIN_API_BASE ||
+  import.meta.env.VITE_TAXONOMY_API_VERSION_PREFIX ||
+  '/api/v1'
 ).replace(/\/$/, '')
 const TAXONOMY_CATEGORIES_SEGMENT =
   import.meta.env.VITE_TAXONOMY_CATEGORIES_SEGMENT || 'categories'
 const TAXONOMY_ABBREVIATIONS_SEGMENT =
   import.meta.env.VITE_TAXONOMY_ABBREVIATIONS_SEGMENT || 'abbreviations'
 
-const CATEGORIES_PATH = `${TAXONOMY_API_VERSION_PREFIX}/${TAXONOMY_CATEGORIES_SEGMENT}`
-const ABBREVIATIONS_PATH = `${TAXONOMY_API_VERSION_PREFIX}/${TAXONOMY_ABBREVIATIONS_SEGMENT}`
+const CATEGORIES_PATH = `${ADMIN_API_BASE}/${TAXONOMY_CATEGORIES_SEGMENT}`
+const ABBREVIATIONS_PATH = `${ADMIN_API_BASE}/${TAXONOMY_ABBREVIATIONS_SEGMENT}`
+
+// Ensure collection endpoints always include a trailing slash to avoid backend 30x redirects
+function ensureCollection(path: string): string {
+  return path.endsWith('/') ? path : `${path}/`
+}
 
 // Generic JSON fetcher with retry + optional auth based on python backend config
 async function jsonFetch<T>(
@@ -233,22 +242,19 @@ async function jsonFetch<T>(
             console.debug('[adminTaxonomyService] body read failed', { url, e })
           }
         }
+        const snippet = text ? text.substring(0, 400) : ''
         if (process.env.NODE_ENV !== 'production') {
           console.warn('[adminTaxonomyService] non-ok response', {
             url,
+            method: options.method || 'GET',
             status: res.status,
             statusText: res.statusText,
-            body: text,
-            headers: (() => {
-              const h: Record<string, string> = {}
-              res.headers.forEach((v, k) => {
-                h[k] = v
-              })
-              return h
-            })(),
+            bodySample: snippet,
           })
         }
-        throw new Error(`Request failed ${res.status} ${res.statusText}`)
+        throw new Error(
+          `Request failed ${res.status} ${res.statusText}${snippet ? ': ' + snippet : ''}`,
+        )
       }
 
       // 204 No Content handling
@@ -305,6 +311,83 @@ function qs(
   return search ? `?${search}` : ''
 }
 
+// Normalize single-entity (category) responses that may arrive as { data: {...} } or direct object
+function normalizeSingleCategory(raw: unknown): Category {
+  if (raw && typeof raw === 'object') {
+    const rec = raw as Record<string, unknown>
+    const candidateRaw =
+      rec.data && typeof rec.data === 'object'
+        ? (rec.data as Record<string, unknown>)
+        : rec
+    const candidate = candidateRaw as Record<string, unknown>
+    // Map possible legacy keys
+    const id = (candidate.id as string) || (candidate._id as string) || ''
+    const name = (candidate.name as string) || (candidate.title as string) || ''
+    const description =
+      (candidate.description as string) || (candidate.desc as string) || ''
+    const abbreviationCount =
+      typeof candidate.abbreviationCount === 'number'
+        ? (candidate.abbreviationCount as number)
+        : Array.isArray(candidate.abbreviations as unknown[])
+          ? (candidate.abbreviations as unknown[]).length
+          : undefined
+    return {
+      id,
+      name,
+      description,
+      createdAt:
+        (candidate.createdAt as string) || (candidate.created_at as string),
+      updatedAt:
+        (candidate.updatedAt as string) || (candidate.updated_at as string),
+      abbreviationCount,
+    }
+  }
+  // Fallback minimal object (prevents UI crashes)
+  return { id: 'unknown', name: '' }
+}
+
+// Normalize single-entity (abbreviation/term) responses
+function normalizeSingleAbbreviation(raw: unknown): Abbreviation {
+  if (raw && typeof raw === 'object') {
+    const rec = raw as Record<string, unknown>
+    const candidateRaw =
+      rec.data && typeof rec.data === 'object'
+        ? (rec.data as Record<string, unknown>)
+        : rec
+    const candidate = candidateRaw as Record<string, unknown>
+    const id = (candidate.id as string) || (candidate._id as string) || ''
+    const term =
+      (candidate.term as string) || (candidate.abbreviation as string) || ''
+    const expansion =
+      (candidate.expansion as string) ||
+      (candidate.full_form as string) ||
+      (candidate.definition as string) ||
+      ''
+    const categoryId =
+      (candidate.categoryId as string) ||
+      (candidate.category_id as string) ||
+      (candidate.category as string) ||
+      undefined
+    let usageExamples: string[] | undefined
+    if (Array.isArray(candidate.usageExamples))
+      usageExamples = candidate.usageExamples as string[]
+    else if (Array.isArray(candidate.examples))
+      usageExamples = candidate.examples as string[]
+    return {
+      id,
+      term,
+      expansion,
+      categoryId,
+      usageExamples,
+      createdAt:
+        (candidate.createdAt as string) || (candidate.created_at as string),
+      updatedAt:
+        (candidate.updatedAt as string) || (candidate.updated_at as string),
+    }
+  }
+  return { id: 'unknown', term: '', expansion: '' }
+}
+
 // Service object
 export const adminTaxonomyService = {
   // Categories
@@ -325,22 +408,57 @@ export const adminTaxonomyService = {
     return transformListResponse<Category>(raw, page, pageSize)
   },
   async getCategory(id: string): Promise<Category> {
-    return jsonFetch(`${CATEGORIES_PATH}/${id}`)
+    const raw = await jsonFetch<unknown>(`${CATEGORIES_PATH}/${id}`)
+    return normalizeSingleCategory(raw)
   },
   async createCategory(input: CreateCategoryInput): Promise<Category> {
-    return jsonFetch(`${CATEGORIES_PATH}`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    })
+    const raw = await jsonFetch<unknown>(
+      `${ensureCollection(CATEGORIES_PATH)}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+    )
+    return normalizeSingleCategory(raw)
   },
   async updateCategory(
     id: string,
     input: UpdateCategoryInput,
   ): Promise<Category> {
-    return jsonFetch(`${CATEGORIES_PATH}/${id}`, {
+    // Some backends treat PUT as full replace. If required keys (name) are missing, fetch existing.
+    const working: UpdateCategoryInput & {
+      name?: string
+      description?: string
+    } = {
+      ...input,
+    }
+    if (working.name === undefined) {
+      try {
+        const existingRaw = await jsonFetch<unknown>(`${CATEGORIES_PATH}/${id}`)
+        const existing = normalizeSingleCategory(existingRaw)
+        working.name = existing.name
+        if (working.description === undefined)
+          working.description = existing.description
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            '[adminTaxonomyService] updateCategory fallback fetch failed',
+            { id, e },
+          )
+        }
+      }
+    }
+    // Include legacy alias 'title' if backend ever used it.
+    const payload: Record<string, unknown> = {
+      name: working.name,
+      description: working.description,
+      title: working.name, // legacy alias safeguard
+    }
+    const raw = await jsonFetch<unknown>(`${CATEGORIES_PATH}/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(input),
+      body: JSON.stringify(payload),
     })
+    return normalizeSingleCategory(raw)
   },
   async deleteCategory(id: string): Promise<void> {
     await jsonFetch(`${CATEGORIES_PATH}/${id}`, { method: 'DELETE' })
@@ -364,40 +482,126 @@ export const adminTaxonomyService = {
     const normalized = transformListResponse<Abbreviation>(raw, page, pageSize)
     // Defensive: ensure each abbreviation has term & expansion; if backend used different keys, map them.
     normalized.items = normalized.items.map(a => {
-      interface MaybeLegacyAbbrev extends Partial<Abbreviation> {
-        definition?: string
-        abbreviation?: string
+      // Accept potential legacy shapes and coerce
+      const rec = a as unknown as Record<string, unknown>
+      const id = (rec.id as string) || (rec._id as string) || a.id
+      const term =
+        (rec.term as string) || (rec.abbreviation as string) || a.term
+      const expansion =
+        (rec.expansion as string) ||
+        (rec.full_form as string) ||
+        (rec.definition as string) ||
+        a.expansion
+      const categoryId =
+        (rec.categoryId as string) ||
+        (rec.category_id as string) ||
+        (rec.category as string) ||
+        a.categoryId
+      let usageExamples: string[] | undefined = a.usageExamples
+      if (!usageExamples) {
+        if (Array.isArray(rec.usageExamples))
+          usageExamples = rec.usageExamples as string[]
+        else if (Array.isArray(rec.examples))
+          usageExamples = rec.examples as string[]
       }
-      const mutable: MaybeLegacyAbbrev = { ...a }
-      if (!mutable.expansion && mutable.definition) {
-        mutable.expansion = mutable.definition
+      return {
+        ...a,
+        id,
+        term,
+        expansion,
+        categoryId,
+        usageExamples,
       }
-      if (!mutable.term && mutable.abbreviation) {
-        mutable.term = mutable.abbreviation
-      }
-      return mutable as Abbreviation
     })
     return normalized
   },
   async getAbbreviation(id: string): Promise<Abbreviation> {
-    return jsonFetch(`${ABBREVIATIONS_PATH}/${id}`)
+    const raw = await jsonFetch<unknown>(`${ABBREVIATIONS_PATH}/${id}`)
+    return normalizeSingleAbbreviation(raw)
   },
   async createAbbreviation(
     input: CreateAbbreviationInput,
   ): Promise<Abbreviation> {
-    return jsonFetch(`${ABBREVIATIONS_PATH}`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    })
+    // Backend currently expects keys: abbreviation, full_form, (optional) category_id, examples
+    // We also send our canonical keys (term, expansion, usageExamples) for forward/backward compatibility.
+    const payload: Record<string, unknown> = {
+      abbreviation: input.term,
+      full_form: input.expansion,
+      term: input.term,
+      expansion: input.expansion,
+    }
+    if (input.categoryId) {
+      payload.category_id = input.categoryId
+      payload.categoryId = input.categoryId
+    }
+    if (input.usageExamples) {
+      payload.examples = input.usageExamples
+      payload.usageExamples = input.usageExamples
+    }
+    const raw = await jsonFetch<unknown>(
+      `${ensureCollection(ABBREVIATIONS_PATH)}` as string,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    )
+    return normalizeSingleAbbreviation(raw)
   },
   async updateAbbreviation(
     id: string,
     input: UpdateAbbreviationInput,
   ): Promise<Abbreviation> {
-    return jsonFetch(`${ABBREVIATIONS_PATH}/${id}`, {
+    // Ensure required fields (term/expansion) present; if absent fetch existing.
+    const working: UpdateAbbreviationInput & {
+      term?: string
+      expansion?: string
+      categoryId?: string
+      usageExamples?: string[]
+    } = {
+      ...input,
+    }
+    if (working.term === undefined || working.expansion === undefined) {
+      try {
+        const existingRaw = await jsonFetch<unknown>(
+          `${ABBREVIATIONS_PATH}/${id}`,
+        )
+        const existing = normalizeSingleAbbreviation(existingRaw)
+        if (working.term === undefined) working.term = existing.term
+        if (working.expansion === undefined)
+          working.expansion = existing.expansion
+        if (working.categoryId === undefined)
+          working.categoryId = existing.categoryId
+        if (working.usageExamples === undefined)
+          working.usageExamples = existing.usageExamples
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            '[adminTaxonomyService] updateAbbreviation fallback fetch failed',
+            { id, e },
+          )
+        }
+      }
+    }
+    const payload: Record<string, unknown> = {
+      // Canonical & legacy pairs
+      term: working.term,
+      abbreviation: working.term,
+      expansion: working.expansion,
+      full_form: working.expansion,
+    }
+    if (working.categoryId !== undefined) {
+      payload.categoryId = working.categoryId
+      payload.category_id = working.categoryId
+    }
+    if (working.usageExamples !== undefined) {
+      payload.usageExamples = working.usageExamples
+      payload.examples = working.usageExamples
+    }
+    const raw = await jsonFetch<unknown>(`${ABBREVIATIONS_PATH}/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(input),
+      body: JSON.stringify(payload),
     })
+    return normalizeSingleAbbreviation(raw)
   },
   async deleteAbbreviation(id: string): Promise<void> {
     await jsonFetch(`${ABBREVIATIONS_PATH}/${id}`, { method: 'DELETE' })
