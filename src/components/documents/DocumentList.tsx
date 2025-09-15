@@ -581,7 +581,7 @@ export const DocumentList = ({
 
       {paginationEnabled && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-          <div className="text-muted-foreground">
+          <div className="text-gray-400">
             Showing {startIndex + 1}–{Math.min(endIndex, documents.length)} of{' '}
             {documents.length}
           </div>
