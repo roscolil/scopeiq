@@ -10,7 +10,8 @@ export interface DatabaseDocument {
   name: string
   type: string
   size: number
-  status: 'processed' | 'processing' | 'failed'
+  // Backend schema now includes additional statuses ('ready', 'error'); include them to prevent narrowing issues
+  status: 'processed' | 'processing' | 'failed' | 'ready' | 'error'
   s3Key: string // Path to actual file in S3
   s3Url?: string | null // Pre-signed URL
   thumbnailS3Key?: string | null
@@ -89,18 +90,148 @@ export const databaseDocumentService = {
 
       let nextToken: string | undefined = undefined
       let page = 0
+      // Helper fallback when deployed backend schema is missing new category fields
+      const fetchWithoutCategoryFields = async (): Promise<DatabaseDocument[]> => {
+        console.warn(
+          '⚠️ Backend schema appears outdated (category fields undefined). Falling back to minimal query without category fields. Redeploy Amplify backend to add: categoryIds, primaryCategoryId, suggestedCategoryIds.'
+        )
+        // Raw GraphQL query excluding the new fields so we can still render documents
+        const minimalQuery = /* GraphQL */ `#graphql
+          query ListDocumentsLegacy($filter: ModelDocumentFilterInput, $limit: Int, $nextToken: String) {
+            listDocuments(filter: $filter, limit: $limit, nextToken: $nextToken) {
+              items {
+                id
+                name
+                type
+                size
+                status
+                s3Key
+                s3Url
+                thumbnailS3Key
+                thumbnailUrl
+                projectId
+                mimeType
+                content
+                tags
+                createdAt
+                updatedAt
+              }
+              nextToken
+            }
+          }
+        `
+
+        interface LegacyDocItem {
+          id: string
+          name: string
+          type: string
+          size: number | string
+          status: string
+          s3Key: string
+          s3Url?: string | null
+          thumbnailS3Key?: string | null
+          thumbnailUrl?: string | null
+          projectId: string
+          mimeType?: string | null
+          content?: string | null
+          tags?: string[] | null
+          createdAt?: string | null
+          updatedAt?: string | null
+        }
+        interface LegacyListResponse {
+          listDocuments?: {
+            items?: LegacyDocItem[]
+            nextToken?: string | null
+          } | null
+        }
+
+        let legacyNext: string | undefined = undefined
+        const legacyAll: LegacyDocItem[] = []
+        let legacyPage = 0
+        do {
+          legacyPage++
+          // The client.graphql type is broader; cast the response shape afterward
+          const legacyResp = (await (client as unknown as {
+            graphql: (input: {
+              query: string
+              variables?: Record<string, unknown>
+            }) => Promise<{ data?: LegacyListResponse }>
+          }).graphql({
+            query: minimalQuery,
+            variables: {
+              filter: { projectId: { eq: projectId } },
+              nextToken: legacyNext,
+            },
+          })) as { data?: LegacyListResponse }
+          const listResult = legacyResp.data?.listDocuments
+          if (!listResult) break
+          legacyAll.push(...(listResult.items || []))
+          legacyNext = listResult.nextToken || undefined
+        } while (legacyNext)
+
+        const allowedStatuses: DatabaseDocument['status'][] = [
+          'processed',
+          'processing',
+          'failed',
+          'ready',
+          'error',
+        ]
+        return legacyAll.map(raw => {
+          const statusCandidate = typeof raw.status === 'string' ? raw.status : 'processed'
+          const status = (allowedStatuses.includes(
+            statusCandidate as DatabaseDocument['status'],
+          )
+            ? statusCandidate
+            : 'processed') as DatabaseDocument['status']
+          return {
+            id: raw.id,
+            name: raw.name,
+            type: raw.type,
+            size:
+              typeof raw.size === 'number'
+                ? raw.size
+                : parseInt(raw.size || '0', 10),
+            status,
+            s3Key: raw.s3Key,
+            s3Url: raw.s3Url || undefined,
+            thumbnailS3Key: raw.thumbnailS3Key || undefined,
+            thumbnailUrl: raw.thumbnailUrl || undefined,
+            projectId: raw.projectId,
+            mimeType: raw.mimeType || undefined,
+            content: raw.content || undefined,
+            tags: raw.tags || undefined,
+            categoryIds: undefined, // unavailable until backend redeploy
+            primaryCategoryId: undefined,
+            suggestedCategoryIds: undefined,
+            createdAt: raw.createdAt || undefined,
+            updatedAt: raw.updatedAt || undefined,
+          }
+        })
+      }
+
+      let schemaOutdatedFallbackUsed = false
+
       do {
         page++
-        const {
-          data: pageData,
-          errors,
-          nextToken: newToken,
-        } = await client.models.Document.list({
-          filter: { projectId: { eq: projectId } },
-          nextToken,
-        })
+        const { data: pageData, errors, nextToken: newToken } =
+          await client.models.Document.list({
+            filter: { projectId: { eq: projectId } },
+            nextToken,
+          })
 
         if (errors) {
+          const fieldUndefinedErrors = errors.filter(e =>
+            /Field '?(categoryIds|primaryCategoryId|suggestedCategoryIds)'? in type 'Document' is undefined/.test(
+              e.message || '',
+            ),
+          )
+          if (
+            fieldUndefinedErrors.length === errors.length &&
+            fieldUndefinedErrors.length > 0
+          ) {
+            schemaOutdatedFallbackUsed = true
+            return await fetchWithoutCategoryFields()
+          }
           console.error('DB: Error fetching documents page:', page, errors)
           throw new Error(
             `Database error (page ${page}): ${errors
@@ -110,7 +241,7 @@ export const databaseDocumentService = {
         }
 
         console.log(
-          `� DB: Page ${page} fetched ${pageData.length} documents (nextToken=${newToken ? 'yes' : 'no'})`,
+          `📄 DB: Page ${page} fetched ${pageData.length} documents (nextToken=${newToken ? 'yes' : 'no'})`,
         )
         all.push(...pageData)
         nextToken = newToken as string | undefined
@@ -168,12 +299,14 @@ export const databaseDocumentService = {
 
       console.log(
         `📋 DB: Mapped documents:`,
-        mappedDocuments.map(d => ({
-          id: d.id,
-          name: d.name,
-          status: d.status,
-        })),
+        mappedDocuments.map(d => ({ id: d.id, name: d.name, status: d.status })),
       )
+
+      if (schemaOutdatedFallbackUsed) {
+        console.warn(
+          '⚠️ Returned documents without category fields due to outdated backend schema. Redeploy Amplify backend to enable category taxonomy fields.'
+        )
+      }
 
       return mappedDocuments
     } catch (error) {
