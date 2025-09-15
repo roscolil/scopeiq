@@ -91,14 +91,25 @@ export const databaseDocumentService = {
       let nextToken: string | undefined = undefined
       let page = 0
       // Helper fallback when deployed backend schema is missing new category fields
-      const fetchWithoutCategoryFields = async (): Promise<DatabaseDocument[]> => {
+      const fetchWithoutCategoryFields = async (): Promise<
+        DatabaseDocument[]
+      > => {
         console.warn(
-          '⚠️ Backend schema appears outdated (category fields undefined). Falling back to minimal query without category fields. Redeploy Amplify backend to add: categoryIds, primaryCategoryId, suggestedCategoryIds.'
+          '⚠️ Backend schema appears outdated (category fields undefined). Falling back to minimal query without category fields. Redeploy Amplify backend to add: categoryIds, primaryCategoryId, suggestedCategoryIds.',
         )
         // Raw GraphQL query excluding the new fields so we can still render documents
-        const minimalQuery = /* GraphQL */ `#graphql
-          query ListDocumentsLegacy($filter: ModelDocumentFilterInput, $limit: Int, $nextToken: String) {
-            listDocuments(filter: $filter, limit: $limit, nextToken: $nextToken) {
+        const minimalQuery = /* GraphQL */ `
+          #graphql
+          query ListDocumentsLegacy(
+            $filter: ModelDocumentFilterInput
+            $limit: Int
+            $nextToken: String
+          ) {
+            listDocuments(
+              filter: $filter
+              limit: $limit
+              nextToken: $nextToken
+            ) {
               items {
                 id
                 name
@@ -151,12 +162,14 @@ export const databaseDocumentService = {
         do {
           legacyPage++
           // The client.graphql type is broader; cast the response shape afterward
-          const legacyResp = (await (client as unknown as {
-            graphql: (input: {
-              query: string
-              variables?: Record<string, unknown>
-            }) => Promise<{ data?: LegacyListResponse }>
-          }).graphql({
+          const legacyResp = (await (
+            client as unknown as {
+              graphql: (input: {
+                query: string
+                variables?: Record<string, unknown>
+              }) => Promise<{ data?: LegacyListResponse }>
+            }
+          ).graphql({
             query: minimalQuery,
             variables: {
               filter: { projectId: { eq: projectId } },
@@ -177,12 +190,15 @@ export const databaseDocumentService = {
           'error',
         ]
         return legacyAll.map(raw => {
-          const statusCandidate = typeof raw.status === 'string' ? raw.status : 'processed'
-          const status = (allowedStatuses.includes(
-            statusCandidate as DatabaseDocument['status'],
-          )
-            ? statusCandidate
-            : 'processed') as DatabaseDocument['status']
+          const statusCandidate =
+            typeof raw.status === 'string' ? raw.status : 'processed'
+          const status = (
+            allowedStatuses.includes(
+              statusCandidate as DatabaseDocument['status'],
+            )
+              ? statusCandidate
+              : 'processed'
+          ) as DatabaseDocument['status']
           return {
             id: raw.id,
             name: raw.name,
@@ -213,11 +229,14 @@ export const databaseDocumentService = {
 
       do {
         page++
-        const { data: pageData, errors, nextToken: newToken } =
-          await client.models.Document.list({
-            filter: { projectId: { eq: projectId } },
-            nextToken,
-          })
+        const {
+          data: pageData,
+          errors,
+          nextToken: newToken,
+        } = await client.models.Document.list({
+          filter: { projectId: { eq: projectId } },
+          nextToken,
+        })
 
         if (errors) {
           const fieldUndefinedErrors = errors.filter(e =>
@@ -299,12 +318,16 @@ export const databaseDocumentService = {
 
       console.log(
         `📋 DB: Mapped documents:`,
-        mappedDocuments.map(d => ({ id: d.id, name: d.name, status: d.status })),
+        mappedDocuments.map(d => ({
+          id: d.id,
+          name: d.name,
+          status: d.status,
+        })),
       )
 
       if (schemaOutdatedFallbackUsed) {
         console.warn(
-          '⚠️ Returned documents without category fields due to outdated backend schema. Redeploy Amplify backend to enable category taxonomy fields.'
+          '⚠️ Returned documents without category fields due to outdated backend schema. Redeploy Amplify backend to enable category taxonomy fields.',
         )
       }
 
