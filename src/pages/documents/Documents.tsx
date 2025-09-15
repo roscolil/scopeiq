@@ -474,7 +474,7 @@ const Documents = () => {
                       setIsUploadDialogOpen(false)
                       if (summary.success > 0) {
                         toast({
-                          title: 'Batch upload complete',
+                          title: 'File upload complete',
                           description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
                         })
                       } else if (summary.failed) {
