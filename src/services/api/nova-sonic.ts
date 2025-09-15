@@ -138,7 +138,19 @@ class NovaSonicService {
           this.unlockPromiseResolver()
           this.unlockPromiseResolver = null
         }
+        // Flush queued requests immediately
         this.flushSpeakQueue()
+        // Schedule a fallback re-attempt for any early playback that may have been silently blocked
+        setTimeout(() => {
+          if (!this.isAudioUnlocked()) return
+          // If nothing is currently playing but we had a previously pendingAudio, try again
+          if (this.pendingAudio) {
+            console.log(
+              '🔁 Retrying pending audio play after unlock fallback window',
+            )
+            this.playPendingAudio().catch(() => {})
+          }
+        }, 350)
 
         // Remove event listeners after successful unlock
         document.removeEventListener('touchstart', handleUserInteraction)
@@ -257,9 +269,11 @@ class NovaSonicService {
    */
   async enableAudioForSafari(): Promise<boolean> {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-
-    if (!isSafari) {
-      return true // Already enabled for non-Safari browsers
+    const isIOSFamily = /iPad|iPhone|iPod|CriOS|FxiOS/i.test(
+      navigator.userAgent,
+    )
+    if (!isSafari && !isIOSFamily) {
+      return true // Already enabled / not needed on non-Safari/iOS family
     }
 
     try {
@@ -285,6 +299,34 @@ class NovaSonicService {
       return true
     } catch (error) {
       console.error('❌ Failed to enable audio for Safari:', error)
+      return false
+    }
+  }
+
+  /**
+   * Force unlock audio across iOS family browsers (Safari, Chrome iOS, Firefox iOS).
+   * Safe to call repeatedly; idempotent after unlock.
+   */
+  async forceUnlockAudio(): Promise<boolean> {
+    if (this.isAudioUnlocked()) return true
+    try {
+      const silentAudio = new Audio()
+      silentAudio.src =
+        'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
+      silentAudio.volume = 0
+      silentAudio.muted = true
+      await silentAudio.play()
+      this.audioContextUnlocked = true
+      this.userInteractionReceived = true
+      if (this.unlockPromiseResolver) {
+        this.unlockPromiseResolver()
+        this.unlockPromiseResolver = null
+      }
+      console.log('🔓 forceUnlockAudio succeeded')
+      this.flushSpeakQueue()
+      return true
+    } catch (e) {
+      console.warn('⚠️ forceUnlockAudio failed', e)
       return false
     }
   }
@@ -413,7 +455,10 @@ class NovaSonicService {
 
         audio.src = audioUrl
 
-        console.log('🎵 Starting audio playback...')
+        console.log('🎵 Starting audio playback...', {
+          locked: !this.isAudioUnlocked(),
+          ua: navigator.userAgent,
+        })
 
         audio.onended = () => {
           console.log('✅ Audio playback completed')
@@ -449,6 +494,8 @@ class NovaSonicService {
                 console.warn(
                   '🍎 Safari/iOS blocked audio playback - user interaction required',
                 )
+                // Store as pending to retry after explicit unlock fallback
+                this.pendingAudio = audio
                 // For Safari, this is expected behavior, so we don't reject
                 URL.revokeObjectURL(audioUrl)
                 resolve()
@@ -692,6 +739,11 @@ class NovaSonicService {
         }
         // Small jittered delay
         await new Promise(r => setTimeout(r, 120 + attempt * 80))
+        // Attempt force unlock mid-retry for iOS if still locked
+        if (!this.isAudioUnlocked()) {
+          this.forceUnlockAudio().catch(() => {})
+        }
+        console.log('🔁 Retrying audio playback attempt', attempt + 1)
       }
     }
     return false

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { novaSonic } from '@/services/api/nova-sonic'
 import { Mic, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,8 @@ export const VoiceShazamButton = ({
   onTranscript,
   selfContained = true, // Default to self-contained mode
 }: VoiceShazamButtonProps) => {
+  // Faster silence detection (previously 2000ms)
+  const SILENCE_DURATION_MS = 1500
   console.log('🎯 VoiceShazamButton rendered', { isProcessing, selfContained })
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
@@ -61,6 +63,44 @@ export const VoiceShazamButton = ({
     useState(false)
   // Will assign after isListening is derived
   const prevListeningRef = useRef<boolean>(false)
+
+  // Centralized submission finalizer to ensure recognition fully stops
+  const finalizeSubmission = useCallback(
+    (
+      recognitionInstance: SpeechRecognitionType,
+      text: string,
+      context: string,
+    ) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
+      if (
+        hasSubmittedRef.current &&
+        trimmed === lastSubmittedTranscriptRef.current
+      ) {
+        console.log('🔄 finalizeSubmission duplicate skipped', { context })
+        return
+      }
+      console.log('✅ finalizeSubmission', { context, trimmed })
+      setStatus('Got result!')
+      setInternalIsListening(false)
+      hasSubmittedRef.current = true
+      lastSubmittedTranscriptRef.current = trimmed
+      forceStopRef.current = true
+      setSilenceTimer(prev => {
+        if (prev) clearTimeout(prev)
+        return null
+      })
+      try {
+        recognitionInstance.stop()
+      } catch {
+        /* already stopped */
+      }
+      if (onTranscript) {
+        onTranscript(trimmed)
+      }
+    },
+    [onTranscript],
+  )
 
   // Determine which listening state to use
   const isListening = selfContained
@@ -268,46 +308,11 @@ export const VoiceShazamButton = ({
               console.log('🤖 Android final transcript:', currentTranscript)
               setTranscript(currentTranscript)
               setHasTranscript(true)
-
-              // Android-specific duplicate prevention - more aggressive
-              const isExactDuplicate =
-                currentTranscript === lastSubmittedTranscriptRef.current
-              const isAlreadySubmitted = hasSubmittedRef.current
-
-              if (isAlreadySubmitted && isExactDuplicate) {
-                console.log(
-                  '🔄 Android: Skipping exact duplicate transcript:',
-                  currentTranscript,
-                )
-                return
-              }
-
-              // Android: Submit immediately without silence timer (non-continuous mode)
-              console.log(
-                '🤖 Android: Submitting transcript immediately:',
+              finalizeSubmission(
+                recognitionInstance,
                 currentTranscript,
+                'android-final',
               )
-              setStatus('Got result!')
-              setInternalIsListening(false)
-              hasSubmittedRef.current = true
-              lastSubmittedTranscriptRef.current = currentTranscript
-
-              // Stop recognition with force flag
-              forceStopRef.current = true
-              try {
-                recognitionInstance.stop()
-              } catch (error) {
-                console.log('Recognition already stopped')
-              }
-
-              // Pass transcript to parent
-              if (onTranscript && currentTranscript) {
-                console.log(
-                  '🎯 Android: Calling onTranscript:',
-                  currentTranscript,
-                )
-                onTranscript(currentTranscript)
-              }
             }
             return
           }
@@ -365,7 +370,7 @@ export const VoiceShazamButton = ({
                 )
               }
 
-              // Start new silence timer - wait for 2 seconds of silence
+              // Start new silence timer - wait for configured silence duration
               const newTimer = setTimeout(() => {
                 const trimmedTranscript = currentTranscript.trim()
 
@@ -396,36 +401,20 @@ export const VoiceShazamButton = ({
                   return
                 }
 
-                console.log(
-                  '⏰ Silence detected, auto-submitting:',
+                console.log('⏰ Silence detected (auto-submit)', {
                   trimmedTranscript,
+                  threshold: SILENCE_DURATION_MS,
+                })
+                finalizeSubmission(
+                  recognitionInstance,
+                  trimmedTranscript,
+                  'silence-threshold',
                 )
-                setStatus('Got result!')
-                setInternalIsListening(false)
-                hasSubmittedRef.current = true
-                lastSubmittedTranscriptRef.current = trimmedTranscript
-
-                // Stop recognition with force flag to prevent restart
-                forceStopRef.current = true
-                try {
-                  recognitionInstance.stop()
-                } catch (error) {
-                  console.log('Recognition already stopped')
-                }
-
-                // Pass transcript to parent component after silence
-                if (onTranscript && trimmedTranscript) {
-                  console.log(
-                    '🎯 Calling onTranscript after silence:',
-                    trimmedTranscript,
-                  )
-                  onTranscript(trimmedTranscript)
-                }
-              }, 2000) // 2 second silence detection
+              }, SILENCE_DURATION_MS)
 
               console.log(
-                '⏰ Started 2s silence timer for:',
-                currentTranscript.slice(0, 50),
+                `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,
+                currentTranscript.slice(0, 60),
               )
               return newTimer
             })
@@ -439,7 +428,13 @@ export const VoiceShazamButton = ({
         console.error('❌ Speech Recognition API not supported')
       }
     }
-  }, [onTranscript, selfContained, internalIsListening, hasTranscript]) // Added hasTranscript for restart guard logic
+  }, [
+    onTranscript,
+    selfContained,
+    internalIsListening,
+    hasTranscript,
+    finalizeSubmission,
+  ]) // Added finalizeSubmission to deps
 
   // Cleanup silence timer on unmount
   useEffect(() => {
@@ -486,7 +481,18 @@ export const VoiceShazamButton = ({
 
       // Attempt to unlock iOS/Safari audio early so first TTS response auto-plays
       try {
-        novaSonic.enableAudioForSafari?.()
+        // Attempt legacy Safari unlock, then new generalized force unlock
+        if (novaSonic.enableAudioForSafari) {
+          novaSonic.enableAudioForSafari().catch(() => {})
+        }
+        // Narrow type for optional forceUnlockAudio
+        type UnlockCapable = typeof novaSonic & {
+          forceUnlockAudio?: () => Promise<boolean>
+        }
+        const maybeUnlock = novaSonic as UnlockCapable
+        if (maybeUnlock.forceUnlockAudio) {
+          maybeUnlock.forceUnlockAudio().catch(() => {})
+        }
       } catch (e) {
         // Non-fatal; continue
       }
