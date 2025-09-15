@@ -45,11 +45,17 @@ export const VoiceShazamButton = ({
   // Self-contained speech recognition state
   const [internalIsListening, setInternalIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
+  // Ref mirror of transcript to avoid stale closure inside delayed timers
+  const transcriptRef = useRef('')
+  useEffect(() => {
+    transcriptRef.current = transcript
+  }, [transcript])
   const [status, setStatus] = useState('Ready')
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
+  const fallbackFinalizeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [hasTranscript, setHasTranscript] = useState(false)
   const lastSubmittedTranscriptRef = useRef<string>('')
   const hasSubmittedRef = useRef<boolean>(false)
@@ -90,6 +96,10 @@ export const VoiceShazamButton = ({
         if (prev) clearTimeout(prev)
         return null
       })
+      if (fallbackFinalizeTimerRef.current) {
+        clearTimeout(fallbackFinalizeTimerRef.current)
+        fallbackFinalizeTimerRef.current = null
+      }
       try {
         recognitionInstance.stop()
       } catch {
@@ -111,20 +121,16 @@ export const VoiceShazamButton = ({
     prevListeningRef.current = isListening
   }
 
-  // Initialize speech recognition for self-contained mode
+  // Initialize speech recognition for self-contained mode (once)
   useEffect(() => {
-    if (!selfContained) return // Skip if using external control
-
-    console.log('🎯 Speech recognition initialization useEffect running')
-
+    if (!selfContained) return
+    console.log('🎯 Speech recognition initialization (once)')
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const windowWithSR = window as any
       const SpeechRecognitionAPI =
         windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
-
       console.log('🎯 SpeechRecognition API available:', !!SpeechRecognitionAPI)
-
       if (SpeechRecognitionAPI) {
         console.log('🎯 Creating recognition instance with optimizations')
         const recognitionInstance = new SpeechRecognitionAPI()
@@ -287,6 +293,11 @@ export const VoiceShazamButton = ({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
           console.log('📝 Speech recognition result:', event, { isAndroid })
+          console.log('🔍 Debug state before processing result', {
+            hasSubmitted: hasSubmittedRef.current,
+            forceStop: forceStopRef.current,
+            hasTranscript,
+          })
 
           const results = Array.from(event.results)
 
@@ -338,6 +349,23 @@ export const VoiceShazamButton = ({
             console.log('🎤 Current transcript:', currentTranscript)
             setTranscript(currentTranscript)
             setHasTranscript(true)
+            // Start fallback finalize timer when we get the FIRST transcript chunk of this session
+            if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
+              fallbackFinalizeTimerRef.current = setTimeout(() => {
+                const latest = transcriptRef.current.trim()
+                if (!hasSubmittedRef.current && latest.length > 0) {
+                  console.log('⏳ Fallback finalize triggered (4500ms)', {
+                    latest,
+                  })
+                  finalizeSubmission(
+                    recognitionInstance,
+                    latest,
+                    'fallback-timeout',
+                  )
+                }
+              }, 4500)
+              console.log('⏳ Fallback finalize timer started (4500ms)')
+            }
 
             // Enhanced duplicate prevention - check multiple conditions
             const isExactDuplicate =
@@ -428,13 +456,16 @@ export const VoiceShazamButton = ({
         console.error('❌ Speech Recognition API not supported')
       }
     }
-  }, [
-    onTranscript,
-    selfContained,
-    internalIsListening,
-    hasTranscript,
-    finalizeSubmission,
-  ]) // Added finalizeSubmission to deps
+    return () => {
+      try {
+        recognition?.stop()
+      } catch {
+        /* ignore */
+      }
+    }
+    // We intentionally do NOT include dynamic speech state deps here; this effect is for one-time init
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selfContained, finalizeSubmission, onTranscript])
 
   // Cleanup silence timer on unmount
   useEffect(() => {
@@ -443,6 +474,10 @@ export const VoiceShazamButton = ({
     return () => {
       if (silenceTimer) {
         clearTimeout(silenceTimer)
+      }
+      if (fallbackFinalizeTimerRef.current) {
+        clearTimeout(fallbackFinalizeTimerRef.current)
+        fallbackFinalizeTimerRef.current = null
       }
     }
   }, [silenceTimer, selfContained])
@@ -474,6 +509,10 @@ export const VoiceShazamButton = ({
         }
         return null
       })
+      if (fallbackFinalizeTimerRef.current) {
+        clearTimeout(fallbackFinalizeTimerRef.current)
+        fallbackFinalizeTimerRef.current = null
+      }
       setHasTranscript(false)
       setTranscript('') // Clear transcript when stopping
     } else {
@@ -514,6 +553,10 @@ export const VoiceShazamButton = ({
         }
         return null
       })
+      if (fallbackFinalizeTimerRef.current) {
+        clearTimeout(fallbackFinalizeTimerRef.current)
+        fallbackFinalizeTimerRef.current = null
+      }
 
       // Platform-specific permission handling - optimized for immediate startup
       const isSafari = /^((?!chrome|android).)*safari/i.test(

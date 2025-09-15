@@ -222,6 +222,18 @@ class NovaSonicService {
   }
 
   /**
+   * Exposed helper for UI components: attempts to resume any pending (blocked) audio immediately.
+   */
+  async resumePendingAudio(): Promise<boolean> {
+    if (this.pendingAudio) {
+      console.log('🔁 Manual resumePendingAudio invoked')
+      return this.playPendingAudio()
+    }
+    console.log('ℹ️ resumePendingAudio: no pending audio to play')
+    return false
+  }
+
+  /**
    * Get user-friendly status about audio availability
    */
   getAudioStatus(): {
@@ -492,10 +504,40 @@ class NovaSonicService {
               // Handle Safari/iOS specific errors
               if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
                 console.warn(
-                  '🍎 Safari/iOS blocked audio playback - deferring until unlock',
+                  '🍎 Safari/iOS blocked audio playback - will retry on next gesture or unlock',
                 )
                 this.pendingAudio = audio
-                // Do not revoke URL so we can replay
+                // Attach one-time gesture listeners to re-attempt playback ASAP
+                const gestureReplay = () => {
+                  document.removeEventListener('touchstart', gestureReplay)
+                  document.removeEventListener('click', gestureReplay)
+                  document.removeEventListener('keydown', gestureReplay)
+                  if (this.pendingAudio) {
+                    this.playPendingAudio()
+                      .then(() =>
+                        console.log(
+                          '▶️ Deferred playback started (gesture replay)',
+                        ),
+                      )
+                      .catch(e =>
+                        console.warn(
+                          '⚠️ Deferred playback failed (gesture replay)',
+                          e,
+                        ),
+                      )
+                  }
+                }
+                document.addEventListener('touchstart', gestureReplay, {
+                  once: true,
+                  passive: true,
+                })
+                document.addEventListener('click', gestureReplay, {
+                  once: true,
+                  passive: true,
+                })
+                document.addEventListener('keydown', gestureReplay, {
+                  once: true,
+                })
                 interface AutoplayBlockedError extends Error {
                   code: string
                 }
