@@ -492,13 +492,18 @@ class NovaSonicService {
               // Handle Safari/iOS specific errors
               if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
                 console.warn(
-                  '🍎 Safari/iOS blocked audio playback - user interaction required',
+                  '🍎 Safari/iOS blocked audio playback - deferring until unlock',
                 )
-                // Store as pending to retry after explicit unlock fallback
                 this.pendingAudio = audio
-                // For Safari, this is expected behavior, so we don't reject
-                URL.revokeObjectURL(audioUrl)
-                resolve()
+                // Do not revoke URL so we can replay
+                interface AutoplayBlockedError extends Error {
+                  code: string
+                }
+                const blocked: AutoplayBlockedError = Object.assign(
+                  new Error('Autoplay blocked'),
+                  { code: 'AUTOPLAY_BLOCKED' },
+                )
+                reject(blocked)
               } else {
                 URL.revokeObjectURL(audioUrl)
                 reject(playError)
@@ -733,8 +738,26 @@ class NovaSonicService {
         await this.playAudio(audioData, format)
         return true
       } catch (err) {
+        const blocked = (err as { code?: string })?.code === 'AUTOPLAY_BLOCKED'
         if (attempt === retries) {
-          console.warn('⚠️ Exhausted audio play retries')
+          if (blocked && this.pendingAudio) {
+            console.warn(
+              '🍎 Autoplay blocked after retries – will play once unlocked',
+            )
+            this.waitForUnlock()
+              .then(() => {
+                if (this.pendingAudio) {
+                  this.playPendingAudio()
+                    .then(() =>
+                      console.log('▶️ Deferred playback started (post-unlock)'),
+                    )
+                    .catch(e => console.warn('⚠️ Deferred playback failed', e))
+                }
+              })
+              .catch(() => {})
+            return true
+          }
+          console.warn('⚠️ Exhausted audio play retries (non-autoplay)')
           return false
         }
         // Small jittered delay
