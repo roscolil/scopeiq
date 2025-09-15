@@ -19,6 +19,9 @@ export interface DatabaseDocument {
   mimeType?: string | null
   content?: string | null // Processed text content
   tags?: string[] | null
+  categoryIds?: string[] | null
+  primaryCategoryId?: string | null
+  suggestedCategoryIds?: string[] | null
   createdAt?: string | null
   updatedAt?: string | null
 }
@@ -75,6 +78,9 @@ export const databaseDocumentService = {
         mimeType?: string | string[] | null
         content?: string | string[] | null
         tags?: string[] | string
+        categoryIds?: string[] | string
+        primaryCategoryId?: string | string[] | null
+        suggestedCategoryIds?: string[] | string
         createdAt?: string | string[] | null
         updatedAt?: string | string[] | null
       }
@@ -144,6 +150,17 @@ export const databaseDocumentService = {
             : raw.tags
               ? [raw.tags]
               : undefined,
+          categoryIds: Array.isArray(raw.categoryIds)
+            ? raw.categoryIds
+            : raw.categoryIds
+              ? [raw.categoryIds]
+              : undefined,
+          primaryCategoryId: norm(raw.primaryCategoryId) || undefined,
+          suggestedCategoryIds: Array.isArray(raw.suggestedCategoryIds)
+            ? raw.suggestedCategoryIds
+            : raw.suggestedCategoryIds
+              ? [raw.suggestedCategoryIds]
+              : undefined,
           createdAt: norm(raw.createdAt) || new Date().toISOString(),
           updatedAt: norm(raw.updatedAt) || undefined,
         }
@@ -197,6 +214,9 @@ export const databaseDocumentService = {
         mimeType: document.mimeType,
         content: document.content,
         tags: document.tags,
+        categoryIds: document.categoryIds,
+        primaryCategoryId: document.primaryCategoryId,
+        suggestedCategoryIds: document.suggestedCategoryIds,
         createdAt: document.createdAt,
         updatedAt: document.updatedAt,
       }
@@ -232,6 +252,10 @@ export const databaseDocumentService = {
         mimeType: documentData.mimeType as string & string[],
         content: documentData.content as string & string[],
         tags: documentData.tags as string[] & string[], // Already array
+        categoryIds: documentData.categoryIds as string[] & string[],
+        primaryCategoryId: documentData.primaryCategoryId as string & string[],
+        suggestedCategoryIds: documentData.suggestedCategoryIds as string[] &
+          string[],
       })
 
       if (errors) {
@@ -277,6 +301,9 @@ export const databaseDocumentService = {
         mimeType: document.mimeType,
         content: document.content,
         tags: document.tags,
+        categoryIds: document.categoryIds,
+        primaryCategoryId: document.primaryCategoryId,
+        suggestedCategoryIds: document.suggestedCategoryIds,
         createdAt: document.createdAt,
         updatedAt: document.updatedAt,
       }
@@ -320,6 +347,12 @@ export const databaseDocumentService = {
       if (updates.mimeType !== undefined) updateData.mimeType = updates.mimeType
       if (updates.content !== undefined) updateData.content = updates.content
       if (updates.tags !== undefined) updateData.tags = updates.tags
+      if (updates.categoryIds !== undefined)
+        updateData.categoryIds = updates.categoryIds
+      if (updates.primaryCategoryId !== undefined)
+        updateData.primaryCategoryId = updates.primaryCategoryId
+      if (updates.suggestedCategoryIds !== undefined)
+        updateData.suggestedCategoryIds = updates.suggestedCategoryIds
 
       // Add updatedAt timestamp
       updateData.updatedAt = new Date().toISOString()
@@ -355,6 +388,9 @@ export const databaseDocumentService = {
         mimeType: document.mimeType,
         content: document.content,
         tags: document.tags,
+        categoryIds: document.categoryIds,
+        primaryCategoryId: document.primaryCategoryId,
+        suggestedCategoryIds: document.suggestedCategoryIds,
         createdAt: document.createdAt,
         updatedAt: document.updatedAt,
       }
