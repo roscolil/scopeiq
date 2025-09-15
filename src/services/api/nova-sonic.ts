@@ -35,6 +35,16 @@ class NovaSonicService {
   private pendingAudio: HTMLAudioElement | null = null
   // Track the currently playing audio element so we can stop/cancel playback early
   private currentAudio: HTMLAudioElement | null = null
+  // Queue of pending speak requests when autoplay blocked (iOS/Safari)
+  private speakQueue: Array<{
+    text: string
+    options?: Partial<NovaSonicOptions>
+    resolve: (v: boolean) => void
+    reject: (e: unknown) => void
+  }> = []
+  // A promise that resolves when audio is unlocked (first user gesture)
+  private unlockPromise: Promise<void> | null = null
+  private unlockPromiseResolver: (() => void) | null = null
   private defaultOptions: Required<NovaSonicOptions> = {
     voice: 'Joanna' as VoiceId,
     outputFormat: 'mp3' as OutputFormat,
@@ -75,8 +85,15 @@ class NovaSonicService {
     if (!isSafari && !isIOS) {
       this.audioContextUnlocked = true
       this.userInteractionReceived = true
+      // Non restricted platforms: immediately resolve unlock promise
+      this.unlockPromise = Promise.resolve()
       return
     }
+
+    // Create a promise which is resolved upon first successful unlock
+    this.unlockPromise = new Promise<void>(res => {
+      this.unlockPromiseResolver = res
+    })
 
     // Function to handle user interaction
     const handleUserInteraction = async () => {
@@ -97,6 +114,13 @@ class NovaSonicService {
         await silentAudio.play()
         this.audioContextUnlocked = true
         console.log('✅ Audio context unlocked successfully')
+
+        // Resolve unlock promise and flush any queued speak requests
+        if (this.unlockPromiseResolver) {
+          this.unlockPromiseResolver()
+          this.unlockPromiseResolver = null
+        }
+        this.flushSpeakQueue()
 
         // Remove event listeners after successful unlock
         document.removeEventListener('touchstart', handleUserInteraction)
@@ -461,6 +485,7 @@ class NovaSonicService {
     options?: Partial<NovaSonicOptions>,
   ): Promise<boolean> {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 
     try {
       console.log('🗣️ Speaking with AWS Polly:', text.substring(0, 50) + '...')
@@ -473,16 +498,28 @@ class NovaSonicService {
         )
       }
 
+      // If iOS/Safari and audio not yet unlocked, queue the request for auto playback later
+      if ((isSafari || isIOS) && !this.isAudioUnlocked()) {
+        console.log('🍎 Queuing speech until audio unlocked')
+        return await this.queueSpeak(text, options)
+      }
+
       const result = await this.synthesizeSpeech(text, options)
 
       if (!result.success) {
         console.error('❌ Failed to synthesize speech:', result.error)
         return false
       }
-
-      await this.playAudio(result.audio, options?.outputFormat || 'mp3')
-      console.log('✅ Speech playback completed')
-      return true
+      // Try playback with simple retry for iOS quirks
+      const success = await this.tryPlayWithRetry(
+        result.audio,
+        options?.outputFormat || 'mp3',
+        2,
+      )
+      if (success) {
+        console.log('✅ Speech playback completed')
+      }
+      return success
     } catch (error) {
       console.error('❌ Failed to speak:', error)
 
@@ -503,6 +540,73 @@ class NovaSonicService {
 
       return false
     }
+  }
+
+  /**
+   * Queue a speak request until audio unlocked (iOS/Safari autoplay)
+   */
+  private queueSpeak(
+    text: string,
+    options?: Partial<NovaSonicOptions>,
+  ): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      this.speakQueue.push({ text, options, resolve, reject })
+    })
+  }
+
+  /**
+   * Flush queued speak requests once audio unlocked
+   */
+  private async flushSpeakQueue() {
+    if (!this.speakQueue.length) return
+    console.log(`🚀 Flushing ${this.speakQueue.length} queued speech request(s) after unlock`)
+    const queue = [...this.speakQueue]
+    this.speakQueue = []
+    for (const item of queue) {
+      try {
+        const ok = await this.speak(item.text, item.options)
+        item.resolve(ok)
+      } catch (e) {
+        item.reject(e)
+      }
+    }
+  }
+
+  /**
+   * Attempt playback with limited retries (handles transient iOS failures)
+   */
+  private async tryPlayWithRetry(
+    audioData: Uint8Array,
+    format: string,
+    retries: number,
+  ): Promise<boolean> {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await this.playAudio(audioData, format)
+        return true
+      } catch (err) {
+        if (attempt === retries) {
+          console.warn('⚠️ Exhausted audio play retries')
+          return false
+        }
+        // Small jittered delay
+        await new Promise(r => setTimeout(r, 120 + attempt * 80))
+      }
+    }
+    return false
+  }
+
+  /**
+   * Expose a method to wait until audio unlocked (for UI components)
+   */
+  waitForUnlock(): Promise<void> {
+    if (this.isAudioUnlocked()) return Promise.resolve()
+    if (!this.unlockPromise) {
+      this.unlockPromise = new Promise<void>(res => {
+        this.unlockPromiseResolver = res
+      })
+    }
+    return this.unlockPromise
   }
 
   /**
