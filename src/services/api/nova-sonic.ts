@@ -38,7 +38,7 @@ class NovaSonicService {
   // Persistent reusable output element (improves iOS autoplay reliability)
   private outputAudio: HTMLAudioElement | null = null
   // Web Audio API context & active buffer source (Option 2 path)
-  private audioCtx: (AudioContext | null) = null
+  private audioCtx: AudioContext | null = null
   private activeSource: AudioBufferSourceNode | null = null
   // Queue of pending speak requests when autoplay blocked (iOS/Safari)
   private speakQueue: Array<{
@@ -184,7 +184,9 @@ class NovaSonicService {
   private async ensureAudioContext(): Promise<AudioContext> {
     if (!this.audioCtx) {
       try {
-  interface AudioContextWindow extends Window { webkitAudioContext?: typeof AudioContext }
+        interface AudioContextWindow extends Window {
+          webkitAudioContext?: typeof AudioContext
+        }
         const w = window as AudioContextWindow
         const Ctor: typeof AudioContext | undefined =
           (typeof window !== 'undefined' && 'AudioContext' in window
@@ -212,7 +214,10 @@ class NovaSonicService {
   /**
    * Play via Web Audio API. Returns true if successful, false if we should fallback.
    */
-  private async playViaWebAudio(audioData: Uint8Array, format: string): Promise<boolean> {
+  private async playViaWebAudio(
+    audioData: Uint8Array,
+    format: string,
+  ): Promise<boolean> {
     try {
       const ctx = await this.ensureAudioContext()
       // MP3 / PCM both acceptable; decodeAudioData handles container based on browser support.
@@ -220,12 +225,16 @@ class NovaSonicService {
         audioData.byteOffset,
         audioData.byteOffset + audioData.byteLength,
       )
-  // Ensure we pass a plain ArrayBuffer (not SharedArrayBuffer) & clone to avoid detachment issues
-  const clone = arrayBuf.slice(0)
-  const audioBuffer = await ctx.decodeAudioData(clone as ArrayBuffer)
+      // Ensure we pass a plain ArrayBuffer (not SharedArrayBuffer) & clone to avoid detachment issues
+      const clone = arrayBuf.slice(0)
+      const audioBuffer = await ctx.decodeAudioData(clone as ArrayBuffer)
       // Stop any prior source
       if (this.activeSource) {
-        try { this.activeSource.stop() } catch (e) { /* ignore stop race */ }
+        try {
+          this.activeSource.stop()
+        } catch (e) {
+          /* ignore stop race */
+        }
         this.activeSource = null
       }
       const source = ctx.createBufferSource()
@@ -373,7 +382,11 @@ class NovaSonicService {
         this.unlockPromiseResolver = null
       }
       // Proactively create/resume AudioContext after a real user gesture
-  try { await this.ensureAudioContext() } catch (e) { /* ignore ensure ctx failure */ }
+      try {
+        await this.ensureAudioContext()
+      } catch (e) {
+        /* ignore ensure ctx failure */
+      }
       // Flush any queued speech now that unlock succeeded
       this.flushSpeakQueue()
       return true
@@ -403,7 +416,11 @@ class NovaSonicService {
         this.unlockPromiseResolver = null
       }
       console.log('🔓 forceUnlockAudio succeeded')
-  try { await this.ensureAudioContext() } catch (e) { /* ignore ensure ctx failure */ }
+      try {
+        await this.ensureAudioContext()
+      } catch (e) {
+        /* ignore ensure ctx failure */
+      }
       this.flushSpeakQueue()
       return true
     } catch (e) {
@@ -579,7 +596,7 @@ class NovaSonicService {
         }
 
         // Attempt to play with proper error handling
-  const playPromise = audio.play()
+        const playPromise = audio.play()
 
         if (playPromise !== undefined) {
           playPromise
@@ -682,7 +699,11 @@ class NovaSonicService {
       }
     }
     if (this.activeSource) {
-      try { this.activeSource.stop() } catch (e) { /* ignore */ }
+      try {
+        this.activeSource.stop()
+      } catch (e) {
+        /* ignore */
+      }
       this.activeSource = null
     }
     return false
