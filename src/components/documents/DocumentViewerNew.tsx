@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { FileText, File, FileImage, Loader2, Download } from 'lucide-react'
+import {
+  FileText,
+  File,
+  FileImage,
+  Loader2,
+  Download,
+  ExternalLink,
+} from 'lucide-react'
 import { FileTypeIcon } from '@/components/documents/FileTypeIcon'
 import { DocumentViewerSkeleton } from '@/components/shared/skeletons'
 import { PDFViewer } from './PDFViewer'
@@ -91,6 +98,21 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
   const [html, setHtml] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  // Reading mode & dynamic font scaling removed (simplified viewer)
+  const openInNewTab = () => {
+    try {
+      const safeTitle = (document.name || 'Document')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+      const docHtml = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8" />\n<meta name="viewport" content="width=device-width,initial-scale=1" />\n<title>${safeTitle}</title>\n<style>\n:root { --page-width: 880px; --font-body: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; --font-mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; --c-border:#d0d7de; --c-border-soft:#e6eaef; --c-bg:#ffffff; --c-fg:#1b1f24; --c-muted:#57606a; --c-accent:#0d6efd; }\n@media (prefers-color-scheme: dark){ :root { --c-bg:#0f1115; --c-fg:#e6edf3; --c-muted:#8b949e; --c-border:#30363d; --c-border-soft:#21262d; --c-accent:#409bff; } body { background: #0f1115; color: var(--c-fg);} }\nhtml,body { padding:0; margin:0; }\nbody { font-family: var(--font-body); font-size:16px; line-height:1.6; background: var(--c-bg); color: var(--c-fg); -webkit-font-smoothing: antialiased; }\n.container { max-width: var(--page-width); margin: 0 auto; padding: 2.2rem 2.1rem 3rem; }\nheader { margin-bottom: 2.2rem; }\nh1 { font-size: 1.85rem; line-height:1.15; margin:0 0 0.35rem; font-weight:600; letter-spacing:-0.5px; }\n.meta { font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color: var(--c-muted); font-weight:600; }\narticle { font-size:1rem; }\narticle :where(p,ul,ol,table,pre,blockquote){ margin: 0 0 1.05rem; }\narticle :where(h1,h2,h3,h4,h5){ font-weight:600; line-height:1.25; scroll-margin-top: 4rem; }\narticle h2 { font-size:1.45rem; margin:2.2rem 0 0.85rem; padding-top:0.25rem; border-top:1px solid var(--c-border-soft); }\narticle h3 { font-size:1.18rem; margin:1.8rem 0 0.65rem; }\narticle h4 { font-size:1.05rem; margin:1.4rem 0 0.55rem; text-transform:uppercase; letter-spacing:0.5px; }\narticle a { color: var(--c-accent); text-decoration:none; }\narticle a:hover { text-decoration:underline; }\narticle code { font-family: var(--font-mono); background: rgba(110,118,129,0.15); padding:2px 5px; border-radius:4px; font-size:0.85em; }\npre { background: #0d1117; color:#e6edf3; padding:1rem 1.1rem; border-radius:6px; overflow:auto; line-height:1.45; font-size:0.85rem; }\npre code { background: transparent; padding:0; color:inherit; }\nblockquote { border-left:4px solid var(--c-accent); padding:0.55rem 1rem; background: rgba(13,110,253,0.06); color: var(--c-fg); border-radius:4px; }\nhr { border:0; border-top:1px solid var(--c-border-soft); margin:2.2rem 0; }\ntable { border-collapse:collapse; width:100%; font-size:0.92rem; }\nth,td { border:1px solid var(--c-border); text-align:left; padding:6px 10px; vertical-align:top; }\nth { background: rgba(13,110,253,0.08); font-weight:600; }\ntbody tr:nth-child(even){ background: rgba(140,149,159,0.08); }\nimg { max-width:100%; height:auto; }\nfigure { margin:0 0 1.2rem; }\nfigcaption { font-size:0.75rem; color: var(--c-muted); margin-top:0.35rem; text-align:center; }\n.docx-render { all: initial; font-family: var(--font-body); line-height:1.55; color: var(--c-fg); font-size:1rem; }\n.docx-render * { all: revert; }\n.docx-render p:empty { display:none; }\n.docx-render p { margin:0 0 1.05rem; }\n.docx-render table { border-collapse:collapse; }\n.docx-render th,.docx-render td { border:1px solid var(--c-border); padding:6px 8px; }\n.docx-render h1 { font-size:1.85rem; }\n.docx-render h2 { font-size:1.45rem; }\n.docx-render h3 { font-size:1.18rem; }\n.print-hint { position:fixed; bottom:10px; right:14px; font-size:11px; background:rgba(0,0,0,0.55); color:#fff; padding:6px 9px; border-radius:6px; font-family:var(--font-body); letter-spacing:0.5px; }\n@media print { body { background:#fff; color:#000; } .print-hint { display:none; } header { margin-bottom:1.2rem; } .container { padding:0 1rem; } a { text-decoration:underline; } }\n</style>\n</head>\n<body>\n<div class="container">\n<header>\n<h1>${safeTitle}</h1>\n<div class="meta">Exported ${new Date().toLocaleString()}</div>\n</header>\n<article class="docx-export docx-render">${html}</article>\n</div>\n<div class="print-hint">Press Ctrl/Cmd + P to print / save PDF</div>\n</body>\n</html>`
+      const blob = new Blob([docHtml], { type: 'text/html' })
+      const urlObj = URL.createObjectURL(blob)
+      window.open(urlObj, '_blank')
+      setTimeout(() => URL.revokeObjectURL(urlObj), 60_000)
+    } catch (e) {
+      console.warn('Open in new tab failed', e)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -135,16 +157,32 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
     }
   }, [document])
 
-  if (isLoading) {
+  const toolbar = (
+    <div className="flex items-center justify-between mb-3 text-[11px]">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={openInNewTab}
+          disabled={isLoading || !html}
+          className="px-2 py-1 rounded border text-xs font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          aria-label="Open in new tab"
+        >
+          <ExternalLink className="h-3 w-3" /> Open in New Tab
+        </button>
+      </div>
+    </div>
+  )
+
+  if (isLoading)
     return (
-      <div className="p-4 text-xs text-gray-500 italic bg-muted/40 rounded-md border">
+      <div className="p-4 text-xs text-gray-500 italic bg-muted/80 rounded-md border">
         Converting .docx to HTML...
       </div>
     )
-  }
-  if (error) {
+  if (error)
     return (
-      <div className="p-4 text-xs bg-red-50/70 dark:bg-red-950/30 border border-red-300/40 dark:border-red-700/40 rounded-md">
+      <div className="p-4 text-xs bg-red-50/70 dark:bg-red-950/30 border border-red-300/40 dark:border-red-700/40 rounded-md space-y-2">
+        {toolbar}
         <p className="text-red-600 dark:text-red-300 mb-2 font-medium">
           {error}
         </p>
@@ -157,12 +195,15 @@ const DocxFileViewer = ({ document }: { document: DocumentType }) => {
         </a>
       </div>
     )
-  }
   return (
-    <div
-      className="docx-render prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-md p-4 border overflow-auto max-h-[70vh]"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="flex flex-col gap-1">
+      {toolbar}
+      <div
+        className="docx-render max-w-none bg-white text-black rounded-md border overflow-auto shadow-sm p-4 max-h-[70vh]"
+        style={{ color: '#000', fontSize: '14px', lineHeight: 1.55 }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
   )
 }
 
