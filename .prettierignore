@@ -1,0 +1,25 @@
+# Prettier ignore file
+
+# Amplify generated files
+amplify_outputs.json
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files (often have specific formatting)
+.env*
+
+# Generated files that shouldn't be formatted
+*.min.js
+*.min.css
+
+# AWS Amplify
+.amplify/
+amplify/

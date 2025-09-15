@@ -1,27 +1,33 @@
-import { MultiSelect } from './MultiSelect'
+// Organized component exports - Feature-based organization
+// Each feature folder contains related components for better maintainability
 
-export * as Layout from './Layout'
-export * as FaqAccordion from './FaqAccordion'
-export * as Spinner from './Spinner'
-export * as Navbar from './Navbar'
-export * as Footer from './Footer'
-export * as VoiceInput from './VoiceInput'
-export * as DocumentList from './DocumentList'
-export * as SearchProducts from './SearchProducts'
-export * as ProjectSelector from './ProjectSelector'
-export * as ProjectList from './ProjectList'
-export * as ProjectForm from './ProjectForm'
-export * as FileUploader from './FileUploader'
-export * as AutocompleteInput from './AutocompleteInput'
-export * as AuthLayout from './AuthLayout'
-export * as AIActions from './AIActions'
-export * as MultiSelect from './MultiSelect'
-export * as Badge from './Badge'
-export * as DocumentURLRefresher from './DocumentURLRefresher'
-export * as DataMigration from './DataMigration'
-export * as VoiceShazamButton from './VoiceShazamButton'
-export * as DocumentIDFinder from './DocumentIDFinder'
-export * as UserForm from './UserForm'
-export * as UserTable from './UserTable'
-export * as UserStats from './UserStats'
-export * from './skeletons'
+// Document components
+export * from './documents'
+
+// AI components
+export * from './ai'
+
+// Voice components
+export * from './voice'
+
+// Upload components
+export * from './upload'
+
+// Project components
+export * from './projects'
+
+// Auth components
+export * from './auth'
+
+// Admin components
+export * from './admin'
+
+// Shared components
+export * from './shared'
+
+// Keep legacy exports for backwards compatibility
+// Layout components (avoid naming conflicts)
+export { Layout } from './layout/Layout'
+export { Navbar } from './layout/Navbar'
+export { Footer } from './layout/Footer'
+export { AddToHomeScreen } from './layout/AddToHomeScreen'

@@ -1,4 +1,4 @@
-# 🏗️ ScopeIQ
+# 🏗️ Jacq of All Trades
 
 > **AI-Powered Construction Document Management Platform**  
 > Intelligent document organization, semantic search, and project collaboration for the construction industry.
@@ -11,9 +11,9 @@
 
 ---
 
-## 🚀 **What is ScopeIQ?**
+## 🚀 **What is Jacq of All Trades?**
 
-ScopeIQ revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
+Jacq of All Trades revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
 
 ### ✨ **Key Features**
 
@@ -119,7 +119,7 @@ VITE_PINECONE_API_KEY=your_pinecone_api_key
 VITE_AWS_REGION=your_aws_region
 VITE_AWS_ACCESS_KEY_ID=your_access_key
 VITE_AWS_SECRET_ACCESS_KEY=your_secret_key
-VITE_S3_BUCKET_NAME=your_s3_bucket
+VITE_AWS_S3_BUCKET=your_s3_bucket
 
 # Google Places (Optional)
 VITE_GOOGLE_PLACES_API_KEY=your_google_places_key
@@ -329,9 +329,9 @@ Need help? We're here for you!
 
 ---
 
-## 🏆 **Why ScopeIQ?**
+## 🏆 **Why Jacq of All Trades?**
 
-> _"Before ScopeIQ, finding the right specification took hours. Now it takes seconds."_  
+> _"Before Jacq of All Trades, finding the right specification took hours. Now it takes seconds."_  
 > — **Sarah Chen**, Project Manager at BuildTech Solutions
 
 > _"The voice search feature is a game-changer when you're on-site with dirty hands."_  

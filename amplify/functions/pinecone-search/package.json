@@ -1,0 +1,8 @@
+{
+  "name": "pinecone-search",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@pinecone-database/pinecone": "^3.0.0"
+  }
+}

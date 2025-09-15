@@ -205,7 +205,7 @@ const fileUrl = document.url // Pre-signed S3 URL (1 hour expiration)
 const bucketName = amplifyOutputs.storage?.bucket_name
 
 // Fallback: Environment variables
-const bucketName = env.S3_BUCKET_NAME
+const bucketName = env.AWS_S3_BUCKET
 
 // Current configuration:
 // - Bucket: amplify-vitereactshadcnts-amplifyteamdrivebucket28-3sjth3rkm1cu
