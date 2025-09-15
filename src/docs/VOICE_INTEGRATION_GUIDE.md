@@ -291,10 +291,10 @@ Modern iOS & Safari block programmatic audio (including AWS Polly playback) unti
 
 ### API Helpers
 
-| Method | Purpose |
-|--------|---------|
-| `novaSonic.waitForUnlock()` | Await until audio is permitted (optional) |
-| `novaSonic.stopCurrentPlayback()` | Stop current audio (existing) |
+| Method                            | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
+| `novaSonic.waitForUnlock()`       | Await until audio is permitted (optional) |
+| `novaSonic.stopCurrentPlayback()` | Stop current audio (existing)             |
 
 ### Typical Usage (No Change Required)
 
@@ -313,11 +313,11 @@ await novaSonic.speak('Ready to assist you.')
 
 ### Edge Cases
 
-| Scenario | Result |
-|----------|--------|
+| Scenario                  | Result                             |
+| ------------------------- | ---------------------------------- |
 | Multiple queued responses | All play sequentially after unlock |
-| No user interaction ever | Audio never plays (spec-compliant) |
-| Intermittent iOS failures | Automatic retry with jitter |
+| No user interaction ever  | Audio never plays (spec-compliant) |
+| Intermittent iOS failures | Automatic retry with jitter        |
 
 Use the `useSafariAudio` hook if you want to show a banner prompting the user to tap.
 

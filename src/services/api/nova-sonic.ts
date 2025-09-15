@@ -559,7 +559,9 @@ class NovaSonicService {
    */
   private async flushSpeakQueue() {
     if (!this.speakQueue.length) return
-    console.log(`🚀 Flushing ${this.speakQueue.length} queued speech request(s) after unlock`)
+    console.log(
+      `🚀 Flushing ${this.speakQueue.length} queued speech request(s) after unlock`,
+    )
     const queue = [...this.speakQueue]
     this.speakQueue = []
     for (const item of queue) {
