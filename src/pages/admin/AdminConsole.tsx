@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { adminTaxonomyService } from '@/services'
 import type {
   AdminCategory,
@@ -133,6 +133,28 @@ const AdminConsole: React.FC = () => {
   const [selectedAbbrevIds, setSelectedAbbrevIds] = useState<Set<string>>(
     new Set(),
   )
+  // Bulk delete confirmation context
+  const [bulkDeleteContext, setBulkDeleteContext] = useState<null | {
+    type: 'categories' | 'abbreviations'
+    ids: string[]
+  }>(null)
+  // Soft bulk deletion (undo window) state
+  const UNDO_WINDOW_MS = 5000
+  const [pendingBulkDeletion, setPendingBulkDeletion] = useState<null | {
+    type: 'categories' | 'abbreviations'
+    ids: string[]
+    status: 'pending' | 'processing'
+    expiresAt: number
+  }>(null)
+  const bulkTimerRef = useRef<number | null>(null)
+
+  // Clear any active timer on unmount
+  useEffect(() => {
+    const timerId = bulkTimerRef.current
+    return () => {
+      if (timerId) window.clearTimeout(timerId)
+    }
+  }, [])
 
   const toggleSelectAllCategories = (checked: boolean) => {
     if (checked) {
@@ -166,44 +188,92 @@ const AdminConsole: React.FC = () => {
     })
   }
 
-  const bulkDeleteCategories = async () => {
-    const ids = Array.from(selectedCategoryIds)
+  const commitBulkDeletion = async (
+    type: 'categories' | 'abbreviations',
+    ids: string[],
+  ) => {
     if (!ids.length) return
-    // Simple sequential delete; could optimize with Promise.all if backend supports
-    for (const id of ids) {
-      try {
-        await adminTaxonomyService.deleteCategory(id)
-      } catch (e) {
-        console.error('Bulk delete category failed', id, e)
+    setPendingBulkDeletion(prev =>
+      prev ? { ...prev, status: 'processing' } : prev,
+    )
+    if (type === 'categories') {
+      for (const id of ids) {
+        try {
+          await adminTaxonomyService.deleteCategory(id)
+        } catch (e) {
+          console.error('Bulk delete category failed', id, e)
+        }
       }
+      setCategoriesState(s => ({
+        ...s,
+        data: s.data.filter(c => !ids.includes(c.id)),
+      }))
+    } else {
+      for (const id of ids) {
+        try {
+          await adminTaxonomyService.deleteAbbreviation(id)
+        } catch (e) {
+          console.error('Bulk delete abbreviation failed', id, e)
+        }
+      }
+      setAbbrevState(s => ({
+        ...s,
+        data: s.data.filter(a => !ids.includes(a.id)),
+      }))
     }
-    setCategoriesState(s => ({
-      ...s,
-      data: s.data.filter(c => !selectedCategoryIds.has(c.id)),
-    }))
-    setSelectedCategoryIds(new Set())
-    toast({ title: 'Deleted categories', description: `${ids.length} removed` })
+    toast({
+      title: 'Bulk delete complete',
+      description: `${ids.length} ${type === 'categories' ? 'categories' : 'abbreviations'} removed`,
+    })
+    setPendingBulkDeletion(null)
   }
 
-  const bulkDeleteAbbrevs = async () => {
-    const ids = Array.from(selectedAbbrevIds)
+  const stageBulkDeletion = () => {
+    if (!bulkDeleteContext || pendingBulkDeletion) return
+    const { type, ids } = bulkDeleteContext
+    setBulkDeleteContext(null)
     if (!ids.length) return
-    for (const id of ids) {
-      try {
-        await adminTaxonomyService.deleteAbbreviation(id)
-      } catch (e) {
-        console.error('Bulk delete abbreviation failed', id, e)
-      }
-    }
-    setAbbrevState(s => ({
-      ...s,
-      data: s.data.filter(a => !selectedAbbrevIds.has(a.id)),
-    }))
-    setSelectedAbbrevIds(new Set())
-    toast({
-      title: 'Deleted abbreviations',
-      description: `${ids.length} removed`,
+    // Clear selections immediately for visual feedback
+    if (type === 'categories') setSelectedCategoryIds(new Set())
+    else setSelectedAbbrevIds(new Set())
+
+    const expiresAt = Date.now() + UNDO_WINDOW_MS
+    setPendingBulkDeletion({ type, ids, status: 'pending', expiresAt })
+
+    // Toast with Undo action
+    const { dismiss } = toast({
+      title: 'Deletion scheduled',
+      description: `${ids.length} ${type === 'categories' ? 'categories' : 'abbreviations'} will be deleted.`,
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (bulkTimerRef.current) {
+              window.clearTimeout(bulkTimerRef.current)
+              bulkTimerRef.current = null
+            }
+            setPendingBulkDeletion(null)
+            toast({
+              title: 'Bulk delete canceled',
+              description: 'Items were not removed.',
+            })
+            dismiss()
+          }}
+        >
+          Undo
+        </Button>
+      ),
     })
+
+    if (bulkTimerRef.current) window.clearTimeout(bulkTimerRef.current)
+    bulkTimerRef.current = window.setTimeout(() => {
+      setPendingBulkDeletion(prev => {
+        if (!prev) return prev
+        commitBulkDeletion(prev.type, prev.ids)
+        return prev
+      })
+    }, UNDO_WINDOW_MS)
   }
 
   const loadCategories = useCallback(
@@ -534,70 +604,78 @@ const AdminConsole: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((cat, idx) => (
-                <tr
-                  key={cat.id}
-                  className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15`}
-                >
-                  <td className="px-2 py-2 align-middle">
-                    <Checkbox
-                      aria-label={`Select category ${cat.name}`}
-                      checked={selectedCategoryIds.has(cat.id)}
-                      onCheckedChange={val =>
-                        toggleSelectCategory(cat.id, !!val)
-                      }
-                    />
-                  </td>
-                  <td
-                    className="px-3 py-2 font-medium text-foreground break-words max-w-[260px] leading-snug align-middle"
-                    title={cat.name}
+              {sorted.map((cat, idx) => {
+                const dimmed =
+                  pendingBulkDeletion &&
+                  pendingBulkDeletion.type === 'categories' &&
+                  pendingBulkDeletion.ids.includes(cat.id)
+                return (
+                  <tr
+                    key={cat.id}
+                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''}`}
                   >
-                    <span className="whitespace-pre-wrap">{cat.name}</span>
-                  </td>
-                  <td className="px-3 py-2 text-sm leading-snug text-foreground/80 align-middle max-w-[520px]">
-                    {cat.description ? (
-                      <span
-                        className="whitespace-pre-wrap break-words block"
-                        title={cat.description}
-                      >
-                        {cat.description}
-                      </span>
-                    ) : (
-                      <span className="italic opacity-50">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-mono text-sm align-middle">
-                    {cat.abbreviationCount ?? 0}
-                  </td>
-                  <td className="px-3 py-2 text-right align-middle">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          aria-label={`Actions for ${cat.name}`}
+                    <td className="px-2 py-2 align-middle">
+                      <Checkbox
+                        aria-label={`Select category ${cat.name}`}
+                        checked={selectedCategoryIds.has(cat.id)}
+                        onCheckedChange={val =>
+                          toggleSelectCategory(cat.id, !!val)
+                        }
+                      />
+                    </td>
+                    <td
+                      className="px-3 py-2 font-medium text-foreground break-words max-w-[260px] leading-snug align-middle"
+                      title={cat.name}
+                    >
+                      <span className="whitespace-pre-wrap">{cat.name}</span>
+                    </td>
+                    <td className="px-3 py-2 text-sm leading-snug text-foreground/80 align-middle max-w-[520px]">
+                      {cat.description ? (
+                        <span
+                          className="whitespace-pre-wrap break-words block"
+                          title={cat.description}
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => openEditCategory(cat)}>
-                          <Edit3 className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setPendingDeleteCategory(cat)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
+                          {cat.description}
+                        </span>
+                      ) : (
+                        <span className="italic opacity-50">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-mono text-sm align-middle">
+                      {cat.abbreviationCount ?? 0}
+                    </td>
+                    <td className="px-3 py-2 text-right align-middle">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            aria-label={`Actions for ${cat.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => openEditCategory(cat)}
+                          >
+                            <Edit3 className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setPendingDeleteCategory(cat)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -612,7 +690,12 @@ const AdminConsole: React.FC = () => {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={bulkDeleteCategories}
+                onClick={() =>
+                  setBulkDeleteContext({
+                    type: 'categories',
+                    ids: Array.from(selectedCategoryIds),
+                  })
+                }
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete Selected (
                 {selectedCategoryIds.size})
@@ -759,78 +842,86 @@ const AdminConsole: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((ab, idx) => (
-                <tr
-                  key={ab.id}
-                  className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15`}
-                >
-                  <td className="px-2 py-2 align-middle">
-                    <Checkbox
-                      aria-label={`Select abbreviation ${ab.term}`}
-                      checked={selectedAbbrevIds.has(ab.id)}
-                      onCheckedChange={val => toggleSelectAbbrev(ab.id, !!val)}
-                    />
-                  </td>
-                  <td
-                    className="px-3 py-2 font-medium text-foreground break-words max-w-[200px] leading-snug align-middle"
-                    title={ab.term}
+              {sorted.map((ab, idx) => {
+                const dimmed =
+                  pendingBulkDeletion &&
+                  pendingBulkDeletion.type === 'abbreviations' &&
+                  pendingBulkDeletion.ids.includes(ab.id)
+                return (
+                  <tr
+                    key={ab.id}
+                    className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15 ${dimmed ? 'opacity-50 saturate-50' : ''}`}
                   >
-                    <span className="whitespace-pre-wrap">{ab.term}</span>
-                  </td>
-                  <td
-                    className="px-3 py-2 text-sm leading-snug text-foreground/80 max-w-[520px] align-middle"
-                    title={ab.expansion}
-                  >
-                    <span className="whitespace-pre-wrap break-words block">
-                      {ab.expansion}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-sm text-foreground/70 align-middle">
-                    {ab.categoryId ? (
-                      <span
-                        className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-                        title={
-                          categoryNameById.get(ab.categoryId) || ab.categoryId
+                    <td className="px-2 py-2 align-middle">
+                      <Checkbox
+                        aria-label={`Select abbreviation ${ab.term}`}
+                        checked={selectedAbbrevIds.has(ab.id)}
+                        onCheckedChange={val =>
+                          toggleSelectAbbrev(ab.id, !!val)
                         }
-                      >
-                        {categoryNameById.get(ab.categoryId) || ab.categoryId}
+                      />
+                    </td>
+                    <td
+                      className="px-3 py-2 font-medium text-foreground break-words max-w-[200px] leading-snug align-middle"
+                      title={ab.term}
+                    >
+                      <span className="whitespace-pre-wrap">{ab.term}</span>
+                    </td>
+                    <td
+                      className="px-3 py-2 text-sm leading-snug text-foreground/80 max-w-[520px] align-middle"
+                      title={ab.expansion}
+                    >
+                      <span className="whitespace-pre-wrap break-words block">
+                        {ab.expansion}
                       </span>
-                    ) : (
-                      <span className="italic opacity-50">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right text-sm tabular-nums font-mono align-middle">
-                    {(ab.usageExamples || []).length || 0}
-                  </td>
-                  <td className="px-3 py-2 text-right align-middle">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          aria-label={`Actions for ${ab.term}`}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-foreground/70 align-middle">
+                      {ab.categoryId ? (
+                        <span
+                          className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                          title={
+                            categoryNameById.get(ab.categoryId) || ab.categoryId
+                          }
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => openEditAbbrev(ab)}>
-                          <Edit3 className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setPendingDeleteAbbrev(ab)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
+                          {categoryNameById.get(ab.categoryId) || ab.categoryId}
+                        </span>
+                      ) : (
+                        <span className="italic opacity-50">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right text-sm tabular-nums font-mono align-middle">
+                      {(ab.usageExamples || []).length || 0}
+                    </td>
+                    <td className="px-3 py-2 text-right align-middle">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            aria-label={`Actions for ${ab.term}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => openEditAbbrev(ab)}>
+                            <Edit3 className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setPendingDeleteAbbrev(ab)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -845,7 +936,12 @@ const AdminConsole: React.FC = () => {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={bulkDeleteAbbrevs}
+                onClick={() =>
+                  setBulkDeleteContext({
+                    type: 'abbreviations',
+                    ids: Array.from(selectedAbbrevIds),
+                  })
+                }
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete Selected (
                 {selectedAbbrevIds.size})
@@ -931,6 +1027,49 @@ const AdminConsole: React.FC = () => {
           {renderAbbreviations()}
         </TabsContent>
       </Tabs>
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!bulkDeleteContext}
+        onOpenChange={open => !open && setBulkDeleteContext(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {bulkDeleteContext?.ids.length}{' '}
+              {bulkDeleteContext?.type === 'categories'
+                ? 'categories'
+                : 'abbreviations'}{' '}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.{' '}
+              {bulkDeleteContext?.type === 'categories'
+                ? 'Abbreviations will remain but become uncategorized if they referenced these categories.'
+                : 'All selected abbreviations will be permanently removed from the taxonomy.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={stageBulkDeletion}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!pendingBulkDeletion}
+            >
+              {pendingBulkDeletion ? 'Pending…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {pendingBulkDeletion && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-md bg-muted/80 backdrop-blur border border-border shadow flex items-center gap-3 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span>
+            {pendingBulkDeletion.status === 'pending'
+              ? `${pendingBulkDeletion.ids.length} ${pendingBulkDeletion.type === 'categories' ? 'categories' : 'abbreviations'} scheduled for deletion…`
+              : 'Processing deletions…'}
+          </span>
+        </div>
+      )}
       <Dialog open={showCategoryModal} onOpenChange={setShowCategoryModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
