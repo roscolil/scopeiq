@@ -37,6 +37,10 @@ class NovaSonicService {
   private currentAudio: HTMLAudioElement | null = null
   // Persistent reusable output element (improves iOS autoplay reliability)
   private outputAudio: HTMLAudioElement | null = null
+  // Autoplay blocked tracking
+  private lastAutoplayBlockedAt: number | null = null
+  private autoplayBlocked: boolean = false
+  private autoplayListeners: Set<() => void> = new Set()
   // Web Audio API context & active buffer source (Option 2 path)
   private audioCtx: AudioContext | null = null
   private activeSource: AudioBufferSourceNode | null = null
@@ -175,6 +179,39 @@ class NovaSonicService {
     document.body.appendChild(audio)
     this.outputAudio = audio
     return audio
+  }
+
+  /**
+   * Public: register a listener invoked when autoplay is blocked (once per block episode).
+   */
+  onAutoplayBlocked(cb: () => void): () => void {
+    this.autoplayListeners.add(cb)
+    return () => this.autoplayListeners.delete(cb)
+  }
+
+  private emitAutoplayBlocked() {
+    if (this.autoplayBlocked) return
+    this.autoplayBlocked = true
+    this.lastAutoplayBlockedAt = Date.now()
+    console.warn('🔔 Emitting autoplay blocked event to listeners')
+    this.autoplayListeners.forEach(l => {
+      try {
+        l()
+      } catch (e) {
+        /* ignore */
+      }
+    })
+  }
+
+  clearAutoplayBlockedFlag() {
+    if (this.autoplayBlocked) {
+      this.autoplayBlocked = false
+      console.log('✅ Autoplay block cleared')
+    }
+  }
+
+  hasPendingPlayback(): boolean {
+    return !!this.pendingAudio || !!this.activeSource
   }
 
   /**
@@ -646,6 +683,7 @@ class NovaSonicService {
                 interface AutoplayBlockedError extends Error {
                   code: string
                 }
+                this.emitAutoplayBlocked()
                 const blocked: AutoplayBlockedError = Object.assign(
                   new Error('Autoplay blocked'),
                   { code: 'AUTOPLAY_BLOCKED' },
