@@ -53,6 +53,24 @@ class NovaSonicService {
     languageCode: 'en-US' as LanguageCode,
   }
 
+  // ----- Playback management additions -----
+  private playbackQueue: Array<{
+    text: string
+    options?: Partial<NovaSonicOptions>
+    resolve: (v: boolean) => void
+    reject: (e: unknown) => void
+    requestedAt: number
+    interrupt: boolean
+  }> = []
+  private isSpeaking: boolean = false
+  private lastSpokenText: string | null = null
+  private lastSpokenAt = 0
+  private playbackConfig = {
+    duplicateSuppressionMs: 2000, // Skip identical consecutive text inside this window
+    maxQueueLength: 6, // Cap to avoid runaway backlog on iOS
+    mode: 'queue' as 'queue' | 'interrupt', // default behavior when interrupt flag not provided
+  }
+
   constructor() {
     this.initializeClient()
     this.setupUserInteractionTracking()
@@ -257,6 +275,13 @@ class NovaSonicService {
       this.userInteractionReceived = true
 
       console.log('✅ Audio enabled for Safari')
+      // Resolve unlock promise if pending
+      if (this.unlockPromiseResolver) {
+        this.unlockPromiseResolver()
+        this.unlockPromiseResolver = null
+      }
+      // Flush any queued speech now that unlock succeeded
+      this.flushSpeakQueue()
       return true
     } catch (error) {
       console.error('❌ Failed to enable audio for Safari:', error)
@@ -498,28 +523,8 @@ class NovaSonicService {
         )
       }
 
-      // If iOS/Safari and audio not yet unlocked, queue the request for auto playback later
-      if ((isSafari || isIOS) && !this.isAudioUnlocked()) {
-        console.log('🍎 Queuing speech until audio unlocked')
-        return await this.queueSpeak(text, options)
-      }
-
-      const result = await this.synthesizeSpeech(text, options)
-
-      if (!result.success) {
-        console.error('❌ Failed to synthesize speech:', result.error)
-        return false
-      }
-      // Try playback with simple retry for iOS quirks
-      const success = await this.tryPlayWithRetry(
-        result.audio,
-        options?.outputFormat || 'mp3',
-        2,
-      )
-      if (success) {
-        console.log('✅ Speech playback completed')
-      }
-      return success
+      // Enhanced path delegates to queueOrPlay for duplicate suppression & queue mgmt
+      return await this.queueOrPlay(text, options)
     } catch (error) {
       console.error('❌ Failed to speak:', error)
 
@@ -539,6 +544,100 @@ class NovaSonicService {
       }
 
       return false
+    }
+  }
+
+  /**
+   * Public API: Configure playback behavior.
+   */
+  configurePlayback(config: Partial<typeof this.playbackConfig>) {
+    this.playbackConfig = { ...this.playbackConfig, ...config }
+  }
+
+  /**
+   * Request to speak with queue / interrupt semantics.
+   * If options?.interrupt === true, current playback stopped and this item plays immediately.
+   */
+  private queueOrPlay(
+    text: string,
+    options?: Partial<NovaSonicOptions> & { interrupt?: boolean },
+  ): Promise<boolean> {
+    // Duplicate suppression (exact text) within window
+    const now = Date.now()
+    if (
+      this.lastSpokenText === text &&
+      now - this.lastSpokenAt < this.playbackConfig.duplicateSuppressionMs
+    ) {
+      console.log('⏭️ Skipping duplicate speech within suppression window')
+      return Promise.resolve(true)
+    }
+
+    // If locked (Safari/iOS) push to unlock queue (existing speakQueue) for earliest opportunity
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if ((isSafari || isIOS) && !this.isAudioUnlocked()) {
+      console.log('🍎 Audio locked - deferring via initial unlock queue')
+      return this.queueSpeak(text, options)
+    }
+
+    return new Promise<boolean>((resolve, reject) => {
+      const interrupt =
+        options?.interrupt === true || this.playbackConfig.mode === 'interrupt'
+      // If interrupting, clear queue and stop current
+      if (interrupt) {
+        if (this.currentAudio) this.stopCurrentPlayback()
+        this.playbackQueue = []
+      } else {
+        // Enforce max queue length
+        if (this.playbackQueue.length >= this.playbackConfig.maxQueueLength) {
+          // Drop oldest
+          this.playbackQueue.shift()
+        }
+      }
+
+      this.playbackQueue.push({
+        text,
+        options,
+        resolve,
+        reject,
+        requestedAt: now,
+        interrupt,
+      })
+      this.processPlaybackQueue()
+    })
+  }
+
+  /**
+   * Sequentially process playback queue.
+   */
+  private async processPlaybackQueue() {
+    if (this.isSpeaking) return
+    const next = this.playbackQueue.shift()
+    if (!next) return
+    this.isSpeaking = true
+    try {
+      const result = await this.synthesizeSpeech(next.text, next.options)
+      if (!result.success) {
+        next.resolve(false)
+      } else {
+        // Attempt playback with retries
+        const ok = await this.tryPlayWithRetry(
+          result.audio,
+          next.options?.outputFormat || 'mp3',
+          2,
+        )
+        if (ok) {
+          this.lastSpokenText = next.text
+          this.lastSpokenAt = Date.now()
+        }
+        next.resolve(ok)
+      }
+    } catch (e) {
+      next.reject(e)
+    } finally {
+      this.isSpeaking = false
+      // Process remaining items
+      if (this.playbackQueue.length) this.processPlaybackQueue()
     }
   }
 
