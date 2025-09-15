@@ -8,7 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { Card } from '@/components/ui/card'
-import { Plus, RefreshCw, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  RefreshCw,
+  Loader2,
+  MoreHorizontal,
+  Edit3,
+  Trash2,
+} from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import {
   Dialog,
@@ -37,6 +45,14 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 
 interface LoadState<T> {
   loading: boolean
@@ -103,6 +119,92 @@ const AdminConsole: React.FC = () => {
   const pageSize = 24
   const [categoriesHasMore, setCategoriesHasMore] = useState(false)
   const [abbrevHasMore, setAbbrevHasMore] = useState(false)
+  // Smart table sort state for categories
+  const [categoriesSortBy, setCategoriesSortBy] = useState<'name' | 'count'>(
+    'name',
+  )
+  const [categoriesSortDir, setCategoriesSortDir] = useState<'asc' | 'desc'>(
+    'asc',
+  )
+  // Bulk selection state
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(
+    new Set(),
+  )
+  const [selectedAbbrevIds, setSelectedAbbrevIds] = useState<Set<string>>(
+    new Set(),
+  )
+
+  const toggleSelectAllCategories = (checked: boolean) => {
+    if (checked) {
+      setSelectedCategoryIds(new Set(categoriesState.data.map(c => c.id)))
+    } else {
+      setSelectedCategoryIds(new Set())
+    }
+  }
+  const toggleSelectCategory = (id: string, checked: boolean) => {
+    setSelectedCategoryIds(prev => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllAbbrevs = (checked: boolean) => {
+    if (checked) {
+      setSelectedAbbrevIds(new Set(abbrevState.data.map(a => a.id)))
+    } else {
+      setSelectedAbbrevIds(new Set())
+    }
+  }
+  const toggleSelectAbbrev = (id: string, checked: boolean) => {
+    setSelectedAbbrevIds(prev => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const bulkDeleteCategories = async () => {
+    const ids = Array.from(selectedCategoryIds)
+    if (!ids.length) return
+    // Simple sequential delete; could optimize with Promise.all if backend supports
+    for (const id of ids) {
+      try {
+        await adminTaxonomyService.deleteCategory(id)
+      } catch (e) {
+        console.error('Bulk delete category failed', id, e)
+      }
+    }
+    setCategoriesState(s => ({
+      ...s,
+      data: s.data.filter(c => !selectedCategoryIds.has(c.id)),
+    }))
+    setSelectedCategoryIds(new Set())
+    toast({ title: 'Deleted categories', description: `${ids.length} removed` })
+  }
+
+  const bulkDeleteAbbrevs = async () => {
+    const ids = Array.from(selectedAbbrevIds)
+    if (!ids.length) return
+    for (const id of ids) {
+      try {
+        await adminTaxonomyService.deleteAbbreviation(id)
+      } catch (e) {
+        console.error('Bulk delete abbreviation failed', id, e)
+      }
+    }
+    setAbbrevState(s => ({
+      ...s,
+      data: s.data.filter(a => !selectedAbbrevIds.has(a.id)),
+    }))
+    setSelectedAbbrevIds(new Set())
+    toast({
+      title: 'Deleted abbreviations',
+      description: `${ids.length} removed`,
+    })
+  }
 
   const loadCategories = useCallback(
     async (page = categoriesPage) => {
@@ -356,59 +458,166 @@ const AdminConsole: React.FC = () => {
       )
     }
 
+    const sorted = [...categoriesState.data].sort((a, b) => {
+      let cmp = 0
+      if (categoriesSortBy === 'name') {
+        cmp = a.name.localeCompare(b.name)
+      } else {
+        const av = a.abbreviationCount ?? 0
+        const bv = b.abbreviationCount ?? 0
+        cmp = av - bv
+      }
+      return categoriesSortDir === 'asc' ? cmp : -cmp
+    })
+
+    const toggleSort = (col: 'name' | 'count') => {
+      if (categoriesSortBy === col) {
+        setCategoriesSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setCategoriesSortBy(col)
+        setCategoriesSortDir('asc')
+      }
+    }
+
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {categoriesState.data.map(cat => (
-            <Card
-              key={cat.id}
-              className="p-4 flex flex-col gap-2 hover:shadow-sm transition-shadow bg-card/60 backdrop-blur"
-            >
-              <div className="flex items-start justify-between">
-                <h3
-                  className="font-medium text-sm leading-tight truncate"
-                  title={cat.name}
+        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur">
+          <table className="w-full text-[15px]">
+            <thead>
+              <tr className="text-[12px] uppercase tracking-wide text-foreground/90 bg-muted/50">
+                <th className="px-2 py-2 w-8 text-left">
+                  <Checkbox
+                    aria-label="Select all categories"
+                    checked={
+                      selectedCategoryIds.size > 0 &&
+                      selectedCategoryIds.size === categoriesState.data.length
+                        ? true
+                        : selectedCategoryIds.size === 0
+                          ? false
+                          : 'indeterminate'
+                    }
+                    onCheckedChange={val => toggleSelectAllCategories(!!val)}
+                  />
+                </th>
+                <th
+                  className="px-3 py-2 font-semibold text-left select-none cursor-pointer"
+                  onClick={() => toggleSort('name')}
                 >
-                  {cat.name}
-                </h3>
-                <span className="rounded bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {cat.abbreviationCount ?? 0}
-                </span>
-              </div>
-              {cat.description && (
-                <p
-                  className="text-xs text-muted-foreground line-clamp-3"
-                  title={cat.description}
+                  <span className="inline-flex items-center gap-1">
+                    Name
+                    {categoriesSortBy === 'name' && (
+                      <span className="text-[10px] font-normal opacity-70">
+                        {categoriesSortDir === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+                <th className="px-3 py-2 font-semibold text-left">
+                  Description
+                </th>
+                <th
+                  className="px-3 py-2 font-semibold text-right select-none cursor-pointer w-24"
+                  onClick={() => toggleSort('count')}
                 >
-                  {cat.description}
-                </p>
-              )}
-              <div className="mt-auto flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditCategory(cat)}
+                  <span className="inline-flex items-center gap-1">
+                    Count
+                    {categoriesSortBy === 'count' && (
+                      <span className="text-[10px] font-normal opacity-70">
+                        {categoriesSortDir === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+                <th className="px-3 py-2 font-semibold text-right w-40">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((cat, idx) => (
+                <tr
+                  key={cat.id}
+                  className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15`}
                 >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setPendingDeleteCategory(cat)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          ))}
+                  <td className="px-2 py-2 align-middle">
+                    <Checkbox
+                      aria-label={`Select category ${cat.name}`}
+                      checked={selectedCategoryIds.has(cat.id)}
+                      onCheckedChange={val =>
+                        toggleSelectCategory(cat.id, !!val)
+                      }
+                    />
+                  </td>
+                  <td
+                    className="px-3 py-2 font-medium text-foreground break-words max-w-[260px] leading-snug align-middle"
+                    title={cat.name}
+                  >
+                    <span className="whitespace-pre-wrap">{cat.name}</span>
+                  </td>
+                  <td className="px-3 py-2 text-sm leading-snug text-foreground/80 align-middle max-w-[520px]">
+                    {cat.description ? (
+                      <span
+                        className="whitespace-pre-wrap break-words block"
+                        title={cat.description}
+                      >
+                        {cat.description}
+                      </span>
+                    ) : (
+                      <span className="italic opacity-50">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-mono text-sm align-middle">
+                    {cat.abbreviationCount ?? 0}
+                  </td>
+                  <td className="px-3 py-2 text-right align-middle">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          aria-label={`Actions for ${cat.name}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openEditCategory(cat)}>
+                          <Edit3 className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setPendingDeleteCategory(cat)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
           <div className="text-xs text-muted-foreground">
             Page {categoriesPage}
             {categoriesHasMore ? '' : ' (end)'} • Showing{' '}
             {categoriesState.data.length} items
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {selectedCategoryIds.size > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={bulkDeleteCategories}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected (
+                {selectedCategoryIds.size})
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -431,6 +640,12 @@ const AdminConsole: React.FC = () => {
     )
   }
 
+  // Abbreviations table sort state
+  const [abbrevSortBy, setAbbrevSortBy] = useState<
+    'term' | 'category' | 'expansion'
+  >('term')
+  const [abbrevSortDir, setAbbrevSortDir] = useState<'asc' | 'desc'>('asc')
+
   const renderAbbreviations = () => {
     if (abbrevState.loading) return <PageLoader type="default" />
     if (abbrevState.error) {
@@ -449,82 +664,193 @@ const AdminConsole: React.FC = () => {
         </div>
       )
     }
-    if (!abbrevState.data.length) {
-      return (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="text-sm text-muted-foreground max-w-sm">
-            No abbreviations yet. Add abbreviations to standardize terminology
-            and improve AI interpretation.
-          </p>
-          <Button size="sm" onClick={openCreateAbbrev}>
-            <Plus className="mr-2 h-4 w-4" /> New Abbreviation
-          </Button>
-        </div>
-      )
-    }
-
     const categoryNameById = new Map(
       categoriesState.data.map(c => [c.id, c.name]),
     )
 
+    const sorted = [...abbrevState.data].sort((a, b) => {
+      let cmp = 0
+      if (abbrevSortBy === 'term') {
+        cmp = a.term.localeCompare(b.term)
+      } else if (abbrevSortBy === 'expansion') {
+        cmp = a.expansion.localeCompare(b.expansion)
+      } else if (abbrevSortBy === 'category') {
+        const av = (a.categoryId && categoryNameById.get(a.categoryId)) || ''
+        const bv = (b.categoryId && categoryNameById.get(b.categoryId)) || ''
+        cmp = av.localeCompare(bv)
+      }
+      return abbrevSortDir === 'asc' ? cmp : -cmp
+    })
+
+    const toggleSort = (col: 'term' | 'expansion' | 'category') => {
+      if (abbrevSortBy === col) {
+        setAbbrevSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setAbbrevSortBy(col)
+        setAbbrevSortDir('asc')
+      }
+    }
+
     return (
       <div className="space-y-4">
-        <div className="space-y-3">
-          {abbrevState.data.map(ab => (
-            <Card
-              key={ab.id}
-              className="p-3 flex flex-col gap-1 hover:shadow-sm transition-shadow bg-card/60 backdrop-blur"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <h3
-                    className="font-medium text-sm leading-tight truncate"
+        <div className="overflow-x-auto rounded-md border border-border/60 bg-card/40 backdrop-blur">
+          <table className="w-full text-[15px]">
+            <thead>
+              <tr className="text-[12px] uppercase tracking-wide text-foreground/90 bg-muted/50">
+                <th className="px-2 py-2 w-8 text-left">
+                  <Checkbox
+                    aria-label="Select all abbreviations"
+                    checked={
+                      selectedAbbrevIds.size > 0 &&
+                      selectedAbbrevIds.size === abbrevState.data.length
+                        ? true
+                        : selectedAbbrevIds.size === 0
+                          ? false
+                          : 'indeterminate'
+                    }
+                    onCheckedChange={val => toggleSelectAllAbbrevs(!!val)}
+                  />
+                </th>
+                <th
+                  className="px-3 py-2 font-semibold text-left select-none cursor-pointer w-[180px]"
+                  onClick={() => toggleSort('term')}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Term
+                    {abbrevSortBy === 'term' && (
+                      <span className="text-[10px] font-normal opacity-70">
+                        {abbrevSortDir === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+                <th
+                  className="px-3 py-2 font-semibold text-left select-none cursor-pointer min-w-[240px]"
+                  onClick={() => toggleSort('expansion')}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Expansion
+                    {abbrevSortBy === 'expansion' && (
+                      <span className="text-[10px] font-normal opacity-70">
+                        {abbrevSortDir === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+                <th
+                  className="px-3 py-2 font-semibold text-left select-none cursor-pointer w-[180px]"
+                  onClick={() => toggleSort('category')}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Category
+                    {abbrevSortBy === 'category' && (
+                      <span className="text-[10px] font-normal opacity-70">
+                        {abbrevSortDir === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+                <th className="px-3 py-2 font-semibold text-right w-32">
+                  Examples
+                </th>
+                <th className="px-3 py-2 font-semibold text-right w-24">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((ab, idx) => (
+                <tr
+                  key={ab.id}
+                  className={`border-t border-border/30 transition-colors ${idx % 2 === 0 ? 'bg-gray-200' : 'bg-gray-300'} hover:bg-accent/15`}
+                >
+                  <td className="px-2 py-2 align-middle">
+                    <Checkbox
+                      aria-label={`Select abbreviation ${ab.term}`}
+                      checked={selectedAbbrevIds.has(ab.id)}
+                      onCheckedChange={val => toggleSelectAbbrev(ab.id, !!val)}
+                    />
+                  </td>
+                  <td
+                    className="px-3 py-2 font-medium text-foreground break-words max-w-[200px] leading-snug align-middle"
                     title={ab.term}
                   >
-                    {ab.term}
-                  </h3>
-                  <p
-                    className="text-xs text-muted-foreground truncate"
+                    <span className="whitespace-pre-wrap">{ab.term}</span>
+                  </td>
+                  <td
+                    className="px-3 py-2 text-sm leading-snug text-foreground/80 max-w-[520px] align-middle"
                     title={ab.expansion}
                   >
-                    {ab.expansion}
-                  </p>
-                </div>
-                {ab.categoryId && (
-                  <span
-                    className="rounded bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
-                    title={categoryNameById.get(ab.categoryId) || ab.categoryId}
-                  >
-                    {categoryNameById.get(ab.categoryId) || ab.categoryId}
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditAbbrev(ab)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setPendingDeleteAbbrev(ab)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          ))}
+                    <span className="whitespace-pre-wrap break-words block">
+                      {ab.expansion}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-sm text-foreground/70 align-middle">
+                    {ab.categoryId ? (
+                      <span
+                        className="inline-flex items-center rounded bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                        title={
+                          categoryNameById.get(ab.categoryId) || ab.categoryId
+                        }
+                      >
+                        {categoryNameById.get(ab.categoryId) || ab.categoryId}
+                      </span>
+                    ) : (
+                      <span className="italic opacity-50">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm tabular-nums font-mono align-middle">
+                    {(ab.usageExamples || []).length || 0}
+                  </td>
+                  <td className="px-3 py-2 text-right align-middle">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          aria-label={`Actions for ${ab.term}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openEditAbbrev(ab)}>
+                          <Edit3 className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setPendingDeleteAbbrev(ab)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="flex items-center justify-between gap-4 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
           <div className="text-xs text-muted-foreground">
             Page {abbrevPage}
             {abbrevHasMore ? '' : ' (end)'} • Showing {abbrevState.data.length}{' '}
             items
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {selectedAbbrevIds.size > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={bulkDeleteAbbrevs}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected (
+                {selectedAbbrevIds.size})
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -551,10 +877,10 @@ const AdminConsole: React.FC = () => {
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold text-gray-300 tracking-tight">
             Admin Console
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm  text-gray-400 mt-1">
             Manage taxonomy resources that power improved search,
             disambiguation, and AI context building.
           </p>
