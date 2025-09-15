@@ -37,6 +37,13 @@ class NovaSonicService {
   private currentAudio: HTMLAudioElement | null = null
   // Persistent reusable output element (improves iOS autoplay reliability)
   private outputAudio: HTMLAudioElement | null = null
+  // Autoplay blocked tracking
+  private lastAutoplayBlockedAt: number | null = null
+  private autoplayBlocked: boolean = false
+  private autoplayListeners: Set<() => void> = new Set()
+  // Web Audio API context & active buffer source (Option 2 path)
+  private audioCtx: AudioContext | null = null
+  private activeSource: AudioBufferSourceNode | null = null
   // Queue of pending speak requests when autoplay blocked (iOS/Safari)
   private speakQueue: Array<{
     text: string
@@ -175,6 +182,118 @@ class NovaSonicService {
   }
 
   /**
+   * Public: register a listener invoked when autoplay is blocked (once per block episode).
+   */
+  onAutoplayBlocked(cb: () => void): () => void {
+    this.autoplayListeners.add(cb)
+    return () => this.autoplayListeners.delete(cb)
+  }
+
+  private emitAutoplayBlocked() {
+    if (this.autoplayBlocked) return
+    this.autoplayBlocked = true
+    this.lastAutoplayBlockedAt = Date.now()
+    console.warn('🔔 Emitting autoplay blocked event to listeners')
+    this.autoplayListeners.forEach(l => {
+      try {
+        l()
+      } catch (e) {
+        /* ignore */
+      }
+    })
+  }
+
+  clearAutoplayBlockedFlag() {
+    if (this.autoplayBlocked) {
+      this.autoplayBlocked = false
+      console.log('✅ Autoplay block cleared')
+    }
+  }
+
+  hasPendingPlayback(): boolean {
+    return !!this.pendingAudio || !!this.activeSource
+  }
+
+  /**
+   * Ensure (or lazily create) an AudioContext for Web Audio playback.
+   * Attempts to resume if suspended (common on iOS after backgrounding).
+   */
+  private async ensureAudioContext(): Promise<AudioContext> {
+    if (!this.audioCtx) {
+      try {
+        interface AudioContextWindow extends Window {
+          webkitAudioContext?: typeof AudioContext
+        }
+        const w = window as AudioContextWindow
+        const Ctor: typeof AudioContext | undefined =
+          (typeof window !== 'undefined' && 'AudioContext' in window
+            ? (window as unknown as { AudioContext: typeof AudioContext })
+                .AudioContext
+            : undefined) || w.webkitAudioContext
+        if (!Ctor) throw new Error('AudioContext not supported')
+        this.audioCtx = new Ctor()
+      } catch (e) {
+        console.warn('⚠️ Failed to create AudioContext', e)
+        throw e
+      }
+    }
+    if (this.audioCtx.state === 'suspended') {
+      try {
+        await this.audioCtx.resume()
+        console.log('🔄 AudioContext resumed')
+      } catch (e) {
+        console.warn('⚠️ Failed to resume AudioContext', e)
+      }
+    }
+    return this.audioCtx
+  }
+
+  /**
+   * Play via Web Audio API. Returns true if successful, false if we should fallback.
+   */
+  private async playViaWebAudio(
+    audioData: Uint8Array,
+    format: string,
+  ): Promise<boolean> {
+    try {
+      const ctx = await this.ensureAudioContext()
+      // MP3 / PCM both acceptable; decodeAudioData handles container based on browser support.
+      const arrayBuf = audioData.buffer.slice(
+        audioData.byteOffset,
+        audioData.byteOffset + audioData.byteLength,
+      )
+      // Ensure we pass a plain ArrayBuffer (not SharedArrayBuffer) & clone to avoid detachment issues
+      const clone = arrayBuf.slice(0)
+      const audioBuffer = await ctx.decodeAudioData(clone as ArrayBuffer)
+      // Stop any prior source
+      if (this.activeSource) {
+        try {
+          this.activeSource.stop()
+        } catch (e) {
+          /* ignore stop race */
+        }
+        this.activeSource = null
+      }
+      const source = ctx.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(ctx.destination)
+      this.activeSource = source
+      source.onended = () => {
+        if (this.activeSource === source) {
+          this.activeSource = null
+        }
+        console.log('✅ Web Audio buffer playback ended')
+      }
+      source.start(0)
+      console.log('🎧 Playing via Web Audio path (buffer)')
+      return true
+    } catch (e) {
+      console.warn('⚠️ Web Audio path failed, will fallback to element', e)
+      return false
+    }
+  }
+
+  /**
    * Check if the service is available
    */
   isAvailable(): boolean {
@@ -299,6 +418,12 @@ class NovaSonicService {
         this.unlockPromiseResolver()
         this.unlockPromiseResolver = null
       }
+      // Proactively create/resume AudioContext after a real user gesture
+      try {
+        await this.ensureAudioContext()
+      } catch (e) {
+        /* ignore ensure ctx failure */
+      }
       // Flush any queued speech now that unlock succeeded
       this.flushSpeakQueue()
       return true
@@ -328,6 +453,11 @@ class NovaSonicService {
         this.unlockPromiseResolver = null
       }
       console.log('🔓 forceUnlockAudio succeeded')
+      try {
+        await this.ensureAudioContext()
+      } catch (e) {
+        /* ignore ensure ctx failure */
+      }
       this.flushSpeakQueue()
       return true
     } catch (e) {
@@ -394,6 +524,23 @@ class NovaSonicService {
    * Play audio directly in the browser with Safari compatibility
    */
   async playAudio(
+    audioData: Uint8Array,
+    format: string = 'mp3',
+  ): Promise<void> {
+    // On iOS/Safari, attempt Web Audio first (after unlock) to bypass element autoplay quirks
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if ((isSafari || isIOS) && this.isAudioUnlocked()) {
+      const ok = await this.playViaWebAudio(audioData, format)
+      if (ok) return
+    }
+    return this.playAudioElement(audioData, format)
+  }
+
+  /**
+   * Original element-based playback path (renamed from playAudio)
+   */
+  private async playAudioElement(
     audioData: Uint8Array,
     format: string = 'mp3',
   ): Promise<void> {
@@ -536,6 +683,7 @@ class NovaSonicService {
                 interface AutoplayBlockedError extends Error {
                   code: string
                 }
+                this.emitAutoplayBlocked()
                 const blocked: AutoplayBlockedError = Object.assign(
                   new Error('Autoplay blocked'),
                   { code: 'AUTOPLAY_BLOCKED' },
@@ -587,6 +735,14 @@ class NovaSonicService {
       } catch (error) {
         console.warn('⚠️ Failed to stop current audio:', error)
       }
+    }
+    if (this.activeSource) {
+      try {
+        this.activeSource.stop()
+      } catch (e) {
+        /* ignore */
+      }
+      this.activeSource = null
     }
     return false
   }

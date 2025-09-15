@@ -1,9 +1,3 @@
-// Voice Components
-export { VoiceInput } from './VoiceInput'
-export { VoiceInput as VoiceInputFixed } from './VoiceInputFixed'
+export * from './AutoplayFallbackButton'
+// Voice Components (guard: only export if file exists in repo)
 export { VoiceShazamButton } from './VoiceShazamButton'
-export {
-  SafariAudioButton,
-  SafariAudioStatus,
-  SafariAudioHelper,
-} from './SafariAudioButton'
