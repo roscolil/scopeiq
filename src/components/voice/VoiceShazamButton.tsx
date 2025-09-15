@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { novaSonic } from '@/services/api/nova-sonic'
 import { Mic, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -482,6 +483,13 @@ export const VoiceShazamButton = ({
       setTranscript('') // Clear transcript when stopping
     } else {
       console.log('🎤 Starting recognition...')
+
+      // Attempt to unlock iOS/Safari audio early so first TTS response auto-plays
+      try {
+        novaSonic.enableAudioForSafari?.()
+      } catch (e) {
+        // Non-fatal; continue
+      }
 
       // IMMEDIATE FEEDBACK: Set UI state immediately before any async operations
       setInternalIsListening(true)
