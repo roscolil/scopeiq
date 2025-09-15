@@ -51,7 +51,20 @@ export function useSafariAudio() {
    */
   const enableAudio = async (): Promise<boolean> => {
     try {
-      const success = await novaSonic.enableAudioForSafari()
+      let success = await novaSonic.enableAudioForSafari()
+      if (!success) {
+        type UnlockCapable = typeof novaSonic & {
+          forceUnlockAudio?: () => Promise<boolean>
+        }
+        const maybeUnlock = novaSonic as UnlockCapable
+        if (maybeUnlock.forceUnlockAudio) {
+          try {
+            success = await maybeUnlock.forceUnlockAudio()
+          } catch {
+            /* noop */
+          }
+        }
+      }
 
       // Update status after attempting to enable
       const audioStatus = novaSonic.getAudioStatus()
