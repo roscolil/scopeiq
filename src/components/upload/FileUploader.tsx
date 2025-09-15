@@ -872,8 +872,10 @@ export const FileUploader = (props: FileUploaderProps) => {
       return <FileText className="h-5 w-5 text-red-500" />
     } else if (file.type.includes('image')) {
       return <FileImage className="h-5 w-5 text-blue-500" />
+    } else if (file.type.includes('docx') || file.type.includes('doc')) {
+      return <FileText className="h-5 w-5 text-blue-600" />
     } else {
-      return <File className="h-5 w-5 text-green-500" />
+      return <File className="h-5 w-5 text-gray-500" />
     }
   }
 
