@@ -276,3 +276,49 @@ aiWorkflowVoice.configure({
 4. **Customize announcements** based on your specific workflow needs
 
 Your OpenAI + Pinecone workflow is now voice-enabled! 🎵✨
+
+## iOS / Safari Autoplay Update (September 2025)
+
+Modern iOS & Safari block programmatic audio (including AWS Polly playback) until the first user gesture. The `novaSonic` service now implements an automatic unlock + queue so speech requested before a tap still plays later.
+
+### Behavior
+
+1. First gesture triggers a silent, muted WAV to unlock playback.
+2. Calls to `novaSonic.speak()` before unlock are queued (not lost).
+3. Queue flushes automatically after unlock (in order).
+4. Each playback has up to 2 retry attempts for transient iOS `NotAllowedError` issues.
+5. `playsInline` is enforced to avoid forced full‑screen players.
+
+### API Helpers
+
+| Method                            | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
+| `novaSonic.waitForUnlock()`       | Await until audio is permitted (optional) |
+| `novaSonic.stopCurrentPlayback()` | Stop current audio (existing)             |
+
+### Typical Usage (No Change Required)
+
+```ts
+await novaSonic.speak('Processing your request...')
+```
+
+If autoplay is blocked, the phrase is queued and plays once the user taps anywhere.
+
+### Explicit Unlock (Rarely Needed)
+
+```ts
+await novaSonic.waitForUnlock()
+await novaSonic.speak('Ready to assist you.')
+```
+
+### Edge Cases
+
+| Scenario                  | Result                             |
+| ------------------------- | ---------------------------------- |
+| Multiple queued responses | All play sequentially after unlock |
+| No user interaction ever  | Audio never plays (spec-compliant) |
+| Intermittent iOS failures | Automatic retry with jitter        |
+
+Use the `useSafariAudio` hook if you want to show a banner prompting the user to tap.
+
+---
