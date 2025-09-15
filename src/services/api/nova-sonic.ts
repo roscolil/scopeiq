@@ -503,7 +503,9 @@ class NovaSonicService {
 
               // Handle Safari/iOS specific errors
               if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
-                console.warn('🍎 Safari/iOS blocked audio playback - will retry on next gesture or unlock')
+                console.warn(
+                  '🍎 Safari/iOS blocked audio playback - will retry on next gesture or unlock',
+                )
                 this.pendingAudio = audio
                 // Attach one-time gesture listeners to re-attempt playback ASAP
                 const gestureReplay = () => {
@@ -513,10 +515,15 @@ class NovaSonicService {
                   if (this.pendingAudio) {
                     this.playPendingAudio()
                       .then(() =>
-                        console.log('▶️ Deferred playback started (gesture replay)'),
+                        console.log(
+                          '▶️ Deferred playback started (gesture replay)',
+                        ),
                       )
                       .catch(e =>
-                        console.warn('⚠️ Deferred playback failed (gesture replay)', e),
+                        console.warn(
+                          '⚠️ Deferred playback failed (gesture replay)',
+                          e,
+                        ),
                       )
                   }
                 }
@@ -531,8 +538,13 @@ class NovaSonicService {
                 document.addEventListener('keydown', gestureReplay, {
                   once: true,
                 })
-                interface AutoplayBlockedError extends Error { code: string }
-                const blocked: AutoplayBlockedError = Object.assign(new Error('Autoplay blocked'), { code: 'AUTOPLAY_BLOCKED' })
+                interface AutoplayBlockedError extends Error {
+                  code: string
+                }
+                const blocked: AutoplayBlockedError = Object.assign(
+                  new Error('Autoplay blocked'),
+                  { code: 'AUTOPLAY_BLOCKED' },
+                )
                 reject(blocked)
               } else {
                 URL.revokeObjectURL(audioUrl)

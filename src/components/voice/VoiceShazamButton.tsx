@@ -128,7 +128,8 @@ export const VoiceShazamButton = ({
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const windowWithSR = window as any
-      const SpeechRecognitionAPI = windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
+      const SpeechRecognitionAPI =
+        windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
       console.log('🎯 SpeechRecognition API available:', !!SpeechRecognitionAPI)
       if (SpeechRecognitionAPI) {
         console.log('🎯 Creating recognition instance with optimizations')
@@ -353,7 +354,9 @@ export const VoiceShazamButton = ({
               fallbackFinalizeTimerRef.current = setTimeout(() => {
                 const latest = transcriptRef.current.trim()
                 if (!hasSubmittedRef.current && latest.length > 0) {
-                  console.log('⏳ Fallback finalize triggered (4500ms)', { latest })
+                  console.log('⏳ Fallback finalize triggered (4500ms)', {
+                    latest,
+                  })
                   finalizeSubmission(
                     recognitionInstance,
                     latest,
@@ -456,7 +459,9 @@ export const VoiceShazamButton = ({
     return () => {
       try {
         recognition?.stop()
-      } catch {/* ignore */}
+      } catch {
+        /* ignore */
+      }
     }
     // We intentionally do NOT include dynamic speech state deps here; this effect is for one-time init
     // eslint-disable-next-line react-hooks/exhaustive-deps
