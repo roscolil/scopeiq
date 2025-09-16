@@ -46,6 +46,8 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const containerRef = useRef<HTMLDivElement | null>(null)
+  // Map of page number to thumbnail button element for auto-scrolling
+  const thumbRefs = useRef<Record<number, HTMLButtonElement | null>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -206,6 +208,23 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdf, showThumbnails])
 
+  // Ensure the active thumbnail is scrolled into view when page changes
+  useEffect(() => {
+    if (!showThumbnails) return
+    const el = thumbRefs.current[currentPage]
+    if (el) {
+      try {
+        el.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        })
+      } catch {
+        /* silent */
+      }
+    }
+  }, [currentPage, showThumbnails])
+
   // Guard states (after hooks to keep hook order stable)
   if (loading) {
     return (
@@ -230,9 +249,12 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
   }
 
   return (
-    <div className="relative bg-neutral-100 dark:bg-slate-800/60 rounded-md border">
+    <div
+      className="relative bg-neutral-100 dark:bg-slate-800/60 rounded-md border flex flex-col"
+      style={{ height: 'calc(100vh - 180px)' }}
+    >
       {/* Control Bar */}
-      <div className="sticky top-0 z-20 flex flex-wrap gap-2 items-center justify-between bg-white/90 backdrop-blur px-3 py-2 border-b text-xs">
+      <div className="flex flex-wrap gap-2 items-center justify-between bg-white/90 backdrop-blur px-3 py-2 border-b text-xs shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => goToPage(1)}
@@ -407,16 +429,17 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
           </button>
         </div>
       </div>
-      <div ref={containerRef} className="py-6 flex flex-col items-center gap-4">
-        {showThumbnails && pdf && (
-          <div className="w-full max-w-full mb-4 overflow-x-auto border-y bg-gray-50 py-2">
-            <div className="flex gap-2 px-3 text-[10px] text-gray-700">
+      {showThumbnails && pdf && (
+        <div className="w-full h-[108px] border-b bg-gray-50 flex flex-col shrink-0">
+          <div className="w-full overflow-x-auto overflow-y-hidden py-2">
+            <div className="flex gap-2 px-3 text-[10px] text-gray-700 min-w-max">
               {Array.from({ length: pdf.numPages }, (_, i) => i + 1).map(p => {
                 const selected = p === currentPage
                 const thumb = thumbnails[p]
                 return (
                   <button
                     key={p}
+                    ref={el => (thumbRefs.current[p] = el)}
                     onClick={() => goToPage(p)}
                     className={
                       'relative flex flex-col items-center focus:outline-none group ' +
@@ -457,7 +480,13 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
+      {/* Page area */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-auto px-4 py-4 flex flex-col items-center"
+      >
         <div className="relative shadow border rounded bg-white">
           {rendering && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/60">
@@ -469,7 +498,6 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
             {currentPage}
           </div>
         </div>
-        {/* Removed extracted text panel */}
       </div>
     </div>
   )

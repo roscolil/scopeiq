@@ -34,6 +34,15 @@ import { usePythonDocumentUpload } from '@/hooks/usePythonDocumentUpload'
 import { checkPythonBackendHealth } from '@/services/file/python-document-upload'
 import { getPythonBackendConfig } from '@/config/python-backend'
 
+// Failure classification type
+type FailureType =
+  | 'validation'
+  | 'network'
+  | 'auth'
+  | 'server'
+  | 'processing'
+  | 'unknown'
+
 interface FileUploaderProps {
   projectId: string
   companyId: string
@@ -44,7 +53,16 @@ interface FileUploaderProps {
    */
   onBatchComplete?: (
     uploadedFiles: Document[],
-    summary: { success: number; failed: number },
+    summary: {
+      success: number
+      failed: number
+      failures?: Array<{
+        name: string
+        failureType?: FailureType
+        retryable?: boolean
+        message?: string
+      }>
+    },
   ) => void
 }
 
@@ -58,6 +76,9 @@ interface FileUploadItem {
   documentId?: string // Database document ID
   pythonDocumentId?: string // Python backend document ID
   backend?: 'python' | 'existing'
+  failureType?: FailureType
+  retryable?: boolean
+  retryCount?: number
 }
 
 // Add new interfaces near existing ones
@@ -101,6 +122,36 @@ export const FileUploader = (props: FileUploaderProps) => {
   >(new Map())
 
   const { toast } = useToast()
+
+  // Classify errors for better retry & display handling
+  const classifyError = (
+    err: unknown,
+  ): { failureType: FailureType; retryable: boolean } => {
+    let message = ''
+    if (err instanceof Error) message = err.message.toLowerCase()
+    else message = String(err).toLowerCase()
+
+    if (message.includes('unsupported type') || message.includes('too large')) {
+      return { failureType: 'validation', retryable: false }
+    }
+    if (
+      message.includes('network') ||
+      message.includes('timeout') ||
+      message.includes('fetch')
+    ) {
+      return { failureType: 'network', retryable: true }
+    }
+    if (message.includes('unauthorized') || message.includes('forbidden')) {
+      return { failureType: 'auth', retryable: false }
+    }
+    if (message.match(/5\d{2}/)) {
+      return { failureType: 'server', retryable: true }
+    }
+    if (message.includes('embedding') || message.includes('processing')) {
+      return { failureType: 'processing', retryable: true }
+    }
+    return { failureType: 'unknown', retryable: true }
+  }
 
   // Python document upload hook
   const pythonUpload = usePythonDocumentUpload({
@@ -363,6 +414,7 @@ export const FileUploader = (props: FileUploaderProps) => {
           status: 'pending',
           progress: 0,
           backend: currentBackend,
+          retryCount: 0,
         })
       } else {
         rejected.push({
@@ -553,65 +605,67 @@ export const FileUploader = (props: FileUploaderProps) => {
           ),
         )
 
-        // Process embedding in background - console logs will show progress
+        // Fire-and-forget embedding processing (does not alter immediate return value)
         if (newDocument?.id) {
-          try {
-            const fileText = await extractTextFromFile(fileItem.file)
-            if (fileText && fileText.trim().length > 0) {
-              await processEmbeddingOnly(fileText, projectId, newDocument.id, {
-                name: fileItem.file.name,
-                type: fileItem.file.type,
-                url: result.url,
-                s3Key: result.key,
-                companyId,
-                size: result.size,
-              })
-
-              await documentService.updateDocument(
-                companyId,
-                projectId,
-                newDocument.id,
-                {
-                  status: 'processed',
-                  content: fileText,
-                },
-              )
-
-              // Notify parent component of status update
-              const updatedDocument = {
-                ...newDocument,
-                status: 'processed' as const,
-                content: fileText,
-              }
-              onUploadComplete(updatedDocument as Document)
-            } else {
-              // No text content extracted, keeping status as processing
-            }
-          } catch (embeddingError) {
-            // Update document status to failed due to processing error
+          ;(async () => {
             try {
-              await documentService.updateDocument(
-                companyId,
-                projectId,
-                newDocument.id,
-                {
-                  status: 'failed',
-                },
-              )
+              const fileText = await extractTextFromFile(fileItem.file)
+              if (fileText && fileText.trim().length > 0) {
+                await processEmbeddingOnly(
+                  fileText,
+                  projectId,
+                  newDocument.id,
+                  {
+                    name: fileItem.file.name,
+                    type: fileItem.file.type,
+                    url: result.url,
+                    s3Key: result.key,
+                    companyId,
+                    size: result.size,
+                  },
+                )
 
-              // Notify parent component of status update
-              const failedDocument = {
-                ...newDocument,
-                status: 'failed' as const,
+                await documentService.updateDocument(
+                  companyId,
+                  projectId,
+                  newDocument.id,
+                  {
+                    status: 'processed',
+                    content: fileText,
+                  },
+                )
+
+                const updatedDocument = {
+                  ...newDocument,
+                  status: 'processed' as const,
+                  content: fileText,
+                }
+                onUploadComplete(updatedDocument as Document)
               }
-              onUploadComplete(failedDocument as Document)
-            } catch (updateError) {
-              // Failed to update document status
+            } catch (embeddingError) {
+              try {
+                await documentService.updateDocument(
+                  companyId,
+                  projectId,
+                  newDocument.id,
+                  { status: 'failed' },
+                )
+                const failedDocument = {
+                  ...newDocument,
+                  status: 'failed' as const,
+                }
+                onUploadComplete(failedDocument as Document)
+              } catch {
+                // Secondary update failure ignored: main embedding failure already surfaced via failed status update.
+              }
             }
-          }
+          })()
         }
+
+        return newDocument as Document
       }
     } catch (error) {
+      const { failureType, retryable } = classifyError(error)
       setSelectedFiles(prev =>
         prev.map(f =>
           f.id === fileItem.id
@@ -619,15 +673,17 @@ export const FileUploader = (props: FileUploaderProps) => {
                 ...f,
                 status: 'failed' as const,
                 error: formatErrorMessage(error),
+                failureType,
+                retryable,
+                retryCount: (f.retryCount ?? 0) + 1,
               }
             : f,
         ),
       )
       throw error
     }
-    // Existing backend path already invoked onUploadComplete for initial and subsequent status changes.
-    // Return null to avoid double counting in batch array (python path returns the initial created document).
-    return null
+    // Both backend paths return the initial created Document for batch aggregation.
+    // (Python path returns earlier inside its branch.)
   }
 
   const uploadAllFiles = async () => {
@@ -644,6 +700,12 @@ export const FileUploader = (props: FileUploaderProps) => {
     let failCount = 0
     const successfulDocuments: Document[] = []
 
+    const failureDetails: Array<{
+      name: string
+      failureType?: FailureType
+      retryable?: boolean
+      message?: string
+    }> = []
     try {
       // Upload files sequentially to avoid overwhelming the server
       for (let i = 0; i < pendingFiles.length; i++) {
@@ -658,6 +720,13 @@ export const FileUploader = (props: FileUploaderProps) => {
           successCount++
         } catch (error) {
           failCount++
+          const { failureType, retryable } = classifyError(error)
+          failureDetails.push({
+            name: fileItem.file.name,
+            failureType,
+            retryable,
+            message: formatErrorMessage(error),
+          })
         }
       }
 
@@ -687,6 +756,7 @@ export const FileUploader = (props: FileUploaderProps) => {
         onBatchComplete(successfulDocuments, {
           success: successCount,
           failed: failCount,
+          failures: failureDetails,
         })
       }
 
@@ -1152,7 +1222,12 @@ export const FileUploader = (props: FileUploaderProps) => {
             {selectedFiles.map(fileItem => (
               <div
                 key={fileItem.id}
-                className="flex items-center gap-3 p-3 bg-secondary/20 rounded-lg border border-border/30"
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
+                  fileItem.status === 'failed'
+                    ? 'bg-red-50 dark:bg-red-950/20 border-red-300/60'
+                    : 'bg-secondary/20 border-border/30',
+                )}
               >
                 {getFileIcon(fileItem.file)}
 
@@ -1193,7 +1268,11 @@ export const FileUploader = (props: FileUploaderProps) => {
                       <div className="flex items-start gap-1 mt-1">
                         <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
                         <span className="text-red-600 text-xs leading-tight">
-                          {fileItem.error}
+                          {fileItem.failureType
+                            ? `${fileItem.failureType.toUpperCase()}: `
+                            : ''}
+                          {fileItem.error || 'Upload failed'}
+                          {fileItem.retryable === false && ' (non-retryable)'}
                         </span>
                       </div>
                     )}
