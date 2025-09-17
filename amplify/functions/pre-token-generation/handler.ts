@@ -74,18 +74,18 @@ export const handler: PreTokenGenerationTriggerHandler = async event => {
     if (users.length === 0) {
       console.warn('User not found in database:', email)
 
-      // Always assign Admin role for users not in database
-      console.log('Assigning Admin group for user not in database')
+      // Assign default role for users not yet in database (first time login after signup)
+      console.log('Assigning Owner role for new user not yet in database')
       event.response = {
         claimsOverrideDetails: {
           claimsToAddOrOverride: {
-            'custom:role': 'Admin',
-            'custom:companyId': 'default-company',
+            'custom:role': 'Owner',
+            'custom:companyId': 'default', // Will be updated by post-confirmation
             'custom:isActive': 'true',
             'custom:tokenIssuedAt': new Date().toISOString(),
           },
           groupOverrideDetails: {
-            groupsToOverride: ['Admin'],
+            groupsToOverride: ['Owner'],
           },
         },
       }
