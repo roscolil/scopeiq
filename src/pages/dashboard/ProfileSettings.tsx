@@ -53,8 +53,90 @@ import { UserForm } from '@/components/admin/UserForm'
 import { UserTable } from '@/components/admin/UserTable'
 import { UserStats } from '@/components/admin/UserStats'
 import { Project } from '@/types'
-import { Plus, UserPlus, Mail } from 'lucide-react'
+import { Plus, UserPlus, Mail, Mic, Activity } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import useWakeWordPreference from '@/hooks/useWakeWordPreference'
 import { projectService } from '@/services/data/hybrid'
+
+// Inline component for wake word settings to keep changes localized
+const WakeWordSettingsPanel = () => {
+  const {
+    enabled,
+    consent,
+    loading,
+    setEnabled,
+    acceptConsent,
+    declineConsent,
+  } = useWakeWordPreference()
+
+  if (loading) {
+    return (
+      <div className="text-sm text-muted-foreground animate-pulse">
+        Loading preference...
+      </div>
+    )
+  }
+
+  if (consent === 'pending') {
+    return (
+      <div className="space-y-4">
+        <div className="text-sm leading-relaxed">
+          Enable hands-free activation with the phrase
+          <span className="px-1.5 py-0.5 mx-1 rounded bg-muted text-xs font-mono">
+            Hey Jacq
+          </span>
+          while this tab is active. Audio is processed locally until you begin
+          dictation.
+        </div>
+        <div className="flex gap-3">
+          <Button size="sm" onClick={() => acceptConsent(true)}>
+            Enable Hands-Free
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => declineConsent()}>
+            Not Now
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (consent === 'declined') {
+    return (
+      <div className="space-y-3">
+        <div className="text-sm text-muted-foreground">
+          You previously declined hands-free activation.
+        </div>
+        <Button size="sm" onClick={() => acceptConsent(true)}>
+          Enable "Hey Jacq" Wake Word
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between border rounded-md px-3 py-2">
+        <div className="space-y-0.5">
+          <div className="font-medium text-sm">Hands-Free Wake Word</div>
+          <div className="text-xs text-muted-foreground">
+            Say "Hey Jacq" to focus the AI input and auto-start the mic.
+          </div>
+        </div>
+        <Switch checked={enabled} onCheckedChange={setEnabled} />
+      </div>
+      {enabled ? (
+        <div className="text-xs text-emerald-500 flex items-center gap-2">
+          <span className="inline-block h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+          Listening will activate automatically when supported.
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground">
+          Disabled — no passive listening is occurring.
+        </div>
+      )}
+    </div>
+  )
+}
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -609,6 +691,7 @@ const ProfileSettings = () => {
               <TabsList>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
+                <TabsTrigger value="voice">Voice</TabsTrigger>
                 {canManageUsers && (
                   <>
                     <TabsTrigger value="userManagement">
@@ -799,6 +882,62 @@ const ProfileSettings = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <BiometricSecuritySettings />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="voice">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Mic className="h-4 w-4" /> Hands-Free Wake Word
+                    </CardTitle>
+                    <CardDescription>
+                      Enable the "Hey Jacq" wake phrase for hands-free
+                      microphone activation.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <WakeWordSettingsPanel />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-4 w-4" /> How It Works
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                    <ul className="list-disc pl-5 space-y-2">
+                      <li>
+                        Passive listener stays local in your browser; no audio
+                        leaves the device until you actively start dictation.
+                      </li>
+                      <li>
+                        Automatically pauses while you are actively dictating or
+                        when the tab loses focus.
+                      </li>
+                      <li>
+                        Uses fuzzy matching to tolerate slight mispronunciations
+                        of "Hey Jacq".
+                      </li>
+                      <li>
+                        A short cooldown (≈4s) prevents repeated triggers on
+                        echoes/background noise.
+                      </li>
+                      <li>
+                        You can disable it anytime—this preference is stored
+                        locally per browser.
+                      </li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/80 pt-2">
+                      Limitations: Browser speech APIs vary by platform;
+                      background tabs or locked screens may suspend detection.
+                      Mobile devices may aggressively throttle continuous
+                      recognition.
+                    </p>
                   </CardContent>
                 </Card>
               </div>

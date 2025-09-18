@@ -30,7 +30,7 @@ const Index = () => {
   const [hasShownWelcome, setHasShownWelcome] = useState(false)
 
   useEffect(() => {
-    // Show welcome message for authenticated users (only once)
+    // Show welcome message for authenticated users (only once). Redirect is now handled by RootRoute.
     if (
       isAuthenticated &&
       user &&

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
@@ -6,56 +6,55 @@ import { FileUploader } from '@/components/upload/FileUploader'
 import {
   ProjectDetailsSkeleton,
   DocumentListSkeleton,
-  AIActionsSkeleton,
 } from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
-  Edit,
-  Trash2,
-  Plus,
   ChevronDown,
-  RefreshCw,
+  Edit,
   Loader2,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { AIActions } from '@/components/ai/AIActions'
+import useWakeWordPreference, {
+  WAKEWORD_CONSENT_KEY,
+  WAKEWORD_ENABLED_KEY,
+} from '@/hooks/useWakeWordPreference'
+import { useWakeWord } from '@/hooks/useWakeWord'
+import { usePrefetch } from '@/utils/performance'
+import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { projectService, documentService } from '@/services/data/hybrid'
+import type { Project, Document } from '@/types'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
-import { ProjectForm } from '@/components/projects/ProjectForm'
-import { Project, Document } from '@/types'
-import { useToast } from '@/hooks/use-toast'
-import { AIActions } from '@/components/ai/AIActions'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { ProjectSelector } from '@/components/projects/ProjectSelector'
-import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ProjectForm } from '@/components/projects/ProjectForm'
+import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
-import { projectService, documentService } from '@/services/data/hybrid'
 import { documentDeletionEvents } from '@/services/utils/document-events'
-import { usePrefetch } from '@/utils/performance'
 
+// Component
 const ProjectDetails = () => {
-  const { companyId, projectId } = useParams<{
-    companyId: string // Company ID
-    projectId: string // Project slug (from project name)
-  }>()
   const navigate = useNavigate()
-  const { toast } = useToast()
+  const { companyId, projectId } = useParams<{
+    companyId: string
+    projectId: string
+  }>()
   const isMobile = useIsMobile()
-
-  // Enable prefetching for likely navigation paths
-  usePrefetch(true)
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -69,6 +68,189 @@ const ProjectDetails = () => {
   const [recentlyUploadedDocuments, setRecentlyUploadedDocuments] = useState<
     Set<string>
   >(new Set())
+  // Ref to flag when wake word triggered (to avoid duplicate activations)
+  const wakeTriggerRef = useRef<number>(0)
+
+  // Simple global query focus helper: we attempt to find the textarea inside AIActions after mount
+  const focusQueryInput = () => {
+    // The Textarea in AIActions has placeholder containing 'Ask anything'
+    const el = document.querySelector<HTMLTextAreaElement>(
+      'textarea[placeholder*="Ask anything"]',
+    )
+    if (el) {
+      el.focus()
+      // Optionally place a visual hint
+      if (!el.value) {
+        el.value = ''
+      }
+      // Move caret to end
+      el.selectionStart = el.selectionEnd = el.value.length
+    }
+  }
+
+  const openChatPanelMobile = () => {
+    // For now, scroll AIActions into view.
+    const aiActions =
+      document.querySelector('.AIActions') ||
+      document.querySelector('[data-ai-actions]')
+    if (aiActions && 'scrollIntoView' in aiActions) {
+      ;(aiActions as HTMLElement).scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
+    // Focus query afterwards
+    setTimeout(() => focusQueryInput(), 600)
+  }
+
+  const handleWakeWord = () => {
+    const now = Date.now()
+    if (now - wakeTriggerRef.current < 4000) return // throttle
+    wakeTriggerRef.current = now
+    if (isMobile) {
+      openChatPanelMobile()
+    } else {
+      focusQueryInput()
+    }
+    // Dispatch event to start mic with minimal delay so user can speak naturally.
+    // Reduced from 250ms -> 60ms. If the textarea was already focused we fire almost immediately.
+    const alreadyFocused = document.activeElement?.tagName === 'TEXTAREA'
+    const delay = alreadyFocused ? 10 : 60
+    setTimeout(() => {
+      window.dispatchEvent(new Event('wakeword:activate-mic'))
+    }, delay)
+  }
+
+  // Centralized preference integration for passive listener
+  const { enabled, consent, acceptConsent, setEnabled } =
+    useWakeWordPreference()
+  const [isDictationActive, setIsDictationActive] = useState(false)
+
+  // Listen for dictation activity events from AIActions to suspend wake listener reliably
+  useEffect(() => {
+    const onStart = () => {
+      setIsDictationActive(true)
+    }
+    const onStop = () => {
+      setIsDictationActive(false)
+    }
+    window.addEventListener('dictation:start', onStart)
+    window.addEventListener('dictation:stop', onStop)
+    return () => {
+      window.removeEventListener('dictation:start', onStart)
+      window.removeEventListener('dictation:stop', onStop)
+    }
+  }, [])
+  useWakeWord({
+    enabled: enabled && consent === 'true',
+    onWake: handleWakeWord,
+    isDictationActive,
+    autoStart: true,
+    requireUserInteraction: true,
+    watchdogIntervalMs: 6000,
+    debug: true,
+  })
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
+
+  // Delayed wake word enable toast (after project fully loaded)
+  useEffect(() => {
+    console.debug('[wakeword-prompt] effect run', {
+      projectId,
+      hasProject: !!project,
+      isProjectLoading,
+    })
+    if (!projectId) {
+      console.debug('[wakeword-prompt] abort: missing projectId')
+      return
+    }
+    if (isProjectLoading) {
+      console.debug('[wakeword-prompt] abort: still loading project')
+      return
+    }
+    if (!project) {
+      console.debug('[wakeword-prompt] abort: project object not set yet')
+      return
+    }
+    const PROMPT_KEY = 'wakeword.enable.prompt.shown.v1'
+    const timer = setTimeout(() => {
+      try {
+        const prompted = localStorage.getItem(PROMPT_KEY)
+        if (prompted) {
+          console.debug(
+            '[wakeword-prompt] already prompted (localStorage key present)',
+          )
+          return
+        }
+        const consentVal = localStorage.getItem(WAKEWORD_CONSENT_KEY)
+        const enabledVal = localStorage.getItem(WAKEWORD_ENABLED_KEY) === 'true'
+        const shouldPrompt =
+          !consentVal ||
+          consentVal === 'declined' ||
+          (consentVal === 'true' && !enabledVal)
+        console.debug('[wakeword-prompt] state check', {
+          consentVal,
+          enabledVal,
+          shouldPrompt,
+        })
+        if (!shouldPrompt) {
+          console.debug('[wakeword-prompt] abort: conditions not met to prompt')
+          return
+        }
+        const t = toast({
+          title: 'Hands-Free Wake Word',
+          description: (
+            <div className="space-y-2">
+              <p className="text-sm">
+                Enable the "Hey Jacq" wake phrase for hands-free activation.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    try {
+                      console.debug('[wakeword-prompt] Enable Now clicked')
+                      acceptConsent(true) // also enables
+                      localStorage.setItem(PROMPT_KEY, 'true')
+                    } catch {
+                      /* noop */
+                    }
+                    t.dismiss()
+                    setTimeout(() => {
+                      toast({
+                        title: 'Hands-Free Enabled',
+                        description: 'Say "Hey Jacq" to start speaking.',
+                      })
+                    }, 150)
+                  }}
+                  className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
+                >
+                  Enable Now
+                </button>
+                <button
+                  onClick={() => {
+                    console.debug(
+                      '[wakeword-prompt] Dismiss clicked, setting prompt key',
+                    )
+                    localStorage.setItem(PROMPT_KEY, 'true')
+                    t.dismiss()
+                  }}
+                  className="px-3 py-1.5 rounded border border-border text-xs hover:bg-muted/50"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ),
+        })
+        console.debug('[wakeword-prompt] toast shown, marking key')
+        localStorage.setItem(PROMPT_KEY, 'true')
+      } catch {
+        /* noop */
+      }
+    }, 350) // small delay to avoid appearing before layout settles
+    return () => clearTimeout(timer)
+  }, [projectId, project, isProjectLoading, acceptConsent])
 
   // Handle document status updates for real-time feedback
   const handleDocumentStatusUpdate = useCallback(
@@ -328,7 +510,6 @@ const ProjectDetails = () => {
   }, [
     projectId,
     companyId,
-    toast,
     getCachedProject,
     getCachedDocuments,
     setCachedProjectData,
@@ -1027,6 +1208,8 @@ const ProjectDetails = () => {
               />
             </div>
           )}
+
+          {/* Passive wake word listener active (no indicator; managed in Settings) */}
 
           {isMobile && (
             <>

@@ -438,7 +438,27 @@ export const VoiceShazamButton = ({
                   trimmedTranscript,
                   'silence-threshold',
                 )
-              }, SILENCE_DURATION_MS)
+                setStatus('Got result!')
+                setInternalIsListening(false)
+                hasSubmittedRef.current = true
+                lastSubmittedTranscriptRef.current = trimmedTranscript
+
+                // Stop recognition
+                try {
+                  recognitionInstance.stop()
+                } catch (error) {
+                  console.log('Recognition already stopped')
+                }
+
+                // Pass transcript to parent component after silence
+                if (onTranscript && trimmedTranscript) {
+                  console.log(
+                    '🎯 Calling onTranscript after silence:',
+                    trimmedTranscript,
+                  )
+                  onTranscript(trimmedTranscript)
+                }
+              }, 1500) // 1.5 second silence detection
 
               console.log(
                 `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,

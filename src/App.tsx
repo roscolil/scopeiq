@@ -16,7 +16,9 @@ import {
 } from '@/utils/performance/route-prefetch'
 
 // Eagerly load critical components
-import HomePage from '@/pages/dashboard/IndexPage'
+// HomePage now wrapped by RootRoute for conditional dashboard redirect
+// (Still imported inside RootRoute component.)
+import RootRoute from '@/components/routing/RootRoute'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
@@ -115,6 +117,8 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public root route with conditional redirect to dashboard when authenticated */}
+              <Route path="/" element={<RootRoute />} />
               {/* Public routes - eagerly loaded */}
               <Route
                 path="/"
