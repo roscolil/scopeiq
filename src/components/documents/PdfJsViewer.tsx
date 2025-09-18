@@ -250,11 +250,11 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
 
   return (
     <div
-      className="relative bg-neutral-100 dark:bg-slate-800/60 rounded-md border flex flex-col"
+      className="relative bg-neutral-100 dark:bg-slate-800/60 rounded border flex flex-col"
       style={{ height: 'calc(100vh - 180px)' }}
     >
       {/* Control Bar */}
-      <div className="flex flex-wrap gap-2 items-center justify-between bg-white/90 backdrop-blur px-3 py-2 border-b text-xs shrink-0">
+      <div className="flex flex-wrap gap-2 items-center rounded-md justify-between bg-white/90 backdrop-blur px-3 py-2 border-b text-xs shrink-0">
         <div className="flex items-center gap-1">
           <button
             onClick={() => goToPage(1)}
