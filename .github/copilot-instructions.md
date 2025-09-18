@@ -1,6 +1,6 @@
 # GitH## Tech Stack
 
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS (use port 8080 for dev server)
 - **Backend**: AWS Amplify Gen 2, DynamoDB, Lambda Functions, S3
 - **Package Manager**: pnpm (use `pnpm install`, `pnpm dev`, etc.)
 - **AI/ML**: OpenAI GPT models, AWS Bedrock, Pinecone vector search

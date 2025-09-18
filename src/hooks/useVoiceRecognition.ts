@@ -57,6 +57,10 @@ export const useVoiceRecognition = ({
   const isPlayingAudioRef = useRef(false)
   const lastTranscriptTimeRef = useRef<number>(0)
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Guard against rapid restart loops (especially on mobile browsers)
+  const lastRestartRef = useRef<number>(0)
+  const restartAttemptsRef = useRef<number>(0)
+  const forceStopRef = useRef<boolean>(false)
 
   // Initialize speech recognition
   useEffect(() => {
@@ -238,15 +242,61 @@ export const useVoiceRecognition = ({
       console.log('Speech recognition ended')
       setIsProcessing(false)
 
+      // If we deliberately stopped, do not attempt restart
+      if (forceStopRef.current) {
+        console.log('Force stop active, not restarting recognition')
+        forceStopRef.current = false
+        return
+      }
+
       if (isListening && !isPlayingAudioRef.current && !isProcessing) {
+        const now = Date.now()
+        const sinceLast = now - lastRestartRef.current
+
+        // Apply exponential backoff if rapid endings (<800ms apart)
+        let delay = 150
+        if (sinceLast < 800) {
+          restartAttemptsRef.current += 1
+          delay = Math.min(150 * 2 ** restartAttemptsRef.current, 4000)
+          console.warn(
+            'Rapid onend detected, applying backoff',
+            restartAttemptsRef.current,
+            'delay=',
+            delay,
+          )
+        } else {
+          restartAttemptsRef.current = 0
+        }
+        lastRestartRef.current = now
+
+        // Mobile specific: if we get >5 rapid attempts within 10s, stop entirely
+        if (restartAttemptsRef.current > 5) {
+          console.error(
+            'Excessive restart attempts, stopping to prevent STT loop',
+          )
+
+          forceStopRef.current = true
+          setIsListening(false)
+          return
+        }
+
         try {
           setTimeout(() => {
-            if (isListening && recognition) {
-              recognition.start()
+            if (isListening && recognition && !forceStopRef.current) {
+              try {
+                recognition.start()
+                console.log(
+                  'Recognition restarted after end (delay',
+                  delay,
+                  'ms)',
+                )
+              } catch (error) {
+                console.error('Error restarting recognition:', error)
+              }
             }
-          }, 100)
+          }, delay)
         } catch (error) {
-          console.error('Error restarting recognition:', error)
+          console.error('Error scheduling recognition restart:', error)
         }
       }
     }
@@ -315,7 +365,10 @@ export const useVoiceRecognition = ({
   }, [])
 
   const startListening = () => setIsListening(true)
-  const stopListening = () => setIsListening(false)
+  const stopListening = () => {
+    forceStopRef.current = true
+    setIsListening(false)
+  }
   const toggleListening = () => setIsListening(!isListening)
 
   return {

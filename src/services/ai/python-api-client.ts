@@ -83,28 +83,41 @@ export interface HealthCheckResponse {
 /**
  * Python AI Backend API Client
  */
+import { getEnvironmentConfig } from '@/config/python-backend'
+
 export class PythonAPIClient {
   private baseURL: string
   private apiKey?: string
+  private versionPrefix: string
 
   constructor() {
-    this.baseURL =
-      import.meta.env.VITE_PYTHON_AI_BACKEND_URL || 'http://localhost:8000'
+    // Use centralized python backend config (ensures consistency with taxonomy service + env overrides)
+    const cfg = getEnvironmentConfig()
+    this.baseURL = cfg.baseURL.replace(/\/$/, '') // normalize no trailing slash
+    this.versionPrefix = (
+      import.meta.env.VITE_TAXONOMY_API_VERSION_PREFIX || '/api/v1'
+    ).replace(/\/$/, '')
+  }
+
+  private buildUrl(endpoint: string): string {
+    if (!endpoint.startsWith('/')) return `${this.baseURL}/${endpoint}`
+    return `${this.baseURL}${endpoint}`
   }
 
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {},
   ): Promise<PythonAPIResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`
+    const url = this.buildUrl(endpoint)
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     }
 
-    if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`
+    // Auth temporarily disabled for diagnostics
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[pythonAPIClient] auth disabled', { endpoint })
     }
 
     try {
@@ -114,12 +127,38 @@ export class PythonAPIClient {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`API request failed: ${response.status} - ${errorText}`)
+        const respClone = response.clone()
+        let body = ''
+        try {
+          body = await respClone.text()
+        } catch (e) {
+          console.debug('[pythonAPIClient] body read failed', { url, e })
+        }
+        console.warn('[pythonAPIClient] non-ok', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          body,
+          headers: (() => {
+            const h: Record<string, string> = {}
+            response.headers.forEach((v, k) => {
+              h[k] = v
+            })
+            return h
+          })(),
+        })
+        throw new Error(
+          `API request failed: ${response.status} ${response.statusText}`,
+        )
       }
 
-      const data = await response.json()
-      return data
+      try {
+        const data = await response.json()
+        return data
+      } catch (parseErr) {
+        console.error('[pythonAPIClient] JSON parse error', { url, parseErr })
+        throw parseErr
+      }
     } catch (error) {
       console.error('Python API request failed:', error)
       return {
@@ -145,7 +184,7 @@ export class PythonAPIClient {
       formData.append('document_name', request.document_name)
     }
 
-    const url = `${this.baseURL}/api/v1/documents/upload`
+    const url = this.buildUrl(`${this.versionPrefix}/documents/upload`)
 
     try {
       const response = await fetch(url, {
@@ -181,7 +220,7 @@ export class PythonAPIClient {
     documentId: string,
   ): Promise<PythonAPIResponse<DocumentProcessingStatus>> {
     return this.makeRequest<DocumentProcessingStatus>(
-      `/api/v1/documents/${documentId}/progress`,
+      `${this.versionPrefix}/documents/${documentId}/progress`,
     )
   }
 
@@ -191,17 +230,20 @@ export class PythonAPIClient {
   async chatConversation(
     request: ChatRequest,
   ): Promise<PythonAPIResponse<ChatResponse>> {
-    return this.makeRequest<ChatResponse>('/api/v1/chat/conversation', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    })
+    return this.makeRequest<ChatResponse>(
+      `${this.versionPrefix}/chat/conversation`,
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+    )
   }
 
   /**
    * Health check
    */
   async healthCheck(): Promise<PythonAPIResponse<HealthCheckResponse>> {
-    return this.makeRequest<HealthCheckResponse>('/api/v1/health')
+    return this.makeRequest<HealthCheckResponse>(`${this.versionPrefix}/health`)
   }
 }
 

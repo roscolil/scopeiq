@@ -44,6 +44,9 @@ const Index = () => {
       })
       localStorage.setItem('hasWelcomed', 'true')
       setHasShownWelcome(true)
+
+      // Note: Redirect is now handled by RootRedirect in App.tsx
+      // This allows for proper authentication flow management
     }
   }, [isAuthenticated, user, hasShownWelcome])
 
@@ -90,7 +93,7 @@ const Index = () => {
       <Layout>
         <div className="relative space-y-32">
           {/* Hero Section */}
-          <div className="text-center py-12 px-6">
+          <div className="text-center sm:py-12 md:py-18 px-6">
             {/* Show subtle loading indicator when checking auth */}
             {isLoading && (
               <div className="my-8 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">

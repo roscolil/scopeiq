@@ -109,6 +109,34 @@ export const AIActions = ({
   const [lastSpokenResponse, setLastSpokenResponse] = useState<string>('')
   // Local UI speech replay state (separate from isVoicePlaying to support replay after completion)
   const [canReplay, setCanReplay] = useState(false)
+  // Rate limiting for mobile devices
+  const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0)
+  // Android-specific transcript tracking for better duplicate prevention
+  const [androidTranscriptHistory, setAndroidTranscriptHistory] = useState<
+    string[]
+  >([])
+  // Enhanced AI progress tracking with minimum display duration
+  const [enhancedAIProgress, setEnhancedAIProgress] = useState<string>('')
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Map verbose progress messages to brief user-friendly ones
+  const formatProgressMessage = (stage: string): string => {
+    const progressMap: Record<string, string> = {
+      'Using Python backend...': 'Initializing...',
+      'Using existing backend...': 'Connecting...',
+      'Falling back to existing backend...': 'Reconnecting...',
+      'Preparing chat request...': 'Preparing...',
+      'Sending request to Python backend...': 'Sending...',
+      'Processing response...': 'Processing...',
+      'Analyzing query...': 'Analyzing...',
+      'Getting enhanced context...': 'Loading context...',
+      'Generating response...': 'Generating...',
+      'Searching documents...': 'Searching...',
+    }
+    const mapped = progressMap[stage] || stage
+    console.log(`🔄 Progress stage: "${stage}" → "${mapped}"`)
+    return mapped
+  }
   const { toast } = useToast()
   const isMobile = useIsMobile()
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
@@ -417,6 +445,9 @@ export const AIActions = ({
       if (silenceTimer) {
         clearTimeout(silenceTimer)
       }
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current)
+      }
     }
   }, [documentId, projectId, companyId, silenceTimer])
 
@@ -599,6 +630,19 @@ export const AIActions = ({
       const queryToUse = queryText || query
       if (!queryToUse.trim()) return
 
+      // Rate limiting - prevent submissions faster than 2 seconds apart on mobile
+      const now = Date.now()
+      if (isMobile && now - lastSubmissionTime < 2000) {
+        console.log('🔄 Rate limiting: Submission too fast, skipping')
+        toast({
+          title: 'Please wait',
+          description: 'Please wait a moment before asking another question.',
+          duration: 1500,
+        })
+        return
+      }
+      setLastSubmissionTime(now)
+
       if (!projectId) {
         toast({
           title: 'Project Required',
@@ -659,6 +703,7 @@ export const AIActions = ({
       setResults(null)
       setLastSpokenResponse('') // Clear previous spoken response for new queries
       setIsVoicePlaying(false) // Reset voice playing state for new queries
+      setEnhancedAIProgress('') // Clear previous progress state
 
       try {
         if (isQuestion(queryToUse)) {
@@ -729,6 +774,23 @@ export const AIActions = ({
                 queryScope,
                 onProgress: stage => {
                   console.log('Enhanced AI Progress:', stage)
+                  const formattedStage = formatProgressMessage(stage)
+
+                  // Clear any existing timer
+                  if (progressTimerRef.current) {
+                    clearTimeout(progressTimerRef.current)
+                  }
+
+                  // Set the new progress immediately
+                  setEnhancedAIProgress(formattedStage)
+
+                  // Set a minimum display duration for visibility
+                  progressTimerRef.current = setTimeout(() => {
+                    // Only clear if this is still the current stage
+                    setEnhancedAIProgress(prev =>
+                      prev === formattedStage ? prev : prev,
+                    )
+                  }, 800) // Keep each stage visible for at least 800ms
                 },
                 options: {
                   usePythonBackend: true,
@@ -943,6 +1005,7 @@ export const AIActions = ({
         })
       } finally {
         setIsLoading(false)
+        setEnhancedAIProgress('') // Clear progress when query completes
       }
     },
     [
@@ -964,6 +1027,7 @@ export const AIActions = ({
       isVoicePlaying,
       lastSpokenResponse,
       setLastSpokenResponse,
+      lastSubmissionTime,
     ],
   )
 
@@ -1328,7 +1392,7 @@ export const AIActions = ({
         console.log(
           '⏰ Started silence timer for:',
           text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '3s'} timeout)`,
+          `(${isMobile ? '1.5s' : '2s'} timeout)`,
         )
       }
     },
@@ -1501,9 +1565,9 @@ export const AIActions = ({
     handleTranscript,
   ])
 
-  const handleAskAI = async () => {
-    await handleQuery()
-  }
+  // const handleAskAI = async () => {
+  //   await handleQuery()
+  // }
 
   // Subtle passive wake word indicator (reads preference; listening state managed in ProjectDetails)
   const { enabled: wakeEnabled, consent: wakeConsent } = useWakeWordPreference()
@@ -1630,7 +1694,7 @@ export const AIActions = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Unlock insights with intelligent search & AI analysis
                 </p>
-                <div className="flex items-center gap-2 mt-1">
+                {/* <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-2xs">
                     {queryScope === 'document' && documentId
                       ? 'Document scope'
@@ -1668,7 +1732,7 @@ export const AIActions = ({
                       {queryScope === 'document' ? 'Project' : 'Document'}
                     </Button>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -1826,7 +1890,9 @@ export const AIActions = ({
                   {isLoading ? (
                     <>
                       <div className="spinner" />
-                      <span className="animate-pulse">Analyzing...</span>
+                      <span className="animate-pulse">
+                        {enhancedAIProgress || 'Analyzing...'}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -2073,18 +2139,67 @@ export const AIActions = ({
           onTranscript={text => {
             console.log('🎯 Received transcript in AIActions:', text)
 
-            // Prevent duplicate processing
-            if (text === lastProcessedTranscript) {
-              console.log('🔄 Duplicate transcript detected, skipping:', text)
+            const trimmedText = text.trim()
+            const isAndroid = /Android/i.test(navigator.userAgent)
+
+            // Android-specific enhanced duplicate prevention
+            if (isAndroid) {
+              // Check against recent Android transcripts (last 5)
+              const recentDuplicates = androidTranscriptHistory.slice(-5)
+              const isDuplicateInHistory = recentDuplicates.some(
+                historyText =>
+                  historyText === trimmedText ||
+                  (historyText.length > 5 &&
+                    trimmedText.length > 5 &&
+                    (historyText.includes(trimmedText.slice(0, -2)) ||
+                      trimmedText.includes(historyText.slice(0, -2)))),
+              )
+
+              if (isDuplicateInHistory) {
+                console.log(
+                  '🤖 Android: Transcript found in recent history, skipping:',
+                  { current: trimmedText, history: recentDuplicates },
+                )
+                return
+              }
+
+              // Add to Android history (keep last 10 entries)
+              setAndroidTranscriptHistory(prev =>
+                [...prev, trimmedText].slice(-10),
+              )
+            }
+
+            // Enhanced duplicate prevention for all platforms
+            const isExactDuplicate = trimmedText === lastProcessedTranscript
+            const isSimilarDuplicate =
+              lastProcessedTranscript &&
+              trimmedText.length > 5 &&
+              (lastProcessedTranscript.includes(trimmedText.slice(0, -2)) ||
+                trimmedText.includes(lastProcessedTranscript.slice(0, -2)))
+
+            if (isExactDuplicate || isSimilarDuplicate) {
+              console.log(
+                '🔄 Duplicate/similar transcript detected, skipping:',
+                { current: trimmedText, last: lastProcessedTranscript },
+              )
               return
             }
 
-            setLastProcessedTranscript(text)
-            setQuery(text)
+            // Prevent processing if already loading
+            if (isLoading) {
+              console.log(
+                '🔄 Already processing query, skipping transcript:',
+                trimmedText,
+              )
+              return
+            }
+
+            setLastProcessedTranscript(trimmedText)
+            setQuery(trimmedText)
             // Set loading immediately to show processing state
             setIsLoading(true)
             // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
-            handleQuery(text)
+            handleQuery(trimmedText)
           }}
         />
       )}

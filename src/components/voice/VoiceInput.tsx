@@ -58,10 +58,10 @@ export const VoiceInput = ({
   // Initialize speech recognition
   useEffect(() => {
     // CRITICAL FIX: Don't initialize recognition on mobile to prevent duplicate voice processing
-    // Mobile devices use the mobileRecognitionRef in AIActions component instead
+    // Mobile devices use the VoiceShazamButton component instead to avoid conflicts
     if (isMobile) {
       console.log(
-        '🎤 Skipping VoiceInput recognition initialization on mobile (using AIActions mobile recognition)',
+        '🎤 Skipping VoiceInput recognition initialization on mobile (using VoiceShazamButton)',
       )
       return
     }

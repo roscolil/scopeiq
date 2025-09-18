@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FilePlus, Heart } from 'lucide-react'
+import { FilePlus, Heart, HardHat } from 'lucide-react'
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear()
@@ -12,8 +12,8 @@ export const Footer = () => {
           {/* Brand */}
           <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
-              <FilePlus className="h-5 w-5 text-emerald-400" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+              <HardHat className="h-6 w-6 text-emerald-400" />
+              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">

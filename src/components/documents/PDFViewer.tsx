@@ -63,7 +63,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
             Open in New Tab
           </Button>
 
-          <Button
+          {/* <Button
             variant="outline"
             onClick={async () => {
               try {
@@ -97,7 +97,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ document }) => {
           >
             <Download className="h-4 w-4 mr-2" />
             Download PDF
-          </Button>
+          </Button> */}
 
           {fallbackUrl && (
             <Button
