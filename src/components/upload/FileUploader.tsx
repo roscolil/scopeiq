@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { CategoryMultiSelect } from '@/components/upload/CategoryMultiSelect'
+// import { CategoryMultiSelect } from '@/components/upload/CategoryMultiSelect'
 import {
   Upload,
   X,
@@ -114,7 +114,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   } | null>(null)
   const [showRejected, setShowRejected] = useState(false)
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
-  const [categoryTouched, setCategoryTouched] = useState(false)
+  // const [categoryTouched, setCategoryTouched] = useState(false)
 
   // Ref to store mapping between Python document IDs and file items for immediate access
   const pythonDocumentMapping = useRef<
@@ -1085,7 +1085,8 @@ export const FileUploader = (props: FileUploaderProps) => {
                   </Button>
                 </label>
 
-                <label htmlFor="folder-upload" className="flex justify-center">
+                {/* Browse Folders hidden per request */}
+                {/* <label htmlFor="folder-upload" className="flex justify-center">
                   <Input
                     id="folder-upload"
                     type="file"
@@ -1106,41 +1107,13 @@ export const FileUploader = (props: FileUploaderProps) => {
                       Browse Folders
                     </span>
                   </Button>
-                </label>
+                </label> */}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Category Selection (required) */}
-        <div className="space-y-2">
-          <label className="text-xs font-semibold tracking-wide uppercase flex items-center gap-1">
-            <span className="text-muted-foreground">Categories</span>
-            <span className="text-red-500 text-[10px] font-medium">
-              Required
-            </span>
-          </label>
-          <CategoryMultiSelect
-            value={selectedCategoryIds}
-            onChange={vals => {
-              setSelectedCategoryIds(vals)
-              setCategoryTouched(true)
-            }}
-            max={5}
-            min={1}
-            placeholder="Select at least one category"
-          />
-          {categoryTouched && selectedCategoryIds.length === 0 && (
-            <p className="text-[10px] text-destructive mt-0.5">
-              Please select at least one category.
-            </p>
-          )}
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Categories improve search accuracy and contextual AI analysis. All
-            selected files will share these categories; you can refine per file
-            later.
-          </p>
-        </div>
+        {/* Categories UI hidden for now */}
       </div>
 
       {/* Scrollable region containing dynamic file list & progress */}
@@ -1171,14 +1144,11 @@ export const FileUploader = (props: FileUploaderProps) => {
               </Button>
               <Button
                 onClick={() => {
-                  setCategoryTouched(true)
-                  if (selectedCategoryIds.length === 0) return
                   uploadAllFiles()
                 }}
                 disabled={
                   isUploading ||
-                  selectedFiles.every(f => f.status !== 'pending') ||
-                  selectedCategoryIds.length === 0
+                  selectedFiles.every(f => f.status !== 'pending')
                 }
                 size="sm"
                 className="text-xs"

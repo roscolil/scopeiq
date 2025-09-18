@@ -77,16 +77,16 @@ export const Navbar = () => {
       path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
-    // Admin route (outside company scoping) only for Admin role
-    ...(isAuthorized?.({ requireRole: 'Admin' })
-      ? [
-          {
-            name: 'Admin',
-            path: '/admin',
-            icon: <Settings className="w-5 h-5 mr-2" />,
-          },
-        ]
-      : []),
+    // Admin route hidden for now
+    // ...(isAuthorized?.({ requireRole: 'Admin' })
+    //   ? [
+    //       {
+    //         name: 'Admin',
+    //         path: '/admin',
+    //         icon: <Settings className="w-5 h-5 mr-2" />,
+    //       },
+    //     ]
+    //   : []),
   ]
 
   const isActive = (path: string) => {
