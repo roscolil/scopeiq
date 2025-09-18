@@ -16,7 +16,6 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
-import { routes } from '@/utils/ui/navigation'
 import { AIActions } from '@/components/ai/AIActions'
 import useWakeWordPreference, {
   WAKEWORD_CONSENT_KEY,
@@ -46,9 +45,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
-import { projectService, documentService } from '@/services/data/hybrid'
 import { documentDeletionEvents } from '@/services/utils/document-events'
-import { usePrefetch } from '@/utils/performance'
 
 // Component
 const ProjectDetails = () => {

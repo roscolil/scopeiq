@@ -1178,29 +1178,6 @@
               "attributes": [],
               "isArrayNullable": true
             },
-            "categoryIds": {
-              "name": "categoryIds",
-              "isArray": true,
-              "type": "String",
-              "isRequired": false,
-              "attributes": [],
-              "isArrayNullable": true
-            },
-            "primaryCategoryId": {
-              "name": "primaryCategoryId",
-              "isArray": false,
-              "type": "String",
-              "isRequired": false,
-              "attributes": []
-            },
-            "suggestedCategoryIds": {
-              "name": "suggestedCategoryIds",
-              "isArray": true,
-              "type": "String",
-              "isRequired": false,
-              "attributes": [],
-              "isArrayNullable": true
-            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -1267,17 +1244,6 @@
                 "fields": [
                   "projectId",
                   "name"
-                ]
-              }
-            },
-            {
-              "type": "key",
-              "properties": {
-                "name": "documentsByPrimaryCategoryIdAndCreatedAt",
-                "queryField": "documentsByPrimaryCategory",
-                "fields": [
-                  "primaryCategoryId",
-                  "createdAt"
                 ]
               }
             },
