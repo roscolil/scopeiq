@@ -73,11 +73,13 @@ const RootRedirect = () => {
   // While loading initial auth state, show landing page (keeps perceived performance high)
   if (isLoading) return <HomePage />
 
-  if (isAuthenticated && user?.companyId) {
-    const companySegment = (user.companyId || 'default').toLowerCase()
+  // If user is authenticated and has a valid companyId (not 'default'), redirect to dashboard
+  if (isAuthenticated && user?.companyId && user.companyId !== 'default') {
+    const companySegment = user.companyId.toLowerCase()
     return <Navigate to={`/${companySegment}`} replace />
   }
 
+  // For unauthenticated users or users still syncing (companyId === 'default'), show homepage
   return <HomePage />
 }
 
@@ -220,14 +222,14 @@ const App = () => {
               <Route element={<AuthenticatedLayout />}>
                 {/* Global admin route (not company-scoped) */}
                 {/* <Route element={<AdminGuard />}> */}
-                  <Route
-                    path="admin"
-                    element={
-                      <EnhancedSuspense fallbackType="default">
-                        <AdminConsole />
-                      </EnhancedSuspense>
-                    }
-                  />
+                <Route
+                  path="admin"
+                  element={
+                    <EnhancedSuspense fallbackType="default">
+                      <AdminConsole />
+                    </EnhancedSuspense>
+                  }
+                />
                 {/* </Route> */}
                 {/* Company-scoped routes */}
                 <Route path=":companyId" element={<CompanyGuard />}>
