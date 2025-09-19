@@ -36,6 +36,9 @@ export interface HybridDocument {
   content: string
   createdAt: string
   updatedAt?: string
+  categoryIds?: string[]
+  primaryCategoryId?: string
+  suggestedCategoryIds?: string[]
 }
 
 export interface HybridProject {
@@ -62,6 +65,8 @@ export interface CreateDocumentInput {
   s3Key?: string // Optional: if provided, use this instead of generating a new one
   thumbnailUrl?: string
   content?: string
+  categoryIds?: string[]
+  primaryCategoryId?: string
 }
 
 export interface UpdateDocumentInput {
@@ -102,6 +107,9 @@ const convertDbDocumentToS3 = (
   content: dbDoc.content || '',
   createdAt: dbDoc.createdAt || new Date().toISOString(),
   updatedAt: dbDoc.updatedAt || undefined,
+  categoryIds: dbDoc.categoryIds || undefined,
+  primaryCategoryId: dbDoc.primaryCategoryId || undefined,
+  suggestedCategoryIds: dbDoc.suggestedCategoryIds || undefined,
 })
 
 const convertDbProjectToS3 = (
@@ -178,6 +186,9 @@ export const hybridDocumentService = {
             content: doc.content || '',
             createdAt: doc.createdAt || new Date().toISOString(),
             updatedAt: doc.updatedAt,
+            categoryIds: doc.categoryIds || undefined,
+            primaryCategoryId: doc.primaryCategoryId || undefined,
+            suggestedCategoryIds: doc.suggestedCategoryIds || undefined,
           } as HybridDocument
         }),
       )
@@ -242,6 +253,9 @@ export const hybridDocumentService = {
         content: dbDocument.content || '',
         createdAt: dbDocument.createdAt || new Date().toISOString(),
         updatedAt: dbDocument.updatedAt,
+        categoryIds: dbDocument.categoryIds || undefined,
+        primaryCategoryId: dbDocument.primaryCategoryId || undefined,
+        suggestedCategoryIds: dbDocument.suggestedCategoryIds || undefined,
       }
     } catch (error) {
       console.error('Hybrid: Error fetching document by ID:', error)
@@ -306,6 +320,9 @@ export const hybridDocumentService = {
         content: updatedDocument.content || '',
         createdAt: updatedDocument.createdAt || new Date().toISOString(),
         updatedAt: updatedDocument.updatedAt,
+        categoryIds: updatedDocument.categoryIds || undefined,
+        primaryCategoryId: updatedDocument.primaryCategoryId || undefined,
+        suggestedCategoryIds: updatedDocument.suggestedCategoryIds || undefined,
       }
     } catch (error) {
       console.error('Hybrid: Error refreshing document URL:', error)
@@ -348,6 +365,9 @@ export const hybridDocumentService = {
         mimeType: documentData.type,
         content: documentData.content,
         tags: [],
+        categoryIds: documentData.categoryIds,
+        primaryCategoryId: documentData.primaryCategoryId,
+        suggestedCategoryIds: undefined,
       }
 
       // Write to database first (primary source)
@@ -379,6 +399,9 @@ export const hybridDocumentService = {
         content: dbDocument.content || '',
         createdAt: dbDocument.createdAt || new Date().toISOString(),
         updatedAt: dbDocument.updatedAt,
+        categoryIds: dbDocument.categoryIds || undefined,
+        primaryCategoryId: dbDocument.primaryCategoryId || undefined,
+        suggestedCategoryIds: dbDocument.suggestedCategoryIds || undefined,
       }
 
       return result
@@ -440,6 +463,9 @@ export const hybridDocumentService = {
         content: dbDocument.content || '',
         createdAt: dbDocument.createdAt || new Date().toISOString(),
         updatedAt: dbDocument.updatedAt,
+        categoryIds: dbDocument.categoryIds || undefined,
+        primaryCategoryId: dbDocument.primaryCategoryId || undefined,
+        suggestedCategoryIds: dbDocument.suggestedCategoryIds || undefined,
       }
     } catch (error) {
       console.error('Hybrid: Error updating document:', error)
@@ -537,6 +563,9 @@ export const hybridDocumentService = {
         content: doc.content || '',
         createdAt: doc.createdAt || new Date().toISOString(),
         updatedAt: doc.updatedAt,
+        categoryIds: doc.categoryIds || undefined,
+        primaryCategoryId: doc.primaryCategoryId || undefined,
+        suggestedCategoryIds: doc.suggestedCategoryIds || undefined,
       }))
       return documents
     } catch (error) {

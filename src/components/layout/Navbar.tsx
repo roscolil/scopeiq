@@ -26,12 +26,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/aws-auth'
+import { useAuthorization } from '@/hooks/auth-utils'
 import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
 
 export const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, user, signOut: authSignOut } = useAuth()
+  interface AuthorizationSubset {
+    userRole: string
+    isAuthorized: (arg: { requireRole?: string | string[] }) => boolean
+  }
+  const { userRole, isAuthorized } = useAuthorization() as AuthorizationSubset
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -71,6 +77,16 @@ export const Navbar = () => {
       path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
+    // Admin route hidden for now
+    // ...(isAuthorized?.({ requireRole: 'Admin' })
+    //   ? [
+    //       {
+    //         name: 'Admin',
+    //         path: '/admin',
+    //         icon: <Settings className="w-5 h-5 mr-2" />,
+    //       },
+    //     ]
+    //   : []),
   ]
 
   const isActive = (path: string) => {

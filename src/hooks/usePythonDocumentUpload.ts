@@ -103,7 +103,7 @@ export function usePythonDocumentUpload(
               // Storage upload complete - update progress and call callback
               setUploadProgress({
                 percentage: 50, // Storage upload complete
-                stage: 'Beginning text extraction...',
+                stage: 'Beginning content extraction...',
                 status: 'uploading', // Still uploading stage for modal
               })
               onStorageComplete?.(storageResult)

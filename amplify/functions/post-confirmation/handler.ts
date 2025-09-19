@@ -62,17 +62,21 @@ export const handler: PostConfirmationTriggerHandler = async event => {
     if (existingUsers.length === 0) {
       console.log('Creating new user in DynamoDB for:', email)
 
-      // Get or create a default company for the user
+      // Get or create a company for the user
       let companyId = userAttributes['custom:companyId']
+      const companyName = userAttributes['custom:companyName'] // Get company name from signup
 
       if (!companyId) {
-        console.log('No company ID found, creating default company')
+        console.log('No company ID found, creating new company')
 
-        // Create a default company for this user
+        // Use the company name from signup form or fallback to default
+        const finalCompanyName = companyName || `${name}'s Company`
+
+        // Create a company with the name provided during signup
         const { data: newCompany, errors: companyErrors } =
           await client.models.Company.create({
-            name: `${name}'s Company`,
-            description: 'Default company created during signup',
+            name: finalCompanyName,
+            description: 'Company created during user signup',
           })
 
         if (companyErrors) {
@@ -81,7 +85,7 @@ export const handler: PostConfirmationTriggerHandler = async event => {
         }
 
         companyId = newCompany?.id
-        console.log('Created new company:', companyId)
+        console.log('Created new company:', { id: companyId, name: finalCompanyName })
       }
 
       // Create user record in DynamoDB

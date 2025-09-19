@@ -226,6 +226,10 @@ const schema = a.schema({
       mimeType: a.string(),
       content: a.string(),
       tags: a.string().array(),
+      // Taxonomy linkage
+      categoryIds: a.string().array(), // multiple categories
+      primaryCategoryId: a.string(), // denormalized first category for indexing
+      suggestedCategoryIds: a.string().array(), // ML suggested categories (not yet accepted)
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
       // Relations
@@ -253,6 +257,10 @@ const schema = a.schema({
         .sortKeys(['name'])
         .queryField('documentsByProjectAndName'),
       index('status').queryField('documentsByStatus'),
+      // Index primaryCategoryId for quick category-based queries
+      index('primaryCategoryId')
+        .sortKeys(['createdAt'])
+        .queryField('documentsByPrimaryCategory'),
     ]),
 
   // Contact form submissions - Public access only

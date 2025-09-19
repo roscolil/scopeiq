@@ -90,7 +90,7 @@ const SignUp = () => {
           userAttributes: {
             given_name: data.name,
             email: data.email,
-            'custom:companyId': data.company, // Fixed: should be companyId, not Company
+            'custom:companyName': data.company, // Pass company name to be used in post-confirmation
             'custom:role': data.role,
           },
         },

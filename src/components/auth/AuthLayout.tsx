@@ -1,4 +1,4 @@
-import { FilePlus } from 'lucide-react'
+import { FilePlus, HardHat } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ReactNode } from 'react'
 
@@ -40,8 +40,8 @@ export const AuthLayout = ({
               className="font-bold text-2xl flex items-center justify-center gap-3 text-white hover:text-emerald-400 transition-colors"
             >
               <div className="relative">
-                <FilePlus className="h-8 w-8 text-emerald-400" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+                <HardHat className="h-6 w-6 text-emerald-400" />
+                {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
               </div>
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                 Jacq of All Trades

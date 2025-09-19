@@ -386,10 +386,13 @@ export const DocumentList = ({
                 className="block"
               >
                 <Card
+                  tabIndex={0}
                   className={cn(
-                    'overflow-hidden transition-all duration-300 relative cursor-pointer hover:shadow-md',
+                    'overflow-hidden relative cursor-pointer transition-all duration-500 ease-out border border-slate-200/60 bg-white dark:bg-slate-900',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    'hover:-translate-y-0.5 hover:shadow-lg hover:bg-gray-200 dark:hover:bg-slate-800/80',
                     doc.status === 'processing' &&
-                      'ring-2 ring-amber-300 bg-amber-900/20 backdrop-blur-sm',
+                      'ring-2 ring-amber-300 bg-amber-50 dark:bg-amber-900/30 backdrop-blur-sm',
                   )}
                 >
                   {/* Subtle shimmer overlay for processing documents */}
@@ -578,7 +581,7 @@ export const DocumentList = ({
 
       {paginationEnabled && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-          <div className="text-muted-foreground">
+          <div className="text-gray-400">
             Showing {startIndex + 1}–{Math.min(endIndex, documents.length)} of{' '}
             {documents.length}
           </div>
