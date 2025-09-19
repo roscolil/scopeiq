@@ -1694,45 +1694,7 @@ export const AIActions = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Unlock insights with intelligent search & AI analysis
                 </p>
-                {/* <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-2xs">
-                    {queryScope === 'document' && documentId
-                      ? 'Document scope'
-                      : 'Project scope'}
-                  </Badge>
-                  {/* Wake word status (non-interactive) */}
-                  {wakeConsent === 'true' && (
-                    <div
-                      className={`hidden md:flex items-center gap-1 rounded-full px-2 py-0.5 border text-[10px] tracking-wide ${wakeListeningState === 'active' ? 'border-emerald-500/40 text-emerald-500' : 'border-muted text-muted-foreground'}`}
-                      title={
-                        wakeListeningState === 'active'
-                          ? 'Hands-free wake phrase enabled'
-                          : 'Hands-free disabled (toggle in Settings > Voice)'
-                      }
-                    >
-                      <span
-                        className={`inline-block h-1.5 w-1.5 rounded-full ${wakeListeningState === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}
-                      />
-                      Hey Jacq
-                    </div>
-                  )}
-                  {/* Show scope selector when we have both options */}
-                  {documentId && document && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-2xs h-5 px-2"
-                      onClick={() =>
-                        setQueryScope(
-                          queryScope === 'document' ? 'project' : 'document',
-                        )
-                      }
-                    >
-                      Switch to{' '}
-                      {queryScope === 'document' ? 'Project' : 'Document'}
-                    </Button>
-                  )}
-                </div> */}
+                {/* Scope/status controls removed (prevent nested JSX comments causing TS parse errors). */}
               </div>
             </div>
 
@@ -1774,8 +1736,8 @@ export const AIActions = ({
                 }}
               />
 
-              {/* Show text being spoken */}
-              {/* {currentSpeakingText && (
+              {/* Show text being spoken (desktop) */}
+              {currentSpeakingText && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
                   <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
                     <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
@@ -1785,7 +1747,7 @@ export const AIActions = ({
                     {currentSpeakingText}
                   </div>
                 </div>
-              )} */}
+              )}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
@@ -1855,9 +1817,7 @@ export const AIActions = ({
                             {state === 'replay' && (
                               <RotateCcw className="h-4 w-4" />
                             )}
-                            {/* {state === 'idle' && (
-                              <Volume2 className="h-4 w-4" />
-                            )} */}
+                            {/* idle-state icon intentionally omitted */}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top" sideOffset={6}>
