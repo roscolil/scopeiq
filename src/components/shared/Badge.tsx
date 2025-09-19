@@ -21,7 +21,7 @@ const badgeVariants = cva(
     },
   },
 )
-
+// Additional props are passed to the root div element
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
