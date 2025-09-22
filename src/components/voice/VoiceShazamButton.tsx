@@ -156,6 +156,8 @@ export const VoiceShazamButton = ({
         const isAndroid = /Android/i.test(navigator.userAgent)
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
         const isChrome = /Chrome/i.test(navigator.userAgent)
+        // Android-mode: we want exact Android behavior on Android and ALL Safari (mobile + desktop)
+        const isAndroidMode = isAndroid || isSafari
 
         console.log('🍎 Browser detection:', {
           isSafari,
@@ -167,20 +169,15 @@ export const VoiceShazamButton = ({
         })
 
         // Optimized configuration based on platform
-        if (isSafari && isMobile) {
-          // Safari mobile configuration - optimized for iOS
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          console.log('🍎 Configured for Safari mobile with interim results')
-        } else if (isAndroid) {
+        if (isAndroidMode) {
           // Android Chrome configuration - specific fixes for duplicate issues
           recognitionInstance.continuous = false // Disable continuous on Android to prevent loops
           recognitionInstance.interimResults = false // Disable interim results on Android for stability
           recognitionInstance.lang = 'en-US'
           recognitionInstance.maxAlternatives = 1
           console.log(
-            '🤖 Configured for Android Chrome (non-continuous, final results only)',
+            '🤖 Configured for Android-mode (non-continuous, final results only)',
+            { isAndroid, isSafari },
           )
         } else if (isChrome && !isMobile) {
           // Desktop Chrome - optimized for maximum responsiveness
@@ -241,10 +238,10 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Android-specific: Don't auto-restart in non-continuous mode
-          if (isAndroid) {
+          // Android-mode: Don't auto-restart in non-continuous mode
+          if (isAndroidMode) {
             console.log(
-              '🤖 Android: Recognition ended, not restarting (non-continuous mode)',
+              '🤖 Android-mode: Recognition ended, not restarting (non-continuous mode)',
             )
             return
           }
@@ -324,8 +321,8 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Android-specific handling - different approach for non-continuous mode
-          if (isAndroid) {
+          // Android-mode handling - different approach for non-continuous mode
+          if (isAndroidMode) {
             // Android Chrome in non-continuous mode - get final result only
             let finalTranscript = ''
             for (let i = 0; i < results.length; i++) {
@@ -611,6 +608,7 @@ export const VoiceShazamButton = ({
       const isAndroid = /Android/i.test(navigator.userAgent)
       const isChrome = /Chrome/i.test(navigator.userAgent) && !isAndroid
       const isDesktopSafari = isSafari && !isMobile
+      const isAndroidMode = isAndroid || isSafari
 
       if (isSafari && isMobile) {
         // iOS Safari - request permissions first but start immediately after
@@ -643,16 +641,14 @@ export const VoiceShazamButton = ({
           console.error('🍎 iOS Safari permission error:', error)
           setStatus(`Permission error: ${error}`)
         }
-      } else if (isAndroid) {
-        // Android-specific start logic for non-continuous mode
+      } else if (isAndroidMode) {
+        // Android-mode start logic for non-continuous mode (Android + all Safari)
         try {
-          console.log(
-            '🤖 Android: Starting non-continuous recognition immediately',
-          )
+          console.log('🤖 Android-mode: Starting recognition immediately')
           recognition.start()
           setStatus('Ready to listen!')
         } catch (error) {
-          console.error('🤖 Android start error:', error)
+          console.error('🤖 Android-mode start error:', error)
           setStatus(`Start error: ${error}`)
           setInternalIsListening(false)
         }

@@ -1060,25 +1060,173 @@ export const AIActions = ({
       } catch (error) {
         console.error('Query Error:', error)
 
-        let title = 'Query Failed'
-        let description =
-          'Please try again or contact support if the problem persists.'
-
-        if (error instanceof Error) {
-          const errorMessage = error.message
-          if (errorMessage.includes('API key is not configured')) {
-            title = 'Configuration Error'
-            description =
-              'OpenAI API key is missing from environment variables.'
-          } else if (errorMessage.includes('OpenAI API error')) {
-            title = 'AI Service Error'
-            description = errorMessage.replace('OpenAI API error: ', '')
+        // Rich error-to-toast mapping for clearer guidance
+        const mapErrorToToast = (err: unknown) => {
+          const fallback = {
+            title: 'Query Failed',
+            description:
+              'Something went wrong while processing your request. Please try again.',
           }
+          try {
+            // Network-level hints
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              return {
+                title: 'You appear to be offline',
+                description:
+                  'Check your internet connection and try again. If you are on mobile, toggle airplane mode off and on.',
+              }
+            }
+
+            // Normalize to Error-like
+            type ErrorLike = {
+              message?: string
+              toString?: () => string
+              status?: number | string
+              code?: number | string
+              response?: { status?: number; data?: unknown }
+              data?: unknown
+            }
+            const e = err as ErrorLike
+            const msg: string = e?.message || e?.toString?.() || ''
+            const code: number | string | undefined = e?.status || e?.code
+
+            // Fetch/HTTP response details if present
+            const httpStatus: number | undefined = e?.response?.status
+            const httpBody: unknown = e?.response?.data ?? e?.data
+
+            const hasErrorField = (x: unknown): x is { error: unknown } =>
+              typeof x === 'object' && x !== null && 'error' in x
+
+            // Common categories
+            if (typeof httpStatus === 'number') {
+              // Authentication / permission
+              if (httpStatus === 401 || httpStatus === 403) {
+                return {
+                  title: 'Authentication Required',
+                  description:
+                    'Your session may have expired or lacks permission. Please sign in again and retry.',
+                }
+              }
+              // Rate limit
+              if (httpStatus === 429) {
+                return {
+                  title: 'Too Many Requests',
+                  description:
+                    'You’re being rate limited. Wait a few seconds and try again. If this persists, reduce rapid follow-ups.',
+                }
+              }
+              // Server errors
+              if (httpStatus >= 500) {
+                return {
+                  title: 'Server Unavailable',
+                  description:
+                    'Our AI service is having trouble right now. Please try again shortly.',
+                }
+              }
+              // Client errors with body message
+              if (httpStatus >= 400 && hasErrorField(httpBody)) {
+                const val = httpBody.error
+                if (typeof val === 'string') {
+                  return { title: 'Request Error', description: val }
+                }
+                if (val && typeof val === 'object') {
+                  // If API returns structured error
+                  const maybeMsg = (val as { message?: unknown }).message
+                  if (typeof maybeMsg === 'string') {
+                    return { title: 'Request Error', description: maybeMsg }
+                  }
+                }
+                // Fallback generic for 4xx
+                return {
+                  title: 'Request Error',
+                  description:
+                    'Your request could not be processed. Please review and try again.',
+                }
+              }
+            }
+
+            // Specific message heuristics
+            if (/API key is not configured/i.test(msg)) {
+              return {
+                title: 'Configuration Error',
+                description:
+                  'OpenAI API key is missing or invalid. Set the key in your environment and reload the app.',
+              }
+            }
+            if (/OpenAI API error/i.test(msg)) {
+              return {
+                title: 'AI Service Error',
+                description: msg.replace(/OpenAI API error:?\s*/i, ''),
+              }
+            }
+            if (
+              /Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(
+                msg,
+              )
+            ) {
+              return {
+                title: 'Network Error',
+                description:
+                  'We couldn’t reach the server. Check your connection or VPN, and try again.',
+              }
+            }
+            if (/CORS/i.test(msg)) {
+              return {
+                title: 'CORS Error',
+                description:
+                  'A cross‑origin request was blocked. If you’re developing locally, ensure the backend allows your origin.',
+              }
+            }
+            if (/timeout/i.test(msg)) {
+              return {
+                title: 'Request Timed Out',
+                description:
+                  'The server took too long to respond. Try again; if this continues, the service may be under load.',
+              }
+            }
+            if (/Bad gateway|502|503|504/i.test(msg)) {
+              return {
+                title: 'Upstream Unavailable',
+                description:
+                  'An upstream service is down temporarily. Please retry in a bit.',
+              }
+            }
+
+            // Python backend fallback context
+            if (
+              /Using existing backend/i.test(msg) ||
+              /Falling back to existing backend/i.test(msg)
+            ) {
+              return {
+                title: 'Fallback in Effect',
+                description:
+                  'The Python backend was unavailable; we used the existing backend instead. Results may vary slightly.',
+              }
+            }
+
+            // Prisma/DB-ish hints (if any appear)
+            if (/database|db|prisma/i.test(msg)) {
+              return {
+                title: 'Data Service Error',
+                description:
+                  'There was a problem retrieving data. Please retry; if it persists, contact support.',
+              }
+            }
+
+            // Generic fallback with surfaced message if helpful
+            if (msg) {
+              return { title: 'Query Failed', description: msg }
+            }
+          } catch {
+            // ignore mapping errors, use fallback
+          }
+          return fallback
         }
 
+        const mapped = mapErrorToToast(error)
         toast({
-          title,
-          description,
+          title: mapped.title,
+          description: mapped.description,
           variant: 'destructive',
         })
       } finally {
