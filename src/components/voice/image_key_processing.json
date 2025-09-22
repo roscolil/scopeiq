@@ -316,12 +316,8 @@
         "name": "agent",
         "fullName": "GitHub Copilot",
         "isDefault": true,
-        "locations": [
-          "panel"
-        ],
-        "modes": [
-          "agent"
-        ],
+        "locations": ["panel"],
+        "modes": ["agent"],
         "slashCommands": [
           {
             "name": "list"

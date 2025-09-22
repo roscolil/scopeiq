@@ -2248,13 +2248,18 @@ export const AIActions = ({
               // Check against recent Android transcripts (last 5) for exact duplicates only
               const recentDuplicates = androidTranscriptHistory.slice(-5)
               const normalized = trimmedText.toLowerCase()
-              const isDuplicateInHistory = recentDuplicates.some(h => h.toLowerCase() === normalized)
+              const isDuplicateInHistory = recentDuplicates.some(
+                h => h.toLowerCase() === normalized,
+              )
 
               if (isDuplicateInHistory) {
-                console.log('🤖 Android: Exact duplicate in recent history, skipping:', {
-                  current: trimmedText,
-                  history: recentDuplicates,
-                })
+                console.log(
+                  '🤖 Android: Exact duplicate in recent history, skipping:',
+                  {
+                    current: trimmedText,
+                    history: recentDuplicates,
+                  },
+                )
                 return
               }
 
@@ -2266,13 +2271,14 @@ export const AIActions = ({
 
             // Enhanced duplicate prevention for all platforms
             const isExactDuplicate =
-              trimmedText.toLowerCase() === lastProcessedTranscript.toLowerCase()
+              trimmedText.toLowerCase() ===
+              lastProcessedTranscript.toLowerCase()
 
             if (isExactDuplicate) {
-              console.log(
-                '🔄 Exact duplicate transcript detected, skipping:',
-                { current: trimmedText, last: lastProcessedTranscript },
-              )
+              console.log('🔄 Exact duplicate transcript detected, skipping:', {
+                current: trimmedText,
+                last: lastProcessedTranscript,
+              })
               return
             }
 

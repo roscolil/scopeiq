@@ -11,6 +11,7 @@ This document provides comprehensive documentation for all CRUD endpoints for ab
 ## Response Format
 
 ### Success Response
+
 ```json
 {
   "success": true,
@@ -19,6 +20,7 @@ This document provides comprehensive documentation for all CRUD endpoints for ab
 ```
 
 ### List Response (with pagination)
+
 ```json
 {
   "success": true,
@@ -30,6 +32,7 @@ This document provides comprehensive documentation for all CRUD endpoints for ab
 ```
 
 ### Error Response
+
 ```json
 {
   "detail": "Error message here"
@@ -41,13 +44,14 @@ This document provides comprehensive documentation for all CRUD endpoints for ab
 ## 📋 Abbreviations API
 
 ### Data Model
+
 ```typescript
 interface Abbreviation {
-  id: string;
-  abbreviation: string;
-  full_form: string;
-  created_at: string; // ISO 8601 datetime
-  updated_at: string; // ISO 8601 datetime
+  id: string
+  abbreviation: string
+  full_form: string
+  created_at: string // ISO 8601 datetime
+  updated_at: string // ISO 8601 datetime
 }
 ```
 
@@ -56,6 +60,7 @@ interface Abbreviation {
 **Endpoint**: `POST /api/v1/abbreviations`
 
 **Request Body**:
+
 ```json
 {
   "abbreviation": "API",
@@ -64,6 +69,7 @@ interface Abbreviation {
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "success": true,
@@ -78,6 +84,7 @@ interface Abbreviation {
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/abbreviations \
   -H "Content-Type: application/json" \
@@ -89,6 +96,7 @@ curl -X POST http://localhost:8000/api/v1/abbreviations \
 **Endpoint**: `GET /api/v1/abbreviations/{abbreviation_id}`
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -103,6 +111,7 @@ curl -X POST http://localhost:8000/api/v1/abbreviations \
 ```
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Abbreviation not found"
@@ -110,6 +119,7 @@ curl -X POST http://localhost:8000/api/v1/abbreviations \
 ```
 
 **cURL Example**:
+
 ```bash
 curl http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-426614174000
 ```
@@ -119,10 +129,12 @@ curl http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-42661417
 **Endpoint**: `GET /api/v1/abbreviations`
 
 **Query Parameters**:
+
 - `skip` (optional): Number of records to skip (default: 0)
 - `limit` (optional): Maximum number of records to return (default: 100, max: 1000)
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -142,6 +154,7 @@ curl http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-42661417
 ```
 
 **cURL Example**:
+
 ```bash
 curl "http://localhost:8000/api/v1/abbreviations?skip=0&limit=10"
 ```
@@ -151,6 +164,7 @@ curl "http://localhost:8000/api/v1/abbreviations?skip=0&limit=10"
 **Endpoint**: `PUT /api/v1/abbreviations/{abbreviation_id}`
 
 **Request Body** (all fields optional):
+
 ```json
 {
   "abbreviation": "API",
@@ -159,6 +173,7 @@ curl "http://localhost:8000/api/v1/abbreviations?skip=0&limit=10"
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -173,6 +188,7 @@ curl "http://localhost:8000/api/v1/abbreviations?skip=0&limit=10"
 ```
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Abbreviation not found"
@@ -180,6 +196,7 @@ curl "http://localhost:8000/api/v1/abbreviations?skip=0&limit=10"
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X PUT http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
@@ -193,6 +210,7 @@ curl -X PUT http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-4
 **Response** (204 No Content): Empty response body
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Abbreviation not found"
@@ -200,6 +218,7 @@ curl -X PUT http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-4
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X DELETE http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a456-426614174000
 ```
@@ -209,14 +228,15 @@ curl -X DELETE http://localhost:8000/api/v1/abbreviations/123e4567-e89b-12d3-a45
 ## 📁 Categories API
 
 ### Data Model
+
 ```typescript
 interface Category {
-  id: string;
-  name: string;
-  description: string;
-  parent_id: string | null;
-  created_at: string; // ISO 8601 datetime
-  updated_at: string; // ISO 8601 datetime
+  id: string
+  name: string
+  description: string
+  parent_id: string | null
+  created_at: string // ISO 8601 datetime
+  updated_at: string // ISO 8601 datetime
 }
 ```
 
@@ -225,6 +245,7 @@ interface Category {
 **Endpoint**: `POST /api/v1/categories`
 
 **Request Body**:
+
 ```json
 {
   "name": "Building Permits",
@@ -234,6 +255,7 @@ interface Category {
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "success": true,
@@ -249,6 +271,7 @@ interface Category {
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/categories \
   -H "Content-Type: application/json" \
@@ -260,6 +283,7 @@ curl -X POST http://localhost:8000/api/v1/categories \
 **Endpoint**: `GET /api/v1/categories/{category_id}`
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -275,6 +299,7 @@ curl -X POST http://localhost:8000/api/v1/categories \
 ```
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Category not found"
@@ -282,6 +307,7 @@ curl -X POST http://localhost:8000/api/v1/categories \
 ```
 
 **cURL Example**:
+
 ```bash
 curl http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-426614174000
 ```
@@ -291,6 +317,7 @@ curl http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-42661417400
 **Endpoint**: `GET /api/v1/categories`
 
 **Query Parameters**:
+
 - `skip` (optional): Number of records to skip (default: 0)
 - `limit` (optional): Maximum number of records to return (default: 100, max: 1000)
 - `parent_id` (optional): Filter by parent category ID
@@ -299,6 +326,7 @@ curl http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-42661417400
   - `parent_id=null` (not provided): Get all categories
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -327,6 +355,7 @@ curl http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-42661417400
 ```
 
 **cURL Examples**:
+
 ```bash
 # Get all categories
 curl "http://localhost:8000/api/v1/categories?skip=0&limit=10"
@@ -343,6 +372,7 @@ curl "http://localhost:8000/api/v1/categories?parent_id=789e0123-e89b-12d3-a456-
 **Endpoint**: `GET /api/v1/categories/{category_id}/children`
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -363,6 +393,7 @@ curl "http://localhost:8000/api/v1/categories?parent_id=789e0123-e89b-12d3-a456-
 ```
 
 **cURL Example**:
+
 ```bash
 curl http://localhost:8000/api/v1/categories/789e0123-e89b-12d3-a456-426614174002/children
 ```
@@ -372,6 +403,7 @@ curl http://localhost:8000/api/v1/categories/789e0123-e89b-12d3-a456-42661417400
 **Endpoint**: `PUT /api/v1/categories/{category_id}`
 
 **Request Body** (all fields optional):
+
 ```json
 {
   "name": "Building Permits",
@@ -381,6 +413,7 @@ curl http://localhost:8000/api/v1/categories/789e0123-e89b-12d3-a456-42661417400
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "success": true,
@@ -396,6 +429,7 @@ curl http://localhost:8000/api/v1/categories/789e0123-e89b-12d3-a456-42661417400
 ```
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Category not found"
@@ -403,6 +437,7 @@ curl http://localhost:8000/api/v1/categories/789e0123-e89b-12d3-a456-42661417400
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X PUT http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-426614174000 \
   -H "Content-Type: application/json" \
@@ -416,6 +451,7 @@ curl -X PUT http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-4266
 **Response** (204 No Content): Empty response body
 
 **Response** (404 Not Found):
+
 ```json
 {
   "detail": "Category not found"
@@ -423,6 +459,7 @@ curl -X PUT http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-4266
 ```
 
 **cURL Example**:
+
 ```bash
 curl -X DELETE http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-426614174000
 ```
@@ -430,6 +467,7 @@ curl -X DELETE http://localhost:8000/api/v1/categories/123e4567-e89b-12d3-a456-4
 ---
 
 ### Error Response Format
+
 ```json
 {
   "detail": "Specific error message here"

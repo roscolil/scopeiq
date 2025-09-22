@@ -788,11 +788,20 @@ export const VoiceShazamButton = ({
       }, 45000)
     }
     // Using generic Event type to satisfy TS in DOM
-    window.addEventListener('ai:speech:complete', onSpeechComplete as EventListener)
+    window.addEventListener(
+      'ai:speech:complete',
+      onSpeechComplete as EventListener,
+    )
     window.addEventListener('ai:speech:start', onSpeechStart as EventListener)
     return () => {
-      window.removeEventListener('ai:speech:complete', onSpeechComplete as EventListener)
-      window.removeEventListener('ai:speech:start', onSpeechStart as EventListener)
+      window.removeEventListener(
+        'ai:speech:complete',
+        onSpeechComplete as EventListener,
+      )
+      window.removeEventListener(
+        'ai:speech:start',
+        onSpeechStart as EventListener,
+      )
     }
   }, [])
 
