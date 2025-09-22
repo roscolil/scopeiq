@@ -70,6 +70,63 @@ const ProjectDetails = () => {
   >(new Set())
   // Ref to flag when wake word triggered (to avoid duplicate activations)
   const wakeTriggerRef = useRef<number>(0)
+  // Wake permission persistence key (kept in sync with useWakeWord hook)
+  const WAKE_PERM_KEY = 'wakeword.permission.granted'
+  const [wakePermissionGranted, setWakePermissionGranted] = useState<boolean>(
+    () => {
+      try {
+        return localStorage.getItem(WAKE_PERM_KEY) === 'true'
+      } catch {
+        return false
+      }
+    },
+  )
+
+  // Helper to proactively request mic permission on mobile (one-time)
+  const primeMicPermission = useCallback(async () => {
+    if (typeof navigator === 'undefined') return
+    try {
+      if (
+        !('mediaDevices' in navigator) ||
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        toast({
+          title: 'Microphone not available',
+          description: 'Your browser does not support microphone access.',
+          variant: 'destructive',
+        })
+        return
+      }
+      // Request permission with an explicit user gesture (button tap)
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+      try {
+        localStorage.setItem(WAKE_PERM_KEY, 'true')
+      } catch {
+        /* noop */
+      }
+      setWakePermissionGranted(true)
+      // Notify any listeners that wake permissions are primed
+      try {
+        window.dispatchEvent(new Event('wakeword:primed'))
+        // Reuse ai:speech:complete signal which the wake listener uses to rearm immediately
+        window.dispatchEvent(new Event('ai:speech:complete'))
+      } catch {
+        /* noop */
+      }
+      toast({
+        title: 'Hands-free enabled',
+        description: 'You can now say “Hey Jacq” to start speaking.',
+      })
+    } catch (err) {
+      console.error('Mic permission request failed:', err)
+      toast({
+        title: 'Microphone permission required',
+        description:
+          'Please allow microphone access in your browser settings to enable hands-free mode.',
+        variant: 'destructive',
+      })
+    }
+  }, [])
 
   // Simple global query focus helper: we attempt to find the textarea inside AIActions after mount
   const focusQueryInput = () => {
@@ -146,7 +203,8 @@ const ProjectDetails = () => {
     onWake: handleWakeWord,
     isDictationActive,
     autoStart: true,
-    requireUserInteraction: true,
+    // If previously granted/primed, bypass user-interaction gate so it can auto-start
+    requireUserInteraction: !wakePermissionGranted,
     watchdogIntervalMs: 6000,
     debug: true,
   })
@@ -215,13 +273,13 @@ const ProjectDetails = () => {
                     } catch {
                       /* noop */
                     }
+                    // On mobile, immediately request mic permission so wake listener can auto-start
+                    if (isMobile) {
+                      setTimeout(() => {
+                        primeMicPermission()
+                      }, 50)
+                    }
                     t.dismiss()
-                    setTimeout(() => {
-                      toast({
-                        title: 'Hands-Free Enabled',
-                        description: 'Say "Hey Jacq" to start speaking.',
-                      })
-                    }, 150)
                   }}
                   className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
                 >
@@ -250,7 +308,14 @@ const ProjectDetails = () => {
       }
     }, 350) // small delay to avoid appearing before layout settles
     return () => clearTimeout(timer)
-  }, [projectId, project, isProjectLoading, acceptConsent])
+  }, [
+    projectId,
+    project,
+    isProjectLoading,
+    acceptConsent,
+    isMobile,
+    primeMicPermission,
+  ])
 
   // Handle document status updates for real-time feedback
   const handleDocumentStatusUpdate = useCallback(
@@ -1037,6 +1102,25 @@ const ProjectDetails = () => {
 
       <Layout>
         <div className="space-y-4 md:space-y-6">
+          {/* Mobile-only: hands-free permission priming banner when enabled but not yet granted */}
+          {isMobile &&
+            enabled &&
+            consent === 'true' &&
+            !wakePermissionGranted && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-100 p-3 flex items-center justify-between">
+                <div className="text-sm">
+                  Enable hands-free voice by allowing microphone access.
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={primeMicPermission}
+                  className="ml-3"
+                >
+                  Allow Microphone
+                </Button>
+              </div>
+            )}
           {isDeleteLoading && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm text-white gap-4">
               <div className="flex flex-col items-center gap-3">

@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { AutoplayFallbackButton } from '@/components/voice'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
@@ -201,6 +202,17 @@ export const AIActions = ({
     scrollToBottom()
   }, [chatHistory])
 
+  // Reset duplicate guards whenever a new dictation session starts
+  useEffect(() => {
+    const onDictationStart = () => {
+      console.log('[dictation] start → resetting duplicate guards')
+      setLastProcessedTranscript('')
+      setAndroidTranscriptHistory([])
+    }
+    window.addEventListener('dictation:start', onDictationStart)
+    return () => window.removeEventListener('dictation:start', onDictationStart)
+  }, [])
+
   // Use semantic search hook for real search functionality
   const {
     results: searchResults,
@@ -230,15 +242,8 @@ export const AIActions = ({
         console.log('🔒 Audio locked (no user gesture yet). Queuing speech.')
         // Keep only the most recent pending request
         pendingSpeechRef.current = { prompt, options }
-        if (!audioUnlockToastShownRef.current) {
-          audioUnlockToastShownRef.current = true
-          toast({
-            title: 'Enable Audio Playback',
-            description:
-              'Tap or press any key once to allow AI voice responses.',
-            duration: 4000,
-          })
-        }
+        // Show the in-app unlock banner (with Play button) after processing
+        setShowAudioUnlock(true)
         return
       }
 
@@ -247,9 +252,12 @@ export const AIActions = ({
         return
       }
 
-      // Prevent overlapping voice responses
+      // Prevent overlapping voice responses: queue the latest to play next
       if (isVoicePlaying) {
-        console.log('🔄 Skipping voice response - already playing audio')
+        queuedSpeechRef.current = { prompt, options }
+        console.log(
+          '⏳ Queued voice response to play after current audio finishes',
+        )
         return
       }
 
@@ -279,6 +287,12 @@ export const AIActions = ({
           setIsListening(false)
         }
 
+        // Signal that TTS is starting so other components (e.g., wakeword listener) can gate appropriately
+        try {
+          window.dispatchEvent(new CustomEvent('ai:speech:start'))
+        } catch {
+          /* noop */
+        }
         // Wait for voice to complete
         console.log('🎵 Waiting for voice synthesis to complete...')
         await novaSonic.speakPrompt(prompt, { voice: options.voice })
@@ -301,15 +315,8 @@ export const AIActions = ({
           console.log('🔐 Detected autoplay block, marking audio as locked')
           audioUnlockedRef.current = false
           pendingSpeechRef.current = { prompt, options }
-          if (!audioUnlockToastShownRef.current) {
-            audioUnlockToastShownRef.current = true
-            toast({
-              title: 'Tap to Enable Sound',
-              description:
-                'Your browser blocked audio. Tap the page once to hear AI responses.',
-              duration: 5000,
-            })
-          }
+          // Show the in-app unlock banner (with Play button) instead of a toast
+          setShowAudioUnlock(true)
         }
         // Reset voice playing state on error
         setIsVoicePlaying(false)
@@ -324,9 +331,22 @@ export const AIActions = ({
         } catch {
           /* noop */
         }
+        // If something was queued while we were speaking, play it next
+        if (queuedSpeechRef.current && audioUnlockedRef.current) {
+          const next = queuedSpeechRef.current
+          queuedSpeechRef.current = null
+          setTimeout(() => {
+            console.log(
+              '▶️ Playing queued voice response after previous finished',
+            )
+            speakWithStateTracking(next.prompt, next.options).catch(
+              console.error,
+            )
+          }, 75)
+        }
       }
     },
-    [isListening, silenceTimer, isVoicePlaying, toast],
+    [isListening, silenceTimer, isVoicePlaying],
   )
 
   // --- Audio Unlock Management --------------------------------------------
@@ -338,12 +358,65 @@ export const AIActions = ({
     options: { voice?: VoiceId; stopListeningAfter?: boolean }
   } | null>(null)
   const audioUnlockToastShownRef = useRef(false)
+  // Mobile banner to make audio unlock more obvious
+  const [showAudioUnlock, setShowAudioUnlock] = useState<boolean>(false)
+  // Guard to avoid duplicate unlock handling and mitigate ghost clicks
+  const unlockingRef = useRef<boolean>(false)
+  // Queue one pending voice while current audio plays
+  const queuedSpeechRef = useRef<{
+    prompt: string
+    options: { voice?: VoiceId; stopListeningAfter?: boolean }
+  } | null>(null)
+
+  // Centralized unlock action used by the banner controls
+  const performAudioUnlock = useCallback(async () => {
+    if (unlockingRef.current) return
+    unlockingRef.current = true
+    try {
+      if (novaSonic.enableAudioForSafari) {
+        await novaSonic.enableAudioForSafari().catch(() => {})
+      }
+      const maybe = novaSonic as typeof novaSonic & {
+        forceUnlockAudio?: () => Promise<boolean>
+      }
+      if (maybe.forceUnlockAudio) {
+        await maybe.forceUnlockAudio().catch(() => {})
+      }
+      // Mark unlocked and attempt pending speech
+      audioUnlockedRef.current = true
+      if (pendingSpeechRef.current && !isVoicePlaying) {
+        const { prompt, options } = pendingSpeechRef.current
+        pendingSpeechRef.current = null
+        await speakWithStateTracking(prompt, options)
+      }
+    } finally {
+      // Delay hide slightly to avoid iOS ghost-click hitting underlying UI
+      setTimeout(() => setShowAudioUnlock(false), 50)
+      unlockingRef.current = false
+    }
+  }, [isVoicePlaying, speakWithStateTracking])
 
   useEffect(() => {
     const unlock = () => {
       if (!audioUnlockedRef.current) {
         audioUnlockedRef.current = true
         console.log('🔓 Audio unlocked via user interaction')
+        setShowAudioUnlock(false)
+        // Try to proactively unlock audio playback paths on iOS/Safari and others
+        try {
+          if (novaSonic.enableAudioForSafari) {
+            novaSonic.enableAudioForSafari().catch(() => {})
+          }
+          type UnlockCapable = typeof novaSonic & {
+            forceUnlockAudio?: () => Promise<boolean>
+          }
+          const maybeUnlock = novaSonic as UnlockCapable
+          if (maybeUnlock.forceUnlockAudio) {
+            maybeUnlock.forceUnlockAudio().catch(() => {})
+          }
+        } catch {
+          /* noop */
+        }
         // Flush queued speech if present & not already playing
         if (pendingSpeechRef.current && !isVoicePlaying) {
           const { prompt, options } = pendingSpeechRef.current
@@ -358,12 +431,17 @@ export const AIActions = ({
       }
     }
     window.addEventListener('pointerdown', unlock)
+    window.addEventListener('touchstart', unlock, { passive: true })
     window.addEventListener('keydown', unlock)
     return () => {
       window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('touchstart', unlock)
       window.removeEventListener('keydown', unlock)
     }
   }, [isVoicePlaying, speakWithStateTracking])
+
+  // Do not show the unlock banner on initial load; it will be shown
+  // on-demand when a voice response is queued due to locked audio.
 
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
@@ -1077,9 +1155,9 @@ export const AIActions = ({
     }
   }, [isVoicePlaying, isListening])
 
-  // Resume listening after voice playback finishes
+  // Resume listening after voice playback finishes (only when no queued speech)
   useEffect(() => {
-    if (!isVoicePlaying && shouldResumeListening) {
+    if (!isVoicePlaying && shouldResumeListening && !queuedSpeechRef.current) {
       console.log('🎤 Voice finished, preparing to resume listening...')
 
       // Give a moment for everything to settle
@@ -1280,6 +1358,8 @@ export const AIActions = ({
   // Programmatic activation via custom event (e.g., wake word)
   useEffect(() => {
     const handler = () => {
+      // On mobile, VoiceShazamButton owns wakeword activation; avoid conflicts
+      if (isMobile) return
       // Only start if not already listening and not currently playing voice
       if (!isListening && !isVoicePlaying) {
         // Provide subtle hint only on desktop
@@ -1588,6 +1668,63 @@ export const AIActions = ({
 
   return (
     <>
+      {/* Mobile audio unlock banner (fixed at top) - only show after processing completes and only when a voice response was queued due to lock */}
+      {isMobile && showAudioUnlock && !isLoading && !isVoicePlaying && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[200] px-3 pt-3"
+          onPointerDown={e => {
+            // Prevent event from generating a synthetic click on underlying elements
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onTouchStart={e => {
+            // iOS: prevent ghost click
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onClick={e => {
+            // Swallow clicks at container level
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+        >
+          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20">
+            <div className="p-3 flex items-center justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-semibold">Enable Audio Playback</div>
+                <div className="opacity-90">
+                  Tap once to allow AI voice responses.
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-sm"
+                onPointerDown={e => {
+                  // Handle unlock on pointerdown and prevent synthetic click propagation
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+                onTouchStart={e => {
+                  // Fallback for older iOS that may not fully support pointer events
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+                onClick={e => {
+                  // Swallow click; run unlock if not already handled
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+              >
+                Play now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <Card className="mb-16 md:mb-0 animate-fade-in">
         <CardHeader className="pb-3" style={{ display: 'none' }}>
           <div className="flex items-center gap-3">
@@ -1834,7 +1971,7 @@ export const AIActions = ({
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Button
                   onClick={() => handleQuery()}
                   disabled={
@@ -1870,6 +2007,10 @@ export const AIActions = ({
                     </>
                   )}
                 </Button>
+                {/* Mobile-only manual Play Response fallback when autoplay is blocked and wake word is enabled */}
+                {isMobile && wakeEnabled && wakeConsent === 'true' && (
+                  <AutoplayFallbackButton className="ml-2 block md:hidden" />
+                )}
               </div>
             </div>
 
@@ -2104,22 +2245,16 @@ export const AIActions = ({
 
             // Android-specific enhanced duplicate prevention
             if (isAndroid) {
-              // Check against recent Android transcripts (last 5)
+              // Check against recent Android transcripts (last 5) for exact duplicates only
               const recentDuplicates = androidTranscriptHistory.slice(-5)
-              const isDuplicateInHistory = recentDuplicates.some(
-                historyText =>
-                  historyText === trimmedText ||
-                  (historyText.length > 5 &&
-                    trimmedText.length > 5 &&
-                    (historyText.includes(trimmedText.slice(0, -2)) ||
-                      trimmedText.includes(historyText.slice(0, -2)))),
-              )
+              const normalized = trimmedText.toLowerCase()
+              const isDuplicateInHistory = recentDuplicates.some(h => h.toLowerCase() === normalized)
 
               if (isDuplicateInHistory) {
-                console.log(
-                  '🤖 Android: Transcript found in recent history, skipping:',
-                  { current: trimmedText, history: recentDuplicates },
-                )
+                console.log('🤖 Android: Exact duplicate in recent history, skipping:', {
+                  current: trimmedText,
+                  history: recentDuplicates,
+                })
                 return
               }
 
@@ -2130,16 +2265,12 @@ export const AIActions = ({
             }
 
             // Enhanced duplicate prevention for all platforms
-            const isExactDuplicate = trimmedText === lastProcessedTranscript
-            const isSimilarDuplicate =
-              lastProcessedTranscript &&
-              trimmedText.length > 5 &&
-              (lastProcessedTranscript.includes(trimmedText.slice(0, -2)) ||
-                trimmedText.includes(lastProcessedTranscript.slice(0, -2)))
+            const isExactDuplicate =
+              trimmedText.toLowerCase() === lastProcessedTranscript.toLowerCase()
 
-            if (isExactDuplicate || isSimilarDuplicate) {
+            if (isExactDuplicate) {
               console.log(
-                '🔄 Duplicate/similar transcript detected, skipping:',
+                '🔄 Exact duplicate transcript detected, skipping:',
                 { current: trimmedText, last: lastProcessedTranscript },
               )
               return

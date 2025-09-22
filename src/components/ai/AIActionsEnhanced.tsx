@@ -1,3 +1,5 @@
+// INFO Not in use. Goto AiActions.ts
+
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Card,
@@ -28,6 +30,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { AutoplayFallbackButton } from '@/components/voice'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -42,6 +45,7 @@ import { VoiceId } from '@aws-sdk/client-polly'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
+import useWakeWordPreference from '@/hooks/useWakeWordPreference'
 
 // Enhanced AI workflow imports
 import {
@@ -80,7 +84,7 @@ export const AIActionsEnhanced = ({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{
     type: 'search' | 'ai'
-    searchResults?: any
+    searchResults?: object
     aiAnswer?: string
     query?: string
     metadata?: {
@@ -110,6 +114,13 @@ export const AIActionsEnhanced = ({
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
   const [lastResponseText, setLastResponseText] = useState<string>('')
+  // Wake word context to decide when to show autoplay fallback button
+  const { enabled: wakeEnabled, consent: wakeConsent } = useWakeWordPreference()
+  // Queue one pending voice while current audio plays
+  const queuedSpeechRef = useRef<{
+    prompt: string
+    options: { voice?: VoiceId; stopListeningAfter?: boolean }
+  } | null>(null)
 
   // Mobile-only voice recognition
   const mobileRecognitionRef = useRef<typeof SpeechRecognition | null>(null)
@@ -148,6 +159,15 @@ export const AIActionsEnhanced = ({
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
       if (!novaSonic.isAvailable()) return
+
+      // If we're already speaking, queue the latest prompt to play next
+      if (isVoicePlaying) {
+        queuedSpeechRef.current = { prompt, options }
+        console.log(
+          '⏳ [Enhanced] Queued voice response to play after current audio finishes',
+        )
+        return
+      }
 
       try {
         const wasListening = isListening
@@ -188,9 +208,22 @@ export const AIActionsEnhanced = ({
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
         console.log('🔄 Enhanced voice playing set to false')
+        // Play any queued speech now that we've finished
+        if (queuedSpeechRef.current) {
+          const next = queuedSpeechRef.current
+          queuedSpeechRef.current = null
+          setTimeout(() => {
+            console.log(
+              '▶️ [Enhanced] Playing queued voice response after previous finished',
+            )
+            speakWithStateTracking(next.prompt, next.options).catch(
+              console.error,
+            )
+          }, 75)
+        }
       }
     },
-    [isListening, silenceTimer],
+    [isListening, silenceTimer, isVoicePlaying],
   )
 
   // Fetch document status and set up polling
@@ -1008,9 +1041,9 @@ export const AIActionsEnhanced = ({
     }
   }, [isVoicePlaying, isListening])
 
-  // Resume listening after voice playback finishes
+  // Resume listening after voice playback finishes (only when no queued speech)
   useEffect(() => {
-    if (!isVoicePlaying && shouldResumeListening) {
+    if (!isVoicePlaying && shouldResumeListening && !queuedSpeechRef.current) {
       console.log(
         '🎤 Enhanced voice finished, preparing to resume listening...',
       )
@@ -1323,7 +1356,7 @@ export const AIActionsEnhanced = ({
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Button
                   onClick={() => handleQuery()}
                   disabled={
@@ -1375,6 +1408,10 @@ export const AIActionsEnhanced = ({
                     </>
                   )}
                 </Button>
+                {/* Mobile-only manual Play Response fallback when autoplay is blocked and wake word is enabled */}
+                {isMobile && wakeEnabled && wakeConsent === 'true' && (
+                  <AutoplayFallbackButton className="ml-2 block md:hidden" />
+                )}
               </div>
             </div>
 

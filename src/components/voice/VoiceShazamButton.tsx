@@ -39,6 +39,9 @@ export const VoiceShazamButton = ({
   console.log('🎯 VoiceShazamButton rendered', { isProcessing, selfContained })
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
+  // Block re-showing the help toast until after TTS completes
+  const [helpBlockedUntilSpeechComplete, setHelpBlockedUntilSpeechComplete] =
+    useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isMobileView = useIsMobile()
 
@@ -69,6 +72,9 @@ export const VoiceShazamButton = ({
     useState(false)
   // Will assign after isListening is derived
   const prevListeningRef = useRef<boolean>(false)
+  // Gate wakeword/user toggles while TTS is active
+  const [ttsActive, setTtsActive] = useState(false)
+  const ttsClearTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Centralized submission finalizer to ensure recognition fully stops
   const finalizeSubmission = useCallback(
@@ -104,6 +110,13 @@ export const VoiceShazamButton = ({
         recognitionInstance.stop()
       } catch {
         /* already stopped */
+      }
+      // Ensure global dictation state reflects we are no longer listening,
+      // in case recognition onend isn't fired or arrives late on some platforms
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+      } catch {
+        /* noop */
       }
       if (onTranscript) {
         onTranscript(trimmed)
@@ -205,12 +218,22 @@ export const VoiceShazamButton = ({
 
           // Immediate visual feedback - start pulse animation
           setPulseAnimation(true)
+          try {
+            window.dispatchEvent(new Event('dictation:start'))
+          } catch {
+            /* noop */
+          }
         }
 
         recognitionInstance.onend = () => {
           console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
+          try {
+            window.dispatchEvent(new Event('dictation:stop'))
+          } catch {
+            /* noop */
+          }
 
           if (forceStopRef.current) {
             console.log('Force stop active, skipping auto-restart')
@@ -449,15 +472,6 @@ export const VoiceShazamButton = ({
                 } catch (error) {
                   console.log('Recognition already stopped')
                 }
-
-                // Pass transcript to parent component after silence
-                if (onTranscript && trimmedTranscript) {
-                  console.log(
-                    '🎯 Calling onTranscript after silence:',
-                    trimmedTranscript,
-                  )
-                  onTranscript(trimmedTranscript)
-                }
               }, 1500) // 1.5 second silence detection
 
               console.log(
@@ -503,9 +517,14 @@ export const VoiceShazamButton = ({
   }, [silenceTimer, selfContained])
 
   // Self-contained toggle listening function
-  const internalToggleListening = async () => {
+  const internalToggleListening = useCallback(async () => {
     if (!selfContained || !recognition) {
       console.error('❌ No recognition instance or not in self-contained mode')
+      return
+    }
+
+    if (ttsActive) {
+      console.log('🔇 Ignoring toggle while TTS is active')
       return
     }
 
@@ -532,6 +551,12 @@ export const VoiceShazamButton = ({
       if (fallbackFinalizeTimerRef.current) {
         clearTimeout(fallbackFinalizeTimerRef.current)
         fallbackFinalizeTimerRef.current = null
+      }
+      // Ensure wakeword engine resumes immediately
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+      } catch {
+        /* noop */
       }
       setHasTranscript(false)
       setTranscript('') // Clear transcript when stopping
@@ -666,7 +691,7 @@ export const VoiceShazamButton = ({
         }
       }
     }
-  }
+  }, [selfContained, recognition, internalIsListening, ttsActive])
 
   // Determine which toggle function to use
   const toggleListening = selfContained
@@ -681,6 +706,41 @@ export const VoiceShazamButton = ({
       setPulseAnimation(false)
     }
   }, [isListening])
+
+  // Programmatic activation via wakeword event
+  useEffect(() => {
+    if (!selfContained) return
+    const handler = () => {
+      console.log('📡 wakeword:activate-mic received', {
+        internalIsListening,
+        isProcessing,
+        ttsActive,
+        canShow: !isMobileOnly || isMobileView,
+      })
+      if (ttsActive) {
+        console.log('🔇 Ignoring wakeword during active TTS')
+        return
+      }
+      // Only respond if button is visible (mobile-only either disabled or we are on mobile)
+      const canShow = !isMobileOnly || isMobileView
+      if (!canShow) return
+      // Avoid starting if already listening or currently processing upstream
+      if (internalIsListening || isProcessing) return
+      // Start listening
+      console.log('🎤 Wakeword activating mic (selfContained Shazam)')
+      internalToggleListening()
+    }
+    window.addEventListener('wakeword:activate-mic', handler)
+    return () => window.removeEventListener('wakeword:activate-mic', handler)
+  }, [
+    selfContained,
+    isMobileOnly,
+    isMobileView,
+    internalIsListening,
+    isProcessing,
+    internalToggleListening,
+    ttsActive,
+  ])
 
   // Grace window: if we transition from listening -> not listening while processing hasn't started yet,
   // keep showing the listening visual briefly to avoid mic flash.
@@ -699,14 +759,51 @@ export const VoiceShazamButton = ({
     prevListeningRef.current = isListening
   }, [isListening, isProcessing])
 
-  // Hide help message after 5 seconds
+  // When processing starts, block help from showing until TTS completes.
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (isProcessing) {
+      setHelpBlockedUntilSpeechComplete(true)
       setShowHelpMessage(false)
-    }, 5000)
+    }
+  }, [isProcessing])
 
-    return () => clearTimeout(timer)
+  // Listen for TTS completion signal from AIActions to allow help to re-appear
+  useEffect(() => {
+    const onSpeechComplete = () => {
+      setHelpBlockedUntilSpeechComplete(false)
+      setTtsActive(false)
+      if (ttsClearTimerRef.current) {
+        clearTimeout(ttsClearTimerRef.current)
+        ttsClearTimerRef.current = null
+      }
+    }
+    const onSpeechStart = () => {
+      setTtsActive(true)
+      // Failsafe: auto-clear TTS state after 45s in case complete event is missed
+      if (ttsClearTimerRef.current) clearTimeout(ttsClearTimerRef.current)
+      ttsClearTimerRef.current = setTimeout(() => {
+        console.warn('⏳ TTS active timeout reached, auto-clearing gate')
+        setTtsActive(false)
+        ttsClearTimerRef.current = null
+      }, 45000)
+    }
+    // Using generic Event type to satisfy TS in DOM
+    window.addEventListener('ai:speech:complete', onSpeechComplete as EventListener)
+    window.addEventListener('ai:speech:start', onSpeechStart as EventListener)
+    return () => {
+      window.removeEventListener('ai:speech:complete', onSpeechComplete as EventListener)
+      window.removeEventListener('ai:speech:start', onSpeechStart as EventListener)
+    }
   }, [])
+
+  // Auto-show help only when idle (not listening, not processing) AND not blocked;
+  // auto-hide after 10 seconds.
+  useEffect(() => {
+    if (isProcessing || isListening || helpBlockedUntilSpeechComplete) return
+    setShowHelpMessage(true)
+    const timer = setTimeout(() => setShowHelpMessage(false), 10000)
+    return () => clearTimeout(timer)
+  }, [isProcessing, isListening, helpBlockedUntilSpeechComplete])
 
   // Handle click outside to hide
   useEffect(() => {
@@ -771,16 +868,39 @@ export const VoiceShazamButton = ({
 
       <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
         {/* Help message */}
-        {showHelpMessage && !isListening && (
-          <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-            🎤 Tap to speak • Auto-submits after silence
+        {/* Wake word status - only show when waiting for input */}
+        {!isListening && !isProcessing && (
+          <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+            <span className="text-sm font-medium">
+              💤 Say "Hey Jacq" or tap mic to speak
+            </span>
           </div>
         )}
-
-        {showTranscript && (
+        {/* {showHelpMessage && !isListening && !isProcessing && (
+          <div className="relative mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
+            <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span>🎤 Tap to speak</span>
+                <span className="opacity-80">•</span>
+                <span className="opacity-90">Auto-submits after silence</span>
+              </div>
+            </div>
+            {/* Animated caret pointing toward the mic button 
+            <div className="absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-primary/80 mt-1 animate-bounce" />
+          </div>
+        )} */}
+        {/* Status indicator - only show while listening or processing */}
+        {(isListening || isProcessing) && (
+          <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+            <span className="text-sm font-medium">
+              {isProcessing ? '🧠 AI is thinking...' : '🎤 Listening...'}
+            </span>
+          </div>
+        )}
+        {isListening && (transcript || showTranscript) && (
           <div className="bg-background/90 backdrop-blur-sm rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
             <p className="text-md text-center font-medium tracking-tight">
-              {showTranscript}
+              {transcript || showTranscript}
             </p>
           </div>
         )}
