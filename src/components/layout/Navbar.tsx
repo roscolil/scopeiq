@@ -77,13 +77,18 @@ export const Navbar = () => {
       path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
-    // Admin route hidden for now
+    // Admin routes
     // ...(isAuthorized?.({ requireRole: 'Admin' })
     //   ? [
     //       {
     //         name: 'Admin',
     //         path: '/admin',
     //         icon: <Settings className="w-5 h-5 mr-2" />,
+    //       },
+    //       {
+    //         name: 'Health Console',
+    //         path: '/health',
+    //         icon: <HardHat className="w-5 h-5 mr-2" />,
     //       },
     //     ]
     //   : []),

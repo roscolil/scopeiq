@@ -45,6 +45,7 @@ const CommonTermsManagement = lazy(
 )
 const AITrainingConsole = lazy(() => import('./pages/admin/AITrainingConsole'))
 const AdminConsole = lazy(() => import('./pages/admin/AdminConsole'))
+const HealthConsole = lazy(() => import('./pages/admin/HealthConsole'))
 
 // Enhanced loading fallback components with modern design
 const PageLoadingFallback = ({
@@ -231,6 +232,14 @@ const App = () => {
                   element={
                     <EnhancedSuspense fallbackType="default">
                       <AdminConsole />
+                    </EnhancedSuspense>
+                  }
+                />
+                <Route
+                  path="health"
+                  element={
+                    <EnhancedSuspense fallbackType="default">
+                      <HealthConsole />
                     </EnhancedSuspense>
                   }
                 />
