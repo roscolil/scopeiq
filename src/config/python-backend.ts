@@ -90,13 +90,15 @@ export const PRODUCTION_PYTHON_BACKEND_CONFIG: PythonBackendConfig = {
  * Get environment-specific configuration
  */
 export function getEnvironmentConfig(): PythonBackendConfig {
-  const env = import.meta.env.MODE
+  const config = getPythonBackendConfig() // Always read from env first
 
-  switch (env) {
-    case 'production':
+  // Only use hardcoded defaults if no env var is set
+  if (!import.meta.env.VITE_PYTHON_AI_BACKEND_URL) {
+    const env = import.meta.env.MODE
+    if (env === 'production') {
       return PRODUCTION_PYTHON_BACKEND_CONFIG
-    case 'development':
-    default:
-      return getPythonBackendConfig()
+    }
   }
+
+  return config
 }
