@@ -39,13 +39,13 @@ class AuthErrorBoundary extends Component<
           <div className="text-center">
             <Spinner />
             <p className="mt-4 text-gray-600">
-              Reconnecting to authentication...
+              Hold on, we're getting things back up and running...
             </p>
-            {process.env.NODE_ENV === 'development' && (
+            {/* {process.env.NODE_ENV === 'development' && (
               <p className="mt-2 text-sm text-gray-400">
                 Development: Page will reload automatically
               </p>
-            )}
+            )} */}
           </div>
         </div>
       )
