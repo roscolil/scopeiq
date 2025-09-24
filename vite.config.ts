@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => ({
       '@/lib': path.resolve(__dirname, './src/lib'),
       '@/config': path.resolve(__dirname, './src/config'),
       '@/pages': path.resolve(__dirname, './src/pages'),
+      // Ensure React is resolved to a single instance
+      react: path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
   },
   define: {

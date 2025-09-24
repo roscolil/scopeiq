@@ -1,6 +1,9 @@
 /**
  * Hook for handling Safari audio restrictions
  * Provides utilities to check and enable audio playback on Safari/iOS
+ * 
+ * Note: This hook is Safari-specific and should only be used when needed
+ * to avoid potential hook conflicts on other browsers.
  */
 
 import { useState, useEffect } from 'react'
@@ -24,16 +27,30 @@ export function useSafariAudio() {
   // Check if we're on Safari
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  
+  // Early return for non-Safari browsers to prevent unnecessary hook execution
+  const isSafariOrIOS = isSafari || isIOS
 
   // Update status when component mounts or novaSonic state changes
   useEffect(() => {
+    // Only run Safari-specific logic on Safari/iOS
+    if (!isSafariOrIOS) {
+      setStatus({
+        isAvailable: true,
+        needsInteraction: false,
+        message: 'Audio ready (non-Safari browser)',
+        isSafari: false,
+      })
+      return
+    }
+
     const updateStatus = () => {
       const audioStatus = novaSonic.getAudioStatus()
       setStatus({
         isAvailable: audioStatus.available, // Map 'available' to 'isAvailable'
         needsInteraction: audioStatus.needsInteraction,
         message: audioStatus.message,
-        isSafari: isSafari || isIOS,
+        isSafari: isSafariOrIOS,
       })
     }
 
@@ -43,7 +60,7 @@ export function useSafariAudio() {
     const interval = setInterval(updateStatus, 1000)
 
     return () => clearInterval(interval)
-  }, [isSafari, isIOS])
+  }, [isSafariOrIOS])
 
   /**
    * Enable audio for Safari by triggering user interaction
@@ -119,7 +136,7 @@ export function useSafariAudio() {
     enableAudio,
     speak,
     getStatusMessage,
-    isSafari: status.isSafari,
+    isSafari: isSafariOrIOS,
     needsUserInteraction: status.needsInteraction,
     isAudioAvailable: status.isAvailable,
   }
