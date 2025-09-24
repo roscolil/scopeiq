@@ -268,8 +268,9 @@ const HealthConsole = () => {
     for (const endpoint of endpoints) {
       const startTime = Date.now()
       try {
+        // Use GET for all endpoints to avoid method not allowed errors
         const response = await fetch(endpoint.url, {
-          method: 'HEAD', // Just check if endpoint exists
+          method: 'GET',
           signal: AbortSignal.timeout(5000), // 5 second timeout
         })
 
