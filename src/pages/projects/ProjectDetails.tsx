@@ -135,13 +135,23 @@ const ProjectDetails = () => {
       'textarea[placeholder*="Ask anything"]',
     )
     if (el) {
-      el.focus()
-      // Optionally place a visual hint
-      if (!el.value) {
-        el.value = ''
-      }
-      // Move caret to end
-      el.selectionStart = el.selectionEnd = el.value.length
+      // Scroll the textarea into view first
+      el.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
+
+      // Focus after a brief delay to ensure scroll completes
+      setTimeout(() => {
+        el.focus()
+        // Optionally place a visual hint
+        if (!el.value) {
+          el.value = ''
+        }
+        // Move caret to end
+        el.selectionStart = el.selectionEnd = el.value.length
+      }, 100)
     }
   }
 
@@ -156,8 +166,8 @@ const ProjectDetails = () => {
         block: 'start',
       })
     }
-    // Focus query afterwards
-    setTimeout(() => focusQueryInput(), 600)
+    // Focus query afterwards with reduced delay
+    setTimeout(() => focusQueryInput(), 300) // Reduced from 600ms to 300ms
   }
 
   const handleWakeWord = () => {

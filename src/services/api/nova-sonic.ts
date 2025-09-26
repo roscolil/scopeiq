@@ -148,7 +148,7 @@ class NovaSonicService {
             )
             this.playPendingAudio().catch(() => {})
           }
-        }, 350)
+        }, 150) // Reduced from 350ms to 150ms for faster retry
       } catch (e) {
         console.warn('⚠️ Failed to unlock audio context:', e)
       } finally {
@@ -953,8 +953,8 @@ class NovaSonicService {
           console.warn('⚠️ Exhausted audio play retries (non-autoplay)')
           return false
         }
-        // Small jittered delay
-        await new Promise(r => setTimeout(r, 120 + attempt * 80))
+        // Small jittered delay - reduced for faster retries
+        await new Promise(r => setTimeout(r, 50 + attempt * 30)) // Reduced from 120+80 to 50+30
         // Attempt force unlock mid-retry for iOS if still locked
         if (!this.isAudioUnlocked()) {
           this.forceUnlockAudio().catch(() => {})

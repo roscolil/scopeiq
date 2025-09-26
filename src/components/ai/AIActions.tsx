@@ -195,7 +195,7 @@ export const AIActions = ({
             chatContainer.scrollHeight - chatContainer.clientHeight
         }
       }
-    }, 300)
+    }, 150) // Reduced from 300ms to 150ms for faster UI updates
   }
 
   useEffect(() => {
@@ -342,7 +342,7 @@ export const AIActions = ({
             speakWithStateTracking(next.prompt, next.options).catch(
               console.error,
             )
-          }, 75)
+          }, 25) // Reduced from 75ms to 25ms for faster queue processing
         }
       }
     },
@@ -391,7 +391,7 @@ export const AIActions = ({
       }
     } finally {
       // Delay hide slightly to avoid iOS ghost-click hitting underlying UI
-      setTimeout(() => setShowAudioUnlock(false), 50)
+      setTimeout(() => setShowAudioUnlock(false), 25) // Reduced from 50ms to 25ms
       unlockingRef.current = false
     }
   }, [isVoicePlaying, speakWithStateTracking])
@@ -422,7 +422,7 @@ export const AIActions = ({
           const { prompt, options } = pendingSpeechRef.current
           ;(async () => {
             // small delay to ensure gesture registration fully propagated
-            await new Promise(res => setTimeout(res, 50))
+            await new Promise(res => setTimeout(res, 25)) // Reduced from 50ms to 25ms
             console.log('▶️ Playing previously queued speech after unlock')
             pendingSpeechRef.current = null
             speakWithStateTracking(prompt, options).catch(console.error)
@@ -943,8 +943,8 @@ export const AIActions = ({
                   voice: 'Ruth',
                   stopListeningAfter: true,
                 }).catch(console.error)
-                setTimeout(() => setCanReplay(true), 1500)
-              }, 400) // slightly shorter delay now that we always speak
+                setTimeout(() => setCanReplay(true), 500) // Reduced from 1500ms to 500ms
+              }, 100) // Reduced from 400ms to 100ms for faster TTS start
             }
           }
         } else {
@@ -1318,7 +1318,7 @@ export const AIActions = ({
           description: 'Ready for your next question...',
           duration: 1500,
         })
-      }, 1500) // Slightly longer delay for more reliability
+      }, 800) // Reduced from 1500ms to 800ms for faster resume
 
       return () => clearTimeout(timer)
     }
@@ -1370,7 +1370,7 @@ export const AIActions = ({
       })
         .then(() => {
           // Re-enable replay after short cooldown
-          setTimeout(() => setCanReplay(true), 1000)
+          setTimeout(() => setCanReplay(true), 300) // Reduced from 1000ms to 300ms
         })
         .catch(error => console.error('Replay error:', error))
     }
@@ -1540,6 +1540,18 @@ export const AIActions = ({
       console.log('✅ Processing final voice transcript:', text)
       setQuery(text)
       hasTranscriptRef.current = true
+
+      // Scroll to query input to show the user what they asked
+      const queryTextarea = document.querySelector<HTMLTextAreaElement>(
+        'textarea[placeholder*="Ask anything"]',
+      )
+      if (queryTextarea) {
+        queryTextarea.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+        })
+      }
 
       // In preventLoop mode, don't immediately submit - rely on interim transcript silence detection
       if (text.trim()) {
@@ -2441,6 +2453,19 @@ export const AIActions = ({
 
             setLastProcessedTranscript(trimmedText)
             setQuery(trimmedText)
+
+            // Scroll to query input to show the user what they asked
+            const queryTextarea = document.querySelector<HTMLTextAreaElement>(
+              'textarea[placeholder*="Ask anything"]',
+            )
+            if (queryTextarea) {
+              queryTextarea.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest',
+              })
+            }
+
             // Set loading immediately to show processing state
             setIsLoading(true)
             // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
