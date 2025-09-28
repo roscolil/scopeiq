@@ -117,16 +117,12 @@ function isWakeWordSupported(): boolean {
 
   if (!hasSpeechRecognition) return false
 
-  // Android Chrome has known issues with continuous listening
-  if (deviceInfo.isAndroid && deviceInfo.browser === 'chrome') {
-    return false
-  }
-
   // iOS Safari has restrictions
   if (deviceInfo.isIOS && deviceInfo.browser === 'safari') {
     return false
   }
 
+  // Android Chrome is supported but with limitations (handled in setupRecognition)
   return true
 }
 
@@ -395,10 +391,11 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
 
     // Configure based on device capabilities
     if (deviceInfo.isAndroid) {
-      // Android has issues with continuous listening, use shorter sessions
-      rec.continuous = false
-      rec.interimResults = false
-      log('Android detected: using non-continuous mode')
+      // Android Chrome has issues with continuous listening, but let's try it anyway
+      // with fallback handling in onend
+      rec.continuous = true
+      rec.interimResults = true
+      log('Android detected: using continuous mode with fallback handling')
     } else {
       rec.continuous = true
       rec.interimResults = true
@@ -436,7 +433,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     rec.onend = () => {
       log('wake recognition ended')
       if (state === 'listening') {
-        // For Android, use shorter restart delay since continuous mode is disabled
+        // For Android, use shorter restart delay since continuous mode may fail
         if (deviceInfo.isAndroid) {
           setTimeout(() => {
             if (
@@ -444,6 +441,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
               !isDictationActive &&
               !manuallySuspendedRef.current
             ) {
+              log('Android: restarting recognition after onend')
               attemptStartRef.current()
             }
           }, 1000)
