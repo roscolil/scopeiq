@@ -65,6 +65,7 @@ function StatusDot({ state }: { state: WakeWordState }) {
   else if (state === 'cooldown') color = 'bg-amber-500 animate-pulse'
   else if (state === 'suspended') color = 'bg-gray-400'
   else if (state === 'error') color = 'bg-red-500'
+  else if (state === 'unsupported') color = 'bg-orange-500'
   return (
     <span
       className={cn(
@@ -173,13 +174,19 @@ export function WakeWordIndicator({
           aria-label={`Wake word ${wake.state}`}
           onClick={handleQuickToggle}
           title={
-            enabledPreference
-              ? `Hands-free active (${wake.state}). Click to disable.`
-              : 'Hands-free disabled. Click to enable.'
+            wake.state === 'unsupported'
+              ? 'Wake word not supported on this device'
+              : enabledPreference
+                ? `Hands-free active (${wake.state}). Click to disable.`
+                : 'Hands-free disabled. Click to enable.'
           }
         >
           <StatusDot state={wake.state} />
-          {enabledPreference ? (
+          {wake.state === 'unsupported' ? (
+            <span className="hidden md:inline text-muted-foreground">
+              Not supported
+            </span>
+          ) : enabledPreference ? (
             <span className="hidden md:inline">Hey Jacq</span>
           ) : (
             <span className="hidden md:inline text-muted-foreground">

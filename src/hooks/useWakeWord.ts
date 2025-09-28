@@ -13,6 +13,7 @@ export type WakeWordState =
   | 'cooldown' // Recently triggered, cooling down
   | 'suspended' // Temporarily paused (e.g., primary dictation active, page hidden)
   | 'error'
+  | 'unsupported' // Not supported on this device/browser
 
 interface UseWakeWordOptions {
   /** Whether the user has enabled wake word preference */
@@ -51,6 +52,15 @@ interface UseWakeWordReturn {
   hasPermission: boolean | null
   /** Last raw snippet processed (for debugging) */
   lastChunk: string
+  /** Whether wake word is supported on this device */
+  isSupported: boolean
+  /** Device type detection */
+  deviceInfo: {
+    isAndroid: boolean
+    isMobile: boolean
+    isIOS: boolean
+    browser: string
+  }
 }
 
 // Lightweight Levenshtein distance implementation
@@ -81,6 +91,45 @@ const DEFAULT_PHRASES = [
   'hey jake',
 ]
 
+// Device detection utilities
+function getDeviceInfo() {
+  const userAgent = navigator.userAgent
+  const isAndroid = /Android/i.test(userAgent)
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent)
+  const isMobile = /Mobi|Android/i.test(userAgent)
+
+  let browser = 'unknown'
+  if (userAgent.includes('Chrome')) browser = 'chrome'
+  else if (userAgent.includes('Firefox')) browser = 'firefox'
+  else if (userAgent.includes('Safari')) browser = 'safari'
+  else if (userAgent.includes('Edge')) browser = 'edge'
+
+  return { isAndroid, isIOS, isMobile, browser }
+}
+
+// Check if wake word is supported on this device
+function isWakeWordSupported(): boolean {
+  const deviceInfo = getDeviceInfo()
+
+  // Check for SpeechRecognition API support
+  const hasSpeechRecognition =
+    'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
+
+  if (!hasSpeechRecognition) return false
+
+  // Android Chrome has known issues with continuous listening
+  if (deviceInfo.isAndroid && deviceInfo.browser === 'chrome') {
+    return false
+  }
+
+  // iOS Safari has restrictions
+  if (deviceInfo.isIOS && deviceInfo.browser === 'safari') {
+    return false
+  }
+
+  return true
+}
+
 export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
   const {
     enabled,
@@ -97,7 +146,13 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
 
   const watchdogIntervalMs = options.watchdogIntervalMs ?? 7000
 
-  const [state, setState] = useState<WakeWordState>('idle')
+  // Device detection
+  const deviceInfo = getDeviceInfo()
+  const isSupported = isWakeWordSupported()
+
+  const [state, setState] = useState<WakeWordState>(
+    isSupported ? 'idle' : 'unsupported',
+  )
   const [error, setError] = useState<string | null>(null)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [active, setActive] = useState(false) // internal active flag (enabled + started)
@@ -315,6 +370,12 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
   }, [enabled, isDictationActive])
 
   const setupRecognition = useCallback(() => {
+    if (!isSupported) {
+      setError('Wake word not supported on this device')
+      setState('unsupported')
+      return
+    }
+
     if (
       !('SpeechRecognition' in window) &&
       !('webkitSpeechRecognition' in window)
@@ -331,8 +392,18 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       (window as any).webkitSpeechRecognition
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec: any = new SR()
-    rec.continuous = true
-    rec.interimResults = true
+
+    // Configure based on device capabilities
+    if (deviceInfo.isAndroid) {
+      // Android has issues with continuous listening, use shorter sessions
+      rec.continuous = false
+      rec.interimResults = false
+      log('Android detected: using non-continuous mode')
+    } else {
+      rec.continuous = true
+      rec.interimResults = true
+    }
+
     rec.lang = 'en-US'
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -365,16 +436,42 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     rec.onend = () => {
       log('wake recognition ended')
       if (state === 'listening') {
-        scheduleRestart()
+        // For Android, use shorter restart delay since continuous mode is disabled
+        if (deviceInfo.isAndroid) {
+          setTimeout(() => {
+            if (
+              enabled &&
+              !isDictationActive &&
+              !manuallySuspendedRef.current
+            ) {
+              attemptStartRef.current()
+            }
+          }, 1000)
+        } else {
+          scheduleRestart()
+        }
       }
     }
     recognitionRef.current = rec
-  }, [evaluateChunk, handleWake, log, scheduleRestart, state])
+  }, [
+    evaluateChunk,
+    handleWake,
+    log,
+    scheduleRestart,
+    state,
+    deviceInfo.isAndroid,
+    enabled,
+    isDictationActive,
+  ])
 
   // attemptStart implemented via ref to avoid cyclic dependencies
   const attemptStartRef = useRef<() => void>(() => undefined)
 
   const attemptStart = useCallback(() => {
+    if (!isSupported) {
+      log('Not starting (not supported on this device)')
+      return
+    }
     if (!enabled) {
       log('Not starting (disabled)')
       return
@@ -418,6 +515,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       setState('error')
     }
   }, [
+    isSupported,
     enabled,
     isDictationActive,
     log,
@@ -432,11 +530,11 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     if (!enabled) {
       stopRecognition()
       clearTimers()
-      setState('idle')
+      setState(isSupported ? 'idle' : 'unsupported')
       setActive(false)
       return
     }
-    if (enabled && !isDictationActive && autoStart) {
+    if (enabled && !isDictationActive && autoStart && isSupported) {
       attemptStartRef.current()
     } else if (isDictationActive && state === 'listening') {
       log('Dictation activated -> suspend wake listener')
@@ -450,37 +548,38 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     log,
     state,
     stopRecognition,
+    isSupported,
   ])
 
   // Detect transition from disabled -> enabled to ensure restart even if other effect paths were skipped
   useEffect(() => {
-    if (!prevEnabledRef.current && enabled) {
+    if (!prevEnabledRef.current && enabled && isSupported) {
       log('Enabled toggled on -> forcing wake listener start')
       attemptStartRef.current()
     }
     prevEnabledRef.current = enabled
-  }, [enabled, log])
+  }, [enabled, log, isSupported])
 
   const enable = useCallback(() => {
-    if (enabled) {
+    if (enabled && isSupported) {
       attemptStartRef.current()
     }
-  }, [enabled])
+  }, [enabled, isSupported])
 
   const disable = useCallback(() => {
     manuallySuspendedRef.current = false
     stopRecognition()
     clearTimers()
-    setState('idle')
+    setState(isSupported ? 'idle' : 'unsupported')
     setActive(false)
-  }, [stopRecognition])
+  }, [stopRecognition, isSupported])
 
   const suspend = useCallback(() => internalSuspend(true), [internalSuspend])
   const resume = useCallback(() => {
-    if (!enabled) return
+    if (!enabled || !isSupported) return
     manuallySuspendedRef.current = false
     attemptStartRef.current()
-  }, [enabled])
+  }, [enabled, isSupported])
 
   // Cleanup
   useEffect(() => {
@@ -492,7 +591,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
 
   // Resilience watchdog: periodically verify that if we are enabled & should be listening, we are.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !isSupported) return
     if (watchdogIntervalMs <= 0) return
     const id = setInterval(() => {
       try {
@@ -521,7 +620,7 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       }
     }, watchdogIntervalMs)
     return () => clearInterval(id)
-  }, [enabled, isDictationActive, state, watchdogIntervalMs, log])
+  }, [enabled, isDictationActive, state, watchdogIntervalMs, log, isSupported])
 
   return {
     state,
@@ -532,6 +631,8 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     resume,
     hasPermission,
     lastChunk,
+    isSupported,
+    deviceInfo,
   }
 }
 
