@@ -7,6 +7,7 @@
 export * from './use-mobile'
 export * from './use-toast'
 export * from './useSemanticSearch'
+export * from './use-device-fixes'
 
 // Python backend hooks
 export * from './usePythonChat'

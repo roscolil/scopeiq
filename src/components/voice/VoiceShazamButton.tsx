@@ -915,11 +915,11 @@ export const VoiceShazamButton = ({
 
   // When processing starts, block help from showing until TTS completes.
   useEffect(() => {
-    if (isProcessing) {
+    if (isProcessing || isProcessingSubmission) {
       setHelpBlockedUntilSpeechComplete(true)
       setShowHelpMessage(false)
     }
-  }, [isProcessing])
+  }, [isProcessing, isProcessingSubmission])
 
   // Listen for TTS completion signal from AIActions to allow help to re-appear
   useEffect(() => {
@@ -962,11 +962,24 @@ export const VoiceShazamButton = ({
   // Auto-show help only when idle (not listening, not processing) AND not blocked;
   // auto-hide after 10 seconds.
   useEffect(() => {
-    if (isProcessing || isListening || helpBlockedUntilSpeechComplete) return
+    if (
+      isProcessing ||
+      isProcessingSubmission ||
+      isListening ||
+      helpBlockedUntilSpeechComplete ||
+      recentlyStoppedListening
+    )
+      return
     setShowHelpMessage(true)
     const timer = setTimeout(() => setShowHelpMessage(false), 10000)
     return () => clearTimeout(timer)
-  }, [isProcessing, isListening, helpBlockedUntilSpeechComplete])
+  }, [
+    isProcessing,
+    isProcessingSubmission,
+    isListening,
+    helpBlockedUntilSpeechComplete,
+    recentlyStoppedListening,
+  ])
 
   // Handle click outside to hide
   useEffect(() => {
@@ -1031,14 +1044,18 @@ export const VoiceShazamButton = ({
 
       <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
         {/* Help message */}
-        {/* Wake word status - only show when waiting for input */}
-        {!isListening && !isProcessing && (
-          <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
-            <span className="text-sm font-medium">
-              💤 Say "Hey Jacq" or tap mic to speak
-            </span>
-          </div>
-        )}
+        {/* Wake word status - only show when truly idle and ready for input */}
+        {showHelpMessage &&
+          !isListening &&
+          !isProcessing &&
+          !isProcessingSubmission &&
+          !recentlyStoppedListening && (
+            <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+              <span className="text-sm font-medium">
+                💤 Say "Hey Jacq" or tap mic to speak
+              </span>
+            </div>
+          )}
         {/* {showHelpMessage && !isListening && !isProcessing && (
           <div className="relative mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
             <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30">

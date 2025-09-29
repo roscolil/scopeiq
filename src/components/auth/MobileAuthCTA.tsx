@@ -42,7 +42,7 @@ export const MobileAuthCTA = () => {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom,0)+0.75rem)] pt-2 pointer-events-none">
+    <div className="mobile-fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom,0)+0.75rem)] pt-2 pointer-events-none mobile-ui-element">
       <div className="mx-auto max-w-sm rounded-2xl bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/80 border border-gray-700/60 shadow-lg shadow-black/40 ring-1 ring-black/40 flex flex-col gap-3 p-4 animate-slide-up pointer-events-auto">
         <div className="text-center text-[11px] uppercase tracking-wide text-gray-300 font-medium">
           Unlock full workspace features
@@ -53,7 +53,7 @@ export const MobileAuthCTA = () => {
             size="lg"
             aria-label="Sign in to your existing account"
             data-track="mobile-auth-cta-signin"
-            className="flex-1 text-sm h-12 min-h-12"
+            className="flex-1 text-sm h-12 min-h-12 touch-target mobile-tap"
             onClick={() =>
               navigate('/auth/signin', { state: { from: location.pathname } })
             }
@@ -64,7 +64,7 @@ export const MobileAuthCTA = () => {
             size="lg"
             aria-label="Create a free account"
             data-track="mobile-auth-cta-signup"
-            className="flex-1 text-sm h-12 min-h-12"
+            className="flex-1 text-sm h-12 min-h-12 touch-target mobile-tap"
             onClick={() =>
               navigate('/auth/signup', { state: { from: location.pathname } })
             }

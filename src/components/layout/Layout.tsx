@@ -11,9 +11,11 @@ export const Layout = ({ children }: LayoutProps) => {
   const isMobile = useIsMobile()
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col safe-area-top safe-area-bottom">
       <Navbar />
-      <main className={`flex-1 ${isMobile ? 'pt-4 pb-8' : 'pt-8 pb-16'}`}>
+      <main
+        className={`flex-1 ${isMobile ? 'pt-4 pb-8' : 'pt-8 pb-16'} safe-area-left safe-area-right`}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="animate-fade-in">{children}</div>
         </div>

@@ -14,6 +14,12 @@ import {
   prefetchOnIdle,
   cleanupPrefetchObserver,
 } from '@/utils/performance/route-prefetch'
+import {
+  useDeviceFixes,
+  useDeviceLayoutFixes,
+  useDeviceScrollFixes,
+} from '@/hooks/use-device-fixes'
+import { initializeMobileDeviceFixes } from '@/utils/mobile-device-fixes'
 
 // Eagerly load critical components
 // HomePage now wrapped by RootRoute for conditional dashboard redirect
@@ -23,6 +29,7 @@ import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
 import Dashboard from './pages/dashboard/Dashboard' // Load Dashboard eagerly
+import HomePage from '@/pages/dashboard/IndexPage'
 
 // Lazy load secondary pages
 const Documents = lazy(() => import('./pages/documents/Documents'))
@@ -87,7 +94,15 @@ const RootRedirect = () => {
 }
 
 const App = () => {
+  // Apply device-specific fixes to ensure mobile behavior matches dev tools
+  useDeviceFixes()
+  useDeviceLayoutFixes()
+  useDeviceScrollFixes()
+
   useEffect(() => {
+    // Initialize mobile device fixes immediately
+    initializeMobileDeviceFixes()
+
     prefetchOnIdle()
 
     // Add development-specific hot reload handling

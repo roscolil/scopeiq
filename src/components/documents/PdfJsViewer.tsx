@@ -87,7 +87,8 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
         autoScaleRef.current = target
       }
       const baseViewport = page.getViewport({ scale: effectiveScale, rotation })
-      const dpr = hiDpi ? window.devicePixelRatio || 1 : 1
+      // Use device pixel ratio consistently between dev tools and real devices
+      const dpr = hiDpi ? Math.min(window.devicePixelRatio || 1, 3) : 1
       const viewport = baseViewport
       const context = canvas.getContext('2d')
       if (!context) return
