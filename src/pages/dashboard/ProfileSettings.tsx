@@ -653,43 +653,43 @@ const ProfileSettings = () => {
 
           <Tabs defaultValue="profile" className="w-full">
             {/* Mobile-only scrollable wrapper */}
-            <div className="sm:hidden overflow-x-auto scrollbar-hide">
-              <TabsList className="w-max min-w-full gap-1 p-2">
+            <div className="sm:hidden w-full">
+              <TabsList className="w-full grid grid-cols-3 gap-1 p-0.5 bg-slate-900/90 backdrop-blur-sm border border-slate-600/50 rounded-lg">
                 <TabsTrigger
                   value="profile"
-                  className="text-xs px-3 py-2.5 min-w-[70px]"
+                  className="text-sm px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:text-white transition-all duration-200 touch-manipulation rounded-md flex items-center justify-center"
                 >
                   Profile
                 </TabsTrigger>
                 <TabsTrigger
                   value="security"
-                  className="text-xs px-3 py-2.5 min-w-[70px]"
+                  className="text-sm px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:text-white transition-all duration-200 touch-manipulation rounded-md flex items-center justify-center"
                 >
                   Security
                 </TabsTrigger>
                 <TabsTrigger
                   value="voice"
-                  className="text-xs px-3 py-2.5 min-w-[70px]"
+                  className="text-sm px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:text-white transition-all duration-200 touch-manipulation rounded-md flex items-center justify-center"
                 >
                   Voice
                 </TabsTrigger>
-                {canManageUsers && (
-                  <>
-                    <TabsTrigger
-                      value="userManagement"
-                      className="text-xs px-3 py-2.5 min-w-[70px]"
-                    >
-                      Users
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="invitations"
-                      className="text-xs px-3 py-2.5 min-w-[70px]"
-                    >
-                      Invites
-                    </TabsTrigger>
-                  </>
-                )}
               </TabsList>
+              {canManageUsers && (
+                <TabsList className="w-full grid grid-cols-2 gap-1 p-0.5 bg-slate-900/90 backdrop-blur-sm border border-slate-600/50 rounded-lg mt-2">
+                  <TabsTrigger
+                    value="userManagement"
+                    className="text-sm px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:text-white transition-all duration-200 touch-manipulation rounded-md flex items-center justify-center"
+                  >
+                    Users
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="invitations"
+                    className="text-sm px-3 py-3 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 data-[state=inactive]:hover:text-white transition-all duration-200 touch-manipulation rounded-md flex items-center justify-center"
+                  >
+                    Invites
+                  </TabsTrigger>
+                </TabsList>
+              )}
             </div>
 
             {/* Desktop-only original styling */}
