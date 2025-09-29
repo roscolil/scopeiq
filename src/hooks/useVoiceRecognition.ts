@@ -198,20 +198,27 @@ export const useVoiceRecognition = ({
           clearTimeout(debounceTimeoutRef.current)
         }
 
-        // Use 1.5 seconds silence timeout for both mobile and desktop for better responsiveness
-        const silenceTimeout = 1500
+        // Use 5 seconds silence timeout for mobile, 1.5 seconds for desktop
+        const silenceTimeout = isMobile ? 5000 : 1500
         debounceTimeoutRef.current = setTimeout(() => {
           console.log(
             'Silence detected, sending complete transcript:',
             completeTranscript,
           )
-          onTranscript(completeTranscript.trim())
-          setIsProcessing(false)
+          // Add 1.5 second delay after STT before submitting query for consistency
+          setTimeout(() => {
+            console.log(
+              '📤 Submitting query after delay:',
+              completeTranscript.trim(),
+            )
+            onTranscript(completeTranscript.trim())
+            setIsProcessing(false)
 
-          // Auto-stop after sending
-          if (isListening) {
-            setIsListening(false)
-          }
+            // Auto-stop after sending
+            if (isListening) {
+              setIsListening(false)
+            }
+          }, 1500) // 1.5 second delay after STT
         }, silenceTimeout)
       }
     }
@@ -230,7 +237,14 @@ export const useVoiceRecognition = ({
           'Error occurred, sending accumulated transcript:',
           transcript,
         )
-        onTranscript(transcript.trim())
+        // Add 1.5 second delay after STT before submitting query for consistency
+        setTimeout(() => {
+          console.log(
+            '📤 Submitting query after error delay:',
+            transcript.trim(),
+          )
+          onTranscript(transcript.trim())
+        }, 1500) // 1.5 second delay after STT
       }
 
       if (isListening && !isPlayingAudioRef.current) {

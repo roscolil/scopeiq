@@ -221,15 +221,22 @@ export const VoiceInput = ({
               'Silence detected, sending complete transcript:',
               completeTranscript,
             )
-            onTranscript(completeTranscript.trim())
-            setIsProcessing(false)
+            // Add 1.5 second delay after STT before submitting query for consistency
+            setTimeout(() => {
+              console.log(
+                '📤 Submitting query after delay:',
+                completeTranscript.trim(),
+              )
+              onTranscript(completeTranscript.trim())
+              setIsProcessing(false)
 
-            // Auto-stop after sending
-            if (isListening) {
-              toggleListening()
-            }
+              // Auto-stop after sending
+              if (isListening) {
+                toggleListening()
+              }
+            }, 1500) // 1.5 second delay after STT
           },
-          isMobile ? 1500 : 2500,
+          isMobile ? 5000 : 2500, // Extended mobile timeout to 5 seconds for consistency
         ) // Mobile-aware timeout for better responsiveness
       }
     }
@@ -244,13 +251,20 @@ export const VoiceInput = ({
         debounceTimeoutRef.current = null
       }
 
-      // Send any accumulated transcript before stopping
+      // Send any accumulated transcript before stopping with delay
       if (transcript.trim() && !preventLoop) {
         console.log(
           'Error occurred, sending accumulated transcript:',
           transcript,
         )
-        onTranscript(transcript.trim())
+        // Add 1.5 second delay after STT before submitting query for consistency
+        setTimeout(() => {
+          console.log(
+            '📤 Submitting query after error delay:',
+            transcript.trim(),
+          )
+          onTranscript(transcript.trim())
+        }, 1500) // 1.5 second delay after STT
       }
 
       if (isListening && !isPlayingAudioRef.current) {

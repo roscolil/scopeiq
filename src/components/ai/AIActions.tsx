@@ -2455,15 +2455,34 @@ export const AIActions = ({
             setQuery(trimmedText)
 
             // Scroll to query input to show the user what they asked
-            const queryTextarea = document.querySelector<HTMLTextAreaElement>(
-              'textarea[placeholder*="Ask anything"]',
-            )
-            if (queryTextarea) {
-              queryTextarea.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-                inline: 'nearest',
-              })
+            try {
+              const queryTextarea = document.querySelector<HTMLTextAreaElement>(
+                'textarea[placeholder*="Ask anything"]',
+              )
+              if (queryTextarea) {
+                console.log('📜 Scrolling to query textarea:', queryTextarea)
+                queryTextarea.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'center',
+                  inline: 'nearest',
+                })
+              } else {
+                console.log('⚠️ Query textarea not found, skipping scroll')
+                // Try alternative selectors
+                const altTextarea =
+                  document.querySelector<HTMLTextAreaElement>('textarea')
+                if (altTextarea) {
+                  console.log('📜 Found alternative textarea, scrolling to it')
+                  altTextarea.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest',
+                  })
+                }
+              }
+            } catch (error) {
+              console.error('❌ Error scrolling to query textarea:', error)
+              // Continue execution even if scrolling fails
             }
 
             // Set loading immediately to show processing state

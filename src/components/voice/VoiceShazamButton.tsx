@@ -34,9 +34,8 @@ export const VoiceShazamButton = ({
   onTranscript,
   selfContained = true, // Default to self-contained mode
 }: VoiceShazamButtonProps) => {
-  // Faster silence detection (previously 2000ms)
-  const SILENCE_DURATION_MS = 1500
-  console.log('🎯 VoiceShazamButton rendered', { isProcessing, selfContained })
+  // Extended listening duration for mobile wake word activation
+  const SILENCE_DURATION_MS = 5000 // 5 seconds listening opportunity
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
   // Block re-showing the help toast until after TTS completes
@@ -54,6 +53,11 @@ export const VoiceShazamButton = ({
     transcriptRef.current = transcript
   }, [transcript])
   const [status, setStatus] = useState('Ready')
+
+  // Debug status changes
+  useEffect(() => {
+    console.log('🔍 VoiceShazamButton status changed to:', status)
+  }, [status])
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
@@ -70,11 +74,33 @@ export const VoiceShazamButton = ({
   // Prevent brief flash of idle (mic) icon between listening -> processing
   const [recentlyStoppedListening, setRecentlyStoppedListening] =
     useState(false)
+  const [isProcessingSubmission, setIsProcessingSubmission] = useState(false) // Track 1.5s submission delay
+
+  // Debug render with current state (after all state is declared)
+  useEffect(() => {
+    console.log('🎯 VoiceShazamButton rendered state:', {
+      isProcessing,
+      isProcessingSubmission,
+      isListening: internalIsListening,
+      selfContained,
+      status,
+      hasCallback: !!onTranscript,
+      timestamp: new Date().toISOString(),
+    })
+  }, [
+    isProcessing,
+    isProcessingSubmission,
+    internalIsListening,
+    status,
+    onTranscript,
+  ])
+
   // Will assign after isListening is derived
   const prevListeningRef = useRef<boolean>(false)
   // Gate wakeword/user toggles while TTS is active
   const [ttsActive, setTtsActive] = useState(false)
   const ttsClearTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isSubmittingRef = useRef(false) // Track if we're in the middle of submitting
 
   // Centralized submission finalizer to ensure recognition fully stops
   const finalizeSubmission = useCallback(
@@ -95,8 +121,10 @@ export const VoiceShazamButton = ({
       console.log('✅ finalizeSubmission', { context, trimmed })
       setStatus('Got result!')
       setInternalIsListening(false)
-      hasSubmittedRef.current = true
-      lastSubmittedTranscriptRef.current = trimmed
+      setIsProcessingSubmission(true) // Show processing visual during delay
+      isSubmittingRef.current = true // Mark as submitting to prevent state resets
+
+      // Don't set flags yet - wait until after the delayed callback
       forceStopRef.current = true
       setSilenceTimer(prev => {
         if (prev) clearTimeout(prev)
@@ -118,9 +146,37 @@ export const VoiceShazamButton = ({
       } catch {
         /* noop */
       }
-      if (onTranscript) {
-        onTranscript(trimmed)
-      }
+
+      // Add 1.5 second delay after STT before submitting query
+      console.log('⏳ Waiting 1.5s before submitting query...', {
+        trimmed,
+        onTranscript: !!onTranscript,
+      })
+      setTimeout(() => {
+        console.log('📤 Submitting query after delay:', trimmed)
+        console.log('🔍 Debug callback check:', {
+          onTranscript: !!onTranscript,
+          trimmed,
+          hasSubmitted: hasSubmittedRef.current,
+          lastSubmitted: lastSubmittedTranscriptRef.current,
+        })
+        if (onTranscript) {
+          console.log('✅ Calling onTranscript callback with:', trimmed)
+          try {
+            onTranscript(trimmed)
+            console.log('✅ onTranscript callback executed successfully')
+          } catch (error) {
+            console.error('❌ Error executing onTranscript callback:', error)
+          }
+        } else {
+          console.error('❌ onTranscript callback is not available!')
+        }
+        // Set submission flags AFTER the callback to prevent blocking
+        hasSubmittedRef.current = true
+        lastSubmittedTranscriptRef.current = trimmed
+        isSubmittingRef.current = false // Clear submitting flag
+        setIsProcessingSubmission(false) // Clear processing visual
+      }, 1500) // 1.5 second delay after STT
     },
     [onTranscript],
   )
@@ -170,13 +226,13 @@ export const VoiceShazamButton = ({
 
         // Optimized configuration based on platform
         if (isAndroidMode) {
-          // Android Chrome configuration - specific fixes for duplicate issues
-          recognitionInstance.continuous = false // Disable continuous on Android to prevent loops
-          recognitionInstance.interimResults = false // Disable interim results on Android for stability
+          // Android Chrome configuration - enable continuous for wake word activation
+          recognitionInstance.continuous = true // Enable continuous for longer listening sessions
+          recognitionInstance.interimResults = true // Enable interim results for better responsiveness
           recognitionInstance.lang = 'en-US'
           recognitionInstance.maxAlternatives = 1
           console.log(
-            '🤖 Configured for Android-mode (non-continuous, final results only)',
+            '🤖 Configured for Android-mode (continuous, interim results enabled)',
             { isAndroid, isSafari },
           )
         } else if (isChrome && !isMobile) {
@@ -238,12 +294,12 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Android-mode: Don't auto-restart in non-continuous mode
+          // Android-mode: Now supports continuous mode with auto-restart
           if (isAndroidMode) {
             console.log(
-              '🤖 Android-mode: Recognition ended, not restarting (non-continuous mode)',
+              '🤖 Android-mode: Recognition ended, checking for auto-restart (continuous mode)',
             )
-            return
+            // Continue with the auto-restart logic below for Android mode too
           }
 
           const now = Date.now()
@@ -269,10 +325,19 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Don't auto-restart if we already have a transcript or have submitted
-          if (hasSubmittedRef.current || hasTranscript) {
+          // Don't auto-restart if we already have a transcript, have submitted, or are currently submitting
+          if (
+            hasSubmittedRef.current ||
+            hasTranscript ||
+            isSubmittingRef.current
+          ) {
             console.log(
-              'Skipping restart - already have transcript or submitted',
+              'Skipping restart - already have transcript, submitted, or submitting',
+              {
+                hasSubmitted: hasSubmittedRef.current,
+                hasTranscript,
+                isSubmitting: isSubmittingRef.current,
+              },
             )
             return
           }
@@ -321,29 +386,141 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Android-mode handling - different approach for non-continuous mode
+          // Android-mode handling - now uses same continuous logic as other platforms
           if (isAndroidMode) {
-            // Android Chrome in non-continuous mode - get final result only
+            // Android Chrome now uses continuous mode with silence detection
+            let interimTranscript = ''
             let finalTranscript = ''
+
             for (let i = 0; i < results.length; i++) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = results[i] as any
               if (result.isFinal) {
                 finalTranscript += result[0].transcript
+              } else {
+                interimTranscript += result[0].transcript
               }
             }
 
-            const currentTranscript = finalTranscript.trim()
+            // Combine both for current display
+            const currentTranscript = (
+              finalTranscript + interimTranscript
+            ).trim()
 
             if (currentTranscript) {
-              console.log('🤖 Android final transcript:', currentTranscript)
+              console.log('🤖 Android current transcript:', currentTranscript)
               setTranscript(currentTranscript)
               setHasTranscript(true)
-              finalizeSubmission(
-                recognitionInstance,
-                currentTranscript,
-                'android-final',
-              )
+
+              // Start fallback finalize timer when we get the FIRST transcript chunk of this session
+              if (
+                !fallbackFinalizeTimerRef.current &&
+                !hasSubmittedRef.current
+              ) {
+                fallbackFinalizeTimerRef.current = setTimeout(() => {
+                  const latest = transcriptRef.current.trim()
+                  if (!hasSubmittedRef.current && latest.length > 0) {
+                    console.log(
+                      '⏳ Android fallback finalize triggered (4500ms)',
+                      {
+                        latest,
+                      },
+                    )
+                    finalizeSubmission(
+                      recognitionInstance,
+                      latest,
+                      'android-fallback-timeout',
+                    )
+                  }
+                }, 4500)
+                console.log(
+                  '⏳ Android fallback finalize timer started (4500ms)',
+                )
+              }
+
+              // Enhanced duplicate prevention - check multiple conditions
+              const isExactDuplicate =
+                currentTranscript === lastSubmittedTranscriptRef.current
+              const isSimilarDuplicate =
+                lastSubmittedTranscriptRef.current &&
+                currentTranscript.length > 5 &&
+                lastSubmittedTranscriptRef.current.includes(
+                  currentTranscript.slice(0, -2),
+                )
+              const isAlreadySubmitted = hasSubmittedRef.current
+
+              if (
+                isAlreadySubmitted &&
+                (isExactDuplicate || isSimilarDuplicate)
+              ) {
+                console.log(
+                  '🔄 Android skipping duplicate/similar transcript:',
+                  {
+                    current: currentTranscript,
+                    last: lastSubmittedTranscriptRef.current,
+                  },
+                )
+                return
+              }
+
+              // Clear existing silence timer on any speech activity
+              setSilenceTimer(prevTimer => {
+                if (prevTimer) {
+                  clearTimeout(prevTimer)
+                  console.log(
+                    '🔄 Android speech activity detected, resetting silence timer',
+                  )
+                }
+
+                // Start new silence timer - wait for configured silence duration
+                const newTimer = setTimeout(() => {
+                  const trimmedTranscript = currentTranscript.trim()
+
+                  // Triple-check we haven't already submitted this or similar transcript
+                  const finalIsExactDuplicate =
+                    trimmedTranscript === lastSubmittedTranscriptRef.current
+                  const finalIsSimilarDuplicate =
+                    lastSubmittedTranscriptRef.current &&
+                    trimmedTranscript.length > 5 &&
+                    (lastSubmittedTranscriptRef.current.includes(
+                      trimmedTranscript.slice(0, -2),
+                    ) ||
+                      trimmedTranscript.includes(
+                        lastSubmittedTranscriptRef.current.slice(0, -2),
+                      ))
+
+                  if (
+                    hasSubmittedRef.current &&
+                    (finalIsExactDuplicate || finalIsSimilarDuplicate)
+                  ) {
+                    console.log(
+                      '🔄 Android timer expired but transcript is duplicate/similar:',
+                      {
+                        current: trimmedTranscript,
+                        last: lastSubmittedTranscriptRef.current,
+                      },
+                    )
+                    return
+                  }
+
+                  console.log('⏰ Android silence detected (auto-submit)', {
+                    trimmedTranscript,
+                    threshold: SILENCE_DURATION_MS,
+                  })
+                  finalizeSubmission(
+                    recognitionInstance,
+                    trimmedTranscript,
+                    'android-silence-threshold',
+                  )
+                  // Don't set these flags here - finalizeSubmission handles them after the callback
+                }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
+
+                console.log(
+                  `⏰ Android started ${SILENCE_DURATION_MS}ms silence timer for:`,
+                  currentTranscript.slice(0, 60),
+                )
+                return newTimer
+              })
             }
             return
           }
@@ -458,18 +635,8 @@ export const VoiceShazamButton = ({
                   trimmedTranscript,
                   'silence-threshold',
                 )
-                setStatus('Got result!')
-                setInternalIsListening(false)
-                hasSubmittedRef.current = true
-                lastSubmittedTranscriptRef.current = trimmedTranscript
-
-                // Stop recognition
-                try {
-                  recognitionInstance.stop()
-                } catch (error) {
-                  console.log('Recognition already stopped')
-                }
-              }, 1500) // 1.5 second silence detection
+                // Don't set these flags here - finalizeSubmission handles them after the callback
+              }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
 
               console.log(
                 `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -874,7 +1041,7 @@ export const VoiceShazamButton = ({
       <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
         {/* Help message */}
         {/* Wake word status - only show when waiting for input */}
-        {!isListening && !isProcessing && (
+        {!isListening && !isProcessing && !isProcessingSubmission && (
           <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
             <span className="text-sm font-medium">
               💤 Say "Hey Jacq" or tap mic to speak
@@ -895,10 +1062,14 @@ export const VoiceShazamButton = ({
           </div>
         )} */}
         {/* Status indicator - only show while listening or processing */}
-        {(isListening || isProcessing) && (
+        {(isListening || isProcessing || isProcessingSubmission) && (
           <div className="px-4 py-2 rounded-full text-white shadow-2xl border border-white/20 bg-gradient-to-r from-primary to-accent ring-2 ring-white/30 mb-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
             <span className="text-sm font-medium">
-              {isProcessing ? '🧠 AI is thinking...' : '🎤 Listening...'}
+              {isProcessing
+                ? '🧠 AI is thinking...'
+                : isProcessingSubmission
+                  ? '⏳ Preparing query...'
+                  : '🎤 Listening...'}
             </span>
           </div>
         )}
@@ -911,13 +1082,23 @@ export const VoiceShazamButton = ({
         )}
         <div ref={containerRef}>
           {(() => {
-            const showProcessing = isProcessing
+            const showProcessing = isProcessing || isProcessingSubmission
             const showListeningVisual =
               isListening || (!showProcessing && recentlyStoppedListening)
+
+            // Debug visual state
+            console.log('🎨 Visual state debug:', {
+              isProcessing,
+              isProcessingSubmission,
+              isListening,
+              recentlyStoppedListening,
+              showProcessing,
+              showListeningVisual,
+            })
             return (
               <Button
                 onClick={toggleListening}
-                disabled={isProcessing}
+                disabled={isProcessing || isProcessingSubmission}
                 className={cn(
                   'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
                   'border-4 border-background transition-all duration-300',
