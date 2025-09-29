@@ -232,14 +232,14 @@ export const VoiceShazamButton = ({
 
         // Optimized configuration based on platform
         if (isAndroidMode) {
-          // Android Chrome configuration - enable continuous for wake word activation
-          recognitionInstance.continuous = true // Enable continuous for longer listening sessions
+          // Android Chrome configuration - try both continuous and non-continuous approaches
+          recognitionInstance.continuous = false // Start with non-continuous for Android stability
           recognitionInstance.interimResults = true // Enable interim results for better responsiveness
           recognitionInstance.lang = 'en-US'
           recognitionInstance.maxAlternatives = 1
           console.log(
-            '🤖 Configured for Android-mode (continuous, interim results enabled)',
-            { isAndroid, isSafari },
+            '🤖 Configured for Android-mode (non-continuous initially for stability)',
+            { isAndroid, isSafari, userAgent: navigator.userAgent },
           )
         } else if (isChrome && !isMobile) {
           // Desktop Chrome - optimized for maximum responsiveness
@@ -271,7 +271,11 @@ export const VoiceShazamButton = ({
 
         // Event handlers with platform-specific optimizations
         recognitionInstance.onstart = () => {
-          console.log('✅ Speech recognition started - ready for input')
+          console.log('✅ Speech recognition started - ready for input', {
+            isAndroid,
+            isAndroidMode,
+            platform: navigator.platform,
+          })
           setStatus('Listening...')
           setInternalIsListening(true) // Ensure state is synchronized immediately
 
@@ -306,10 +310,10 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Android-mode: Now supports continuous mode with auto-restart
+          // Android-mode: Non-continuous mode with auto-restart logic
           if (isAndroidMode) {
             console.log(
-              '🤖 Android-mode: Recognition ended, checking for auto-restart (continuous mode)',
+              '🤖 Android-mode: Recognition ended, checking for auto-restart (non-continuous mode)',
             )
             // Continue with the auto-restart logic below for Android mode too
           }
@@ -422,10 +426,9 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Android-mode handling - now uses same continuous logic as other platforms
+          // Android-mode handling - optimized for non-continuous but with auto-restart
           if (isAndroidMode) {
-            // Android Chrome now uses continuous mode with silence detection
-            let interimTranscript = ''
+            // Android Chrome uses non-continuous mode for stability
             let finalTranscript = ''
 
             for (let i = 0; i < results.length; i++) {
@@ -433,130 +436,23 @@ export const VoiceShazamButton = ({
               const result = results[i] as any
               if (result.isFinal) {
                 finalTranscript += result[0].transcript
-              } else {
-                interimTranscript += result[0].transcript
               }
             }
 
-            // Combine both for current display
-            const currentTranscript = (
-              finalTranscript + interimTranscript
-            ).trim()
+            // Use final transcript for Android mode
+            const currentTranscript = finalTranscript.trim()
 
             if (currentTranscript) {
-              console.log('🤖 Android current transcript:', currentTranscript)
+              console.log('🤖 Android final transcript:', currentTranscript)
               setTranscript(currentTranscript)
               setHasTranscript(true)
 
-              // Start fallback finalize timer when we get the FIRST transcript chunk of this session
-              if (
-                !fallbackFinalizeTimerRef.current &&
-                !hasSubmittedRef.current
-              ) {
-                fallbackFinalizeTimerRef.current = setTimeout(() => {
-                  const latest = transcriptRef.current.trim()
-                  if (!hasSubmittedRef.current && latest.length > 0) {
-                    console.log(
-                      '⏳ Android fallback finalize triggered (4500ms)',
-                      {
-                        latest,
-                      },
-                    )
-                    finalizeSubmission(
-                      recognitionInstance,
-                      latest,
-                      'android-fallback-timeout',
-                    )
-                  }
-                }, 4500)
-                console.log(
-                  '⏳ Android fallback finalize timer started (4500ms)',
-                )
-              }
-
-              // Enhanced duplicate prevention - check multiple conditions
-              const isExactDuplicate =
-                currentTranscript === lastSubmittedTranscriptRef.current
-              const isSimilarDuplicate =
-                lastSubmittedTranscriptRef.current &&
-                currentTranscript.length > 5 &&
-                lastSubmittedTranscriptRef.current.includes(
-                  currentTranscript.slice(0, -2),
-                )
-              const isAlreadySubmitted = hasSubmittedRef.current
-
-              if (
-                isAlreadySubmitted &&
-                (isExactDuplicate || isSimilarDuplicate)
-              ) {
-                console.log(
-                  '🔄 Android skipping duplicate/similar transcript:',
-                  {
-                    current: currentTranscript,
-                    last: lastSubmittedTranscriptRef.current,
-                  },
-                )
-                return
-              }
-
-              // Clear existing silence timer on any speech activity
-              setSilenceTimer(prevTimer => {
-                if (prevTimer) {
-                  clearTimeout(prevTimer)
-                  console.log(
-                    '🔄 Android speech activity detected, resetting silence timer',
-                  )
-                }
-
-                // Start new silence timer - wait for configured silence duration
-                const newTimer = setTimeout(() => {
-                  const trimmedTranscript = currentTranscript.trim()
-
-                  // Triple-check we haven't already submitted this or similar transcript
-                  const finalIsExactDuplicate =
-                    trimmedTranscript === lastSubmittedTranscriptRef.current
-                  const finalIsSimilarDuplicate =
-                    lastSubmittedTranscriptRef.current &&
-                    trimmedTranscript.length > 5 &&
-                    (lastSubmittedTranscriptRef.current.includes(
-                      trimmedTranscript.slice(0, -2),
-                    ) ||
-                      trimmedTranscript.includes(
-                        lastSubmittedTranscriptRef.current.slice(0, -2),
-                      ))
-
-                  if (
-                    hasSubmittedRef.current &&
-                    (finalIsExactDuplicate || finalIsSimilarDuplicate)
-                  ) {
-                    console.log(
-                      '🔄 Android timer expired but transcript is duplicate/similar:',
-                      {
-                        current: trimmedTranscript,
-                        last: lastSubmittedTranscriptRef.current,
-                      },
-                    )
-                    return
-                  }
-
-                  console.log('⏰ Android silence detected (auto-submit)', {
-                    trimmedTranscript,
-                    threshold: SILENCE_DURATION_MS,
-                  })
-                  finalizeSubmission(
-                    recognitionInstance,
-                    trimmedTranscript,
-                    'android-silence-threshold',
-                  )
-                  // Don't set these flags here - finalizeSubmission handles them after the callback
-                }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
-
-                console.log(
-                  `⏰ Android started ${SILENCE_DURATION_MS}ms silence timer for:`,
-                  currentTranscript.slice(0, 60),
-                )
-                return newTimer
-              })
+              // Android non-continuous mode: submit immediately (no silence detection needed)
+              finalizeSubmission(
+                recognitionInstance,
+                currentTranscript,
+                'android-final-immediate',
+              )
             }
             return
           }
