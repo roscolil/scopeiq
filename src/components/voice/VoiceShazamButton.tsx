@@ -390,7 +390,14 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onerror = (event: any) => {
-          console.error('❌ Speech recognition error:', event.error)
+          console.error('❌ Speech recognition error:', {
+            error: event.error,
+            message: event.message,
+            isAndroid,
+            isAndroidMode,
+            platform: navigator.platform,
+            timestamp: new Date().toISOString(),
+          })
           setStatus(`Error: ${event.error}`)
           setInternalIsListening(false)
         }
@@ -742,15 +749,37 @@ export const VoiceShazamButton = ({
         }
       } else if (isAndroidMode) {
         // Android-mode start logic for non-continuous mode (Android + all Safari)
-        try {
-          console.log('🤖 Android-mode: Starting recognition immediately')
-          recognition.start()
-          setStatus('Ready to listen!')
-        } catch (error) {
-          console.error('🤖 Android-mode start error:', error)
-          setStatus(`Start error: ${error}`)
-          setInternalIsListening(false)
-        }
+        console.log('🤖 Android-mode: Requesting microphone access first')
+
+        // Request microphone access explicitly for Android (async call)
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then(stream => {
+            console.log(
+              '🤖 Android: Microphone access granted, stopping stream',
+            )
+            // Stop the stream immediately - we only needed permission
+            stream.getTracks().forEach(track => track.stop())
+
+            console.log(
+              '🤖 Android-mode: Starting recognition after permission',
+            )
+            recognition.start()
+            setStatus('Ready to listen!')
+          })
+          .catch(permissionError => {
+            console.error(
+              '🤖 Android microphone permission error:',
+              permissionError,
+            )
+
+            // Fallback: try starting recognition anyway
+            console.log(
+              '🤖 Android-mode: Starting recognition anyway as fallback',
+            )
+            recognition.start()
+            setStatus('Ready to listen!')
+          })
       } else if (isChrome) {
         // Desktop Chrome - optimized for immediate startup
         try {
