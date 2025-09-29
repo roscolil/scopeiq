@@ -71,27 +71,11 @@ export const useVoiceRecognition = ({
       if (SpeechRecognitionAPI) {
         const recognitionInstance = new SpeechRecognitionAPI()
 
-        // Detect Android browser for specific configuration
-        const isAndroid = /Android/i.test(navigator.userAgent)
-
-        // Configure Based on platform
-        if (isAndroid) {
-          // Android Chrome - use non-continuous mode with frequent restart
-          recognitionInstance.continuous = false
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          console.log(
-            '🤖 Android configuration: Non-continuous mode with aggressive restart',
-          )
-        } else {
-          // Non-Android platforms
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          console.log('🌐 Non-Android configuration: Standard continuous mode')
-        }
+        // Configure for better mobile performance
+        recognitionInstance.continuous = true
+        recognitionInstance.interimResults = true
+        recognitionInstance.lang = 'en-US'
+        recognitionInstance.maxAlternatives = 1
 
         setRecognition(recognitionInstance)
       } else {
@@ -282,25 +266,16 @@ export const useVoiceRecognition = ({
       if (isListening && !isPlayingAudioRef.current && !isProcessing) {
         const now = Date.now()
         const sinceLast = now - lastRestartRef.current
-        const isAndroid = /Android/i.test(navigator.userAgent)
 
-        // Android gets more aggressive restart logic for non-continuous mode
-        let delay = isAndroid ? 50 : 150 // Much shorter delay for Android
+        // Apply exponential backoff if rapid endings (<800ms apart)
+        let delay = 150
         if (sinceLast < 800) {
           restartAttemptsRef.current += 1
-          if (isAndroid) {
-            // Android: aggressive restart with minimal backoff
-            delay = Math.min(50 * (restartAttemptsRef.current + 1), 500)
-          } else {
-            // Non-Android: original backoff logic
-            delay = Math.min(150 * 2 ** restartAttemptsRef.current, 4000)
-          }
+          delay = Math.min(150 * 2 ** restartAttemptsRef.current, 4000)
           console.warn(
-            isAndroid
-              ? '🤖 Android rapid onend detected, aggressive restart'
-              : 'Rapid onend detected, applying backoff',
+            'Rapid onend detected, applying backoff',
             restartAttemptsRef.current,
-            isAndroid ? 'android-delay=' : 'delay=',
+            'delay=',
             delay,
           )
         } else {
