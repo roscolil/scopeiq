@@ -667,6 +667,12 @@ const ProfileSettings = () => {
                 >
                   Security
                 </TabsTrigger>
+                <TabsTrigger
+                  value="voice"
+                  className="text-xs px-3 py-2.5 min-w-[70px]"
+                >
+                  Voice
+                </TabsTrigger>
                 {canManageUsers && (
                   <>
                     <TabsTrigger
