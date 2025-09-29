@@ -72,6 +72,9 @@ export const VoiceShazamButton = ({
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
+
+  // Android health check timer
+  const healthCheckTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const fallbackFinalizeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [hasTranscript, setHasTranscript] = useState(false)
@@ -296,48 +299,54 @@ export const VoiceShazamButton = ({
           const now = Date.now()
           const sinceLast = now - endLoopGuardRef.current.lastEnd
 
-          // More aggressive loop detection for mobile
-          if (sinceLast < 1000) {
-            // Increased from 800ms to 1000ms
+          // Platform-specific loop detection
+          const loopThreshold = isAndroidMode ? 800 : 1000 // Android needs tighter control
+          const maxAttempts = isAndroidMode ? 5 : 3 // Android can handle more attempts
+
+          if (sinceLast < loopThreshold) {
             endLoopGuardRef.current.attempts += 1
           } else {
             endLoopGuardRef.current.attempts = 0
           }
           endLoopGuardRef.current.lastEnd = now
 
-          // Reduced max attempts for mobile stability
-          if (endLoopGuardRef.current.attempts > 3) {
-            // Reduced from 5 to 3
+          if (endLoopGuardRef.current.attempts > maxAttempts) {
             console.warn(
-              'Too many rapid end events, halting to prevent STT loop',
+              `Too many rapid end events (${endLoopGuardRef.current.attempts}), halting to prevent STT loop`,
+              { isAndroidMode, maxAttempts },
             )
             forceStopRef.current = true
             setInternalIsListening(false)
             return
           }
 
-          // Don't auto-restart if we already have a transcript, have submitted, or are currently submitting
-          if (
-            hasSubmittedRef.current ||
-            hasTranscript ||
-            isSubmittingRef.current
-          ) {
+          // Don't auto-restart if we already have submitted or are currently submitting
+          // Android-specific: Allow restart even with transcript for continuous listening
+          if (hasSubmittedRef.current || isSubmittingRef.current) {
+            console.log('Skipping restart - already submitted or submitting', {
+              hasSubmitted: hasSubmittedRef.current,
+              hasTranscript,
+              isSubmitting: isSubmittingRef.current,
+            })
+            return
+          }
+
+          // Android-specific: Don't restart if we have a transcript and we're not in continuous mode
+          if (!isAndroidMode && hasTranscript) {
             console.log(
-              'Skipping restart - already have transcript, submitted, or submitting',
-              {
-                hasSubmitted: hasSubmittedRef.current,
-                hasTranscript,
-                isSubmitting: isSubmittingRef.current,
-              },
+              'Non-Android: Skipping restart - already have transcript',
             )
             return
           }
 
           // Optional: auto restart for continuous capture (only if user was listening)
           if (internalIsListening) {
+            // Android needs faster restart to maintain continuous listening
+            const baseDelay = isAndroidMode ? 150 : 300
+            const maxDelay = isAndroidMode ? 2000 : 5000
             const delay = Math.min(
-              300 * 2 ** endLoopGuardRef.current.attempts, // Increased base delay from 150ms to 300ms
-              5000, // Increased max delay from 3000ms to 5000ms
+              baseDelay * 2 ** endLoopGuardRef.current.attempts,
+              maxDelay,
             )
             console.log('Scheduling restart after', delay, 'ms')
             setTimeout(() => {
@@ -361,9 +370,34 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onerror = (event: any) => {
-          console.error('❌ Speech recognition error:', event.error)
+          console.error('❌ Speech recognition error:', event.error, {
+            isAndroidMode,
+          })
           setStatus(`Error: ${event.error}`)
           setInternalIsListening(false)
+
+          // Android-specific error recovery
+          if (
+            isAndroidMode &&
+            (event.error === 'network' || event.error === 'audio-capture')
+          ) {
+            console.log('🤖 Android: Attempting error recovery in 1 second')
+            setTimeout(() => {
+              if (!forceStopRef.current && !hasSubmittedRef.current) {
+                console.log('🤖 Android: Restarting after error recovery')
+                try {
+                  recognitionInstance.start()
+                  setStatus('Recovering...')
+                  setInternalIsListening(true)
+                } catch (restartError) {
+                  console.error(
+                    '🤖 Android: Recovery restart failed:',
+                    restartError,
+                  )
+                }
+              }
+            }, 1000)
+          }
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -640,6 +674,27 @@ export const VoiceShazamButton = ({
 
         setRecognition(recognitionInstance)
         setStatus('Initialized')
+
+        // Android health check: monitor for stuck states
+        if (isAndroidMode) {
+          console.log('🤖 Android: Starting health check monitoring')
+          if (healthCheckTimerRef.current) {
+            clearInterval(healthCheckTimerRef.current)
+          }
+
+          healthCheckTimerRef.current = setInterval(() => {
+            // Check if we should be listening but recognition seems stuck
+            if (
+              internalIsListening &&
+              !hasSubmittedRef.current &&
+              !isSubmittingRef.current
+            ) {
+              console.log(
+                '🤖 Android: Health check - monitoring recognition state',
+              )
+            }
+          }, 5000) // Check every 5 seconds
+        }
       } else {
         setStatus('Speech Recognition not supported')
         console.error('❌ Speech Recognition API not supported')
@@ -650,6 +705,12 @@ export const VoiceShazamButton = ({
         recognition?.stop()
       } catch {
         /* ignore */
+      }
+
+      // Cleanup health check timer
+      if (healthCheckTimerRef.current) {
+        clearInterval(healthCheckTimerRef.current)
+        healthCheckTimerRef.current = null
       }
     }
     // We intentionally do NOT include dynamic speech state deps here; this effect is for one-time init
