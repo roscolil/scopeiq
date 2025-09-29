@@ -101,6 +101,7 @@ export const VoiceShazamButton = ({
   const [ttsActive, setTtsActive] = useState(false)
   const ttsClearTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isSubmittingRef = useRef(false) // Track if we're in the middle of submitting
+  const lastTranscriptProcessTimeRef = useRef(0) // Track when we last processed a transcript
 
   // Centralized submission finalizer to ensure recognition fully stops
   const finalizeSubmission = useCallback(
@@ -135,7 +136,12 @@ export const VoiceShazamButton = ({
         fallbackFinalizeTimerRef.current = null
       }
       try {
+        console.log('🛑 Force stopping recognition instance')
         recognitionInstance.stop()
+        // Clear all recognition event handlers to prevent further processing
+        recognitionInstance.onresult = null
+        recognitionInstance.onend = null
+        recognitionInstance.onerror = null
       } catch {
         /* already stopped */
       }
@@ -279,7 +285,13 @@ export const VoiceShazamButton = ({
         }
 
         recognitionInstance.onend = () => {
-          console.log('⏹️ Speech recognition ended', { isAndroid })
+          console.log('⏹️ Speech recognition ended', {
+            isAndroid,
+            hasSubmitted: hasSubmittedRef.current,
+            hasTranscript,
+            isSubmitting: isSubmittingRef.current,
+            forceStop: forceStopRef.current,
+          })
           setStatus('Stopped')
           setInternalIsListening(false)
           try {
@@ -342,11 +354,15 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Optional: auto restart for continuous capture (only if user was listening)
-          if (internalIsListening) {
+          // Optional: auto restart for continuous capture (only if user was listening and we haven't submitted)
+          if (
+            internalIsListening &&
+            !hasSubmittedRef.current &&
+            !isSubmittingRef.current
+          ) {
             const delay = Math.min(
-              300 * 2 ** endLoopGuardRef.current.attempts, // Increased base delay from 150ms to 300ms
-              5000, // Increased max delay from 3000ms to 5000ms
+              800 * 2 ** endLoopGuardRef.current.attempts, // Increased base delay from 300ms to 800ms for mobile
+              8000, // Increased max delay from 5000ms to 8000ms
             )
             console.log('Scheduling restart after', delay, 'ms')
             setTimeout(() => {
@@ -382,7 +398,27 @@ export const VoiceShazamButton = ({
             hasSubmitted: hasSubmittedRef.current,
             forceStop: forceStopRef.current,
             hasTranscript,
+            isSubmitting: isSubmittingRef.current,
+            lastSubmitted: lastSubmittedTranscriptRef.current,
           })
+
+          // Early exit if we're already processing or have submitted
+          if (hasSubmittedRef.current || isSubmittingRef.current) {
+            console.log(
+              '🔄 Skipping recognition result - already submitted or submitting',
+            )
+            return
+          }
+
+          // Prevent rapid re-processing of the same transcript (mobile loop prevention)
+          const now = Date.now()
+          if (now - lastTranscriptProcessTimeRef.current < 500) {
+            console.log(
+              '🔄 Skipping recognition result - processed too recently (<500ms)',
+            )
+            return
+          }
+          lastTranscriptProcessTimeRef.current = now
 
           const results = Array.from(event.results)
 
