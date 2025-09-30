@@ -34,8 +34,8 @@ export const VoiceShazamButton = ({
   onTranscript,
   selfContained = true, // Default to self-contained mode
 }: VoiceShazamButtonProps) => {
-  // Extended listening duration for mobile wake word activation
-  const SILENCE_DURATION_MS = 5000 // 5 seconds listening opportunity
+  // Silence duration for wake word activation - 1.5 seconds as per Android requirements
+  const SILENCE_DURATION_MS = 1500 // 1.5 seconds of silence before auto-submit
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
   // Block re-showing the help toast until after TTS completes
@@ -446,7 +446,7 @@ export const VoiceShazamButton = ({
                   const latest = transcriptRef.current.trim()
                   if (!hasSubmittedRef.current && latest.length > 0) {
                     console.log(
-                      '⏳ Android fallback finalize triggered (4500ms)',
+                      '⏳ Android fallback finalize triggered (3000ms)',
                       {
                         latest,
                       },
@@ -457,9 +457,9 @@ export const VoiceShazamButton = ({
                       'android-fallback-timeout',
                     )
                   }
-                }, 4500)
+                }, 3000)
                 console.log(
-                  '⏳ Android fallback finalize timer started (4500ms)',
+                  '⏳ Android fallback finalize timer started (3000ms)',
                 )
               }
 
@@ -576,7 +576,7 @@ export const VoiceShazamButton = ({
               fallbackFinalizeTimerRef.current = setTimeout(() => {
                 const latest = transcriptRef.current.trim()
                 if (!hasSubmittedRef.current && latest.length > 0) {
-                  console.log('⏳ Fallback finalize triggered (4500ms)', {
+                  console.log('⏳ Fallback finalize triggered (3000ms)', {
                     latest,
                   })
                   finalizeSubmission(
@@ -585,8 +585,8 @@ export const VoiceShazamButton = ({
                     'fallback-timeout',
                   )
                 }
-              }, 4500)
-              console.log('⏳ Fallback finalize timer started (4500ms)')
+              }, 3000)
+              console.log('⏳ Fallback finalize timer started (3000ms)')
             }
 
             // Enhanced duplicate prevention - check multiple conditions

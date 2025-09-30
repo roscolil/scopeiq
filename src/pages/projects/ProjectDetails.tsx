@@ -175,14 +175,22 @@ const ProjectDetails = () => {
     if (now - wakeTriggerRef.current < 4000) return // throttle
     wakeTriggerRef.current = now
     if (isMobile) {
-      openChatPanelMobile()
+      // On mobile, scroll to view but DON'T focus textarea (prevents keyboard from showing)
+      const aiActions =
+        document.querySelector('.AIActions') ||
+        document.querySelector('[data-ai-actions]')
+      if (aiActions && 'scrollIntoView' in aiActions) {
+        ;(aiActions as HTMLElement).scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      }
     } else {
       focusQueryInput()
     }
     // Dispatch event to start mic with minimal delay so user can speak naturally.
-    // Reduced from 250ms -> 60ms. If the textarea was already focused we fire almost immediately.
-    const alreadyFocused = document.activeElement?.tagName === 'TEXTAREA'
-    const delay = alreadyFocused ? 10 : 60
+    // On mobile, fire immediately since we're not focusing anything
+    const delay = isMobile ? 10 : 60
     setTimeout(() => {
       window.dispatchEvent(new Event('wakeword:activate-mic'))
     }, delay)
