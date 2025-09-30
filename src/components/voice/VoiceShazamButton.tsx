@@ -105,18 +105,29 @@ export const VoiceShazamButton = ({
     ) => {
       const trimmed = text.trim()
       if (!trimmed) return
-      if (
-        hasSubmittedRef.current &&
-        trimmed === lastSubmittedTranscriptRef.current
-      ) {
-        console.log('🔄 finalizeSubmission duplicate skipped', { context })
+
+      // CRITICAL: If we're already submitting or have submitted, bail out immediately
+      // This makes finalizeSubmission truly idempotent and prevents duplicate submissions
+      if (isSubmittingRef.current || hasSubmittedRef.current) {
+        console.log(
+          '🛑 finalizeSubmission blocked - already submitting/submitted',
+          {
+            context,
+            isSubmitting: isSubmittingRef.current,
+            hasSubmitted: hasSubmittedRef.current,
+            trimmed,
+          },
+        )
         return
       }
-      console.log('✅ finalizeSubmission', { context, trimmed })
+
+      // Set the flag IMMEDIATELY before any other operations
+      isSubmittingRef.current = true
+
+      console.log('✅ finalizeSubmission PROCEEDING', { context, trimmed })
       setStatus('Got result!')
       setInternalIsListening(false)
       setIsProcessingSubmission(true) // Show processing visual during delay
-      isSubmittingRef.current = true // Mark as submitting to prevent state resets
 
       // Don't set flags yet - wait until after the delayed callback
       forceStopRef.current = true
@@ -578,16 +589,17 @@ export const VoiceShazamButton = ({
                     return
                   }
 
-                  console.log('⏰ Android silence detected (auto-submit)', {
+                  console.log('⏰ Android silence detected', {
                     trimmedTranscript,
                     threshold: SILENCE_DURATION_MS,
                   })
+
+                  // finalizeSubmission will set isSubmittingRef and stop recognition
                   finalizeSubmission(
                     recognitionInstance,
                     trimmedTranscript,
                     'android-silence-threshold',
                   )
-                  // Don't set these flags here - finalizeSubmission handles them after the callback
                 }, SILENCE_DURATION_MS)
 
                 console.log(
@@ -736,16 +748,17 @@ export const VoiceShazamButton = ({
                   return
                 }
 
-                console.log('⏰ Silence detected (auto-submit)', {
+                console.log('⏰ Silence detected', {
                   trimmedTranscript,
                   threshold: SILENCE_DURATION_MS,
                 })
+
+                // finalizeSubmission will set isSubmittingRef and stop recognition
                 finalizeSubmission(
                   recognitionInstance,
                   trimmedTranscript,
                   'silence-threshold',
                 )
-                // Don't set these flags here - finalizeSubmission handles them after the callback
               }, SILENCE_DURATION_MS)
 
               console.log(
