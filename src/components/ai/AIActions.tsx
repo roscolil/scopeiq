@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
-import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton.refactored'
+import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
 import { AutoplayFallbackButton } from '@/components/voice'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
@@ -2392,8 +2392,8 @@ export const AIActions = ({
       {/* Shazam-style voice button - primary voice input on mobile */}
       {!hideShazamButton && isMobile && (
         <VoiceShazamButton
-          // selfContained={true}
-          // showTranscript={query || undefined}
+          selfContained={true}
+          showTranscript={query || undefined}
           isProcessing={isLoading}
           isMobileOnly={true}
           onHide={() => setHideShazamButton(true)}
@@ -2401,33 +2401,33 @@ export const AIActions = ({
             console.log('🎯 Received transcript in AIActions:', text)
 
             const trimmedText = text.trim()
-            // const isAndroid = /Android/i.test(navigator.userAgent)
+            const isAndroid = /Android/i.test(navigator.userAgent)
 
             // Android-specific enhanced duplicate prevention
-            // if (isAndroid) {
-            //   // Check against recent Android transcripts (last 5) for exact duplicates only
-            //   const recentDuplicates = androidTranscriptHistory.slice(-5)
-            //   const normalized = trimmedText.toLowerCase()
-            //   const isDuplicateInHistory = recentDuplicates.some(
-            //     h => h.toLowerCase() === normalized,
-            //   )
+            if (isAndroid) {
+              // Check against recent Android transcripts (last 5) for exact duplicates only
+              const recentDuplicates = androidTranscriptHistory.slice(-5)
+              const normalized = trimmedText.toLowerCase()
+              const isDuplicateInHistory = recentDuplicates.some(
+                h => h.toLowerCase() === normalized,
+              )
 
-            //   if (isDuplicateInHistory) {
-            //     console.log(
-            //       '🤖 Android: Exact duplicate in recent history, skipping:',
-            //       {
-            //         current: trimmedText,
-            //         history: recentDuplicates,
-            //       },
-            //     )
-            //     return
-            //   }
+              if (isDuplicateInHistory) {
+                console.log(
+                  '🤖 Android: Exact duplicate in recent history, skipping:',
+                  {
+                    current: trimmedText,
+                    history: recentDuplicates,
+                  },
+                )
+                return
+              }
 
-            //   // Add to Android history (keep last 10 entries)
-            //   setAndroidTranscriptHistory(prev =>
-            //     [...prev, trimmedText].slice(-10),
-            //   )
-            // }
+              // Add to Android history (keep last 10 entries)
+              setAndroidTranscriptHistory(prev =>
+                [...prev, trimmedText].slice(-10),
+              )
+            }
 
             // Enhanced duplicate prevention for all platforms
             const isExactDuplicate =
