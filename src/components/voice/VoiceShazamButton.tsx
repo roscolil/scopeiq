@@ -488,6 +488,27 @@ export const VoiceShazamButton = ({
                         latest,
                       },
                     )
+
+                    // CRITICAL: Set hasSubmitted to block other timers, stop everything
+                    hasSubmittedRef.current = true
+                    forceStopRef.current = true
+
+                    // Clear any silence timer
+                    setSilenceTimer(prev => {
+                      if (prev) clearTimeout(prev)
+                      return null
+                    })
+
+                    // Stop recognition immediately
+                    try {
+                      recognitionInstance.stop()
+                    } catch {
+                      /* already stopped */
+                    }
+
+                    // Reset hasSubmittedRef so finalizeSubmission can proceed
+                    hasSubmittedRef.current = false
+
                     finalizeSubmission(
                       recognitionInstance,
                       latest,
@@ -594,7 +615,34 @@ export const VoiceShazamButton = ({
                     threshold: SILENCE_DURATION_MS,
                   })
 
-                  // finalizeSubmission will set isSubmittingRef and stop recognition
+                  // CRITICAL: Set hasSubmitted to block other timers, but NOT isSubmitting yet
+                  // (finalizeSubmission will set isSubmitting)
+                  hasSubmittedRef.current = true
+                  forceStopRef.current = true
+
+                  // Clear fallback timer immediately
+                  if (fallbackFinalizeTimerRef.current) {
+                    clearTimeout(fallbackFinalizeTimerRef.current)
+                    fallbackFinalizeTimerRef.current = null
+                  }
+
+                  // Clear any other silence timers
+                  setSilenceTimer(prev => {
+                    if (prev) clearTimeout(prev)
+                    return null
+                  })
+
+                  // Stop recognition immediately
+                  try {
+                    recognitionInstance.stop()
+                  } catch {
+                    /* already stopped */
+                  }
+
+                  // Reset hasSubmittedRef so finalizeSubmission can proceed
+                  hasSubmittedRef.current = false
+
+                  // Now call finalizeSubmission (which will set isSubmittingRef)
                   finalizeSubmission(
                     recognitionInstance,
                     trimmedTranscript,
@@ -652,6 +700,27 @@ export const VoiceShazamButton = ({
                   console.log('⏳ Fallback finalize triggered (3000ms)', {
                     latest,
                   })
+
+                  // CRITICAL: Set hasSubmitted to block other timers, stop everything
+                  hasSubmittedRef.current = true
+                  forceStopRef.current = true
+
+                  // Clear any silence timer
+                  setSilenceTimer(prev => {
+                    if (prev) clearTimeout(prev)
+                    return null
+                  })
+
+                  // Stop recognition immediately
+                  try {
+                    recognitionInstance.stop()
+                  } catch {
+                    /* already stopped */
+                  }
+
+                  // Reset hasSubmittedRef so finalizeSubmission can proceed
+                  hasSubmittedRef.current = false
+
                   finalizeSubmission(
                     recognitionInstance,
                     latest,
@@ -753,7 +822,34 @@ export const VoiceShazamButton = ({
                   threshold: SILENCE_DURATION_MS,
                 })
 
-                // finalizeSubmission will set isSubmittingRef and stop recognition
+                // CRITICAL: Set hasSubmitted to block other timers, but NOT isSubmitting yet
+                // (finalizeSubmission will set isSubmitting)
+                hasSubmittedRef.current = true
+                forceStopRef.current = true
+
+                // Clear fallback timer immediately
+                if (fallbackFinalizeTimerRef.current) {
+                  clearTimeout(fallbackFinalizeTimerRef.current)
+                  fallbackFinalizeTimerRef.current = null
+                }
+
+                // Clear any other silence timers
+                setSilenceTimer(prev => {
+                  if (prev) clearTimeout(prev)
+                  return null
+                })
+
+                // Stop recognition immediately
+                try {
+                  recognitionInstance.stop()
+                } catch {
+                  /* already stopped */
+                }
+
+                // Reset hasSubmittedRef so finalizeSubmission can proceed
+                hasSubmittedRef.current = false
+
+                // Now call finalizeSubmission (which will set isSubmittingRef)
                 finalizeSubmission(
                   recognitionInstance,
                   trimmedTranscript,
