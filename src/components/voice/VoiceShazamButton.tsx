@@ -496,13 +496,13 @@ export const VoiceShazamButton = ({
                   const latest = transcriptRef.current.trim()
                   if (latest.length > 0) {
                     console.log(
-                      '⏳ Android fallback finalize triggered (3000ms)',
-                      {
-                        latest,
-                      },
+                      '⏳ Android fallback finalize triggered - BLOCKING ALL FUTURE EVENTS NOW',
+                      { latest },
                     )
 
-                    // CRITICAL: Clear timers and stop recognition
+                    // ⚡ CRITICAL: Set flags IMMEDIATELY
+                    isSubmittingRef.current = true
+                    hasSubmittedRef.current = true
                     forceStopRef.current = true
 
                     // Clear any silence timer
@@ -511,18 +511,32 @@ export const VoiceShazamButton = ({
                       return null
                     })
 
-                    // Stop recognition immediately
+                    // Stop recognition
                     try {
                       recognitionInstance.stop()
                     } catch {
                       /* already stopped */
                     }
 
-                    finalizeSubmission(
-                      recognitionInstance,
-                      latest,
-                      'android-fallback-timeout',
-                    )
+                    // Handle submission with 1.5s delay
+                    setTimeout(() => {
+                      console.log(
+                        '📤 Submitting Android fallback query:',
+                        latest,
+                      )
+                      if (onTranscript) {
+                        try {
+                          onTranscript(latest)
+                        } catch (error) {
+                          console.error(
+                            '❌ Error executing onTranscript:',
+                            error,
+                          )
+                        }
+                      }
+                      lastSubmittedTranscriptRef.current = latest
+                      setIsProcessingSubmission(false)
+                    }, 1500)
                   }
                 }, 3000)
                 console.log(
@@ -619,39 +633,55 @@ export const VoiceShazamButton = ({
                     return
                   }
 
-                  console.log('⏰ Android silence detected', {
-                    trimmedTranscript,
-                    threshold: SILENCE_DURATION_MS,
-                  })
+                  console.log(
+                    '⏰ Android silence detected - BLOCKING ALL FUTURE EVENTS NOW',
+                    {
+                      trimmedTranscript,
+                      threshold: SILENCE_DURATION_MS,
+                    },
+                  )
 
-                  // CRITICAL: Clear all timers and stop recognition immediately
+                  // ⚡ CRITICAL: Set BOTH flags IMMEDIATELY to block all future onresult events
+                  // This MUST happen first, synchronously, before any async operations
+                  isSubmittingRef.current = true
+                  hasSubmittedRef.current = true
                   forceStopRef.current = true
 
-                  // Clear fallback timer immediately
+                  // Clear fallback timer
                   if (fallbackFinalizeTimerRef.current) {
                     clearTimeout(fallbackFinalizeTimerRef.current)
                     fallbackFinalizeTimerRef.current = null
                   }
 
-                  // Clear any other silence timers
+                  // Clear silence timers
                   setSilenceTimer(prev => {
                     if (prev) clearTimeout(prev)
                     return null
                   })
 
-                  // Stop recognition immediately
+                  // Stop recognition
                   try {
                     recognitionInstance.stop()
                   } catch {
                     /* already stopped */
                   }
 
-                  // Now call finalizeSubmission (which will set both flags atomically)
-                  finalizeSubmission(
-                    recognitionInstance,
-                    trimmedTranscript,
-                    'android-silence-threshold',
-                  )
+                  // Now handle the submission with 1.5s delay
+                  setTimeout(() => {
+                    console.log(
+                      '📤 Submitting Android query after delay:',
+                      trimmedTranscript,
+                    )
+                    if (onTranscript) {
+                      try {
+                        onTranscript(trimmedTranscript)
+                      } catch (error) {
+                        console.error('❌ Error executing onTranscript:', error)
+                      }
+                    }
+                    lastSubmittedTranscriptRef.current = trimmedTranscript
+                    setIsProcessingSubmission(false)
+                  }, 1500)
                 }, SILENCE_DURATION_MS)
 
                 console.log(
@@ -701,11 +731,16 @@ export const VoiceShazamButton = ({
                 }
                 const latest = transcriptRef.current.trim()
                 if (latest.length > 0) {
-                  console.log('⏳ Fallback finalize triggered (3000ms)', {
-                    latest,
-                  })
+                  console.log(
+                    '⏳ Fallback finalize triggered - BLOCKING ALL FUTURE EVENTS NOW',
+                    {
+                      latest,
+                    },
+                  )
 
-                  // CRITICAL: Clear timers and stop recognition
+                  // ⚡ CRITICAL: Set flags IMMEDIATELY
+                  isSubmittingRef.current = true
+                  hasSubmittedRef.current = true
                   forceStopRef.current = true
 
                   // Clear any silence timer
@@ -714,18 +749,26 @@ export const VoiceShazamButton = ({
                     return null
                   })
 
-                  // Stop recognition immediately
+                  // Stop recognition
                   try {
                     recognitionInstance.stop()
                   } catch {
                     /* already stopped */
                   }
 
-                  finalizeSubmission(
-                    recognitionInstance,
-                    latest,
-                    'fallback-timeout',
-                  )
+                  // Handle submission with 1.5s delay
+                  setTimeout(() => {
+                    console.log('📤 Submitting fallback query:', latest)
+                    if (onTranscript) {
+                      try {
+                        onTranscript(latest)
+                      } catch (error) {
+                        console.error('❌ Error executing onTranscript:', error)
+                      }
+                    }
+                    lastSubmittedTranscriptRef.current = latest
+                    setIsProcessingSubmission(false)
+                  }, 1500)
                 }
               }, 3000)
               console.log('⏳ Fallback finalize timer started (3000ms)')
@@ -817,39 +860,55 @@ export const VoiceShazamButton = ({
                   return
                 }
 
-                console.log('⏰ Silence detected', {
-                  trimmedTranscript,
-                  threshold: SILENCE_DURATION_MS,
-                })
+                console.log(
+                  '⏰ Silence detected - BLOCKING ALL FUTURE EVENTS NOW',
+                  {
+                    trimmedTranscript,
+                    threshold: SILENCE_DURATION_MS,
+                  },
+                )
 
-                // CRITICAL: Clear all timers and stop recognition immediately
+                // ⚡ CRITICAL: Set BOTH flags IMMEDIATELY to block all future onresult events
+                // This MUST happen first, synchronously, before any async operations
+                isSubmittingRef.current = true
+                hasSubmittedRef.current = true
                 forceStopRef.current = true
 
-                // Clear fallback timer immediately
+                // Clear fallback timer
                 if (fallbackFinalizeTimerRef.current) {
                   clearTimeout(fallbackFinalizeTimerRef.current)
                   fallbackFinalizeTimerRef.current = null
                 }
 
-                // Clear any other silence timers
+                // Clear silence timers
                 setSilenceTimer(prev => {
                   if (prev) clearTimeout(prev)
                   return null
                 })
 
-                // Stop recognition immediately
+                // Stop recognition
                 try {
                   recognitionInstance.stop()
                 } catch {
                   /* already stopped */
                 }
 
-                // Now call finalizeSubmission (which will set both flags atomically)
-                finalizeSubmission(
-                  recognitionInstance,
-                  trimmedTranscript,
-                  'silence-threshold',
-                )
+                // Now handle the submission with 1.5s delay
+                setTimeout(() => {
+                  console.log(
+                    '📤 Submitting query after delay:',
+                    trimmedTranscript,
+                  )
+                  if (onTranscript) {
+                    try {
+                      onTranscript(trimmedTranscript)
+                    } catch (error) {
+                      console.error('❌ Error executing onTranscript:', error)
+                    }
+                  }
+                  lastSubmittedTranscriptRef.current = trimmedTranscript
+                  setIsProcessingSubmission(false)
+                }, 1500)
               }, SILENCE_DURATION_MS)
 
               console.log(
