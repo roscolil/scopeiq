@@ -133,13 +133,6 @@ export const VoiceShazamButton = ({
       } catch {
         /* already stopped */
       }
-      // Ensure global dictation state reflects we are no longer listening,
-      // in case recognition onend isn't fired or arrives late on some platforms
-      try {
-        window.dispatchEvent(new Event('dictation:stop'))
-      } catch {
-        /* noop */
-      }
 
       // Add 1.5 second delay after STT before submitting query
       console.log('⏳ Waiting 1.5s before submitting query...', {
@@ -170,6 +163,9 @@ export const VoiceShazamButton = ({
         lastSubmittedTranscriptRef.current = trimmed
         isSubmittingRef.current = false // Clear submitting flag
         setIsProcessingSubmission(false) // Clear processing visual
+
+        // Don't dispatch dictation:stop yet - wait for AI speech to complete
+        // This keeps the wake word suspended during AI processing and TTS response
       }, 1500) // 1.5 second delay after STT
     },
     [onTranscript],
@@ -276,10 +272,20 @@ export const VoiceShazamButton = ({
           console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
-          try {
-            window.dispatchEvent(new Event('dictation:stop'))
-          } catch {
-            /* noop */
+
+          // Only dispatch dictation:stop if we haven't submitted a query
+          // If we have submitted, keep dictation active until AI speech completes
+          if (!hasSubmittedRef.current && !isSubmittingRef.current) {
+            try {
+              window.dispatchEvent(new Event('dictation:stop'))
+              console.log('🔄 Dispatched dictation:stop (no submission)')
+            } catch {
+              /* noop */
+            }
+          } else {
+            console.log(
+              '🔄 Keeping dictation active - query submitted, waiting for AI response',
+            )
           }
 
           if (forceStopRef.current) {
@@ -497,6 +503,18 @@ export const VoiceShazamButton = ({
                   )
                 }
 
+                // Don't set a new timer if we're already submitting or have submitted
+                if (isSubmittingRef.current || hasSubmittedRef.current) {
+                  console.log(
+                    '🔄 Android skipping new silence timer - already submitting or submitted',
+                    {
+                      isSubmitting: isSubmittingRef.current,
+                      hasSubmitted: hasSubmittedRef.current,
+                    },
+                  )
+                  return null
+                }
+
                 // Start new silence timer - wait for configured silence duration
                 const newTimer = setTimeout(() => {
                   const trimmedTranscript = currentTranscript.trim()
@@ -538,7 +556,7 @@ export const VoiceShazamButton = ({
                     'android-silence-threshold',
                   )
                   // Don't set these flags here - finalizeSubmission handles them after the callback
-                }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
+                }, SILENCE_DURATION_MS)
 
                 console.log(
                   `⏰ Android started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -620,6 +638,18 @@ export const VoiceShazamButton = ({
                 )
               }
 
+              // Don't set a new timer if we're already submitting or have submitted
+              if (isSubmittingRef.current || hasSubmittedRef.current) {
+                console.log(
+                  '🔄 Skipping new silence timer - already submitting or submitted',
+                  {
+                    isSubmitting: isSubmittingRef.current,
+                    hasSubmitted: hasSubmittedRef.current,
+                  },
+                )
+                return null
+              }
+
               // Start new silence timer - wait for configured silence duration
               const newTimer = setTimeout(() => {
                 const trimmedTranscript = currentTranscript.trim()
@@ -661,7 +691,7 @@ export const VoiceShazamButton = ({
                   'silence-threshold',
                 )
                 // Don't set these flags here - finalizeSubmission handles them after the callback
-              }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
+              }, SILENCE_DURATION_MS)
 
               console.log(
                 `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -985,14 +1015,29 @@ export const VoiceShazamButton = ({
   // Listen for TTS completion signal from AIActions to allow help to re-appear
   useEffect(() => {
     const onSpeechComplete = () => {
+      console.log(
+        '🎙️ AI speech complete - clearing TTS state and resuming wake word',
+      )
       setHelpBlockedUntilSpeechComplete(false)
       setTtsActive(false)
       if (ttsClearTimerRef.current) {
         clearTimeout(ttsClearTimerRef.current)
         ttsClearTimerRef.current = null
       }
+
+      // NOW dispatch dictation:stop to allow wake word to resume
+      // This happens after the full interaction cycle (speak → process → TTS response)
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+        console.log(
+          '🔄 Dispatched dictation:stop after AI speech complete - wake word can resume',
+        )
+      } catch {
+        /* noop */
+      }
     }
     const onSpeechStart = () => {
+      console.log('🎙️ AI speech started - keeping dictation active')
       setTtsActive(true)
       // Failsafe: auto-clear TTS state after 45s in case complete event is missed
       if (ttsClearTimerRef.current) clearTimeout(ttsClearTimerRef.current)
@@ -1000,6 +1045,15 @@ export const VoiceShazamButton = ({
         console.warn('⏳ TTS active timeout reached, auto-clearing gate')
         setTtsActive(false)
         ttsClearTimerRef.current = null
+        // Also dispatch dictation:stop on timeout to ensure wake word can resume
+        try {
+          window.dispatchEvent(new Event('dictation:stop'))
+          console.log(
+            '🔄 Dispatched dictation:stop after timeout - wake word can resume',
+          )
+        } catch {
+          /* noop */
+        }
       }, 45000)
     }
     // Using generic Event type to satisfy TS in DOM
