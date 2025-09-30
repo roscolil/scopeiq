@@ -408,6 +408,18 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
+          // CRITICAL: Stop processing any new results if we're already submitting or have submitted
+          if (isSubmittingRef.current || hasSubmittedRef.current) {
+            console.log(
+              '🛑 Ignoring onresult - already submitting or submitted',
+              {
+                isSubmitting: isSubmittingRef.current,
+                hasSubmitted: hasSubmittedRef.current,
+              },
+            )
+            return
+          }
+
           console.log('📝 Speech recognition result:', event, { isAndroid })
           console.log('🔍 Debug state before processing result', {
             hasSubmitted: hasSubmittedRef.current,
@@ -446,11 +458,19 @@ export const VoiceShazamButton = ({
               // Start fallback finalize timer when we get the FIRST transcript chunk of this session
               if (
                 !fallbackFinalizeTimerRef.current &&
-                !hasSubmittedRef.current
+                !hasSubmittedRef.current &&
+                !isSubmittingRef.current
               ) {
                 fallbackFinalizeTimerRef.current = setTimeout(() => {
+                  // Double-check we haven't submitted in the meantime
+                  if (isSubmittingRef.current || hasSubmittedRef.current) {
+                    console.log(
+                      '⏳ Android fallback timer expired but already submitting/submitted',
+                    )
+                    return
+                  }
                   const latest = transcriptRef.current.trim()
-                  if (!hasSubmittedRef.current && latest.length > 0) {
+                  if (latest.length > 0) {
                     console.log(
                       '⏳ Android fallback finalize triggered (3000ms)',
                       {
@@ -517,6 +537,18 @@ export const VoiceShazamButton = ({
 
                 // Start new silence timer - wait for configured silence duration
                 const newTimer = setTimeout(() => {
+                  // First check: bail out if already submitting or submitted
+                  if (isSubmittingRef.current || hasSubmittedRef.current) {
+                    console.log(
+                      '🔄 Android silence timer expired but already submitting/submitted',
+                      {
+                        isSubmitting: isSubmittingRef.current,
+                        hasSubmitted: hasSubmittedRef.current,
+                      },
+                    )
+                    return
+                  }
+
                   const trimmedTranscript = currentTranscript.trim()
 
                   // Triple-check we haven't already submitted this or similar transcript
@@ -590,10 +622,21 @@ export const VoiceShazamButton = ({
             setTranscript(currentTranscript)
             setHasTranscript(true)
             // Start fallback finalize timer when we get the FIRST transcript chunk of this session
-            if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
+            if (
+              !fallbackFinalizeTimerRef.current &&
+              !hasSubmittedRef.current &&
+              !isSubmittingRef.current
+            ) {
               fallbackFinalizeTimerRef.current = setTimeout(() => {
+                // Double-check we haven't submitted in the meantime
+                if (isSubmittingRef.current || hasSubmittedRef.current) {
+                  console.log(
+                    '⏳ Fallback timer expired but already submitting/submitted',
+                  )
+                  return
+                }
                 const latest = transcriptRef.current.trim()
-                if (!hasSubmittedRef.current && latest.length > 0) {
+                if (latest.length > 0) {
                   console.log('⏳ Fallback finalize triggered (3000ms)', {
                     latest,
                   })
@@ -652,6 +695,18 @@ export const VoiceShazamButton = ({
 
               // Start new silence timer - wait for configured silence duration
               const newTimer = setTimeout(() => {
+                // First check: bail out if already submitting or submitted
+                if (isSubmittingRef.current || hasSubmittedRef.current) {
+                  console.log(
+                    '🔄 Silence timer expired but already submitting/submitted',
+                    {
+                      isSubmitting: isSubmittingRef.current,
+                      hasSubmitted: hasSubmittedRef.current,
+                    },
+                  )
+                  return
+                }
+
                 const trimmedTranscript = currentTranscript.trim()
 
                 // Triple-check we haven't already submitted this or similar transcript
