@@ -53,9 +53,6 @@ export const VoiceShazamButton = ({
     transcriptRef.current = transcript
   }, [transcript])
   const [status, setStatus] = useState('Ready')
-  // Debounce transcript display to prevent visual looping on Android
-  const [displayedTranscript, setDisplayedTranscript] = useState('')
-  const displayDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
   // Debug status changes
   useEffect(() => {
@@ -72,34 +69,6 @@ export const VoiceShazamButton = ({
       timestamp: new Date().toISOString(),
     })
   }, [isProcessing, status, onTranscript])
-
-  // Debounce transcript display updates to prevent visual looping on Android
-  useEffect(() => {
-    if (!transcript) {
-      setDisplayedTranscript('')
-      if (displayDebounceRef.current) {
-        clearTimeout(displayDebounceRef.current)
-        displayDebounceRef.current = null
-      }
-      return
-    }
-
-    // Debounce display updates by 200ms to smooth out rapid Android updates
-    if (displayDebounceRef.current) {
-      clearTimeout(displayDebounceRef.current)
-    }
-
-    displayDebounceRef.current = setTimeout(() => {
-      setDisplayedTranscript(transcript)
-      displayDebounceRef.current = null
-    }, 200) // 200ms debounce to batch rapid updates
-
-    return () => {
-      if (displayDebounceRef.current) {
-        clearTimeout(displayDebounceRef.current)
-      }
-    }
-  }, [transcript])
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
@@ -760,10 +729,6 @@ export const VoiceShazamButton = ({
         clearTimeout(fallbackFinalizeTimerRef.current)
         fallbackFinalizeTimerRef.current = null
       }
-      if (displayDebounceRef.current) {
-        clearTimeout(displayDebounceRef.current)
-        displayDebounceRef.current = null
-      }
     }
   }, [silenceTimer, selfContained])
 
@@ -811,12 +776,6 @@ export const VoiceShazamButton = ({
       }
       setHasTranscript(false)
       setTranscript('') // Clear transcript when stopping
-      setDisplayedTranscript('') // Clear displayed transcript
-      // Clear display debounce timer
-      if (displayDebounceRef.current) {
-        clearTimeout(displayDebounceRef.current)
-        displayDebounceRef.current = null
-      }
     } else {
       console.log('🎤 Starting recognition...')
 
@@ -844,17 +803,11 @@ export const VoiceShazamButton = ({
 
       // Reset all state when starting
       setTranscript('')
-      setDisplayedTranscript('')
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
       forceStopRef.current = false
       endLoopGuardRef.current = { lastEnd: 0, attempts: 0 } // Reset loop guard
-      // Clear display debounce timer
-      if (displayDebounceRef.current) {
-        clearTimeout(displayDebounceRef.current)
-        displayDebounceRef.current = null
-      }
       setSilenceTimer(prevTimer => {
         if (prevTimer) {
           clearTimeout(prevTimer)
@@ -1189,10 +1142,10 @@ export const VoiceShazamButton = ({
             </span>
           </div>
         )}
-        {isListening && (displayedTranscript || showTranscript) && (
+        {isListening && (transcript || showTranscript) && (
           <div className="bg-background/90 backdrop-blur-sm rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
             <p className="text-md text-center font-medium tracking-tight">
-              {displayedTranscript || showTranscript}
+              {transcript || showTranscript}
             </p>
           </div>
         )}
