@@ -1542,9 +1542,9 @@ export const AIActions = ({
       hasTranscriptRef.current = true
 
       // Scroll to query input to show the user what they asked
-      const queryTextarea = document.querySelector<HTMLTextAreaElement>(
+      const queryTextarea = window.document.querySelector(
         'textarea[placeholder*="Ask anything"]',
-      )
+      ) as HTMLTextAreaElement | null
       if (queryTextarea) {
         queryTextarea.scrollIntoView({
           behavior: 'smooth',
@@ -1632,7 +1632,7 @@ export const AIActions = ({
         console.log(
           '⏰ Started silence timer for:',
           text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '2s'} timeout)`,
+          `(${isMobile ? '1.5s' : '1.5s'} timeout)`,
         )
       }
     },
@@ -2456,7 +2456,7 @@ export const AIActions = ({
 
             // Scroll to query input to show the user what they asked
             try {
-              const queryTextarea = document.querySelector<HTMLTextAreaElement>(
+              const queryTextarea = window.document.querySelector<HTMLTextAreaElement>(
                 'textarea[placeholder*="Ask anything"]',
               )
               if (queryTextarea) {
@@ -2470,7 +2470,7 @@ export const AIActions = ({
                 console.log('⚠️ Query textarea not found, skipping scroll')
                 // Try alternative selectors
                 const altTextarea =
-                  document.querySelector<HTMLTextAreaElement>('textarea')
+                  window.document.querySelector<HTMLTextAreaElement>('textarea')
                 if (altTextarea) {
                   console.log('📜 Found alternative textarea, scrolling to it')
                   altTextarea.scrollIntoView({
