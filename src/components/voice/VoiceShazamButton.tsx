@@ -54,21 +54,6 @@ export const VoiceShazamButton = ({
   }, [transcript])
   const [status, setStatus] = useState('Ready')
 
-  // Debug status changes
-  useEffect(() => {
-    console.log('🔍 VoiceShazamButton status changed to:', status)
-  }, [status])
-
-  // Debug render with current state
-  useEffect(() => {
-    console.log('🎯 VoiceShazamButton rendered state:', {
-      isProcessing,
-      selfContained,
-      status,
-      hasCallback: !!onTranscript,
-      timestamp: new Date().toISOString(),
-    })
-  }, [isProcessing, status, onTranscript])
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
@@ -187,83 +172,29 @@ export const VoiceShazamButton = ({
   // Initialize speech recognition for self-contained mode (once)
   useEffect(() => {
     if (!selfContained) return
-    console.log('🎯 Speech recognition initialization (once)')
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const windowWithSR = window as any
       const SpeechRecognitionAPI =
         windowWithSR.SpeechRecognition || windowWithSR.webkitSpeechRecognition
-      console.log('🎯 SpeechRecognition API available:', !!SpeechRecognitionAPI)
       if (SpeechRecognitionAPI) {
-        console.log('🎯 Creating recognition instance with optimizations')
         const recognitionInstance = new SpeechRecognitionAPI()
 
         // Browser detection for optimal configuration
-        const isSafari = /^((?!chrome|android).)*safari/i.test(
-          navigator.userAgent,
-        )
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
         const isAndroid = /Android/i.test(navigator.userAgent)
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-        const isChrome = /Chrome/i.test(navigator.userAgent)
-        // Android-mode: we want exact Android behavior on Android and ALL Safari (mobile + desktop)
         const isAndroidMode = isAndroid || isSafari
 
-        console.log('🍎 Browser detection:', {
-          isSafari,
-          isMobile,
-          isAndroid,
-          isIOS,
-          isChrome,
-          userAgent: navigator.userAgent,
-        })
+        // Unified configuration for all platforms
+        recognitionInstance.continuous = true
+        recognitionInstance.interimResults = true
+        recognitionInstance.lang = 'en-US'
+        recognitionInstance.maxAlternatives = 1
 
-        // Optimized configuration based on platform
-        if (isAndroidMode) {
-          // Android Chrome configuration - enable continuous for wake word activation
-          recognitionInstance.continuous = true // Enable continuous for longer listening sessions
-          recognitionInstance.interimResults = true // Enable interim results for better responsiveness
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          console.log(
-            '🤖 Configured for Android-mode (continuous, interim results enabled)',
-            { isAndroid, isSafari },
-          )
-        } else if (isChrome && !isMobile) {
-          // Desktop Chrome - optimized for maximum responsiveness
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          // Chrome-specific optimizations
-          if (recognitionInstance.serviceURI !== undefined) {
-            // Use local recognition service if available for faster startup
-            console.log('🌐 Chrome: Using optimized local speech service')
-          }
-          console.log('🌐 Configured for Desktop Chrome (maximum speed)')
-        } else if (isSafari && !isMobile) {
-          // Desktop Safari - optimized configuration
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          console.log('🍎 Configured for Desktop Safari (optimized)')
-        } else {
-          // Other desktop browsers - optimized for speed
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          recognitionInstance.maxAlternatives = 1
-          console.log('🎤 Configured for desktop browser (fast startup)')
-        }
-
-        // Event handlers with platform-specific optimizations
+        // Event handlers
         recognitionInstance.onstart = () => {
-          console.log('✅ Speech recognition started - ready for input')
           setStatus('Listening...')
-          setInternalIsListening(true) // Ensure state is synchronized immediately
-
-          // Immediate visual feedback - start pulse animation
+          setInternalIsListening(true)
           setPulseAnimation(true)
           try {
             window.dispatchEvent(new Event('dictation:start'))
@@ -273,7 +204,6 @@ export const VoiceShazamButton = ({
         }
 
         recognitionInstance.onend = () => {
-          console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
           try {
@@ -283,25 +213,14 @@ export const VoiceShazamButton = ({
           }
 
           if (forceStopRef.current) {
-            console.log('Force stop active, skipping auto-restart')
             forceStopRef.current = false
             return
           }
 
-          // Android-mode: Now supports continuous mode with auto-restart
-          if (isAndroidMode) {
-            console.log(
-              '🤖 Android-mode: Recognition ended, checking for auto-restart (continuous mode)',
-            )
-            // Continue with the auto-restart logic below for Android mode too
-          }
-
           const now = Date.now()
           const sinceLast = now - endLoopGuardRef.current.lastEnd
-
-          // Platform-specific loop detection
-          const loopThreshold = isAndroidMode ? 800 : 1000 // Android needs tighter control
-          const maxAttempts = isAndroidMode ? 5 : 3 // Android can handle more attempts
+          const loopThreshold = isAndroidMode ? 800 : 1000
+          const maxAttempts = isAndroidMode ? 5 : 3
 
           if (sinceLast < loopThreshold) {
             endLoopGuardRef.current.attempts += 1
@@ -311,44 +230,26 @@ export const VoiceShazamButton = ({
           endLoopGuardRef.current.lastEnd = now
 
           if (endLoopGuardRef.current.attempts > maxAttempts) {
-            console.warn(
-              `Too many rapid end events (${endLoopGuardRef.current.attempts}), halting to prevent STT loop`,
-              { isAndroidMode, maxAttempts },
-            )
             forceStopRef.current = true
             setInternalIsListening(false)
             return
           }
 
-          // Don't auto-restart if we already have submitted or are currently submitting
-          // Android-specific: Allow restart even with transcript for continuous listening
           if (hasSubmittedRef.current || isSubmittingRef.current) {
-            console.log('Skipping restart - already submitted or submitting', {
-              hasSubmitted: hasSubmittedRef.current,
-              hasTranscript,
-              isSubmitting: isSubmittingRef.current,
-            })
             return
           }
 
-          // Android-specific: Don't restart if we have a transcript and we're not in continuous mode
           if (!isAndroidMode && hasTranscript) {
-            console.log(
-              'Non-Android: Skipping restart - already have transcript',
-            )
             return
           }
 
-          // Optional: auto restart for continuous capture (only if user was listening)
           if (internalIsListening) {
-            // Android needs faster restart to maintain continuous listening
             const baseDelay = isAndroidMode ? 150 : 300
             const maxDelay = isAndroidMode ? 2000 : 5000
             const delay = Math.min(
               baseDelay * 2 ** endLoopGuardRef.current.attempts,
               maxDelay,
             )
-            console.log('Scheduling restart after', delay, 'ms')
             setTimeout(() => {
               if (
                 !forceStopRef.current &&
@@ -359,8 +260,7 @@ export const VoiceShazamButton = ({
                   recognitionInstance.start()
                   setInternalIsListening(true)
                   setStatus('Listening...')
-                } catch (error) {
-                  console.error('Restart failed:', error)
+                } catch {
                   setInternalIsListening(false)
                 }
               }
@@ -370,9 +270,6 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onerror = (event: any) => {
-          console.error('❌ Speech recognition error:', event.error, {
-            isAndroidMode,
-          })
           setStatus(`Error: ${event.error}`)
           setInternalIsListening(false)
 
@@ -381,19 +278,14 @@ export const VoiceShazamButton = ({
             isAndroidMode &&
             (event.error === 'network' || event.error === 'audio-capture')
           ) {
-            console.log('🤖 Android: Attempting error recovery in 1 second')
             setTimeout(() => {
               if (!forceStopRef.current && !hasSubmittedRef.current) {
-                console.log('🤖 Android: Restarting after error recovery')
                 try {
                   recognitionInstance.start()
                   setStatus('Recovering...')
                   setInternalIsListening(true)
-                } catch (restartError) {
-                  console.error(
-                    '🤖 Android: Recovery restart failed:',
-                    restartError,
-                  )
+                } catch {
+                  /* Recovery failed */
                 }
               }
             }, 1000)
@@ -402,18 +294,10 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
-          console.log('📝 Speech recognition result:', event, { isAndroid })
-          console.log('🔍 Debug state before processing result', {
-            hasSubmitted: hasSubmittedRef.current,
-            forceStop: forceStopRef.current,
-            hasTranscript,
-          })
-
           const results = Array.from(event.results)
 
-          // Android-mode handling - now uses same continuous logic as other platforms
+          // Android-mode handling
           if (isAndroidMode) {
-            // Android Chrome now uses continuous mode with silence detection
             let interimTranscript = ''
             let finalTranscript = ''
 
@@ -427,17 +311,14 @@ export const VoiceShazamButton = ({
               }
             }
 
-            // Combine both for current display
             const currentTranscript = (
               finalTranscript + interimTranscript
             ).trim()
 
             if (currentTranscript) {
-              console.log('🤖 Android current transcript:', currentTranscript)
               setTranscript(currentTranscript)
               setHasTranscript(true)
 
-              // Start fallback finalize timer when we get the FIRST transcript chunk of this session
               if (
                 !fallbackFinalizeTimerRef.current &&
                 !hasSubmittedRef.current
@@ -445,12 +326,6 @@ export const VoiceShazamButton = ({
                 fallbackFinalizeTimerRef.current = setTimeout(() => {
                   const latest = transcriptRef.current.trim()
                   if (!hasSubmittedRef.current && latest.length > 0) {
-                    console.log(
-                      '⏳ Android fallback finalize triggered (3000ms)',
-                      {
-                        latest,
-                      },
-                    )
                     finalizeSubmission(
                       recognitionInstance,
                       latest,
@@ -458,9 +333,6 @@ export const VoiceShazamButton = ({
                     )
                   }
                 }, 3000)
-                console.log(
-                  '⏳ Android fallback finalize timer started (3000ms)',
-                )
               }
 
               // Enhanced duplicate prevention - check multiple conditions
