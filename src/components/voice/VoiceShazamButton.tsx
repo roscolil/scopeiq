@@ -49,8 +49,6 @@ export const VoiceShazamButton = ({
   const [transcript, setTranscript] = useState('')
   // Ref mirror of transcript to avoid stale closure inside delayed timers
   const transcriptRef = useRef('')
-  // Track last displayed transcript to prevent visual looping during continuous recognition
-  const lastDisplayedTranscriptRef = useRef('')
   useEffect(() => {
     transcriptRef.current = transcript
   }, [transcript])
@@ -436,12 +434,7 @@ export const VoiceShazamButton = ({
 
             if (currentTranscript) {
               console.log('🤖 Android current transcript:', currentTranscript)
-
-              // Only update transcript state if it has meaningfully changed (prevents visual looping)
-              if (currentTranscript !== lastDisplayedTranscriptRef.current) {
-                setTranscript(currentTranscript)
-                lastDisplayedTranscriptRef.current = currentTranscript
-              }
+              setTranscript(currentTranscript)
               setHasTranscript(true)
 
               // Start fallback finalize timer when we get the FIRST transcript chunk of this session
@@ -576,12 +569,7 @@ export const VoiceShazamButton = ({
 
           if (currentTranscript) {
             console.log('🎤 Current transcript:', currentTranscript)
-
-            // Only update transcript state if it has meaningfully changed (prevents visual looping)
-            if (currentTranscript !== lastDisplayedTranscriptRef.current) {
-              setTranscript(currentTranscript)
-              lastDisplayedTranscriptRef.current = currentTranscript
-            }
+            setTranscript(currentTranscript)
             setHasTranscript(true)
             // Start fallback finalize timer when we get the FIRST transcript chunk of this session
             if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
@@ -768,7 +756,6 @@ export const VoiceShazamButton = ({
       setInternalIsListening(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
-      lastDisplayedTranscriptRef.current = '' // Reset visual loop tracker
       forceStopRef.current = true
       // Clear silence timer when stopping
       setSilenceTimer(prevTimer => {
@@ -819,7 +806,6 @@ export const VoiceShazamButton = ({
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
-      lastDisplayedTranscriptRef.current = '' // Reset visual loop tracker
       forceStopRef.current = false
       endLoopGuardRef.current = { lastEnd: 0, attempts: 0 } // Reset loop guard
       setSilenceTimer(prevTimer => {
