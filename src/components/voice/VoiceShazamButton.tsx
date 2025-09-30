@@ -106,15 +106,27 @@ export const VoiceShazamButton = ({
       const trimmed = text.trim()
       if (!trimmed) return
 
-      // CRITICAL: If we're already submitting or have submitted, bail out immediately
-      // This makes finalizeSubmission truly idempotent and prevents duplicate submissions
-      if (isSubmittingRef.current || hasSubmittedRef.current) {
+      // Allow specific contexts (our controlled timer callbacks) even if hasSubmitted is true
+      const isControlledCall =
+        context.includes('silence') || context.includes('fallback')
+
+      // CRITICAL: If we're already submitting, always bail out
+      if (isSubmittingRef.current) {
+        console.log('🛑 finalizeSubmission blocked - already submitting', {
+          context,
+          isSubmitting: isSubmittingRef.current,
+          hasSubmitted: hasSubmittedRef.current,
+          trimmed,
+        })
+        return
+      }
+
+      // If hasSubmitted is true and this isn't a controlled call, bail out
+      if (hasSubmittedRef.current && !isControlledCall) {
         console.log(
-          '🛑 finalizeSubmission blocked - already submitting/submitted',
+          '🛑 finalizeSubmission blocked - already submitted (not controlled)',
           {
             context,
-            isSubmitting: isSubmittingRef.current,
-            hasSubmitted: hasSubmittedRef.current,
             trimmed,
           },
         )
@@ -123,6 +135,7 @@ export const VoiceShazamButton = ({
 
       // Set the flag IMMEDIATELY before any other operations
       isSubmittingRef.current = true
+      hasSubmittedRef.current = true
 
       console.log('✅ finalizeSubmission PROCEEDING', { context, trimmed })
       setStatus('Got result!')
@@ -489,8 +502,7 @@ export const VoiceShazamButton = ({
                       },
                     )
 
-                    // CRITICAL: Set hasSubmitted to block other timers, stop everything
-                    hasSubmittedRef.current = true
+                    // CRITICAL: Clear timers and stop recognition
                     forceStopRef.current = true
 
                     // Clear any silence timer
@@ -505,9 +517,6 @@ export const VoiceShazamButton = ({
                     } catch {
                       /* already stopped */
                     }
-
-                    // Reset hasSubmittedRef so finalizeSubmission can proceed
-                    hasSubmittedRef.current = false
 
                     finalizeSubmission(
                       recognitionInstance,
@@ -615,9 +624,7 @@ export const VoiceShazamButton = ({
                     threshold: SILENCE_DURATION_MS,
                   })
 
-                  // CRITICAL: Set hasSubmitted to block other timers, but NOT isSubmitting yet
-                  // (finalizeSubmission will set isSubmitting)
-                  hasSubmittedRef.current = true
+                  // CRITICAL: Clear all timers and stop recognition immediately
                   forceStopRef.current = true
 
                   // Clear fallback timer immediately
@@ -639,10 +646,7 @@ export const VoiceShazamButton = ({
                     /* already stopped */
                   }
 
-                  // Reset hasSubmittedRef so finalizeSubmission can proceed
-                  hasSubmittedRef.current = false
-
-                  // Now call finalizeSubmission (which will set isSubmittingRef)
+                  // Now call finalizeSubmission (which will set both flags atomically)
                   finalizeSubmission(
                     recognitionInstance,
                     trimmedTranscript,
@@ -701,8 +705,7 @@ export const VoiceShazamButton = ({
                     latest,
                   })
 
-                  // CRITICAL: Set hasSubmitted to block other timers, stop everything
-                  hasSubmittedRef.current = true
+                  // CRITICAL: Clear timers and stop recognition
                   forceStopRef.current = true
 
                   // Clear any silence timer
@@ -717,9 +720,6 @@ export const VoiceShazamButton = ({
                   } catch {
                     /* already stopped */
                   }
-
-                  // Reset hasSubmittedRef so finalizeSubmission can proceed
-                  hasSubmittedRef.current = false
 
                   finalizeSubmission(
                     recognitionInstance,
@@ -822,9 +822,7 @@ export const VoiceShazamButton = ({
                   threshold: SILENCE_DURATION_MS,
                 })
 
-                // CRITICAL: Set hasSubmitted to block other timers, but NOT isSubmitting yet
-                // (finalizeSubmission will set isSubmitting)
-                hasSubmittedRef.current = true
+                // CRITICAL: Clear all timers and stop recognition immediately
                 forceStopRef.current = true
 
                 // Clear fallback timer immediately
@@ -846,10 +844,7 @@ export const VoiceShazamButton = ({
                   /* already stopped */
                 }
 
-                // Reset hasSubmittedRef so finalizeSubmission can proceed
-                hasSubmittedRef.current = false
-
-                // Now call finalizeSubmission (which will set isSubmittingRef)
+                // Now call finalizeSubmission (which will set both flags atomically)
                 finalizeSubmission(
                   recognitionInstance,
                   trimmedTranscript,
