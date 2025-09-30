@@ -49,6 +49,8 @@ export const VoiceShazamButton = ({
   const [transcript, setTranscript] = useState('')
   // Ref mirror of transcript to avoid stale closure inside delayed timers
   const transcriptRef = useRef('')
+  // Track last displayed transcript to prevent visual looping
+  const lastDisplayedTranscriptRef = useRef('')
   useEffect(() => {
     transcriptRef.current = transcript
   }, [transcript])
@@ -68,7 +70,7 @@ export const VoiceShazamButton = ({
       hasCallback: !!onTranscript,
       timestamp: new Date().toISOString(),
     })
-  }, [isProcessing, status, onTranscript])
+  }, [isProcessing, selfContained, status, onTranscript])
   const [recognition, setRecognition] = useState<SpeechRecognitionType | null>(
     null,
   )
@@ -105,42 +107,18 @@ export const VoiceShazamButton = ({
     ) => {
       const trimmed = text.trim()
       if (!trimmed) return
-
-      // Allow specific contexts (our controlled timer callbacks) even if hasSubmitted is true
-      const isControlledCall =
-        context.includes('silence') || context.includes('fallback')
-
-      // CRITICAL: If we're already submitting, always bail out
-      if (isSubmittingRef.current) {
-        console.log('🛑 finalizeSubmission blocked - already submitting', {
-          context,
-          isSubmitting: isSubmittingRef.current,
-          hasSubmitted: hasSubmittedRef.current,
-          trimmed,
-        })
+      if (
+        hasSubmittedRef.current &&
+        trimmed === lastSubmittedTranscriptRef.current
+      ) {
+        console.log('🔄 finalizeSubmission duplicate skipped', { context })
         return
       }
-
-      // If hasSubmitted is true and this isn't a controlled call, bail out
-      if (hasSubmittedRef.current && !isControlledCall) {
-        console.log(
-          '🛑 finalizeSubmission blocked - already submitted (not controlled)',
-          {
-            context,
-            trimmed,
-          },
-        )
-        return
-      }
-
-      // Set the flag IMMEDIATELY before any other operations
-      isSubmittingRef.current = true
-      hasSubmittedRef.current = true
-
-      console.log('✅ finalizeSubmission PROCEEDING', { context, trimmed })
+      console.log('✅ finalizeSubmission', { context, trimmed })
       setStatus('Got result!')
       setInternalIsListening(false)
       setIsProcessingSubmission(true) // Show processing visual during delay
+      isSubmittingRef.current = true // Mark as submitting to prevent state resets
 
       // Don't set flags yet - wait until after the delayed callback
       forceStopRef.current = true
@@ -156,6 +134,13 @@ export const VoiceShazamButton = ({
         recognitionInstance.stop()
       } catch {
         /* already stopped */
+      }
+      // Ensure global dictation state reflects we are no longer listening,
+      // in case recognition onend isn't fired or arrives late on some platforms
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+      } catch {
+        /* noop */
       }
 
       // Add 1.5 second delay after STT before submitting query
@@ -187,9 +172,6 @@ export const VoiceShazamButton = ({
         lastSubmittedTranscriptRef.current = trimmed
         isSubmittingRef.current = false // Clear submitting flag
         setIsProcessingSubmission(false) // Clear processing visual
-
-        // Don't dispatch dictation:stop yet - wait for AI speech to complete
-        // This keeps the wake word suspended during AI processing and TTS response
       }, 1500) // 1.5 second delay after STT
     },
     [onTranscript],
@@ -296,20 +278,10 @@ export const VoiceShazamButton = ({
           console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
-
-          // Only dispatch dictation:stop if we haven't submitted a query
-          // If we have submitted, keep dictation active until AI speech completes
-          if (!hasSubmittedRef.current && !isSubmittingRef.current) {
-            try {
-              window.dispatchEvent(new Event('dictation:stop'))
-              console.log('🔄 Dispatched dictation:stop (no submission)')
-            } catch {
-              /* noop */
-            }
-          } else {
-            console.log(
-              '🔄 Keeping dictation active - query submitted, waiting for AI response',
-            )
+          try {
+            window.dispatchEvent(new Event('dictation:stop'))
+          } catch {
+            /* noop */
           }
 
           if (forceStopRef.current) {
@@ -432,18 +404,6 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
-          // CRITICAL: Stop processing any new results if we're already submitting or have submitted
-          if (isSubmittingRef.current || hasSubmittedRef.current) {
-            console.log(
-              '🛑 Ignoring onresult - already submitting or submitted',
-              {
-                isSubmitting: isSubmittingRef.current,
-                hasSubmitted: hasSubmittedRef.current,
-              },
-            )
-            return
-          }
-
           console.log('📝 Speech recognition result:', event, { isAndroid })
           console.log('🔍 Debug state before processing result', {
             hasSubmitted: hasSubmittedRef.current,
@@ -476,67 +436,32 @@ export const VoiceShazamButton = ({
 
             if (currentTranscript) {
               console.log('🤖 Android current transcript:', currentTranscript)
-              setTranscript(currentTranscript)
+              // Only update transcript if it has changed to prevent visual looping
+              if (currentTranscript !== lastDisplayedTranscriptRef.current) {
+                setTranscript(currentTranscript)
+                lastDisplayedTranscriptRef.current = currentTranscript
+              }
               setHasTranscript(true)
 
               // Start fallback finalize timer when we get the FIRST transcript chunk of this session
               if (
                 !fallbackFinalizeTimerRef.current &&
-                !hasSubmittedRef.current &&
-                !isSubmittingRef.current
+                !hasSubmittedRef.current
               ) {
                 fallbackFinalizeTimerRef.current = setTimeout(() => {
-                  // Double-check we haven't submitted in the meantime
-                  if (isSubmittingRef.current || hasSubmittedRef.current) {
-                    console.log(
-                      '⏳ Android fallback timer expired but already submitting/submitted',
-                    )
-                    return
-                  }
                   const latest = transcriptRef.current.trim()
-                  if (latest.length > 0) {
+                  if (!hasSubmittedRef.current && latest.length > 0) {
                     console.log(
-                      '⏳ Android fallback finalize triggered - BLOCKING ALL FUTURE EVENTS NOW',
-                      { latest },
-                    )
-
-                    // ⚡ CRITICAL: Set flags IMMEDIATELY
-                    isSubmittingRef.current = true
-                    hasSubmittedRef.current = true
-                    forceStopRef.current = true
-
-                    // Clear any silence timer
-                    setSilenceTimer(prev => {
-                      if (prev) clearTimeout(prev)
-                      return null
-                    })
-
-                    // Stop recognition
-                    try {
-                      recognitionInstance.stop()
-                    } catch {
-                      /* already stopped */
-                    }
-
-                    // Handle submission with 1.5s delay
-                    setTimeout(() => {
-                      console.log(
-                        '📤 Submitting Android fallback query:',
+                      '⏳ Android fallback finalize triggered (3000ms)',
+                      {
                         latest,
-                      )
-                      if (onTranscript) {
-                        try {
-                          onTranscript(latest)
-                        } catch (error) {
-                          console.error(
-                            '❌ Error executing onTranscript:',
-                            error,
-                          )
-                        }
-                      }
-                      lastSubmittedTranscriptRef.current = latest
-                      setIsProcessingSubmission(false)
-                    }, 1500)
+                      },
+                    )
+                    finalizeSubmission(
+                      recognitionInstance,
+                      latest,
+                      'android-fallback-timeout',
+                    )
                   }
                 }, 3000)
                 console.log(
@@ -578,32 +503,8 @@ export const VoiceShazamButton = ({
                   )
                 }
 
-                // Don't set a new timer if we're already submitting or have submitted
-                if (isSubmittingRef.current || hasSubmittedRef.current) {
-                  console.log(
-                    '🔄 Android skipping new silence timer - already submitting or submitted',
-                    {
-                      isSubmitting: isSubmittingRef.current,
-                      hasSubmitted: hasSubmittedRef.current,
-                    },
-                  )
-                  return null
-                }
-
                 // Start new silence timer - wait for configured silence duration
                 const newTimer = setTimeout(() => {
-                  // First check: bail out if already submitting or submitted
-                  if (isSubmittingRef.current || hasSubmittedRef.current) {
-                    console.log(
-                      '🔄 Android silence timer expired but already submitting/submitted',
-                      {
-                        isSubmitting: isSubmittingRef.current,
-                        hasSubmitted: hasSubmittedRef.current,
-                      },
-                    )
-                    return
-                  }
-
                   const trimmedTranscript = currentTranscript.trim()
 
                   // Triple-check we haven't already submitted this or similar transcript
@@ -633,56 +534,17 @@ export const VoiceShazamButton = ({
                     return
                   }
 
-                  console.log(
-                    '⏰ Android silence detected - BLOCKING ALL FUTURE EVENTS NOW',
-                    {
-                      trimmedTranscript,
-                      threshold: SILENCE_DURATION_MS,
-                    },
-                  )
-
-                  // ⚡ CRITICAL: Set BOTH flags IMMEDIATELY to block all future onresult events
-                  // This MUST happen first, synchronously, before any async operations
-                  isSubmittingRef.current = true
-                  hasSubmittedRef.current = true
-                  forceStopRef.current = true
-
-                  // Clear fallback timer
-                  if (fallbackFinalizeTimerRef.current) {
-                    clearTimeout(fallbackFinalizeTimerRef.current)
-                    fallbackFinalizeTimerRef.current = null
-                  }
-
-                  // Clear silence timers
-                  setSilenceTimer(prev => {
-                    if (prev) clearTimeout(prev)
-                    return null
+                  console.log('⏰ Android silence detected (auto-submit)', {
+                    trimmedTranscript,
+                    threshold: SILENCE_DURATION_MS,
                   })
-
-                  // Stop recognition
-                  try {
-                    recognitionInstance.stop()
-                  } catch {
-                    /* already stopped */
-                  }
-
-                  // Now handle the submission with 1.5s delay
-                  setTimeout(() => {
-                    console.log(
-                      '📤 Submitting Android query after delay:',
-                      trimmedTranscript,
-                    )
-                    if (onTranscript) {
-                      try {
-                        onTranscript(trimmedTranscript)
-                      } catch (error) {
-                        console.error('❌ Error executing onTranscript:', error)
-                      }
-                    }
-                    lastSubmittedTranscriptRef.current = trimmedTranscript
-                    setIsProcessingSubmission(false)
-                  }, 1500)
-                }, SILENCE_DURATION_MS)
+                  finalizeSubmission(
+                    recognitionInstance,
+                    trimmedTranscript,
+                    'android-silence-threshold',
+                  )
+                  // Don't set these flags here - finalizeSubmission handles them after the callback
+                }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
 
                 console.log(
                   `⏰ Android started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -713,62 +575,25 @@ export const VoiceShazamButton = ({
 
           if (currentTranscript) {
             console.log('🎤 Current transcript:', currentTranscript)
-            setTranscript(currentTranscript)
+            // Only update transcript if it has changed to prevent visual looping
+            if (currentTranscript !== lastDisplayedTranscriptRef.current) {
+              setTranscript(currentTranscript)
+              lastDisplayedTranscriptRef.current = currentTranscript
+            }
             setHasTranscript(true)
             // Start fallback finalize timer when we get the FIRST transcript chunk of this session
-            if (
-              !fallbackFinalizeTimerRef.current &&
-              !hasSubmittedRef.current &&
-              !isSubmittingRef.current
-            ) {
+            if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
               fallbackFinalizeTimerRef.current = setTimeout(() => {
-                // Double-check we haven't submitted in the meantime
-                if (isSubmittingRef.current || hasSubmittedRef.current) {
-                  console.log(
-                    '⏳ Fallback timer expired but already submitting/submitted',
-                  )
-                  return
-                }
                 const latest = transcriptRef.current.trim()
-                if (latest.length > 0) {
-                  console.log(
-                    '⏳ Fallback finalize triggered - BLOCKING ALL FUTURE EVENTS NOW',
-                    {
-                      latest,
-                    },
-                  )
-
-                  // ⚡ CRITICAL: Set flags IMMEDIATELY
-                  isSubmittingRef.current = true
-                  hasSubmittedRef.current = true
-                  forceStopRef.current = true
-
-                  // Clear any silence timer
-                  setSilenceTimer(prev => {
-                    if (prev) clearTimeout(prev)
-                    return null
+                if (!hasSubmittedRef.current && latest.length > 0) {
+                  console.log('⏳ Fallback finalize triggered (3000ms)', {
+                    latest,
                   })
-
-                  // Stop recognition
-                  try {
-                    recognitionInstance.stop()
-                  } catch {
-                    /* already stopped */
-                  }
-
-                  // Handle submission with 1.5s delay
-                  setTimeout(() => {
-                    console.log('📤 Submitting fallback query:', latest)
-                    if (onTranscript) {
-                      try {
-                        onTranscript(latest)
-                      } catch (error) {
-                        console.error('❌ Error executing onTranscript:', error)
-                      }
-                    }
-                    lastSubmittedTranscriptRef.current = latest
-                    setIsProcessingSubmission(false)
-                  }, 1500)
+                  finalizeSubmission(
+                    recognitionInstance,
+                    latest,
+                    'fallback-timeout',
+                  )
                 }
               }, 3000)
               console.log('⏳ Fallback finalize timer started (3000ms)')
@@ -805,32 +630,8 @@ export const VoiceShazamButton = ({
                 )
               }
 
-              // Don't set a new timer if we're already submitting or have submitted
-              if (isSubmittingRef.current || hasSubmittedRef.current) {
-                console.log(
-                  '🔄 Skipping new silence timer - already submitting or submitted',
-                  {
-                    isSubmitting: isSubmittingRef.current,
-                    hasSubmitted: hasSubmittedRef.current,
-                  },
-                )
-                return null
-              }
-
               // Start new silence timer - wait for configured silence duration
               const newTimer = setTimeout(() => {
-                // First check: bail out if already submitting or submitted
-                if (isSubmittingRef.current || hasSubmittedRef.current) {
-                  console.log(
-                    '🔄 Silence timer expired but already submitting/submitted',
-                    {
-                      isSubmitting: isSubmittingRef.current,
-                      hasSubmitted: hasSubmittedRef.current,
-                    },
-                  )
-                  return
-                }
-
                 const trimmedTranscript = currentTranscript.trim()
 
                 // Triple-check we haven't already submitted this or similar transcript
@@ -860,56 +661,17 @@ export const VoiceShazamButton = ({
                   return
                 }
 
-                console.log(
-                  '⏰ Silence detected - BLOCKING ALL FUTURE EVENTS NOW',
-                  {
-                    trimmedTranscript,
-                    threshold: SILENCE_DURATION_MS,
-                  },
-                )
-
-                // ⚡ CRITICAL: Set BOTH flags IMMEDIATELY to block all future onresult events
-                // This MUST happen first, synchronously, before any async operations
-                isSubmittingRef.current = true
-                hasSubmittedRef.current = true
-                forceStopRef.current = true
-
-                // Clear fallback timer
-                if (fallbackFinalizeTimerRef.current) {
-                  clearTimeout(fallbackFinalizeTimerRef.current)
-                  fallbackFinalizeTimerRef.current = null
-                }
-
-                // Clear silence timers
-                setSilenceTimer(prev => {
-                  if (prev) clearTimeout(prev)
-                  return null
+                console.log('⏰ Silence detected (auto-submit)', {
+                  trimmedTranscript,
+                  threshold: SILENCE_DURATION_MS,
                 })
-
-                // Stop recognition
-                try {
-                  recognitionInstance.stop()
-                } catch {
-                  /* already stopped */
-                }
-
-                // Now handle the submission with 1.5s delay
-                setTimeout(() => {
-                  console.log(
-                    '📤 Submitting query after delay:',
-                    trimmedTranscript,
-                  )
-                  if (onTranscript) {
-                    try {
-                      onTranscript(trimmedTranscript)
-                    } catch (error) {
-                      console.error('❌ Error executing onTranscript:', error)
-                    }
-                  }
-                  lastSubmittedTranscriptRef.current = trimmedTranscript
-                  setIsProcessingSubmission(false)
-                }, 1500)
-              }, SILENCE_DURATION_MS)
+                finalizeSubmission(
+                  recognitionInstance,
+                  trimmedTranscript,
+                  'silence-threshold',
+                )
+                // Don't set these flags here - finalizeSubmission handles them after the callback
+              }, SILENCE_DURATION_MS) // Use the extended 5-second silence detection
 
               console.log(
                 `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -1004,6 +766,7 @@ export const VoiceShazamButton = ({
       setInternalIsListening(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
+      lastDisplayedTranscriptRef.current = '' // Reset displayed transcript tracker
       forceStopRef.current = true
       // Clear silence timer when stopping
       setSilenceTimer(prevTimer => {
@@ -1054,6 +817,7 @@ export const VoiceShazamButton = ({
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
+      lastDisplayedTranscriptRef.current = '' // Reset displayed transcript tracker
       forceStopRef.current = false
       endLoopGuardRef.current = { lastEnd: 0, attempts: 0 } // Reset loop guard
       setSilenceTimer(prevTimer => {
@@ -1233,29 +997,14 @@ export const VoiceShazamButton = ({
   // Listen for TTS completion signal from AIActions to allow help to re-appear
   useEffect(() => {
     const onSpeechComplete = () => {
-      console.log(
-        '🎙️ AI speech complete - clearing TTS state and resuming wake word',
-      )
       setHelpBlockedUntilSpeechComplete(false)
       setTtsActive(false)
       if (ttsClearTimerRef.current) {
         clearTimeout(ttsClearTimerRef.current)
         ttsClearTimerRef.current = null
       }
-
-      // NOW dispatch dictation:stop to allow wake word to resume
-      // This happens after the full interaction cycle (speak → process → TTS response)
-      try {
-        window.dispatchEvent(new Event('dictation:stop'))
-        console.log(
-          '🔄 Dispatched dictation:stop after AI speech complete - wake word can resume',
-        )
-      } catch {
-        /* noop */
-      }
     }
     const onSpeechStart = () => {
-      console.log('🎙️ AI speech started - keeping dictation active')
       setTtsActive(true)
       // Failsafe: auto-clear TTS state after 45s in case complete event is missed
       if (ttsClearTimerRef.current) clearTimeout(ttsClearTimerRef.current)
@@ -1263,15 +1012,6 @@ export const VoiceShazamButton = ({
         console.warn('⏳ TTS active timeout reached, auto-clearing gate')
         setTtsActive(false)
         ttsClearTimerRef.current = null
-        // Also dispatch dictation:stop on timeout to ensure wake word can resume
-        try {
-          window.dispatchEvent(new Event('dictation:stop'))
-          console.log(
-            '🔄 Dispatched dictation:stop after timeout - wake word can resume',
-          )
-        } catch {
-          /* noop */
-        }
       }, 45000)
     }
     // Using generic Event type to satisfy TS in DOM
