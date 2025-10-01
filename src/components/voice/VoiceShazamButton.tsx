@@ -134,6 +134,14 @@ export const VoiceShazamButton = ({
             console.error('Error executing onTranscript callback:', error)
           }
         }
+        
+        // CRITICAL: Clear transcript after submission
+        // The chat history will show the conversation, so we don't need to keep displaying it here
+        // This prevents any repetition issues and provides cleaner UX
+        setTranscript('')
+        transcriptRef.current = ''
+        setHasTranscript(false)
+        
         isSubmittingRef.current = false
         setIsProcessingSubmission(false)
       }, 1500)
@@ -293,18 +301,27 @@ export const VoiceShazamButton = ({
             let interimTranscript = ''
             let finalTranscript = ''
 
+            // Process ALL results to build complete transcript
+            // Final results are immutable; interim results change with each event
             for (let i = 0; i < results.length; i++) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = results[i] as any
+              const transcriptSegment = result[0].transcript
+              
               if (result.isFinal) {
-                finalTranscript += result[0].transcript
+                // Add space between segments if needed
+                if (finalTranscript && !finalTranscript.endsWith(' ')) {
+                  finalTranscript += ' '
+                }
+                finalTranscript += transcriptSegment
               } else {
-                interimTranscript += result[0].transcript
+                // Only keep the most recent interim result
+                interimTranscript = transcriptSegment
               }
             }
 
             const currentTranscript = (
-              finalTranscript + interimTranscript
+              finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
             ).trim()
 
             if (currentTranscript) {
@@ -395,17 +412,27 @@ export const VoiceShazamButton = ({
           let interimTranscript = ''
           let finalTranscript = ''
 
+          // Process ALL results to build complete transcript
           for (let i = 0; i < results.length; i++) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = results[i] as any
+            const transcriptSegment = result[0].transcript
+            
             if (result.isFinal) {
-              finalTranscript += result[0].transcript
+              // Add space between segments if needed
+              if (finalTranscript && !finalTranscript.endsWith(' ')) {
+                finalTranscript += ' '
+              }
+              finalTranscript += transcriptSegment
             } else {
-              interimTranscript += result[0].transcript
+              // Only keep the most recent interim result
+              interimTranscript = transcriptSegment
             }
           }
 
-          const currentTranscript = (finalTranscript + interimTranscript).trim()
+          const currentTranscript = (
+            finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
+          ).trim()
 
           if (currentTranscript) {
             // CRITICAL: Return early if no change
