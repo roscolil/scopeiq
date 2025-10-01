@@ -195,7 +195,13 @@ export const VoiceShazamButton = ({
             /* noop */
           }
 
-          if (forceStopRef.current) {
+          // CRITICAL: Check if submission is in progress or already submitted
+          // This prevents the looping issue on Android devices
+          if (
+            forceStopRef.current ||
+            hasSubmittedRef.current ||
+            isSubmittingRef.current
+          ) {
             forceStopRef.current = false
             return
           }
@@ -218,11 +224,8 @@ export const VoiceShazamButton = ({
             return
           }
 
-          if (hasSubmittedRef.current || isSubmittingRef.current) {
-            return
-          }
-
-          if (!isAndroidMode && hasTranscript) {
+          // Don't restart if we have a transcript - wait for user to manually restart
+          if (hasTranscript) {
             return
           }
 
@@ -237,7 +240,8 @@ export const VoiceShazamButton = ({
               if (
                 !forceStopRef.current &&
                 internalIsListening &&
-                !hasSubmittedRef.current
+                !hasSubmittedRef.current &&
+                !isSubmittingRef.current
               ) {
                 try {
                   recognitionInstance.start()
@@ -277,6 +281,11 @@ export const VoiceShazamButton = ({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionInstance.onresult = (event: any) => {
+          // CRITICAL: Prevent processing new results if already submitting
+          if (isSubmittingRef.current || hasSubmittedRef.current) {
+            return
+          }
+
           const results = Array.from(event.results)
 
           // Android-mode handling
@@ -311,11 +320,16 @@ export const VoiceShazamButton = ({
 
               if (
                 !fallbackFinalizeTimerRef.current &&
-                !hasSubmittedRef.current
+                !hasSubmittedRef.current &&
+                !isSubmittingRef.current
               ) {
                 fallbackFinalizeTimerRef.current = setTimeout(() => {
                   const latest = transcriptRef.current.trim()
-                  if (!hasSubmittedRef.current && latest.length > 0) {
+                  if (
+                    !hasSubmittedRef.current &&
+                    !isSubmittingRef.current &&
+                    latest.length > 0
+                  ) {
                     finalizeSubmission(
                       recognitionInstance,
                       latest,
@@ -334,12 +348,8 @@ export const VoiceShazamButton = ({
                 lastSubmittedTranscriptRef.current.includes(
                   currentTranscript.slice(0, -2),
                 )
-              const isAlreadySubmitted = hasSubmittedRef.current
 
-              if (
-                isAlreadySubmitted &&
-                (isExactDuplicate || isSimilarDuplicate)
-              ) {
+              if (isExactDuplicate || isSimilarDuplicate) {
                 return
               }
 
@@ -364,10 +374,7 @@ export const VoiceShazamButton = ({
                         lastSubmittedTranscriptRef.current.slice(0, -2),
                       ))
 
-                  if (
-                    hasSubmittedRef.current &&
-                    (finalIsExactDuplicate || finalIsSimilarDuplicate)
-                  ) {
+                  if (finalIsExactDuplicate || finalIsSimilarDuplicate) {
                     return
                   }
 
@@ -411,10 +418,18 @@ export const VoiceShazamButton = ({
             setTranscript(currentTranscript)
             setHasTranscript(true)
 
-            if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
+            if (
+              !fallbackFinalizeTimerRef.current &&
+              !hasSubmittedRef.current &&
+              !isSubmittingRef.current
+            ) {
               fallbackFinalizeTimerRef.current = setTimeout(() => {
                 const latest = transcriptRef.current.trim()
-                if (!hasSubmittedRef.current && latest.length > 0) {
+                if (
+                  !hasSubmittedRef.current &&
+                  !isSubmittingRef.current &&
+                  latest.length > 0
+                ) {
                   finalizeSubmission(
                     recognitionInstance,
                     latest,
@@ -433,12 +448,8 @@ export const VoiceShazamButton = ({
               lastSubmittedTranscriptRef.current.includes(
                 currentTranscript.slice(0, -2),
               )
-            const isAlreadySubmitted = hasSubmittedRef.current
 
-            if (
-              isAlreadySubmitted &&
-              (isExactDuplicate || isSimilarDuplicate)
-            ) {
+            if (isExactDuplicate || isSimilarDuplicate) {
               return
             }
 
@@ -463,10 +474,7 @@ export const VoiceShazamButton = ({
                       lastSubmittedTranscriptRef.current.slice(0, -2),
                     ))
 
-                if (
-                  hasSubmittedRef.current &&
-                  (finalIsExactDuplicate || finalIsSimilarDuplicate)
-                ) {
+                if (finalIsExactDuplicate || finalIsSimilarDuplicate) {
                   return
                 }
 
