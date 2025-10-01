@@ -49,8 +49,17 @@ export const VoiceShazamButton = ({
   const [transcript, setTranscript] = useState('')
   // Ref mirror of transcript to avoid stale closure inside delayed timers
   const transcriptRef = useRef('')
+  // Track when we have transcript to show (even if not actively listening)
+  const [displayTranscript, setDisplayTranscript] = useState('')
+  const displayTranscriptRef = useRef('')
+
   useEffect(() => {
     transcriptRef.current = transcript
+    // Update display transcript whenever transcript changes
+    if (transcript) {
+      setDisplayTranscript(transcript)
+      displayTranscriptRef.current = transcript
+    }
   }, [transcript])
   const [status, setStatus] = useState('Ready')
 
@@ -140,6 +149,8 @@ export const VoiceShazamButton = ({
         // This prevents any repetition issues and provides cleaner UX
         setTranscript('')
         transcriptRef.current = ''
+        setDisplayTranscript('')
+        displayTranscriptRef.current = ''
         setHasTranscript(false)
 
         isSubmittingRef.current = false
@@ -296,156 +307,57 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Android-mode handling
-          if (isAndroidMode) {
-            let interimTranscript = ''
-            let finalTranscript = ''
-
-            // Process ALL results to build complete transcript
-            // Final results are immutable; interim results change with each event
-            for (let i = 0; i < results.length; i++) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const result = results[i] as any
-              const transcriptSegment = result[0].transcript
-
-              if (result.isFinal) {
-                // Add space between segments if needed
-                if (finalTranscript && !finalTranscript.endsWith(' ')) {
-                  finalTranscript += ' '
-                }
-                finalTranscript += transcriptSegment
-              } else {
-                // Only keep the most recent interim result
-                interimTranscript = transcriptSegment
-              }
-            }
-
-            const currentTranscript = (
-              finalTranscript +
-              (interimTranscript ? ' ' + interimTranscript : '')
-            ).trim()
-
-            if (currentTranscript) {
-              // CRITICAL: Return early if no change to prevent duplicate processing on Android
-              if (currentTranscript === transcriptRef.current) {
-                return // No change - ignore this duplicate event
-              }
-
-              // Transcript changed - update immediately
-              transcriptRef.current = currentTranscript
-              setTranscript(currentTranscript)
-              setHasTranscript(true)
-
-              if (
-                !fallbackFinalizeTimerRef.current &&
-                !hasSubmittedRef.current &&
-                !isSubmittingRef.current
-              ) {
-                fallbackFinalizeTimerRef.current = setTimeout(() => {
-                  const latest = transcriptRef.current.trim()
-                  if (
-                    !hasSubmittedRef.current &&
-                    !isSubmittingRef.current &&
-                    latest.length > 0
-                  ) {
-                    finalizeSubmission(
-                      recognitionInstance,
-                      latest,
-                      'android-fallback-timeout',
-                    )
-                  }
-                }, 3000)
-              }
-
-              // Enhanced duplicate prevention
-              const isExactDuplicate =
-                currentTranscript === lastSubmittedTranscriptRef.current
-              const isSimilarDuplicate =
-                lastSubmittedTranscriptRef.current &&
-                currentTranscript.length > 5 &&
-                lastSubmittedTranscriptRef.current.includes(
-                  currentTranscript.slice(0, -2),
-                )
-
-              if (isExactDuplicate || isSimilarDuplicate) {
-                return
-              }
-
-              // Reset silence timer (transcript changed - new speech detected)
-              setSilenceTimer(prevTimer => {
-                if (prevTimer) {
-                  clearTimeout(prevTimer)
-                }
-
-                const newTimer = setTimeout(() => {
-                  const trimmedTranscript = transcriptRef.current.trim()
-
-                  const finalIsExactDuplicate =
-                    trimmedTranscript === lastSubmittedTranscriptRef.current
-                  const finalIsSimilarDuplicate =
-                    lastSubmittedTranscriptRef.current &&
-                    trimmedTranscript.length > 5 &&
-                    (lastSubmittedTranscriptRef.current.includes(
-                      trimmedTranscript.slice(0, -2),
-                    ) ||
-                      trimmedTranscript.includes(
-                        lastSubmittedTranscriptRef.current.slice(0, -2),
-                      ))
-
-                  if (finalIsExactDuplicate || finalIsSimilarDuplicate) {
-                    return
-                  }
-
-                  finalizeSubmission(
-                    recognitionInstance,
-                    trimmedTranscript,
-                    'android-silence-threshold',
-                  )
-                }, SILENCE_DURATION_MS)
-
-                return newTimer
-              })
-            }
-            return
-          }
-
-          // Non-Android handling
-          let interimTranscript = ''
+          // Build complete transcript from ALL results (cumulative)
           let finalTranscript = ''
+          let interimTranscript = ''
 
-          // Process ALL results to build complete transcript
+          // Process ALL results from beginning to build complete transcript
+          // event.results is cumulative - it contains all results from the start
           for (let i = 0; i < results.length; i++) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = results[i] as any
             const transcriptSegment = result[0].transcript
 
             if (result.isFinal) {
-              // Add space between segments if needed
+              // Accumulate all final results with spaces
               if (finalTranscript && !finalTranscript.endsWith(' ')) {
                 finalTranscript += ' '
               }
               finalTranscript += transcriptSegment
             } else {
-              // Only keep the most recent interim result
-              interimTranscript = transcriptSegment
+              // For interim results, concatenate them all
+              // (usually only the last one matters, but some browsers may have multiple)
+              if (interimTranscript && !interimTranscript.endsWith(' ')) {
+                interimTranscript += ' '
+              }
+              interimTranscript += transcriptSegment
             }
           }
 
+          // Combine final and interim transcripts
           const currentTranscript = (
             finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
           ).trim()
 
           if (currentTranscript) {
-            // CRITICAL: Return early if no change
+            // CRITICAL: Return early if no change to prevent duplicate processing
             if (currentTranscript === transcriptRef.current) {
               return // No change - ignore this duplicate event
             }
 
-            // Transcript changed - update immediately
-            transcriptRef.current = currentTranscript
-            setTranscript(currentTranscript)
-            setHasTranscript(true)
+            // Batch state updates using requestAnimationFrame for smoother display
+            requestAnimationFrame(() => {
+              // Double-check we haven't submitted in the meantime
+              if (!hasSubmittedRef.current && !isSubmittingRef.current) {
+                transcriptRef.current = currentTranscript
+                setTranscript(currentTranscript)
+                setDisplayTranscript(currentTranscript)
+                displayTranscriptRef.current = currentTranscript
+                setHasTranscript(true)
+              }
+            })
 
+            // Set fallback timer if not already set
             if (
               !fallbackFinalizeTimerRef.current &&
               !hasSubmittedRef.current &&
@@ -481,7 +393,7 @@ export const VoiceShazamButton = ({
               return
             }
 
-            // Reset silence timer (transcript changed - new speech)
+            // Reset silence timer (transcript changed - new speech detected)
             setSilenceTimer(prevTimer => {
               if (prevTimer) {
                 clearTimeout(prevTimer)
@@ -585,6 +497,8 @@ export const VoiceShazamButton = ({
       }
       setHasTranscript(false)
       setTranscript('')
+      setDisplayTranscript('')
+      displayTranscriptRef.current = ''
     } else {
       // Attempt to unlock iOS/Safari audio
       try {
@@ -607,6 +521,8 @@ export const VoiceShazamButton = ({
 
       // Reset all state when starting
       setTranscript('')
+      setDisplayTranscript('')
+      displayTranscriptRef.current = ''
       setHasTranscript(false)
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
@@ -880,13 +796,16 @@ export const VoiceShazamButton = ({
             </span>
           </div>
         )}
-        {isListening && (transcript || showTranscript) && (
-          <div className="bg-background/90 backdrop-blur-sm rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <p className="text-md text-center font-medium tracking-tight">
-              {transcript || showTranscript}
-            </p>
-          </div>
-        )}
+        {/* Transcript Display - Only show when we have actual transcript text */}
+        {(displayTranscript || transcript || showTranscript) &&
+          !isProcessing &&
+          !isProcessingSubmission && (
+            <div className="bg-background/95 backdrop-blur-md rounded-xl p-4 mb-8 max-w-[90%] shadow-2xl border-2 border-primary/40 animate-in fade-in slide-in-from-bottom-5 duration-300">
+              <p className="text-md text-center font-medium tracking-tight leading-relaxed">
+                {displayTranscript || transcript || showTranscript}
+              </p>
+            </div>
+          )}
         <div ref={containerRef}>
           {(() => {
             const showProcessing = isProcessing || isProcessingSubmission
