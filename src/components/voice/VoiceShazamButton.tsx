@@ -301,6 +301,7 @@ export const VoiceShazamButton = ({
                 currentTranscript !== transcriptRef.current
 
               if (transcriptChanged) {
+                transcriptRef.current = currentTranscript // Update ref IMMEDIATELY for Android
                 setTranscript(currentTranscript)
                 setHasTranscript(true)
               }
@@ -404,6 +405,7 @@ export const VoiceShazamButton = ({
               currentTranscript !== transcriptRef.current
 
             if (transcriptChanged) {
+              transcriptRef.current = currentTranscript // Update ref IMMEDIATELY
               setTranscript(currentTranscript)
               setHasTranscript(true)
             }
