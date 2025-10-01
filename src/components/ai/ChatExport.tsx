@@ -7,6 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@/components/ui/visually-hidden'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -140,6 +141,9 @@ export const ChatExport: React.FC<ChatExportProps> = ({
           )}
         </DialogTrigger>
         <DialogContent className="!overflow-hidden !max-h-none !bg-transparent !p-0 w-[95vw] sm:w-full max-w-[400px] border-0 shadow-xl rounded-2xl sm:rounded-2xl">
+          <VisuallyHidden>
+            <DialogTitle>Export Chat</DialogTitle>
+          </VisuallyHidden>
           <div className="bg-white rounded-2xl p-4 sm:p-0 w-full h-full overflow-hidden">
             <div className="text-center mb-4 sm:mb-6 sm:pt-6 sm:px-6">
               <div className="flex items-center justify-center gap-2 text-lg font-semibold mb-2">
