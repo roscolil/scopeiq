@@ -18,7 +18,7 @@ interface VoiceShazamButtonProps {
   // Mode selector
   selfContained?: boolean // If true, manages its own speech recognition
 }
-
+// Test comments
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SpeechRecognitionType = any
 
