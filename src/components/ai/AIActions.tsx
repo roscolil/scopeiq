@@ -134,9 +134,7 @@ export const AIActions = ({
       'Generating response...': 'Generating...',
       'Searching documents...': 'Searching...',
     }
-    const mapped = progressMap[stage] || stage
-    console.log(`🔄 Progress stage: "${stage}" → "${mapped}"`)
-    return mapped
+    return progressMap[stage] || stage
   }
   const { toast } = useToast()
   const isMobile = useIsMobile()
@@ -144,12 +142,10 @@ export const AIActions = ({
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
 
-  // Broadcast dictation activity so wake word listener can suspend to avoid dual recognizers
+  // Broadcast dictation activity so wake word listener can suspend
   useEffect(() => {
     const evtName = isListening ? 'dictation:start' : 'dictation:stop'
     window.dispatchEvent(new Event(evtName))
-    // Debug
-    console.log('[dictation-activity] dispatched', evtName)
   }, [isListening])
 
   // Python backend state - enhancing existing functionality
@@ -202,10 +198,9 @@ export const AIActions = ({
     scrollToBottom()
   }, [chatHistory])
 
-  // Reset duplicate guards whenever a new dictation session starts
+  // Reset duplicate guards on new dictation session
   useEffect(() => {
     const onDictationStart = () => {
-      console.log('[dictation] start → resetting duplicate guards')
       setLastProcessedTranscript('')
       setAndroidTranscriptHistory([])
     }
@@ -221,128 +216,82 @@ export const AIActions = ({
     search,
   } = useSemanticSearch(projectId || '')
 
-  // Loop-safe voice wrapper
+  // Voice wrapper with state tracking
   const speakWithStateTracking = useCallback(
     async (
       prompt: string,
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
-      console.log('🎵 speakWithStateTracking called with:', {
-        promptLength: prompt.length,
-        isVoicePlaying,
-        novaSonicAvailable: novaSonic.isAvailable(),
-      })
-
-      // --- Autoplay / Audio Unlock Gating ---------------------------------
-      // Browsers may block programmatic audio (TTS) before a user gesture.
-      // We maintain a simple unlock flag & queue one pending utterance.
-      // --------------------------------------------------------------------
-      // Refs declared outside callback (hoisted below)
+      // Audio unlock gating
       if (!audioUnlockedRef.current) {
-        console.log('🔒 Audio locked (no user gesture yet). Queuing speech.')
-        // Keep only the most recent pending request
         pendingSpeechRef.current = { prompt, options }
-        // Show the in-app unlock banner (with Play button) after processing
         setShowAudioUnlock(true)
         return
       }
 
-      if (!novaSonic.isAvailable()) {
-        console.log('❌ Nova Sonic not available')
-        return
-      }
+      if (!novaSonic.isAvailable()) return
 
-      // Prevent overlapping voice responses: queue the latest to play next
       if (isVoicePlaying) {
         queuedSpeechRef.current = { prompt, options }
-        console.log(
-          '⏳ Queued voice response to play after current audio finishes',
-        )
         return
       }
 
       try {
-        // Remember if we were listening before voice output
         const wasListening = isListening
         setShouldResumeListening(wasListening && !options.stopListeningAfter)
         setIsVoicePlaying(true)
-
-        // Show the text that's being spoken
         setCurrentSpeakingText(prompt)
 
-        console.log('🗣️ Starting voice output, was listening:', wasListening)
-
-        // IMPORTANT: Clear any pending auto-submit timers
         if (silenceTimer) {
-          console.log('🛑 Clearing silence timer before voice output')
           clearTimeout(silenceTimer)
           setSilenceTimer(null)
         }
 
-        // Reset transcript processing flag
         hasTranscriptRef.current = false
 
-        // Stop voice input while speaking
         if (isListening) {
           setIsListening(false)
         }
 
-        // Signal that TTS is starting so other components (e.g., wakeword listener) can gate appropriately
         try {
           window.dispatchEvent(new CustomEvent('ai:speech:start'))
         } catch {
           /* noop */
         }
-        // Wait for voice to complete
-        console.log('🎵 Waiting for voice synthesis to complete...')
+
         await novaSonic.speakPrompt(prompt, { voice: options.voice })
 
-        console.log('✅ Voice output completed successfully')
-
-        // If stopListeningAfter is true, don't resume listening
         if (options.stopListeningAfter) {
-          console.log('🎤 Stopping microphone listening after verbal response')
           setShouldResumeListening(false)
         }
       } catch (error) {
-        console.error('❌ Voice synthesis error:', error)
-        // Handle autoplay block gracefully & requeue
         if (
           error instanceof DOMException &&
           (error.name === 'NotAllowedError' ||
             /notallowed/i.test(error.message))
         ) {
-          console.log('🔐 Detected autoplay block, marking audio as locked')
           audioUnlockedRef.current = false
           pendingSpeechRef.current = { prompt, options }
-          // Show the in-app unlock banner (with Play button) instead of a toast
           setShowAudioUnlock(true)
         }
-        // Reset voice playing state on error
         setIsVoicePlaying(false)
         setCurrentSpeakingText('')
       } finally {
-        // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
-        console.log('🔄 Voice playing set to false')
         try {
           window.dispatchEvent(new CustomEvent('ai:speech:complete'))
         } catch {
           /* noop */
         }
-        // If something was queued while we were speaking, play it next
         if (queuedSpeechRef.current && audioUnlockedRef.current) {
           const next = queuedSpeechRef.current
           queuedSpeechRef.current = null
           setTimeout(() => {
-            console.log(
-              '▶️ Playing queued voice response after previous finished',
-            )
             speakWithStateTracking(next.prompt, next.options).catch(
               console.error,
             )
-          }, 25) // Reduced from 75ms to 25ms for faster queue processing
+          }, 25)
         }
       }
     },
@@ -400,9 +349,7 @@ export const AIActions = ({
     const unlock = () => {
       if (!audioUnlockedRef.current) {
         audioUnlockedRef.current = true
-        console.log('🔓 Audio unlocked via user interaction')
         setShowAudioUnlock(false)
-        // Try to proactively unlock audio playback paths on iOS/Safari and others
         try {
           if (novaSonic.enableAudioForSafari) {
             novaSonic.enableAudioForSafari().catch(() => {})
@@ -417,13 +364,10 @@ export const AIActions = ({
         } catch {
           /* noop */
         }
-        // Flush queued speech if present & not already playing
         if (pendingSpeechRef.current && !isVoicePlaying) {
           const { prompt, options } = pendingSpeechRef.current
           ;(async () => {
-            // small delay to ensure gesture registration fully propagated
-            await new Promise(res => setTimeout(res, 25)) // Reduced from 50ms to 25ms
-            console.log('▶️ Playing previously queued speech after unlock')
+            await new Promise(res => setTimeout(res, 25))
             pendingSpeechRef.current = null
             speakWithStateTracking(prompt, options).catch(console.error)
           })()
@@ -708,10 +652,29 @@ export const AIActions = ({
       const queryToUse = queryText || query
       if (!queryToUse.trim()) return
 
+      // Unlock audio on query submission (user gesture)
+      if (!audioUnlockedRef.current) {
+        audioUnlockedRef.current = true
+        setShowAudioUnlock(false)
+        try {
+          if (novaSonic.enableAudioForSafari) {
+            novaSonic.enableAudioForSafari().catch(() => {})
+          }
+          type UnlockCapable = typeof novaSonic & {
+            forceUnlockAudio?: () => Promise<boolean>
+          }
+          const maybeUnlock = novaSonic as UnlockCapable
+          if (maybeUnlock.forceUnlockAudio) {
+            maybeUnlock.forceUnlockAudio().catch(() => {})
+          }
+        } catch {
+          /* noop */
+        }
+      }
+
       // Rate limiting - prevent submissions faster than 2 seconds apart on mobile
       const now = Date.now()
       if (isMobile && now - lastSubmissionTime < 2000) {
-        console.log('🔄 Rate limiting: Submission too fast, skipping')
         toast({
           title: 'Please wait',
           description: 'Please wait a moment before asking another question.',
@@ -772,16 +735,11 @@ export const AIActions = ({
         }
       }
 
-      console.log('Starting query:', {
-        query: queryToUse,
-        projectId,
-        queryScope,
-      })
       setIsLoading(true)
       setResults(null)
-      setLastSpokenResponse('') // Clear previous spoken response for new queries
-      setIsVoicePlaying(false) // Reset voice playing state for new queries
-      setEnhancedAIProgress('') // Clear previous progress state
+      setLastSpokenResponse('')
+      setIsVoicePlaying(false)
+      setEnhancedAIProgress('')
 
       try {
         if (isQuestion(queryToUse)) {
@@ -851,31 +809,22 @@ export const AIActions = ({
                 document: document || undefined,
                 queryScope,
                 onProgress: stage => {
-                  console.log('Enhanced AI Progress:', stage)
                   const formattedStage = formatProgressMessage(stage)
-
-                  // Clear any existing timer
                   if (progressTimerRef.current) {
                     clearTimeout(progressTimerRef.current)
                   }
-
-                  // Set the new progress immediately
                   setEnhancedAIProgress(formattedStage)
-
-                  // Set a minimum display duration for visibility
                   progressTimerRef.current = setTimeout(() => {
-                    // Only clear if this is still the current stage
                     setEnhancedAIProgress(prev =>
                       prev === formattedStage ? prev : prev,
                     )
-                  }, 800) // Keep each stage visible for at least 800ms
+                  }, 800)
                 },
                 options: {
                   usePythonBackend: true,
                   fallbackToExisting: true,
                   onBackendSwitch: backend => {
                     setCurrentBackend(backend)
-                    console.log(`Switched to ${backend} backend`)
                   },
                 },
               })
@@ -884,8 +833,6 @@ export const AIActions = ({
               response = await callOpenAI(queryToUse, context)
             }
           } catch (error) {
-            console.warn('Primary backend failed, falling back:', error)
-            // Fallback to existing system
             response = await callOpenAI(queryToUse, context)
           }
 
@@ -928,23 +875,19 @@ export const AIActions = ({
             })
           }
 
-          // Always try to speak AI response (queued if audio locked). Deduplicate only if identical text already queued & playing.
+          // Speak AI response
           if (response && response.length > 0) {
             const shouldSpeak =
               response !== lastSpokenResponse || !isVoicePlaying
             if (shouldSpeak) {
-              console.log(
-                '🗣️ Speaking AI response (always-on):',
-                response.slice(0, 80),
-              )
               setLastSpokenResponse(response)
               setTimeout(() => {
                 speakWithStateTracking(response, {
                   voice: 'Ruth',
                   stopListeningAfter: true,
                 }).catch(console.error)
-                setTimeout(() => setCanReplay(true), 500) // Reduced from 1500ms to 500ms
-              }, 100) // Reduced from 400ms to 100ms for faster TTS start
+                setTimeout(() => setCanReplay(true), 500)
+              }, 100)
             }
           }
         } else {
@@ -1060,173 +1003,26 @@ export const AIActions = ({
       } catch (error) {
         console.error('Query Error:', error)
 
-        // Rich error-to-toast mapping for clearer guidance
-        const mapErrorToToast = (err: unknown) => {
-          const fallback = {
-            title: 'Query Failed',
-            description:
-              'Something went wrong while processing your request. Please try again.',
+        // Simplified error handling
+        let errorTitle = 'Query Failed'
+        let errorDescription = 'Please try again.'
+
+        if (error instanceof Error) {
+          const msg = error.message
+          if (/API key/i.test(msg)) {
+            errorTitle = 'Configuration Error'
+            errorDescription = 'OpenAI API key is missing or invalid.'
+          } else if (/network|fetch/i.test(msg)) {
+            errorTitle = 'Network Error'
+            errorDescription = 'Could not reach the server.'
+          } else if (msg) {
+            errorDescription = msg
           }
-          try {
-            // Network-level hints
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-              return {
-                title: 'You appear to be offline',
-                description:
-                  'Check your internet connection and try again. If you are on mobile, toggle airplane mode off and on.',
-              }
-            }
-
-            // Normalize to Error-like
-            type ErrorLike = {
-              message?: string
-              toString?: () => string
-              status?: number | string
-              code?: number | string
-              response?: { status?: number; data?: unknown }
-              data?: unknown
-            }
-            const e = err as ErrorLike
-            const msg: string = e?.message || e?.toString?.() || ''
-            const code: number | string | undefined = e?.status || e?.code
-
-            // Fetch/HTTP response details if present
-            const httpStatus: number | undefined = e?.response?.status
-            const httpBody: unknown = e?.response?.data ?? e?.data
-
-            const hasErrorField = (x: unknown): x is { error: unknown } =>
-              typeof x === 'object' && x !== null && 'error' in x
-
-            // Common categories
-            if (typeof httpStatus === 'number') {
-              // Authentication / permission
-              if (httpStatus === 401 || httpStatus === 403) {
-                return {
-                  title: 'Authentication Required',
-                  description:
-                    'Your session may have expired or lacks permission. Please sign in again and retry.',
-                }
-              }
-              // Rate limit
-              if (httpStatus === 429) {
-                return {
-                  title: 'Too Many Requests',
-                  description:
-                    'You’re being rate limited. Wait a few seconds and try again. If this persists, reduce rapid follow-ups.',
-                }
-              }
-              // Server errors
-              if (httpStatus >= 500) {
-                return {
-                  title: 'Server Unavailable',
-                  description:
-                    'Our AI service is having trouble right now. Please try again shortly.',
-                }
-              }
-              // Client errors with body message
-              if (httpStatus >= 400 && hasErrorField(httpBody)) {
-                const val = httpBody.error
-                if (typeof val === 'string') {
-                  return { title: 'Request Error', description: val }
-                }
-                if (val && typeof val === 'object') {
-                  // If API returns structured error
-                  const maybeMsg = (val as { message?: unknown }).message
-                  if (typeof maybeMsg === 'string') {
-                    return { title: 'Request Error', description: maybeMsg }
-                  }
-                }
-                // Fallback generic for 4xx
-                return {
-                  title: 'Request Error',
-                  description:
-                    'Your request could not be processed. Please review and try again.',
-                }
-              }
-            }
-
-            // Specific message heuristics
-            if (/API key is not configured/i.test(msg)) {
-              return {
-                title: 'Configuration Error',
-                description:
-                  'OpenAI API key is missing or invalid. Set the key in your environment and reload the app.',
-              }
-            }
-            if (/OpenAI API error/i.test(msg)) {
-              return {
-                title: 'AI Service Error',
-                description: msg.replace(/OpenAI API error:?\s*/i, ''),
-              }
-            }
-            if (
-              /Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(
-                msg,
-              )
-            ) {
-              return {
-                title: 'Network Error',
-                description:
-                  'We couldn’t reach the server. Check your connection or VPN, and try again.',
-              }
-            }
-            if (/CORS/i.test(msg)) {
-              return {
-                title: 'CORS Error',
-                description:
-                  'A cross‑origin request was blocked. If you’re developing locally, ensure the backend allows your origin.',
-              }
-            }
-            if (/timeout/i.test(msg)) {
-              return {
-                title: 'Request Timed Out',
-                description:
-                  'The server took too long to respond. Try again; if this continues, the service may be under load.',
-              }
-            }
-            if (/Bad gateway|502|503|504/i.test(msg)) {
-              return {
-                title: 'Upstream Unavailable',
-                description:
-                  'An upstream service is down temporarily. Please retry in a bit.',
-              }
-            }
-
-            // Python backend fallback context
-            if (
-              /Using existing backend/i.test(msg) ||
-              /Falling back to existing backend/i.test(msg)
-            ) {
-              return {
-                title: 'Fallback in Effect',
-                description:
-                  'The Python backend was unavailable; we used the existing backend instead. Results may vary slightly.',
-              }
-            }
-
-            // Prisma/DB-ish hints (if any appear)
-            if (/database|db|prisma/i.test(msg)) {
-              return {
-                title: 'Data Service Error',
-                description:
-                  'There was a problem retrieving data. Please retry; if it persists, contact support.',
-              }
-            }
-
-            // Generic fallback with surfaced message if helpful
-            if (msg) {
-              return { title: 'Query Failed', description: msg }
-            }
-          } catch {
-            // ignore mapping errors, use fallback
-          }
-          return fallback
         }
 
-        const mapped = mapErrorToToast(error)
         toast({
-          title: mapped.title,
-          description: mapped.description,
+          title: errorTitle,
+          description: errorDescription,
           variant: 'destructive',
         })
       } finally {
@@ -1298,19 +1094,14 @@ export const AIActions = ({
   // Stop voice input when voice output is playing
   useEffect(() => {
     if (isVoicePlaying && isListening) {
-      console.log('🛑 Stopping voice input due to voice output')
       setIsListening(false)
     }
   }, [isVoicePlaying, isListening])
 
-  // Resume listening after voice playback finishes (only when no queued speech)
+  // Resume listening after voice playback
   useEffect(() => {
     if (!isVoicePlaying && shouldResumeListening && !queuedSpeechRef.current) {
-      console.log('🎤 Voice finished, preparing to resume listening...')
-
-      // Give a moment for everything to settle
       const timer = setTimeout(() => {
-        console.log('🎤 Resuming voice input now!')
         setIsListening(true)
         setShouldResumeListening(false)
         toast({
@@ -1318,7 +1109,7 @@ export const AIActions = ({
           description: 'Ready for your next question...',
           duration: 1500,
         })
-      }, 800) // Reduced from 1500ms to 800ms for faster resume
+      }, 800)
 
       return () => clearTimeout(timer)
     }
@@ -1411,95 +1202,12 @@ export const AIActions = ({
     if (newListeningState) {
       hasTranscriptRef.current = false
 
-      // Start mobile recognition when listening begins
-      if (isMobile && mobileRecognitionRef.current) {
-        try {
-          // iOS Safari fix: Ensure we have user gesture and permissions
-          if (
-            navigator.userAgent.includes('iPhone') ||
-            navigator.userAgent.includes('iPad')
-          ) {
-            console.log('🍎 Starting iOS voice recognition with user gesture')
-
-            // Request microphone permission explicitly on iOS
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              navigator.mediaDevices
-                .getUserMedia({ audio: true })
-                .then(async () => {
-                  console.log('🍎 iOS microphone permission granted')
-
-                  // Audio is ready for automatic speech responses
-                  console.log('🍎 Audio ready for automatic responses')
-
-                  mobileRecognitionRef.current?.start()
-                })
-                .catch(error => {
-                  console.error('🍎 iOS microphone permission denied:', error)
-                  toast({
-                    title: 'Microphone Permission Required',
-                    description:
-                      'Please allow microphone access in Safari settings to use voice input.',
-                    variant: 'destructive',
-                  })
-                  setIsListening(false)
-                })
-            } else {
-              // Fallback for older iOS versions
-              mobileRecognitionRef.current.start()
-            }
-          } else {
-            // Non-iOS devices
-            mobileRecognitionRef.current.start()
-          }
-        } catch (error) {
-          console.error('Error starting mobile recognition:', error)
-
-          if (error instanceof DOMException) {
-            if (error.name === 'NotAllowedError') {
-              toast({
-                title: 'Microphone Permission Denied',
-                description:
-                  'Please allow microphone access to use voice input.',
-                variant: 'destructive',
-              })
-            } else if (error.name === 'NotSupportedError') {
-              toast({
-                title: 'Voice Recognition Not Supported',
-                description: 'Your browser does not support voice recognition.',
-                variant: 'destructive',
-              })
-            } else {
-              toast({
-                title: 'Voice Recognition Error',
-                description:
-                  'Unable to start voice recognition. Please try again.',
-                variant: 'destructive',
-              })
-            }
-          }
-
-          setIsListening(false)
-        }
-      }
-
-      // Only show toast on desktop, not mobile
       if (!isMobile) {
         toast({
           title: 'Voice input started',
           description: 'Speak your question now...',
         })
       }
-    } else {
-      // Stop mobile recognition when listening ends
-      if (isMobile && mobileRecognitionRef.current) {
-        try {
-          mobileRecognitionRef.current.stop()
-        } catch (error) {
-          console.error('Error stopping mobile recognition:', error)
-        }
-      }
-
-      // No toast when stopping - user will see results or feedback from query processing
     }
   }, [isListening, silenceTimer, isMobile, toast])
 
@@ -1526,22 +1234,11 @@ export const AIActions = ({
 
   const handleTranscript = useCallback(
     (text: string) => {
-      // In preventLoop mode, this should rarely be called since we avoid final transcript submission
-      console.log(
-        '⚠️ Final transcript handler called in preventLoop mode - this may indicate an issue',
-      )
+      if (isVoicePlaying) return
 
-      // Prevent processing if voice is currently playing (loop prevention)
-      if (isVoicePlaying) {
-        console.log('🛑 Ignoring final transcript during voice playback:', text)
-        return
-      }
-
-      console.log('✅ Processing final voice transcript:', text)
       setQuery(text)
       hasTranscriptRef.current = true
 
-      // Scroll to query input to show the user what they asked
       const queryTextarea = window.document.querySelector(
         'textarea[placeholder*="Ask anything"]',
       ) as HTMLTextAreaElement | null
@@ -1552,88 +1249,46 @@ export const AIActions = ({
           inline: 'nearest',
         })
       }
-
-      // In preventLoop mode, don't immediately submit - rely on interim transcript silence detection
-      if (text.trim()) {
-        console.log(
-          '🔄 Final transcript received, but deferring to interim-based silence detection',
-        )
-        // Don't submit immediately, let the interim transcript silence detection handle it
-      }
     },
     [isVoicePlaying],
   )
 
-  // Handle interim transcript updates (real-time display)
+  // Handle interim transcript updates
   const handleInterimTranscript = useCallback(
     (text: string) => {
-      // Prevent processing if voice is currently playing (loop prevention)
-      if (isVoicePlaying) {
-        console.log(
-          '🛑 Ignoring interim transcript during voice playback:',
-          text,
-        )
-        return
-      }
+      if (isVoicePlaying) return
 
       setInterimTranscript(text)
-      // Update query field in real-time but don't set submission flag
       setQuery(text)
 
-      // Only start silence detection if we have some text
       if (text.trim()) {
         hasTranscriptRef.current = true
 
-        // Clear existing timer every time we get speech activity
         if (silenceTimer) {
           clearTimeout(silenceTimer)
-          console.log('🔄 Speech activity detected, resetting silence timer')
         }
 
-        // Start new silence timer with longer duration for natural speech
-        const timer = setTimeout(
-          () => {
-            // Double-check we should auto-submit after extended silence
-            const currentQuery = query || text
-            if (
-              currentQuery.trim() &&
-              hasTranscriptRef.current &&
-              !isVoicePlaying &&
-              isListening
-            ) {
-              console.log(
-                `⏰ Auto-submitting query after ${isMobile ? '1.5s' : '2s'} of silence:`,
-                currentQuery.slice(0, 100),
-              )
-              // Set loading state immediately to prevent button flash
-              setIsLoading(true)
-              // Stop listening before submitting
-              if (isListening) {
-                toggleListening()
-              }
-              setTimeout(() => {
-                if (!isVoicePlaying) {
-                  handleQuery()
-                }
-              }, 100)
-            } else {
-              console.log('⏰ Skipping auto-submit - conditions not met:', {
-                hasQuery: !!currentQuery.trim(),
-                hasTranscript: hasTranscriptRef.current,
-                isVoicePlaying,
-                isListening,
-              })
+        const timer = setTimeout(() => {
+          const currentQuery = query || text
+          if (
+            currentQuery.trim() &&
+            hasTranscriptRef.current &&
+            !isVoicePlaying &&
+            isListening
+          ) {
+            setIsLoading(true)
+            if (isListening) {
+              toggleListening()
             }
-          },
-          isMobile ? 1500 : 1500,
-        ) // Shorter timeout on mobile for better responsiveness
+            setTimeout(() => {
+              if (!isVoicePlaying) {
+                handleQuery()
+              }
+            }, 100)
+          }
+        }, 1500)
 
         setSilenceTimer(timer)
-        console.log(
-          '⏰ Started silence timer for:',
-          text.slice(0, 50),
-          `(${isMobile ? '1.5s' : '1.5s'} timeout)`,
-        )
       }
     },
     [
@@ -1647,163 +1302,7 @@ export const AIActions = ({
     ],
   )
 
-  // Mobile voice recognition setup (when VoiceInput component is not rendered)
-  useEffect(() => {
-    // DISABLED: Using VoiceShazamButtonSelfContained instead
-    return
-
-    if (!isMobile) return // Only for mobile
-
-    if (typeof window !== 'undefined' && !mobileRecognitionRef.current) {
-      const SpeechRecognitionAPI =
-        window.SpeechRecognition || window.webkitSpeechRecognition
-
-      if (SpeechRecognitionAPI) {
-        const recognition = new SpeechRecognitionAPI()
-
-        // iOS Safari specific optimizations
-        const isIOS =
-          navigator.userAgent.includes('iPhone') ||
-          navigator.userAgent.includes('iPad')
-
-        if (isIOS) {
-          console.log('🍎 Configuring voice recognition for iOS Safari')
-          recognition.continuous = false // iOS works better with non-continuous mode
-          recognition.interimResults = false // Disable interim results on iOS for stability
-        } else {
-          recognition.continuous = false // Disable continuous on mobile to prevent loops
-          recognition.interimResults = true
-        }
-
-        recognition.lang = 'en-US'
-        recognition.maxAlternatives = 1
-
-        let mobileTranscript = ''
-
-        recognition.onresult = event => {
-          if (isVoicePlaying) return // Ignore during playback
-
-          const results = Array.from(event.results)
-          let completeTranscript = ''
-
-          for (let i = 0; i < results.length; i++) {
-            completeTranscript += results[i][0].transcript
-          }
-
-          mobileTranscript = completeTranscript
-          console.log('📱 Mobile voice transcript:', completeTranscript)
-
-          // Update query in real-time
-          setQuery(completeTranscript)
-          setInterimTranscript(completeTranscript)
-
-          // Auto-submit after mobile-optimized delay
-          if (completeTranscript.trim()) {
-            hasTranscriptRef.current = true
-
-            if (silenceTimer) {
-              clearTimeout(silenceTimer)
-            }
-
-            // Capture the transcript in the closure
-            const transcriptToSubmit = completeTranscript
-            const timer = setTimeout(() => {
-              const trimmedTranscript = transcriptToSubmit.trim()
-              if (trimmedTranscript && trimmedTranscript.length > 0) {
-                setQuery(trimmedTranscript)
-                // Set loading state immediately to prevent button flash
-                setIsLoading(true)
-                setIsListening(false) // Stop listening
-                // Trigger the query with the transcript parameter
-                setTimeout(() => {
-                  handleQuery(trimmedTranscript)
-                }, 300)
-              }
-            }, 1500) // 1.5s for mobile
-
-            setSilenceTimer(timer)
-          }
-        }
-
-        recognition.onerror = event => {
-          console.error('📱 Mobile voice error:', event.error)
-
-          // iOS-specific error handling
-          const isIOS =
-            navigator.userAgent.includes('iPhone') ||
-            navigator.userAgent.includes('iPad')
-
-          if (event.error === 'not-allowed') {
-            if (isIOS) {
-              toast({
-                title: 'Microphone Access Required',
-                description:
-                  'Go to Safari Settings → Privacy & Security → Microphone → Allow this website',
-                variant: 'destructive',
-              })
-            } else {
-              toast({
-                title: 'Microphone Permission Denied',
-                description:
-                  'Please allow microphone access to use voice input.',
-                variant: 'destructive',
-              })
-            }
-          } else if (event.error === 'no-speech') {
-            // Don't show error for no-speech, just submit what we have
-            if (mobileTranscript.trim()) {
-              setQuery(mobileTranscript)
-            }
-          } else if (event.error === 'audio-capture') {
-            toast({
-              title: 'Audio Capture Error',
-              description: isIOS
-                ? 'Please check microphone permissions in Safari settings.'
-                : 'Unable to access microphone.',
-              variant: 'destructive',
-            })
-          } else {
-            console.log('📱 Other recognition error:', event.error)
-          }
-
-          if (mobileTranscript.trim()) {
-            setQuery(mobileTranscript)
-          }
-          if (isListening) {
-            setIsListening(false)
-          }
-        }
-
-        recognition.onend = () => {
-          console.log('📱 Mobile voice recognition ended')
-          // Don't auto-restart on mobile to prevent loops
-        }
-
-        mobileRecognitionRef.current = recognition
-      }
-    }
-
-    return () => {
-      if (mobileRecognitionRef.current) {
-        try {
-          mobileRecognitionRef.current.stop()
-        } catch (error) {
-          console.error('Error stopping mobile recognition:', error)
-        }
-      }
-    }
-  }, [
-    isMobile,
-    isVoicePlaying,
-    silenceTimer,
-    isListening,
-    handleQuery,
-    projectId,
-    documentId,
-    queryScope,
-    toast,
-    handleTranscript,
-  ])
+  // Mobile recognition disabled - using VoiceShazamButton instead
 
   // const handleAskAI = async () => {
   //   await handleQuery()
@@ -2398,81 +1897,51 @@ export const AIActions = ({
           isMobileOnly={true}
           onHide={() => setHideShazamButton(true)}
           onTranscript={text => {
-            console.log('🎯 Received transcript in AIActions:', text)
-
             const trimmedText = text.trim()
             const isAndroid = /Android/i.test(navigator.userAgent)
 
-            // Android-specific enhanced duplicate prevention
+            // Android-specific duplicate prevention
             if (isAndroid) {
-              // Check against recent Android transcripts (last 5) for exact duplicates only
               const recentDuplicates = androidTranscriptHistory.slice(-5)
               const normalized = trimmedText.toLowerCase()
               const isDuplicateInHistory = recentDuplicates.some(
                 h => h.toLowerCase() === normalized,
               )
 
-              if (isDuplicateInHistory) {
-                console.log(
-                  '🤖 Android: Exact duplicate in recent history, skipping:',
-                  {
-                    current: trimmedText,
-                    history: recentDuplicates,
-                  },
-                )
-                return
-              }
+              if (isDuplicateInHistory) return
 
-              // Add to Android history (keep last 10 entries)
               setAndroidTranscriptHistory(prev =>
                 [...prev, trimmedText].slice(-10),
               )
             }
 
-            // Enhanced duplicate prevention for all platforms
+            // Duplicate prevention
             const isExactDuplicate =
               trimmedText.toLowerCase() ===
               lastProcessedTranscript.toLowerCase()
 
-            if (isExactDuplicate) {
-              console.log('🔄 Exact duplicate transcript detected, skipping:', {
-                current: trimmedText,
-                last: lastProcessedTranscript,
-              })
-              return
-            }
-
-            // Prevent processing if already loading
-            if (isLoading) {
-              console.log(
-                '🔄 Already processing query, skipping transcript:',
-                trimmedText,
-              )
-              return
-            }
+            if (isExactDuplicate) return
+            if (isLoading) return
 
             setLastProcessedTranscript(trimmedText)
             setQuery(trimmedText)
 
-            // Scroll to query input to show the user what they asked
+            // Scroll to query input
             try {
-              const queryTextarea = window.document.querySelector<HTMLTextAreaElement>(
-                'textarea[placeholder*="Ask anything"]',
-              )
+              const queryTextarea =
+                window.document.querySelector<HTMLTextAreaElement>(
+                  'textarea[placeholder*="Ask anything"]',
+                )
               if (queryTextarea) {
-                console.log('📜 Scrolling to query textarea:', queryTextarea)
                 queryTextarea.scrollIntoView({
                   behavior: 'smooth',
                   block: 'center',
                   inline: 'nearest',
                 })
               } else {
-                console.log('⚠️ Query textarea not found, skipping scroll')
-                // Try alternative selectors
                 const altTextarea =
                   window.document.querySelector<HTMLTextAreaElement>('textarea')
                 if (altTextarea) {
-                  console.log('📜 Found alternative textarea, scrolling to it')
                   altTextarea.scrollIntoView({
                     behavior: 'smooth',
                     block: 'center',
@@ -2480,14 +1949,11 @@ export const AIActions = ({
                   })
                 }
               }
-            } catch (error) {
-              console.error('❌ Error scrolling to query textarea:', error)
-              // Continue execution even if scrolling fails
+            } catch {
+              // Continue even if scrolling fails
             }
 
-            // Set loading immediately to show processing state
             setIsLoading(true)
-            // Auto-submit the transcript (no additional delay since VoiceShazamButton already waited for silence)
             handleQuery(trimmedText)
           }}
         />
