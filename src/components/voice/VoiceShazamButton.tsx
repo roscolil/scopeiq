@@ -296,8 +296,14 @@ export const VoiceShazamButton = ({
             ).trim()
 
             if (currentTranscript) {
-              setTranscript(currentTranscript)
-              setHasTranscript(true)
+              // Check if transcript actually changed
+              const transcriptChanged =
+                currentTranscript !== transcriptRef.current
+
+              if (transcriptChanged) {
+                setTranscript(currentTranscript)
+                setHasTranscript(true)
+              }
 
               if (
                 !fallbackFinalizeTimerRef.current &&
@@ -333,43 +339,45 @@ export const VoiceShazamButton = ({
                 return
               }
 
-              // Clear existing silence timer on any speech activity
-              setSilenceTimer(prevTimer => {
-                if (prevTimer) {
-                  clearTimeout(prevTimer)
-                }
-
-                const newTimer = setTimeout(() => {
-                  const trimmedTranscript = currentTranscript.trim()
-
-                  const finalIsExactDuplicate =
-                    trimmedTranscript === lastSubmittedTranscriptRef.current
-                  const finalIsSimilarDuplicate =
-                    lastSubmittedTranscriptRef.current &&
-                    trimmedTranscript.length > 5 &&
-                    (lastSubmittedTranscriptRef.current.includes(
-                      trimmedTranscript.slice(0, -2),
-                    ) ||
-                      trimmedTranscript.includes(
-                        lastSubmittedTranscriptRef.current.slice(0, -2),
-                      ))
-
-                  if (
-                    hasSubmittedRef.current &&
-                    (finalIsExactDuplicate || finalIsSimilarDuplicate)
-                  ) {
-                    return
+              // Only reset silence timer if transcript actually changed (new speech)
+              if (transcriptChanged) {
+                setSilenceTimer(prevTimer => {
+                  if (prevTimer) {
+                    clearTimeout(prevTimer)
                   }
 
-                  finalizeSubmission(
-                    recognitionInstance,
-                    trimmedTranscript,
-                    'android-silence-threshold',
-                  )
-                }, SILENCE_DURATION_MS)
+                  const newTimer = setTimeout(() => {
+                    const trimmedTranscript = transcriptRef.current.trim()
 
-                return newTimer
-              })
+                    const finalIsExactDuplicate =
+                      trimmedTranscript === lastSubmittedTranscriptRef.current
+                    const finalIsSimilarDuplicate =
+                      lastSubmittedTranscriptRef.current &&
+                      trimmedTranscript.length > 5 &&
+                      (lastSubmittedTranscriptRef.current.includes(
+                        trimmedTranscript.slice(0, -2),
+                      ) ||
+                        trimmedTranscript.includes(
+                          lastSubmittedTranscriptRef.current.slice(0, -2),
+                        ))
+
+                    if (
+                      hasSubmittedRef.current &&
+                      (finalIsExactDuplicate || finalIsSimilarDuplicate)
+                    ) {
+                      return
+                    }
+
+                    finalizeSubmission(
+                      recognitionInstance,
+                      trimmedTranscript,
+                      'android-silence-threshold',
+                    )
+                  }, SILENCE_DURATION_MS)
+
+                  return newTimer
+                })
+              }
             }
             return
           }
@@ -391,8 +399,15 @@ export const VoiceShazamButton = ({
           const currentTranscript = (finalTranscript + interimTranscript).trim()
 
           if (currentTranscript) {
-            setTranscript(currentTranscript)
-            setHasTranscript(true)
+            // Check if transcript actually changed
+            const transcriptChanged =
+              currentTranscript !== transcriptRef.current
+
+            if (transcriptChanged) {
+              setTranscript(currentTranscript)
+              setHasTranscript(true)
+            }
+
             if (!fallbackFinalizeTimerRef.current && !hasSubmittedRef.current) {
               fallbackFinalizeTimerRef.current = setTimeout(() => {
                 const latest = transcriptRef.current.trim()
@@ -424,43 +439,45 @@ export const VoiceShazamButton = ({
               return
             }
 
-            // Clear existing silence timer on any speech activity
-            setSilenceTimer(prevTimer => {
-              if (prevTimer) {
-                clearTimeout(prevTimer)
-              }
-
-              const newTimer = setTimeout(() => {
-                const trimmedTranscript = currentTranscript.trim()
-
-                const finalIsExactDuplicate =
-                  trimmedTranscript === lastSubmittedTranscriptRef.current
-                const finalIsSimilarDuplicate =
-                  lastSubmittedTranscriptRef.current &&
-                  trimmedTranscript.length > 5 &&
-                  (lastSubmittedTranscriptRef.current.includes(
-                    trimmedTranscript.slice(0, -2),
-                  ) ||
-                    trimmedTranscript.includes(
-                      lastSubmittedTranscriptRef.current.slice(0, -2),
-                    ))
-
-                if (
-                  hasSubmittedRef.current &&
-                  (finalIsExactDuplicate || finalIsSimilarDuplicate)
-                ) {
-                  return
+            // Only reset silence timer if transcript actually changed (new speech)
+            if (transcriptChanged) {
+              setSilenceTimer(prevTimer => {
+                if (prevTimer) {
+                  clearTimeout(prevTimer)
                 }
 
-                finalizeSubmission(
-                  recognitionInstance,
-                  trimmedTranscript,
-                  'silence-threshold',
-                )
-              }, SILENCE_DURATION_MS)
+                const newTimer = setTimeout(() => {
+                  const trimmedTranscript = transcriptRef.current.trim()
 
-              return newTimer
-            })
+                  const finalIsExactDuplicate =
+                    trimmedTranscript === lastSubmittedTranscriptRef.current
+                  const finalIsSimilarDuplicate =
+                    lastSubmittedTranscriptRef.current &&
+                    trimmedTranscript.length > 5 &&
+                    (lastSubmittedTranscriptRef.current.includes(
+                      trimmedTranscript.slice(0, -2),
+                    ) ||
+                      trimmedTranscript.includes(
+                        lastSubmittedTranscriptRef.current.slice(0, -2),
+                      ))
+
+                  if (
+                    hasSubmittedRef.current &&
+                    (finalIsExactDuplicate || finalIsSimilarDuplicate)
+                  ) {
+                    return
+                  }
+
+                  finalizeSubmission(
+                    recognitionInstance,
+                    trimmedTranscript,
+                    'silence-threshold',
+                  )
+                }, SILENCE_DURATION_MS)
+
+                return newTimer
+              })
+            }
           }
         }
 
