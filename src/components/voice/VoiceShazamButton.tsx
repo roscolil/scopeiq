@@ -94,6 +94,11 @@ export const VoiceShazamButton = ({
       ) {
         return
       }
+
+      // CRITICAL: Set flags IMMEDIATELY to prevent race condition with multiple timers
+      hasSubmittedRef.current = true
+      lastSubmittedTranscriptRef.current = trimmed
+
       setStatus('Got result!')
       setInternalIsListening(false)
       setIsProcessingSubmission(true)
@@ -129,8 +134,6 @@ export const VoiceShazamButton = ({
             console.error('Error executing onTranscript callback:', error)
           }
         }
-        hasSubmittedRef.current = true
-        lastSubmittedTranscriptRef.current = trimmed
         isSubmittingRef.current = false
         setIsProcessingSubmission(false)
       }, 1500)
