@@ -134,14 +134,14 @@ export const VoiceShazamButton = ({
             console.error('Error executing onTranscript callback:', error)
           }
         }
-        
+
         // CRITICAL: Clear transcript after submission
         // The chat history will show the conversation, so we don't need to keep displaying it here
         // This prevents any repetition issues and provides cleaner UX
         setTranscript('')
         transcriptRef.current = ''
         setHasTranscript(false)
-        
+
         isSubmittingRef.current = false
         setIsProcessingSubmission(false)
       }, 1500)
@@ -307,7 +307,7 @@ export const VoiceShazamButton = ({
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = results[i] as any
               const transcriptSegment = result[0].transcript
-              
+
               if (result.isFinal) {
                 // Add space between segments if needed
                 if (finalTranscript && !finalTranscript.endsWith(' ')) {
@@ -321,7 +321,8 @@ export const VoiceShazamButton = ({
             }
 
             const currentTranscript = (
-              finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
+              finalTranscript +
+              (interimTranscript ? ' ' + interimTranscript : '')
             ).trim()
 
             if (currentTranscript) {
@@ -417,7 +418,7 @@ export const VoiceShazamButton = ({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = results[i] as any
             const transcriptSegment = result[0].transcript
-            
+
             if (result.isFinal) {
               // Add space between segments if needed
               if (finalTranscript && !finalTranscript.endsWith(' ')) {
