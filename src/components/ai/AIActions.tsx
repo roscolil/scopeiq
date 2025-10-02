@@ -1913,7 +1913,7 @@ export const AIActions = ({
       {!hideShazamButton && isMobile && (
         <VoiceShazamButton
           selfContained={true}
-          showTranscript={query || undefined}
+          showTranscript={undefined}
           isProcessing={isLoading}
           isMobileOnly={true}
           onHide={() => setHideShazamButton(true)}

@@ -307,37 +307,23 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Build complete transcript from ALL results (cumulative)
-          let finalTranscript = ''
-          let interimTranscript = ''
+          // Build transcript from Web Speech API results
+          // Each result represents a separate phrase - concatenate them all
+          let fullTranscript = ''
 
-          // Process ALL results from beginning to build complete transcript
-          // event.results is cumulative - it contains all results from the start
           for (let i = 0; i < results.length; i++) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = results[i] as any
-            const transcriptSegment = result[0].transcript
+            const text = result[0].transcript
 
-            if (result.isFinal) {
-              // Accumulate all final results with spaces
-              if (finalTranscript && !finalTranscript.endsWith(' ')) {
-                finalTranscript += ' '
-              }
-              finalTranscript += transcriptSegment
-            } else {
-              // For interim results, concatenate them all
-              // (usually only the last one matters, but some browsers may have multiple)
-              if (interimTranscript && !interimTranscript.endsWith(' ')) {
-                interimTranscript += ' '
-              }
-              interimTranscript += transcriptSegment
+            // Add space between segments if needed
+            if (fullTranscript && !fullTranscript.endsWith(' ')) {
+              fullTranscript += ' '
             }
+            fullTranscript += text
           }
 
-          // Combine final and interim transcripts
-          const currentTranscript = (
-            finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
-          ).trim()
+          const currentTranscript = fullTranscript.trim()
 
           if (currentTranscript) {
             // CRITICAL: Return early if no change to prevent duplicate processing
