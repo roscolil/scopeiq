@@ -279,6 +279,8 @@ export const AIActions = ({
       } finally {
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
+        // Reset rate limit timer when voice completes - allows immediate follow-up questions
+        setLastSubmissionTime(0)
         try {
           window.dispatchEvent(new CustomEvent('ai:speech:complete'))
         } catch {
@@ -1157,6 +1159,8 @@ export const AIActions = ({
         // Immediately reflect stopped state & enable replay
         setIsVoicePlaying(false)
         setCurrentSpeakingText('')
+        // Reset rate limit timer when speech is cancelled - allows immediate new question
+        setLastSubmissionTime(0)
         if (lastSpokenResponse) {
           setCanReplay(true)
         }
