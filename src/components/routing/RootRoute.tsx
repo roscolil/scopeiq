@@ -18,7 +18,13 @@ const RootRoute = () => {
 
   if (isAuthenticated && user) {
     const companySegment = user.companyId?.toLowerCase?.() || 'default'
-    return <Navigate to={`/${encodeURIComponent(companySegment)}`} replace />
+    const redirectPath = `/${encodeURIComponent(companySegment)}`
+    console.log('🏠 RootRoute redirect:', {
+      userCompanyId: user.companyId,
+      companySegment,
+      redirectPath,
+    })
+    return <Navigate to={redirectPath} replace />
   }
 
   return <HomePage />

@@ -28,6 +28,7 @@ import {
 import { useAuth } from '@/hooks/aws-auth'
 import { useAuthorization } from '@/hooks/auth-utils'
 import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
+import { routes } from '@/utils/ui/navigation'
 
 export const Navbar = () => {
   const location = useLocation()
@@ -64,21 +65,17 @@ export const Navbar = () => {
   const menuItems = [
     {
       name: 'Dashboard',
-      path: companyId ? `/${encodeURIComponent(companyId.toLowerCase())}` : '/',
+      path: companyId ? routes.company.home(companyId) : '/',
       icon: <Home className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Projects',
-      path: companyId
-        ? `/${encodeURIComponent(companyId.toLowerCase())}/projects`
-        : '/',
+      path: companyId ? routes.company.projects.list(companyId) : '/',
       icon: <Folders className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Documents',
-      path: companyId
-        ? `/${encodeURIComponent(companyId.toLowerCase())}/documents`
-        : '/',
+      path: companyId ? routes.company.documents.all(companyId) : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
     // Admin routes
@@ -197,12 +194,14 @@ export const Navbar = () => {
                     <Link
                       to={
                         companyId
-                          ? `/${encodeURIComponent(companyId.toLowerCase())}/settings`
+                          ? routes.company.settings(companyId)
                           : '/settings'
                       }
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(
-                          `/${encodeURIComponent(companyId?.toLowerCase() || '')}/settings`,
+                          companyId
+                            ? routes.company.settings(companyId)
+                            : '/settings',
                         ) || isActive('/settings')
                           ? 'bg-emerald-500/20 text-emerald-300 shadow-soft backdrop-blur-sm'
                           : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'

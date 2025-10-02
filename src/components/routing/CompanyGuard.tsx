@@ -62,14 +62,34 @@ export const CompanyGuard = () => {
       const paramNormalized = normalize(localDecoded)
       const userNormalized = normalize(user.companyId || '')
 
+      // Also check case-insensitive match since URLs are now lowercased
+      const paramLower = localDecoded.trim().toLowerCase()
+      const userLower = (user.companyId || '').trim().toLowerCase()
+
+      console.log('🔍 CompanyGuard validation:', {
+        urlParam: localDecoded,
+        userCompanyId: user.companyId,
+        paramNormalized,
+        userNormalized,
+        paramLower,
+        userLower,
+        normalizedMatch: paramNormalized === userNormalized,
+        rawMatch: user.companyId === localDecoded,
+        caseInsensitiveMatch: paramLower === userLower,
+      })
+
       if (
         paramNormalized !== userNormalized &&
-        user.companyId !== localDecoded
+        user.companyId !== localDecoded &&
+        paramLower !== userLower
       ) {
-        // Neither normalized nor raw matches; treat as invalid (prevents access to other companies)
+        // None of the comparisons match; treat as invalid (prevents access to other companies)
+        console.error('❌ CompanyGuard: Access denied - no matching comparison')
         setState('invalid')
         return
       }
+
+      console.log('✅ CompanyGuard: Access granted')
 
       // Potential future async company existence check hook (e.g. via service)
       await measureGuardPerformance('CompanyGuard', async () => {
