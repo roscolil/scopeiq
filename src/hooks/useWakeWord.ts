@@ -323,6 +323,21 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
       setState('error')
       return
     }
+
+    // iOS doesn't support continuous speech recognition reliably
+    // Wake word detection requires continuous listening, which iOS Safari blocks
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS) {
+      setError(
+        'Wake word not supported on iOS (continuous recognition unavailable)',
+      )
+      setState('error')
+      log(
+        'Wake word disabled: iOS does not support continuous speech recognition',
+      )
+      return
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR: any =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -372,9 +387,9 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
   }, [evaluateChunk, handleWake, log, scheduleRestart, state])
 
   // attemptStart implemented via ref to avoid cyclic dependencies
-  const attemptStartRef = useRef<() => void>(() => undefined)
+  const attemptStartRef = useRef<() => void | Promise<void>>(() => undefined)
 
-  const attemptStart = useCallback(() => {
+  const attemptStart = useCallback(async () => {
     if (!enabled) {
       log('Not starting (disabled)')
       return
@@ -405,6 +420,26 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     }
     const rec = recognitionRef.current
     if (!rec) return
+
+    // iOS-specific: prime permissions before starting recognition
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS && priorPermissionGranted) {
+      try {
+        // Silently prime the permission for this recognition instance
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        })
+        stream.getTracks().forEach(track => track.stop())
+        log('iOS: Permission primed for wake listener')
+      } catch (e) {
+        log('iOS: Permission priming failed', e)
+        setError('Microphone permission denied')
+        setState('error')
+        setHasPermission(false)
+        return
+      }
+    }
+
     try {
       rec.start()
       setState('listening')
@@ -481,6 +516,18 @@ export function useWakeWord(options: UseWakeWordOptions): UseWakeWordReturn {
     manuallySuspendedRef.current = false
     attemptStartRef.current()
   }, [enabled])
+
+  // Listen for permission priming events (e.g., from ProjectDetails primeMicPermission)
+  useEffect(() => {
+    const handlePrimed = () => {
+      log('wakeword:primed event received - attempting to start')
+      if (enabled && !isDictationActive) {
+        attemptStartRef.current()
+      }
+    }
+    window.addEventListener('wakeword:primed', handlePrimed)
+    return () => window.removeEventListener('wakeword:primed', handlePrimed)
+  }, [enabled, isDictationActive, log])
 
   // Cleanup
   useEffect(() => {

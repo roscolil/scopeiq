@@ -87,12 +87,16 @@ export function WakeWordIndicator({
   const [hasLoadedPref, setHasLoadedPref] = useState(false)
   const [showConsent, setShowConsent] = useState(false)
 
+  // Check if iOS - wake word not supported
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
   // Load preference & consent
   useEffect(() => {
     try {
       const raw = localStorage.getItem(preferenceKey)
       const consent = localStorage.getItem(CONSENT_KEY)
-      if (!consent) {
+      // Don't show consent on iOS since wake word doesn't work there
+      if (!consent && !isIOS) {
         setShowConsent(true)
       }
       if (raw === null) {
@@ -105,7 +109,7 @@ export function WakeWordIndicator({
     } finally {
       setHasLoadedPref(true)
     }
-  }, [preferenceKey, debug])
+  }, [preferenceKey, debug, isIOS])
 
   const wake = useWakeWord({
     enabled: enabledPreference,
@@ -156,6 +160,9 @@ export function WakeWordIndicator({
 
   // Hide everything until pref is loaded (avoid flicker)
   if (!hasLoadedPref) return null
+
+  // Don't render on iOS since wake word isn't supported
+  if (isIOS) return null
 
   return (
     <>

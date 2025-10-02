@@ -528,12 +528,17 @@ export const VoiceShazamButton = ({
           try {
             recognition.start()
             setStatus('Ready to listen!')
-          } catch {
+          } catch (startError) {
+            // iOS requires getUserMedia to "prime" permissions before recognition.start()
+            // Even if permission was granted before, we need to call it for each new recognition instance
             setStatus('Requesting access...')
             const stream = await navigator.mediaDevices.getUserMedia({
               audio: true,
             })
             stream.getTracks().forEach(track => track.stop())
+
+            // Small delay to let permission settle before retrying
+            await new Promise(resolve => setTimeout(resolve, 100))
             recognition.start()
             setStatus('Ready to listen!')
           }

@@ -1121,10 +1121,12 @@ const ProjectDetails = () => {
       <Layout>
         <div className="space-y-4 md:space-y-6">
           {/* Mobile-only: hands-free permission priming banner when enabled but not yet granted */}
+          {/* Note: Hidden on iOS since wake word requires continuous recognition which iOS doesn't support */}
           {isMobile &&
             enabled &&
             consent === 'true' &&
-            !wakePermissionGranted && (
+            !wakePermissionGranted &&
+            !/iPad|iPhone|iPod/.test(navigator.userAgent) && (
               <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-100 p-3 flex items-center justify-between">
                 <div className="text-sm">
                   Enable hands-free voice by allowing microphone access.

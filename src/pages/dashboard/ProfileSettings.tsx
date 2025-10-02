@@ -69,10 +69,27 @@ const WakeWordSettingsPanel = () => {
     declineConsent,
   } = useWakeWordPreference()
 
+  // Check if iOS (wake word not supported due to continuous recognition limitations)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
   if (loading) {
     return (
       <div className="text-sm text-muted-foreground animate-pulse">
         Loading preference...
+      </div>
+    )
+  }
+
+  if (isIOS) {
+    return (
+      <div className="space-y-3">
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          Wake word detection is not available on iOS devices due to Safari's
+          limitations with continuous speech recognition.
+        </div>
+        <div className="text-sm text-muted-foreground">
+          You can still use voice input by tapping the microphone button.
+        </div>
       </div>
     )
   }
