@@ -307,23 +307,13 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Build transcript from Web Speech API results
-          // Each result represents a separate phrase - concatenate them all
-          let fullTranscript = ''
-
-          for (let i = 0; i < results.length; i++) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const result = results[i] as any
-            const text = result[0].transcript
-
-            // Add space between segments if needed
-            if (fullTranscript && !fullTranscript.endsWith(' ')) {
-              fullTranscript += ' '
-            }
-            fullTranscript += text
-          }
-
-          const currentTranscript = fullTranscript.trim()
+          // Web Speech API returns CUMULATIVE results
+          // Each new result already includes all previous text
+          // So we only need to get the LAST result to avoid duplicates
+          const lastIndex = results.length - 1
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const lastResult = results[lastIndex] as any
+          const currentTranscript = lastResult[0].transcript.trim()
 
           if (currentTranscript) {
             // CRITICAL: Return early if no change to prevent duplicate processing

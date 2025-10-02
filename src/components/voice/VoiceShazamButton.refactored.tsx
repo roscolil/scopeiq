@@ -80,29 +80,14 @@ const isDuplicateTranscript = (current: string, previous: string): boolean => {
 }
 
 const buildTranscript = (results: any[]): string => {
-  let finalTranscript = ''
-  let interimTranscript = ''
+  // Web Speech API returns CUMULATIVE results
+  // Each new result already includes all previous words
+  // So we only need the LAST result to avoid word repetition
+  if (results.length === 0) return ''
 
-  for (let i = 0; i < results.length; i++) {
-    const result = results[i]
-    const transcriptSegment = result[0].transcript
-
-    if (result.isFinal) {
-      if (finalTranscript && !finalTranscript.endsWith(' ')) {
-        finalTranscript += ' '
-      }
-      finalTranscript += transcriptSegment
-    } else {
-      if (interimTranscript && !interimTranscript.endsWith(' ')) {
-        interimTranscript += ' '
-      }
-      interimTranscript += transcriptSegment
-    }
-  }
-
-  return (
-    finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')
-  ).trim()
+  const lastIndex = results.length - 1
+  const lastResult = results[lastIndex]
+  return lastResult[0].transcript.trim()
 }
 
 const dispatchDictationEvent = (type: 'start' | 'stop') => {
