@@ -247,6 +247,7 @@ export const VoiceShazamButton = ({
   // Refs
   const prevListeningRef = useRef<boolean>(false)
   const forceStopRef = useRef(false)
+  const isListeningRef = useRef<boolean>(false) // Track listening state for onend handler
   const endLoopGuardRef = useRef<{ lastEnd: number; attempts: number }>({
     lastEnd: 0,
     attempts: 0,
@@ -256,6 +257,11 @@ export const VoiceShazamButton = ({
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const fallbackFinalizeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const ttsClearTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Keep listening ref in sync with state for use in onend handler
+  useEffect(() => {
+    isListeningRef.current = internalIsListening
+  }, [internalIsListening])
 
   // ============================================================================
   // DERIVED STATE
@@ -361,8 +367,11 @@ export const VoiceShazamButton = ({
     const platform = detectPlatform()
 
     // Configure recognition
-    recognitionInstance.continuous = true
-    recognitionInstance.interimResults = true
+    // iOS Safari requires continuous=false for reliable operation
+    const isIOS =
+      platform.isMobileSafari || /iPad|iPhone|iPod/.test(navigator.userAgent)
+    recognitionInstance.continuous = !isIOS // false on iOS, true elsewhere
+    recognitionInstance.interimResults = !isIOS // iOS has issues with interim results
     recognitionInstance.lang = 'en-US'
     recognitionInstance.maxAlternatives = 1
 
@@ -378,19 +387,41 @@ export const VoiceShazamButton = ({
     }
 
     recognitionInstance.onend = () => {
-      setStatus('Stopped')
-      setInternalIsListening(false)
-      dispatchDictationEvent('stop')
+      // iOS Safari: With continuous=false, onend fires quickly but we want to keep listening
+      // Don't set listening to false yet - check if we should restart first
+      // Use ref to avoid stale closure value
+      const willRestart =
+        !forceStopRef.current &&
+        !hasSubmittedRef.current &&
+        !isSubmittingRef.current &&
+        !hasTranscript &&
+        isListeningRef.current
 
-      // Prevent looping after submission
-      if (
-        forceStopRef.current ||
-        hasSubmittedRef.current ||
-        isSubmittingRef.current
-      ) {
-        forceStopRef.current = false
+      console.log('📱 Voice recognition ended', {
+        willRestart,
+        isListening: isListeningRef.current,
+        hasTranscript,
+        forceStop: forceStopRef.current,
+        hasSubmitted: hasSubmittedRef.current,
+        isSubmitting: isSubmittingRef.current,
+        platform: platform.isMobileSafari ? 'iOS Safari' : 'Other',
+      })
+
+      if (!willRestart) {
+        console.log('❌ NOT restarting - setting listening to false')
+        setStatus('Stopped')
+        setInternalIsListening(false)
+        dispatchDictationEvent('stop')
+
+        // Clean up and return - don't schedule restart
+        if (forceStopRef.current) {
+          forceStopRef.current = false
+        }
         return
       }
+
+      // Keep status as "Listening..." for seamless UX
+      console.log('✅ WILL restart - keeping listening state active')
 
       // Loop guard logic
       const now = Date.now()
@@ -409,16 +440,28 @@ export const VoiceShazamButton = ({
       }
       endLoopGuardRef.current.lastEnd = now
 
+      console.log('🔄 Loop guard:', {
+        sinceLast,
+        attempts: endLoopGuardRef.current.attempts,
+        maxAttempts,
+      })
+
       if (endLoopGuardRef.current.attempts > maxAttempts) {
+        console.log('⛔ Too many restart attempts - stopping')
         forceStopRef.current = true
         setInternalIsListening(false)
+        setStatus('Stopped')
         return
       }
 
       // Don't restart if we have a transcript
-      if (hasTranscript) return
+      if (hasTranscript) {
+        console.log('📝 Has transcript - not restarting')
+        return
+      }
 
-      if (internalIsListening) {
+      // Use ref for current listening state
+      if (isListeningRef.current) {
         const baseDelay = platform.isAndroidMode
           ? LOOP_GUARD_CONFIG.androidBaseDelay
           : LOOP_GUARD_CONFIG.desktopBaseDelay
@@ -430,22 +473,46 @@ export const VoiceShazamButton = ({
           maxDelay,
         )
 
+        console.log(`⏱️ Scheduling restart in ${delay}ms`)
+
         setTimeout(() => {
+          console.log('⏰ Restart timeout fired - checking conditions...')
+          console.log({
+            forceStop: forceStopRef.current,
+            isListening: isListeningRef.current,
+            hasSubmitted: hasSubmittedRef.current,
+            isSubmitting: isSubmittingRef.current,
+          })
+
           if (
             !forceStopRef.current &&
-            internalIsListening &&
+            isListeningRef.current &&
             !hasSubmittedRef.current &&
             !isSubmittingRef.current
           ) {
             try {
+              console.log('🚀 Starting recognition...')
               recognitionInstance.start()
               setInternalIsListening(true)
               setStatus('Listening...')
-            } catch {
-              setInternalIsListening(false)
+            } catch (error: any) {
+              // Gracefully handle "already started" errors
+              if (!error?.message?.includes('already started')) {
+                console.error('❌ Error restarting recognition:', error)
+                setInternalIsListening(false)
+                setStatus('Error')
+              } else {
+                console.log('ℹ️ Recognition already started')
+              }
             }
+          } else {
+            console.log('🚫 Conditions not met - skipping restart')
           }
         }, delay)
+      } else {
+        console.log(
+          '👂 isListeningRef.current is FALSE - not scheduling restart',
+        )
       }
     }
 
@@ -753,6 +820,20 @@ export const VoiceShazamButton = ({
       setHelpBlockedUntilSpeechComplete(false)
       setTtsActive(false)
       clearAllTimers({ ttsClear: ttsClearTimerRef })
+
+      // CRITICAL: Reset submission flags to allow consecutive voice queries
+      // Without this, the second query won't work because hasSubmittedRef stays true
+      resetSubmission()
+      console.log(
+        '🔄 Reset submission flags after TTS complete - ready for next query',
+      )
+
+      // IMPORTANT: Don't auto-resume - the recognition should stay active
+      // The onend handler will keep restarting it as long as isListeningRef is true
+      // User manually tapped mic once, it should stay on until they tap to stop
+      console.log(
+        '✅ TTS done - mic should continue listening automatically via onend loop',
+      )
     }
 
     const onSpeechStart = () => {
@@ -780,7 +861,7 @@ export const VoiceShazamButton = ({
         onSpeechStart as EventListener,
       )
     }
-  }, [])
+  }, [resetSubmission])
 
   // Auto-show/hide help message
   useEffect(() => {

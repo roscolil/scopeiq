@@ -222,12 +222,20 @@ export const AIActions = ({
       prompt: string,
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
+      console.log('🔊 speakWithStateTracking called', {
+        audioUnlocked: audioUnlockedRef.current,
+        promptPreview: prompt.substring(0, 50),
+      })
+
       // Audio unlock gating
       if (!audioUnlockedRef.current) {
+        console.log('❌ Audio NOT unlocked - showing banner instead of playing')
         pendingSpeechRef.current = { prompt, options }
         setShowAudioUnlock(true)
         return
       }
+
+      console.log('✅ Audio IS unlocked - proceeding with TTS')
 
       if (!(await novaSonic.isAvailable())) return
 
@@ -1257,6 +1265,15 @@ export const AIActions = ({
     (text: string) => {
       if (isVoicePlaying) return
 
+      // Unlock audio since voice input was from user gesture (mic toggle)
+      if (!audioUnlockedRef.current) {
+        console.log('🔓 Unlocking audio from voice transcript (desktop)')
+        audioUnlockedRef.current = true
+        if (novaSonic.enableAudioForSafari) {
+          novaSonic.enableAudioForSafari().catch(() => {})
+        }
+      }
+
       setQuery(text)
       hasTranscriptRef.current = true
 
@@ -1920,6 +1937,19 @@ export const AIActions = ({
           onTranscript={text => {
             const trimmedText = text.trim()
             const isAndroid = /Android/i.test(navigator.userAgent)
+
+            // CRITICAL: Unlock audio since mic tap was a user gesture
+            // VoiceShazamButton unlocks its own audio, but AIActions needs to know too
+            if (!audioUnlockedRef.current) {
+              console.log(
+                '🔓 Unlocking audio from voice query (mic tap = user gesture)',
+              )
+              audioUnlockedRef.current = true
+              // Also actually unlock the audio service
+              if (novaSonic.enableAudioForSafari) {
+                novaSonic.enableAudioForSafari().catch(() => {})
+              }
+            }
 
             // Android-specific duplicate prevention
             if (isAndroid) {
