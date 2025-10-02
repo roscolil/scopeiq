@@ -1368,7 +1368,7 @@ export const AIActions = ({
             e.stopPropagation()
           }}
         >
-          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20 animate-pulse">
+          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20">
             <div className="p-4 flex items-center justify-between gap-3">
               <div className="flex-1">
                 <div className="font-bold text-base">🔊 Enable Audio</div>
