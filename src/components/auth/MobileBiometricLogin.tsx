@@ -138,7 +138,7 @@ export const MobileBiometricLogin: React.FC<MobileBiometricLoginProps> = ({
 
         // Navigate to dashboard
         if (user?.companyId) {
-          navigate(`/${user.companyId.toLowerCase()}`)
+          navigate(`/${encodeURIComponent(user.companyId.toLowerCase())}`)
         } else {
           navigate('/') // Navigate to home/dashboard
         }

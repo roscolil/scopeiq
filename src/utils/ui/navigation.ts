@@ -33,16 +33,21 @@ export const routes = {
 
   // Authenticated routes
   company: {
-    home: (companyId: string) => `/${companyId}`,
-    settings: (companyId: string) => `/${companyId}/settings`,
+    home: (companyId: string) =>
+      `/${encodeURIComponent(companyId.toLowerCase())}`,
+    settings: (companyId: string) =>
+      `/${encodeURIComponent(companyId.toLowerCase())}/settings`,
     projects: {
       // Still need this for the projects index page
-      list: (companyId: string) => `/${companyId}/projects`,
-      new: (companyId: string) => `/${companyId}/projects/new`,
+      list: (companyId: string) =>
+        `/${encodeURIComponent(companyId.toLowerCase())}/projects`,
+      new: (companyId: string) =>
+        `/${encodeURIComponent(companyId.toLowerCase())}/projects/new`,
     },
     documents: {
       // All documents view
-      all: (companyId: string) => `/${companyId}/documents`,
+      all: (companyId: string) =>
+        `/${encodeURIComponent(companyId.toLowerCase())}/documents`,
     },
     // Direct routes for project and document - now with optional readable names
     project: {
@@ -52,11 +57,11 @@ export const routes = {
           projectName.trim() === '' ||
           projectName === 'Untitled Project'
         ) {
-          return `/${companyId}/${projectId}`
+          return `/${encodeURIComponent(companyId.toLowerCase())}/${projectId}`
         }
 
         const slug = createSlug(projectName)
-        const route = `/${companyId}/${slug}`
+        const route = `/${encodeURIComponent(companyId.toLowerCase())}/${slug}`
         return route
       },
       documents: (
@@ -65,7 +70,7 @@ export const routes = {
         projectName?: string,
       ) => {
         const slug = projectName ? createSlug(projectName) : projectId
-        return `/${companyId}/${slug}/documents`
+        return `/${encodeURIComponent(companyId.toLowerCase())}/${slug}/documents`
       },
       document: (
         companyId: string,
@@ -78,7 +83,7 @@ export const routes = {
         const documentSlug = documentName
           ? createSlug(documentName)
           : documentId
-        return `/${companyId}/${projectSlug}/${documentSlug}`
+        return `/${encodeURIComponent(companyId.toLowerCase())}/${projectSlug}/${documentSlug}`
       },
     },
   },

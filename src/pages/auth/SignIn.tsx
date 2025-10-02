@@ -150,7 +150,7 @@ const SignIn = () => {
       // Get company information and redirect to company dashboard
       // The signIn function should return user data with companyId
       if (user?.companyId) {
-        navigate(`/${user.companyId.toLowerCase()}`)
+        navigate(`/${encodeURIComponent(user.companyId.toLowerCase())}`)
       } else {
         // Fallback to home if no company ID
         navigate('/')

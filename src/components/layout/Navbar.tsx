@@ -64,17 +64,21 @@ export const Navbar = () => {
   const menuItems = [
     {
       name: 'Dashboard',
-      path: companyId ? `/${companyId.toLowerCase()}` : '/',
+      path: companyId ? `/${encodeURIComponent(companyId.toLowerCase())}` : '/',
       icon: <Home className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Projects',
-      path: companyId ? `/${companyId.toLowerCase()}/projects` : '/',
+      path: companyId
+        ? `/${encodeURIComponent(companyId.toLowerCase())}/projects`
+        : '/',
       icon: <Folders className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Documents',
-      path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
+      path: companyId
+        ? `/${encodeURIComponent(companyId.toLowerCase())}/documents`
+        : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
     // Admin routes
@@ -193,12 +197,13 @@ export const Navbar = () => {
                     <Link
                       to={
                         companyId
-                          ? `/${companyId.toLowerCase()}/settings`
+                          ? `/${encodeURIComponent(companyId.toLowerCase())}/settings`
                           : '/settings'
                       }
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
-                        isActive(`/${companyId?.toLowerCase()}/settings`) ||
-                        isActive('/settings')
+                        isActive(
+                          `/${encodeURIComponent(companyId?.toLowerCase() || '')}/settings`,
+                        ) || isActive('/settings')
                           ? 'bg-emerald-500/20 text-emerald-300 shadow-soft backdrop-blur-sm'
                           : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
                       }`}

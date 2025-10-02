@@ -14,10 +14,16 @@ const getCurrentCompanyId = (): string => {
   const pathParts = window.location.pathname.split('/').filter(Boolean)
   console.log('URL path parts for company ID extraction:', pathParts)
 
-  // Company ID is the first path segment
-  const companyId = pathParts[0] || 'default-company'
-  console.log('Extracted company ID:', companyId)
-  return companyId
+  // Company ID is the first path segment - decode it since URLs are now encoded
+  const encodedCompanyId = pathParts[0] || 'default-company'
+  try {
+    const companyId = decodeURIComponent(encodedCompanyId)
+    console.log('Extracted company ID:', companyId)
+    return companyId
+  } catch {
+    console.log('Failed to decode company ID, using as-is:', encodedCompanyId)
+    return encodedCompanyId
+  }
 }
 
 // Helper function to get current project ID (might be a slug)
