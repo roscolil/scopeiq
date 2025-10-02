@@ -52,8 +52,8 @@ export const getAWSRegion = (): string => {
 
 // Get AWS credentials (still from environment as these are sensitive)
 export const getAWSCredentials = () => {
-  const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')
-  const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')
+  const accessKeyId = getEnvVar('AWS_ACCESS' + '_KEY_ID')?.trim()
+  const secretAccessKey = getEnvVar('AWS_SECRET' + '_ACCESS_KEY')?.trim()
 
   if (!accessKeyId || !secretAccessKey) {
     console.error('❌ AWS credentials missing:', {

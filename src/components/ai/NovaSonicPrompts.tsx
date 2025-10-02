@@ -43,7 +43,11 @@ export const NovaSonicPrompts: React.FC<NovaSonicPromptsProps> = ({
 
   useEffect(() => {
     // Check if Nova Sonic service is available
-    setIsAvailable(novaSonic.isAvailable())
+    const checkAvailability = async () => {
+      const available = await novaSonic.isAvailable()
+      setIsAvailable(available)
+    }
+    checkAvailability()
   }, [])
 
   const handleSpeak = async () => {

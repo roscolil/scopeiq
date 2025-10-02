@@ -158,7 +158,7 @@ export const AIActionsEnhanced = ({
       prompt: string,
       options: { voice?: VoiceId; stopListeningAfter?: boolean } = {},
     ) => {
-      if (!novaSonic.isAvailable()) return
+      if (!(await novaSonic.isAvailable())) return
 
       // If we're already speaking, queue the latest prompt to play next
       if (isVoicePlaying) {

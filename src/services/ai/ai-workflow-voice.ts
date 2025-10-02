@@ -95,7 +95,7 @@ class AIWorkflowVoiceService {
     text: string,
     options?: Partial<NovaSonicOptions>,
   ): Promise<boolean> {
-    if (!this.config.enabled || !novaSonic.isAvailable()) {
+    if (!this.config.enabled || !(await novaSonic.isAvailable())) {
       return false
     }
 
@@ -281,8 +281,8 @@ class AIWorkflowVoiceService {
   /**
    * Check if voice is available
    */
-  isAvailable(): boolean {
-    return this.config.enabled && novaSonic.isAvailable()
+  async isAvailable(): Promise<boolean> {
+    return this.config.enabled && (await novaSonic.isAvailable())
   }
 }
 

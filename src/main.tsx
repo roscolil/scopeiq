@@ -4,6 +4,7 @@ import outputs from '../amplify_outputs.json'
 import App from './App'
 import './index.css'
 import { initializeServiceWorker } from '@/utils/performance/service-worker'
+import '@/utils/mobile-audio-debug'
 
 Amplify.configure(outputs)
 

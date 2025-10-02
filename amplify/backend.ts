@@ -75,3 +75,7 @@ const apiKeyForLambda = pineconeApiKey || 'PLACEHOLDER_FOR_BUILD'
 
 backend.pineconeSearch.addEnvironment('PINECONE_API_KEY', apiKeyForLambda)
 backend.pineconeSearch.addEnvironment('PINECONE_INDEX_NAME', pineconeIndexName)
+
+// NOTE: Polly permissions need to be added manually to the Cognito Identity Pool role
+// Run this AWS CLI command after deployment:
+// aws iam put-role-policy --role-name <authenticated-role-name> --policy-name PollyTTS --policy-document file://polly-policy.json

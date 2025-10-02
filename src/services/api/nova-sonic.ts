@@ -12,6 +12,7 @@ import {
   Engine,
   LanguageCode,
 } from '@aws-sdk/client-polly'
+import { fetchAuthSession } from 'aws-amplify/auth'
 import { getAWSCredentials, getAWSRegion } from '@/utils/aws/aws-config'
 
 interface NovaSonicOptions {
@@ -81,14 +82,65 @@ class NovaSonicService {
   }
 
   constructor() {
-    this.initializeClient()
     this.setupUserInteractionTracking()
+    // Client will be initialized lazily when needed
   }
 
-  private initializeClient() {
+  /**
+   * Initialize or get the Polly client with Amplify credentials
+   * This uses Cognito Identity Pool credentials instead of static IAM credentials
+   */
+  private async ensureClient(): Promise<PollyClient | null> {
+    if (this.client) {
+      return this.client
+    }
+
     try {
+      // Try to get Amplify credentials first (recommended for authenticated users)
+      try {
+        const session = await fetchAuthSession()
+        const credentials = session.credentials
+
+        if (credentials) {
+          const region = getAWSRegion()
+
+          console.log('🔧 Initializing AWS Polly with Amplify credentials:', {
+            region,
+            credentialsSource: 'Cognito Identity Pool',
+          })
+
+          this.client = new PollyClient({
+            region,
+            credentials: {
+              accessKeyId: credentials.accessKeyId,
+              secretAccessKey: credentials.secretAccessKey,
+              sessionToken: credentials.sessionToken,
+            },
+          })
+
+          console.log(
+            '✅ AWS Polly client initialized with Amplify credentials',
+          )
+          return this.client
+        }
+      } catch (amplifyError) {
+        console.warn(
+          '⚠️ Amplify credentials not available, trying static credentials:',
+          amplifyError,
+        )
+      }
+
+      // Fallback to static IAM credentials from environment
       const credentials = getAWSCredentials()
       const region = getAWSRegion()
+
+      console.log('🔧 Initializing AWS Polly with static IAM credentials:', {
+        region,
+        accessKeyIdLength: credentials.accessKeyId.length,
+        secretKeyLength: credentials.secretAccessKey.length,
+        accessKeyIdPrefix: credentials.accessKeyId.substring(0, 4) + '...',
+        credentialsSource: 'Environment Variables',
+      })
 
       this.client = new PollyClient({
         region,
@@ -97,8 +149,12 @@ class NovaSonicService {
           secretAccessKey: credentials.secretAccessKey,
         },
       })
+
+      console.log('✅ AWS Polly client initialized with static credentials')
+      return this.client
     } catch (error) {
       console.error('❌ Failed to initialize AWS Polly service:', error)
+      return null
     }
   }
 
@@ -296,8 +352,9 @@ class NovaSonicService {
   /**
    * Check if the service is available
    */
-  isAvailable(): boolean {
-    return this.client !== null
+  async isAvailable(): Promise<boolean> {
+    const client = await this.ensureClient()
+    return client !== null
   }
 
   /**
@@ -473,7 +530,9 @@ class NovaSonicService {
     text: string,
     options?: Partial<NovaSonicOptions>,
   ): Promise<NovaSonicResponse> {
-    if (!this.client) {
+    const client = await this.ensureClient()
+
+    if (!client) {
       return {
         audio: new Uint8Array(),
         success: false,
@@ -494,7 +553,7 @@ class NovaSonicService {
       })
 
       console.log('🎵 Requesting speech synthesis from AWS Polly...')
-      const response = await this.client.send(command)
+      const response = await client.send(command)
 
       if (!response.AudioStream) {
         throw new Error('No audio data received from AWS Polly')
@@ -530,10 +589,25 @@ class NovaSonicService {
     // On iOS/Safari, attempt Web Audio first (after unlock) to bypass element autoplay quirks
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+    console.log('🎵 Mobile Audio Debug:', {
+      isSafari,
+      isIOS,
+      isUnlocked: this.isAudioUnlocked(),
+      userInteraction: this.userInteractionReceived,
+      contextUnlocked: this.audioContextUnlocked,
+    })
+
     if ((isSafari || isIOS) && this.isAudioUnlocked()) {
+      console.log('🎧 Trying Web Audio API path...')
       const ok = await this.playViaWebAudio(audioData, format)
-      if (ok) return
+      if (ok) {
+        console.log('✅ Web Audio playback succeeded')
+        return
+      }
+      console.warn('⚠️ Web Audio failed, falling back to HTML5 Audio')
     }
+    console.log('🎵 Using HTML5 Audio element path...')
     return this.playAudioElement(audioData, format)
   }
 

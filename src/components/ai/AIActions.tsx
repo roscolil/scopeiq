@@ -229,7 +229,7 @@ export const AIActions = ({
         return
       }
 
-      if (!novaSonic.isAvailable()) return
+      if (!(await novaSonic.isAvailable())) return
 
       if (isVoicePlaying) {
         queuedSpeechRef.current = { prompt, options }
@@ -654,21 +654,38 @@ export const AIActions = ({
 
       // Unlock audio on query submission (user gesture)
       if (!audioUnlockedRef.current) {
-        audioUnlockedRef.current = true
-        setShowAudioUnlock(false)
         try {
+          // Try to unlock audio with this user gesture
+          let unlocked = false
+
           if (novaSonic.enableAudioForSafari) {
-            novaSonic.enableAudioForSafari().catch(() => {})
+            unlocked = await novaSonic.enableAudioForSafari()
           }
+
           type UnlockCapable = typeof novaSonic & {
             forceUnlockAudio?: () => Promise<boolean>
           }
           const maybeUnlock = novaSonic as UnlockCapable
           if (maybeUnlock.forceUnlockAudio) {
-            maybeUnlock.forceUnlockAudio().catch(() => {})
+            const result = await maybeUnlock.forceUnlockAudio()
+            unlocked = unlocked || result
           }
-        } catch {
-          /* noop */
+
+          if (unlocked) {
+            audioUnlockedRef.current = true
+            setShowAudioUnlock(false)
+            console.log('✅ Audio unlocked on query submission')
+          } else if (isMobile) {
+            // Unlock failed, show banner so user can try again
+            console.log('📱 Audio unlock failed - showing banner')
+            setShowAudioUnlock(true)
+          }
+        } catch (error) {
+          // Unlock failed, show banner on mobile
+          if (isMobile) {
+            console.log('📱 Audio unlock error - showing banner', error)
+            setShowAudioUnlock(true)
+          }
         }
       }
 
@@ -1327,8 +1344,8 @@ export const AIActions = ({
 
   return (
     <>
-      {/* Mobile audio unlock banner (fixed at top) - only show after processing completes and only when a voice response was queued due to lock */}
-      {isMobile && showAudioUnlock && !isLoading && !isVoicePlaying && (
+      {/* Mobile audio unlock banner (fixed at top) - show whenever audio needs unlocking, even during AI processing */}
+      {isMobile && showAudioUnlock && !isVoicePlaying && (
         <div
           className="fixed top-0 left-0 right-0 z-[200] px-3 pt-3"
           onPointerDown={e => {
@@ -1347,18 +1364,18 @@ export const AIActions = ({
             e.stopPropagation()
           }}
         >
-          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20">
-            <div className="p-3 flex items-center justify-between gap-3">
-              <div className="text-sm">
-                <div className="font-semibold">Enable Audio Playback</div>
-                <div className="opacity-90">
-                  Tap once to allow AI voice responses.
+          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20 animate-pulse">
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <div className="font-bold text-base">🔊 Enable Audio</div>
+                <div className="text-sm opacity-90 mt-1">
+                  Tap to hear AI responses
                 </div>
               </div>
               <Button
-                size="sm"
+                size="lg"
                 variant="secondary"
-                className="text-sm"
+                className="font-semibold px-6 shadow-lg"
                 onPointerDown={e => {
                   // Handle unlock on pointerdown and prevent synthetic click propagation
                   e.preventDefault()
