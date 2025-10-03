@@ -21,6 +21,11 @@ import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
 
+// React Query hooks for enhanced performance
+import { useProjects } from '@/hooks/queries/useProjects'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
+
 const Projects = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -30,6 +35,13 @@ const Projects = () => {
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
+
+  const queryClient = useQueryClient()
+
+  // React Query hooks - provide automatic caching and background refetching
+  const { data: projectsRQ = [], isLoading: isLoadingRQ } = useProjects(
+    companyId || '',
+  )
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
@@ -80,6 +92,17 @@ const Projects = () => {
     localStorage.removeItem(`projects_${companyId}`)
     localStorage.removeItem(`projects_timestamp_${companyId}`)
   }, [companyId])
+
+  // Sync React Query data with local state
+  useEffect(() => {
+    if (projectsRQ && projectsRQ.length > 0 && !isLoadingRQ) {
+      console.log('📁 React Query: Loading projects data')
+      setProjects(projectsRQ)
+      setLoading(false)
+    } else {
+      setLoading(isLoadingRQ)
+    }
+  }, [projectsRQ, isLoadingRQ])
 
   // Load cached projects immediately on mount
   useEffect(() => {
@@ -218,6 +241,11 @@ const Projects = () => {
         // Clear cache to force fresh data on next visit
         clearProjectsCache()
 
+        // Invalidate React Query cache
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.byCompany(companyId || ''),
+        })
+
         setIsDialogOpen(false)
       }
     } catch (error) {
@@ -231,6 +259,14 @@ const Projects = () => {
 
     // Clear cache to force fresh data on next visit
     clearProjectsCache()
+
+    // Invalidate React Query cache
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.byCompany(companyId || ''),
+    })
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.byId(projectId),
+    })
   }
 
   return (

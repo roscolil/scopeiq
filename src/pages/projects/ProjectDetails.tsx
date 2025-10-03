@@ -47,6 +47,12 @@ import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentDeletionEvents } from '@/services/utils/document-events'
 
+// React Query hooks - optional performance enhancement
+import { useProject } from '@/hooks/queries/useProjects'
+import { useDocumentsByProject } from '@/hooks/queries/useDocuments'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
+
 // Component
 const ProjectDetails = () => {
   const navigate = useNavigate()
@@ -55,6 +61,14 @@ const ProjectDetails = () => {
     projectId: string
   }>()
   const isMobile = useIsMobile()
+  const queryClient = useQueryClient()
+
+  // React Query hooks - provide automatic caching and background refetching
+  const { data: projectDataRQ, isLoading: isProjectLoadingRQ } = useProject(
+    projectId || '',
+  )
+  const { data: documentsDataRQ = [], isLoading: isDocumentsLoadingRQ } =
+    useDocumentsByProject(projectId || '')
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -474,27 +488,26 @@ const ProjectDetails = () => {
     }
   }, [project?.id, DOCUMENTS_CACHE_KEY, setCachedDocumentsData])
 
-  // Load cached data immediately on mount
+  // Sync React Query data with local state
   useEffect(() => {
-    const cachedProject = getCachedProject()
-    if (cachedProject && !cachedProject.isStale) {
-      console.log('🏗️ Loading cached project data')
-      setProject(cachedProject.data)
+    if (projectDataRQ && !isProjectLoadingRQ) {
+      console.log('🏗️ React Query: Loading project data')
+      setProject(projectDataRQ)
       setIsProjectLoading(false)
+    } else {
+      setIsProjectLoading(isProjectLoadingRQ)
     }
+  }, [projectDataRQ, isProjectLoadingRQ])
 
-    const cachedDocuments = getCachedDocuments()
-    if (cachedDocuments && !cachedDocuments.isStale) {
-      console.log('📋 Loading cached documents data')
-      setProjectDocuments(cachedDocuments.data || [])
+  useEffect(() => {
+    if (documentsDataRQ && !isDocumentsLoadingRQ) {
+      console.log('📋 React Query: Loading documents data')
+      setProjectDocuments(documentsDataRQ)
       setIsDocumentsLoading(false)
-    } else if (cachedDocuments && cachedDocuments.isStale) {
-      // Show stale data immediately but mark for refresh
-      console.log('📋 Loading stale cached documents data, will refresh soon')
-      setProjectDocuments(cachedDocuments.data || [])
-      setIsDocumentsLoading(true) // Keep loading state to trigger refresh
+    } else {
+      setIsDocumentsLoading(isDocumentsLoadingRQ)
     }
-  }, [getCachedProject, getCachedDocuments])
+  }, [documentsDataRQ, isDocumentsLoadingRQ])
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -810,6 +823,14 @@ const ProjectDetails = () => {
 
       await projectService.deleteProject(companyId!, project.id)
 
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.byCompany(companyId || ''),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.byId(project.id),
+      })
+
       toast({
         title: 'Project deleted',
         description: 'Your project has been deleted successfully.',
@@ -909,6 +930,11 @@ const ProjectDetails = () => {
     // Set cache with fresh data for immediate use
     setCachedDocumentsData(updatedDocuments)
 
+    // Invalidate React Query cache to trigger background refetch
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.documents.byProject(projectId || ''),
+    })
+
     // For batch uploads we no longer auto-close here; rely on onBatchComplete.
     if (existingDocumentIndex < 0) {
       // Delayed refresh disabled: polling + optimistic update handle state.
@@ -928,6 +954,11 @@ const ProjectDetails = () => {
     try {
       // Clear cache first
       clearCache()
+
+      // Invalidate React Query cache
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(projectId || ''),
+      })
 
       // Fetch fresh data from database
       const documents = await documentService.getDocumentsByProject(project.id)
@@ -987,6 +1018,14 @@ const ProjectDetails = () => {
       }
 
       await documentService.deleteDocument(companyId, project.id, documentId)
+
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(projectId || ''),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byId(documentId),
+      })
 
       // Attempt authoritative refetch for immediate consistency
       try {

@@ -24,6 +24,14 @@ import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
 
+// React Query hooks for enhanced performance
+import {
+  useDocumentsByCompany,
+  useDocumentsByProject,
+} from '@/hooks/queries/useDocuments'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
+
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
@@ -32,6 +40,13 @@ const Documents = () => {
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
+
+  const queryClient = useQueryClient()
+
+  // React Query hooks - provide automatic caching and background refetching
+  const { data: documentsRQ = [], isLoading: isDocumentsLoadingRQ } = projectId
+    ? useDocumentsByProject(projectId)
+    : useDocumentsByCompany(companyId || '')
 
   const [documents, setDocuments] = React.useState<Document[]>([])
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
@@ -147,6 +162,17 @@ const Documents = () => {
   )
 
   // Load cached data immediately on mount
+  // Sync React Query data with local state
+  React.useEffect(() => {
+    if (documentsRQ && documentsRQ.length > 0 && !isDocumentsLoadingRQ) {
+      console.log('📋 React Query: Loading documents data')
+      setDocuments(documentsRQ)
+      setIsDocumentsLoading(false)
+    } else {
+      setIsDocumentsLoading(isDocumentsLoadingRQ)
+    }
+  }, [documentsRQ, isDocumentsLoadingRQ])
+
   React.useEffect(() => {
     if (companyId) {
       const cachedDocs = getCachedDocuments()
@@ -384,6 +410,17 @@ const Documents = () => {
         documentToDelete.projectId,
         documentId,
       )
+
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(documentToDelete.projectId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byCompany(companyId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byId(documentId),
+      })
 
       // Update state to remove the document
       setDocuments(prev => prev.filter(doc => doc.id !== documentId))
