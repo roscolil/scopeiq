@@ -1184,13 +1184,11 @@ const ProjectDetails = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                navigate(routes.company.projects.list(companyId || ''))
-              }
+              onClick={() => navigate(routes.company.home(companyId || ''))}
               className="hover:scale-105 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              Back to Dashboard
             </Button>
           </div>
 
