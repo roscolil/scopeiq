@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import {
@@ -57,10 +57,6 @@ import {
 } from '@/services/auth/user-activity'
 import { usePrefetch } from '@/utils/performance'
 
-// React Query hooks - replacing manual caching
-import { useCompany } from '@/hooks/queries/useCompanies'
-import { useActivities } from '@/hooks/queries/useActivities'
-
 const Dashboard = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -72,12 +68,6 @@ const Dashboard = () => {
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
-
-  // React Query hooks for company and activities
-  const { data: companyData, isLoading: isLoadingCompanyRQ } =
-    useCompany(companyId)
-  const { data: userActivitiesRQ = [], isLoading: isLoadingActivitiesRQ } =
-    useActivities(companyId)
 
   // Cache key for stats
   const STATS_CACHE_KEY = `dashboardStats_${companyId}`
@@ -299,24 +289,75 @@ const Dashboard = () => {
     }
   }, [companyId, getCachedDashboardProjects, getCachedDashboardDocuments])
 
-  // Use React Query data for company with fallback
+  // Load cached company data immediately on mount
   useEffect(() => {
-    if (companyId === 'default' || !companyData) {
-      const fallbackCompany = {
-        id: companyId,
-        name: user?.name?.split("'s")[0] || 'Your Company',
-        description:
-          companyId === 'default'
-            ? 'Default company'
-            : 'Company details not found',
+    if (companyId) {
+      const cached = getCachedCompany()
+      if (cached) {
+        setCompany(cached)
+        // Don't show loading if we have cached data
+      } else {
+        setIsLoadingCompany(true) // Only show loading if no cache
       }
-      setCompany(fallbackCompany)
-      setIsLoadingCompany(false)
-    } else {
-      setCompany(companyData)
-      setIsLoadingCompany(isLoadingCompanyRQ)
     }
-  }, [companyData, companyId, user?.name, isLoadingCompanyRQ])
+  }, [companyId, getCachedCompany])
+
+  // Load company data
+  useEffect(() => {
+    const loadCompany = async () => {
+      if (!companyId || companyId === 'default') {
+        const defaultCompany = {
+          id: companyId,
+          name: user?.name?.split("'s")[0] || 'Your Company',
+          description: 'Default company',
+        }
+        setCompany(defaultCompany)
+        setCachedCompanyData(defaultCompany)
+        setIsLoadingCompany(false)
+        return
+      }
+
+      // Check if we already have cached data and fresh data is loading in background
+      const cached = getCachedCompany()
+
+      try {
+        // If no cache, show loading state
+        if (!cached) {
+          setIsLoadingCompany(true)
+        }
+
+        const companyData = await companyService.getCompanyById(companyId)
+
+        if (companyData) {
+          setCompany(companyData)
+          setCachedCompanyData(companyData) // Cache the fresh data
+        } else {
+          // Fallback to derived name if company not found
+          const fallbackCompany = {
+            id: companyId,
+            name: user?.name?.split("'s")[0] || 'Your Company',
+            description: 'Company details not found',
+          }
+          setCompany(fallbackCompany)
+          setCachedCompanyData(fallbackCompany)
+        }
+      } catch (error) {
+        console.error('Error loading company:', error)
+        // Fallback to derived name on error
+        const errorCompany = {
+          id: companyId,
+          name: user?.name?.split("'s")[0] || 'Your Company',
+          description: 'Error loading company details',
+        }
+        setCompany(errorCompany)
+        setCachedCompanyData(errorCompany)
+      } finally {
+        setIsLoadingCompany(false)
+      }
+    }
+
+    loadCompany()
+  }, [companyId, user?.name, getCachedCompany, setCachedCompanyData])
 
   // Load projects and documents
   useEffect(() => {
@@ -464,11 +505,28 @@ const Dashboard = () => {
     setCachedDashboardDocuments,
   ])
 
-  // Use React Query data for activities
+  // Load user activities
   useEffect(() => {
-    setUserActivities(userActivitiesRQ.slice(0, 5)) // Limit to 5 recent activities
-    setIsLoadingActivities(isLoadingActivitiesRQ)
-  }, [userActivitiesRQ, isLoadingActivitiesRQ])
+    const loadActivities = async () => {
+      if (!companyId) return
+
+      try {
+        setIsLoadingActivities(true)
+        const activities = await userActivityService.getRecentActivities(
+          companyId,
+          5,
+        )
+        setUserActivities(activities)
+      } catch (error) {
+        console.error('Error loading user activities:', error)
+        setUserActivities([])
+      } finally {
+        setIsLoadingActivities(false)
+      }
+    }
+
+    loadActivities()
+  }, [companyId])
 
   const upcomingTasks = [
     {

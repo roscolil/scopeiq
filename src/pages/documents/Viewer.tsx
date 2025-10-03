@@ -70,13 +70,12 @@ const Viewer = () => {
     let isMounted = true
 
     const fetchData = async () => {
-      if (!documentId || !projectId) return
+      if (!documentId || !projectId) {
+        return
+      }
 
       try {
         setIsLoading(true)
-
-        // Add a small delay to prevent race conditions
-        await new Promise(resolve => setTimeout(resolve, 10))
 
         // Check if component is still mounted
         if (!isMounted) return
@@ -134,6 +133,7 @@ const Viewer = () => {
         if (!isMounted) return
 
         if (documentData) {
+          // Document service already returns fresh presigned URLs
           setDocument(documentData)
         } else {
           toast({

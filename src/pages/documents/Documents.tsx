@@ -24,6 +24,14 @@ import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
 
+// React Query hooks for enhanced performance
+import {
+  useDocumentsByCompany,
+  useDocumentsByProject,
+} from '@/hooks/queries/useDocuments'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
+
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
@@ -32,6 +40,13 @@ const Documents = () => {
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
+
+  const queryClient = useQueryClient()
+
+  // React Query hooks - provide automatic caching and background refetching
+  const { data: documentsRQ = [], isLoading: isDocumentsLoadingRQ } = projectId
+    ? useDocumentsByProject(projectId)
+    : useDocumentsByCompany(companyId || '')
 
   const [documents, setDocuments] = React.useState<Document[]>([])
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
@@ -147,6 +162,21 @@ const Documents = () => {
   )
 
   // Load cached data immediately on mount
+  // Sync React Query data with local state
+  React.useEffect(() => {
+    if (documentsRQ !== undefined && !isDocumentsLoadingRQ) {
+      console.log(
+        '📋 React Query: Loading documents data',
+        documentsRQ.length,
+        'documents',
+      )
+      setDocuments(documentsRQ)
+      setIsDocumentsLoading(false)
+    } else if (isDocumentsLoadingRQ) {
+      setIsDocumentsLoading(true)
+    }
+  }, [documentsRQ, isDocumentsLoadingRQ])
+
   React.useEffect(() => {
     if (companyId) {
       const cachedDocs = getCachedDocuments()
@@ -385,6 +415,17 @@ const Documents = () => {
         documentId,
       )
 
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(documentToDelete.projectId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byCompany(companyId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byId(documentId),
+      })
+
       // Update state to remove the document
       setDocuments(prev => prev.filter(doc => doc.id !== documentId))
 
@@ -495,21 +536,23 @@ const Documents = () => {
           {isDocumentsLoading ? (
             <DocumentListSkeleton itemCount={3} />
           ) : documents.length > 0 ? (
-            <DocumentList
-              documents={documents}
-              projectId={resolvedProject?.id || projectId}
-              companyId={companyId || 'default-company'}
-              projectName={projectName}
-              onDelete={handleDeleteDocument}
-              onRetryProcessing={async () => {
-                // Force refresh after retry
-                setTimeout(() => {
-                  window.location.reload()
-                }, 1000)
-              }}
-            />
+            <div className="content-fade-in">
+              <DocumentList
+                documents={documents}
+                projectId={resolvedProject?.id || projectId}
+                companyId={companyId || 'default-company'}
+                projectName={projectName}
+                onDelete={handleDeleteDocument}
+                onRetryProcessing={async () => {
+                  // Force refresh after retry
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 1000)
+                }}
+              />
+            </div>
           ) : (
-            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
+            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20 content-fade-in">
               <p className="text-gray-400 mb-4">
                 No documents in this project yet
               </p>
@@ -580,7 +623,7 @@ const Documents = () => {
                   itemCount={expectedProjectCount}
                 />
               ) : projectsWithDocuments.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-6 content-fade-in">
                   {projectsWithDocuments.map(project => (
                     <div key={project.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-4">
@@ -662,21 +705,23 @@ const Documents = () => {
               {isDocumentsLoading ? (
                 <DocumentListSkeleton itemCount={expectedDocumentCount} />
               ) : documents.length > 0 ? (
-                <DocumentList
-                  documents={documents}
-                  projectId=""
-                  companyId={companyId || 'default-company'}
-                  projectName=""
-                  onDelete={handleDeleteDocument}
-                  onRetryProcessing={async () => {
-                    // Force refresh after retry
-                    setTimeout(() => {
-                      window.location.reload()
-                    }, 1000)
-                  }}
-                />
+                <div className="content-fade-in">
+                  <DocumentList
+                    documents={documents}
+                    projectId=""
+                    companyId={companyId || 'default-company'}
+                    projectName=""
+                    onDelete={handleDeleteDocument}
+                    onRetryProcessing={async () => {
+                      // Force refresh after retry
+                      setTimeout(() => {
+                        window.location.reload()
+                      }, 1000)
+                    }}
+                  />
+                </div>
               ) : (
-                <div className="text-center p-8 border rounded-lg bg-secondary/20">
+                <div className="text-center p-8 border rounded-lg bg-secondary/20 content-fade-in">
                   <p className="text-gray-400 mb-4">No documents found</p>
                   <Button
                     onClick={() =>

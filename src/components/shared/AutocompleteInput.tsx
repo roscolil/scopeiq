@@ -50,7 +50,6 @@ export const AutocompleteInput = forwardRef<
 
     // Use formatted_address which is more reliable for autocomplete
     const selectedAddress = place.formatted_address || place.name || ''
-    console.log('Google Places selected:', selectedAddress)
 
     // Update the value immediately to prevent form validation issues
     onChange(selectedAddress)
@@ -66,7 +65,14 @@ export const AutocompleteInput = forwardRef<
     }
   }
 
-  if (loadError) return <div>Error loading maps</div>
+  if (loadError) {
+    console.error('❌ Google Places: Load error:', loadError)
+    return (
+      <div className="text-red-500 text-sm p-2 border border-red-300 rounded">
+        Error loading Google Maps: {loadError.message}
+      </div>
+    )
+  }
   if (!isLoaded)
     return (
       <div className="flex justify-center items-center py-4">

@@ -1,40 +1,98 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface SkeletonProps {
   itemCount?: number
 }
 
+// Enhanced skeleton with shimmer effect and stagger animation
+const EnhancedSkeleton = ({
+  className,
+  delay = 0,
+}: {
+  className?: string
+  delay?: number
+}) => {
+  return (
+    <Skeleton
+      className={cn(
+        'relative overflow-hidden',
+        'before:absolute before:inset-0',
+        'before:-translate-x-full',
+        'before:animate-[shimmer_2s_infinite]',
+        'before:bg-gradient-to-r',
+        'before:from-transparent before:via-white/10 before:to-transparent',
+        className,
+      )}
+      style={{
+        animationDelay: `${delay}ms`,
+        opacity: 0,
+        animation: `fadeIn 0.3s ease-in ${delay}ms forwards`,
+      }}
+    />
+  )
+}
+
+// Staggered container for progressive loading
+const StaggerContainer = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) => {
+  return <div className={cn('space-y-4', className)}>{children}</div>
+}
+
 export const DocumentListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
   return (
-    <div className="grid grid-cols-1 gap-4">
+    <StaggerContainer className="grid grid-cols-1 gap-4">
       {Array.from({ length: itemCount }).map((_, index) => (
         <Card key={index} className="overflow-hidden">
           <CardHeader className="p-4 pb-0">
             <div className="flex justify-between items-start">
               <div className="flex gap-3">
                 {/* File icon skeleton */}
-                <Skeleton className="h-8 w-8 rounded" />
+                <EnhancedSkeleton
+                  className="h-8 w-8 rounded"
+                  delay={index * 50}
+                />
                 <div className="space-y-2">
                   {/* Document title skeleton */}
-                  <Skeleton className="h-4 w-[200px]" />
+                  <EnhancedSkeleton
+                    className="h-4 w-[200px]"
+                    delay={index * 50 + 25}
+                  />
                   {/* Document metadata skeleton (size • date) */}
-                  <Skeleton className="h-3 w-[120px]" />
+                  <EnhancedSkeleton
+                    className="h-3 w-[120px]"
+                    delay={index * 50 + 50}
+                  />
                 </div>
               </div>
               {/* More options dropdown skeleton */}
-              <Skeleton className="h-8 w-8 rounded" />
+              <EnhancedSkeleton
+                className="h-8 w-8 rounded"
+                delay={index * 50 + 75}
+              />
             </div>
           </CardHeader>
           <CardFooter className="p-4 pt-0 flex justify-between items-center">
             {/* Status badge skeleton */}
-            <Skeleton className="h-6 w-20 rounded-full" />
+            <EnhancedSkeleton
+              className="h-6 w-20 rounded-full"
+              delay={index * 50 + 100}
+            />
             {/* View button skeleton */}
-            <Skeleton className="h-8 w-16 rounded" />
+            <EnhancedSkeleton
+              className="h-8 w-16 rounded"
+              delay={index * 50 + 125}
+            />
           </CardFooter>
         </Card>
       ))}
-    </div>
+    </StaggerContainer>
   )
 }
 
@@ -49,34 +107,67 @@ export const ProjectListSkeleton = ({ itemCount = 3 }: SkeletonProps) => {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-lg" />
+                <EnhancedSkeleton
+                  className="h-9 w-9 rounded-lg"
+                  delay={index * 100}
+                />
                 <div className="space-y-2">
-                  <Skeleton className="h-5 w-[160px]" />
+                  <EnhancedSkeleton
+                    className="h-5 w-[160px]"
+                    delay={index * 100 + 50}
+                  />
                   <div className="flex items-center gap-2">
-                    <Skeleton className="h-2 w-2 rounded-full" />
-                    <Skeleton className="h-3 w-[50px]" />
+                    <EnhancedSkeleton
+                      className="h-2 w-2 rounded-full"
+                      delay={index * 100 + 75}
+                    />
+                    <EnhancedSkeleton
+                      className="h-3 w-[50px]"
+                      delay={index * 100 + 100}
+                    />
                   </div>
                 </div>
               </div>
-              <Skeleton className="h-8 w-8 rounded" />
+              <EnhancedSkeleton
+                className="h-8 w-8 rounded"
+                delay={index * 100 + 125}
+              />
             </div>
           </CardHeader>
 
           <CardContent className="pb-3">
-            <Skeleton className="h-3 w-full mb-2" />
-            <Skeleton className="h-3 w-[80%] mb-4" />
+            <EnhancedSkeleton
+              className="h-3 w-full mb-2"
+              delay={index * 100 + 150}
+            />
+            <EnhancedSkeleton
+              className="h-3 w-[80%] mb-4"
+              delay={index * 100 + 175}
+            />
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-4" />
-                <Skeleton className="h-4 w-[100px]" />
+                <EnhancedSkeleton
+                  className="h-4 w-4"
+                  delay={index * 100 + 200}
+                />
+                <EnhancedSkeleton
+                  className="h-4 w-[100px]"
+                  delay={index * 100 + 225}
+                />
               </div>
-              <Skeleton className="h-3 w-[120px]" />
+              <EnhancedSkeleton
+                className="h-3 w-[120px]"
+                delay={index * 100 + 250}
+              />
             </div>
           </CardContent>
 
           <CardFooter>
-            <Skeleton className="h-8 w-full rounded" />
+            <EnhancedSkeleton
+              className="h-8 w-full rounded"
+              delay={index * 100 + 275}
+            />
           </CardFooter>
         </Card>
       ))}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
@@ -47,6 +47,10 @@ import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentDeletionEvents } from '@/services/utils/document-events'
 
+// React Query - using only for cache invalidation, not for fetching
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
+
 // Component
 const ProjectDetails = () => {
   const navigate = useNavigate()
@@ -54,7 +58,12 @@ const ProjectDetails = () => {
     companyId: string
     projectId: string
   }>()
+
   const isMobile = useIsMobile()
+  const queryClient = useQueryClient()
+
+  // Note: Using queryClient only for cache invalidation
+  // Keeping existing manual fetch logic for reliability
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -366,68 +375,66 @@ const ProjectDetails = () => {
       projectDocuments?.some(doc => doc.status === 'processing') || false,
   })
 
-  // Cache keys
-  const PROJECT_CACHE_KEY = `project_${projectId}`
-  const DOCUMENTS_CACHE_KEY = `documents_${projectId}`
-
   // Caching utilities
   const getCachedProject = useCallback(() => {
-    const cached = localStorage.getItem(PROJECT_CACHE_KEY)
+    if (!projectId) return null
+    const cached = localStorage.getItem(`project_${projectId}`)
     if (cached) {
       const { data, timestamp } = JSON.parse(cached)
       const isStale = Date.now() - timestamp > 5 * 60 * 1000 // 5 minutes
       return { data: data as Project, isStale }
     }
     return null
-  }, [PROJECT_CACHE_KEY])
+  }, [projectId])
 
   const setCachedProjectData = useCallback(
     (data: Project) => {
+      if (!projectId) return
       localStorage.setItem(
-        PROJECT_CACHE_KEY,
+        `project_${projectId}`,
         JSON.stringify({
           data,
           timestamp: Date.now(),
         }),
       )
     },
-    [PROJECT_CACHE_KEY],
+    [projectId],
   )
 
   const getCachedDocuments = useCallback(() => {
-    const cached = localStorage.getItem(DOCUMENTS_CACHE_KEY)
+    if (!projectId) return null
+    const cached = localStorage.getItem(`documents_${projectId}`)
     if (cached) {
       const { data, timestamp } = JSON.parse(cached)
       // Reduce cache validity to 2 minutes for documents to ensure fresher data
       if (Date.now() - timestamp < 2 * 60 * 1000) {
-        console.log('📋 Using cached documents data')
         return { data, isStale: false }
       } else {
-        console.log('📋 Cached documents data is stale, will refresh')
         return { data, isStale: true }
       }
     }
-    console.log('📋 No cached documents data found')
     return null
-  }, [DOCUMENTS_CACHE_KEY])
+  }, [projectId])
 
   const setCachedDocumentsData = useCallback(
     (data: Document[]) => {
+      if (!projectId) return
       localStorage.setItem(
-        DOCUMENTS_CACHE_KEY,
+        `documents_${projectId}`,
         JSON.stringify({
           data,
           timestamp: Date.now(),
         }),
       )
     },
-    [DOCUMENTS_CACHE_KEY],
+    [projectId],
   )
 
   const clearCache = useCallback(() => {
-    localStorage.removeItem(PROJECT_CACHE_KEY)
-    localStorage.removeItem(DOCUMENTS_CACHE_KEY)
-  }, [PROJECT_CACHE_KEY, DOCUMENTS_CACHE_KEY])
+    if (!projectId) return
+    localStorage.removeItem(`project_${projectId}`)
+    localStorage.removeItem(`documents_${projectId}`)
+  }, [projectId])
 
   // Listen for document deletion events (emitted from viewer) to prune list immediately
   useEffect(() => {
@@ -436,7 +443,9 @@ const ProjectDetails = () => {
       setProjectDocuments(prev => prev.filter(d => d.id !== evt.documentId))
       try {
         // Invalidate cached documents for this project
-        localStorage.removeItem(DOCUMENTS_CACHE_KEY)
+        if (project?.id) {
+          localStorage.removeItem(`documents_${project.id}`)
+        }
       } catch (e) {
         /* ignore */
       }
@@ -472,25 +481,22 @@ const ProjectDetails = () => {
     return () => {
       unsubscribe()
     }
-  }, [project?.id, DOCUMENTS_CACHE_KEY, setCachedDocumentsData])
+  }, [project?.id, setCachedDocumentsData])
 
   // Load cached data immediately on mount
   useEffect(() => {
     const cachedProject = getCachedProject()
     if (cachedProject && !cachedProject.isStale) {
-      console.log('🏗️ Loading cached project data')
       setProject(cachedProject.data)
       setIsProjectLoading(false)
     }
 
     const cachedDocuments = getCachedDocuments()
     if (cachedDocuments && !cachedDocuments.isStale) {
-      console.log('📋 Loading cached documents data')
       setProjectDocuments(cachedDocuments.data || [])
       setIsDocumentsLoading(false)
     } else if (cachedDocuments && cachedDocuments.isStale) {
       // Show stale data immediately but mark for refresh
-      console.log('📋 Loading stale cached documents data, will refresh soon')
       setProjectDocuments(cachedDocuments.data || [])
       setIsDocumentsLoading(true) // Keep loading state to trigger refresh
     }
@@ -506,15 +512,7 @@ const ProjectDetails = () => {
       const shouldRefreshProject = !cachedProject || cachedProject.isStale
       const shouldRefreshDocuments = !cachedDocuments || cachedDocuments.isStale
 
-      console.log('🔍 Cache status:', {
-        shouldRefreshProject,
-        shouldRefreshDocuments,
-        hasCachedProject: !!cachedProject,
-        hasCachedDocuments: !!cachedDocuments,
-      })
-
       if (!shouldRefreshProject && !shouldRefreshDocuments) {
-        console.log('✅ Using cached data, no refresh needed')
         return // No need to refresh
       }
 
@@ -526,57 +524,59 @@ const ProjectDetails = () => {
           setIsDocumentsLoading(true)
         }
 
+        // Step 1: Resolve project slug to get actual project ID
         const projectData = await projectService.resolveProject(projectId)
 
-        if (projectData) {
-          // Transform data to our Project type
-          const transformedProject: Project = {
-            id: projectData.id,
-            name: projectData.name || 'Untitled Project',
-            description: projectData.description,
-            createdAt: projectData.createdAt,
-            updatedAt: projectData.updatedAt,
-            companyId: companyId || projectData.companyId,
-          }
-
-          // Cache and update project data
-          setCachedProjectData(transformedProject)
-          setProject(transformedProject)
-          setIsProjectLoading(false)
-
-          const documents = await documentService.getDocumentsByProject(
-            projectData.id,
-          )
-          const transformedDocuments: Document[] = (documents || []).map(
-            doc => ({
-              id: doc.id,
-              name: doc.name || 'Untitled Document',
-              type: doc.type || 'unknown',
-              size:
-                typeof doc.size === 'number'
-                  ? doc.size
-                  : parseInt(String(doc.size)) || 0,
-              status: doc.status || 'processing',
-              url: doc.url,
-              thumbnailUrl: doc.thumbnailUrl,
-              projectId: doc.projectId,
-              content: doc.content,
-              createdAt: doc.createdAt,
-              updatedAt: doc.updatedAt,
-            }),
-          )
-
-          // Cache and update documents data
-          setCachedDocumentsData(transformedDocuments)
-          setProjectDocuments(transformedDocuments)
-          setIsDocumentsLoading(false)
-        } else {
-          // Set project to null or show error state
+        if (!projectData) {
           setProject(null)
           setProjectDocuments([])
           setIsProjectLoading(false)
           setIsDocumentsLoading(false)
+          return
         }
+
+        // Step 2: Fetch documents using the ACTUAL project ID (not slug)
+        const documents = await documentService.getDocumentsByProject(
+          projectData.id,
+        )
+
+        // Transform data to our Project type
+        const transformedProject: Project = {
+          id: projectData.id,
+          name: projectData.name || 'Untitled Project',
+          description: projectData.description,
+          createdAt: projectData.createdAt,
+          updatedAt: projectData.updatedAt,
+          companyId: companyId || projectData.companyId,
+        }
+
+        // Cache and update project data
+        setCachedProjectData(transformedProject)
+        setProject(transformedProject)
+        setIsProjectLoading(false)
+
+        // Transform documents data
+        const transformedDocuments: Document[] = (documents || []).map(doc => ({
+          id: doc.id,
+          name: doc.name || 'Untitled Document',
+          type: doc.type || 'unknown',
+          size:
+            typeof doc.size === 'number'
+              ? doc.size
+              : parseInt(String(doc.size)) || 0,
+          status: doc.status || 'processing',
+          url: doc.url,
+          thumbnailUrl: doc.thumbnailUrl,
+          projectId: doc.projectId,
+          content: doc.content,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        }))
+
+        // Cache and update documents data
+        setCachedDocumentsData(transformedDocuments)
+        setProjectDocuments(transformedDocuments)
+        setIsDocumentsLoading(false)
       } catch (error) {
         console.error('Error fetching project data:', error)
         toast({
@@ -810,6 +810,14 @@ const ProjectDetails = () => {
 
       await projectService.deleteProject(companyId!, project.id)
 
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.byCompany(companyId || ''),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.projects.byId(project.id),
+      })
+
       toast({
         title: 'Project deleted',
         description: 'Your project has been deleted successfully.',
@@ -909,6 +917,11 @@ const ProjectDetails = () => {
     // Set cache with fresh data for immediate use
     setCachedDocumentsData(updatedDocuments)
 
+    // Invalidate React Query cache to trigger background refetch
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.documents.byProject(projectId || ''),
+    })
+
     // For batch uploads we no longer auto-close here; rely on onBatchComplete.
     if (existingDocumentIndex < 0) {
       // Delayed refresh disabled: polling + optimistic update handle state.
@@ -928,6 +941,11 @@ const ProjectDetails = () => {
     try {
       // Clear cache first
       clearCache()
+
+      // Invalidate React Query cache
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(projectId || ''),
+      })
 
       // Fetch fresh data from database
       const documents = await documentService.getDocumentsByProject(project.id)
@@ -987,6 +1005,14 @@ const ProjectDetails = () => {
       }
 
       await documentService.deleteDocument(companyId, project.id, documentId)
+
+      // Invalidate React Query cache
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byProject(projectId || ''),
+      })
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.documents.byId(documentId),
+      })
 
       // Attempt authoritative refetch for immediate consistency
       try {
@@ -1158,13 +1184,11 @@ const ProjectDetails = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                navigate(routes.company.projects.list(companyId || ''))
-              }
+              onClick={() => navigate(routes.company.home(companyId || ''))}
               className="hover:scale-105 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              Back to Dashboard
             </Button>
           </div>
 
@@ -1447,23 +1471,25 @@ const ProjectDetails = () => {
           {isDocumentsLoading ? (
             <DocumentListSkeleton itemCount={3} />
           ) : projectDocuments.length > 0 ? (
-            <DocumentList
-              documents={projectDocuments}
-              onDelete={handleDeleteDocument}
-              onCancelProcessing={handleCancelProcessing}
-              onRetryProcessing={async () => {
-                // Force refresh of documents after retry by clearing cache
-                clearCache()
-                setTimeout(() => {
-                  window.location.reload()
-                }, 1000)
-              }}
-              projectId={project.id}
-              companyId={companyId || 'default-company'}
-              projectName={project.name}
-            />
+            <div className="content-fade-in">
+              <DocumentList
+                documents={projectDocuments}
+                onDelete={handleDeleteDocument}
+                onCancelProcessing={handleCancelProcessing}
+                onRetryProcessing={async () => {
+                  // Force refresh of documents after retry by clearing cache
+                  clearCache()
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 1000)
+                }}
+                projectId={project.id}
+                companyId={companyId || 'default-company'}
+                projectName={project.name}
+              />
+            </div>
           ) : (
-            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
+            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20 content-fade-in">
               <p className="text-gray-400 mb-4">
                 No documents in this project yet
               </p>
