@@ -13,7 +13,7 @@ export function useCompany(companyId: string) {
   return useQuery({
     queryKey: queryKeys.companies.byId(companyId),
     queryFn: () => companyService.getCompanyById(companyId),
-    enabled: !!companyId && companyId !== 'default',
+    enabled: !!companyId && companyId !== 'default', // Skip query for 'default' - no real company
     staleTime: 10 * 60 * 1000, // 10 minutes - companies change less frequently
   })
 }

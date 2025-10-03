@@ -70,7 +70,20 @@ const Viewer = () => {
     let isMounted = true
 
     const fetchData = async () => {
-      if (!documentId || !projectId) return
+      if (!documentId || !projectId) {
+        console.log('Viewer: Missing params', {
+          documentId,
+          projectId,
+          companyId,
+        })
+        return
+      }
+
+      console.log('📄 Viewer: Starting to fetch document', {
+        documentId,
+        projectId,
+        companyId,
+      })
 
       try {
         setIsLoading(true)
@@ -82,36 +95,62 @@ const Viewer = () => {
         if (!isMounted) return
 
         // First resolve the project slug to get the actual project
+        console.log('🔍 Viewer: Resolving project...', projectId)
         const projectData = await projectService.resolveProject(projectId!)
 
         if (!isMounted) return
 
         if (!projectData) {
+          console.warn('Viewer: Project not found', projectId)
           setProjectName('Unknown Project')
           setIsLoading(false)
           return
         }
 
+        console.log('✅ Viewer: Project resolved', {
+          id: projectData.id,
+          name: projectData.name,
+        })
         setProjectName(projectData.name)
         setResolvedProject({ id: projectData.id, name: projectData.name })
 
         // Now try to get the document by ID first
         let documentData = null
+        console.log('🔍 Viewer: Trying direct document lookup...', {
+          companyId,
+          projectId: projectData.id,
+          documentId,
+        })
         try {
           documentData = await documentService.getDocument(
             companyId!,
             projectData.id,
             documentId!,
           )
+          if (documentData) {
+            console.log(
+              '✅ Viewer: Document found by direct ID',
+              documentData.name,
+            )
+          }
         } catch (error) {
           console.error('Viewer: Error in getDocument call:', error)
         }
 
         // If not found by direct ID, search by slug/name in the project
         if (!documentData) {
+          console.log(
+            '🔍 Viewer: Document not found by ID, searching by slug...',
+          )
           try {
             const allProjectDocuments =
               await documentService.getDocumentsByProject(projectData.id)
+
+            console.log(
+              '📋 Viewer: Found',
+              allProjectDocuments.length,
+              'documents in project',
+            )
 
             // Create slug from document name and compare
             documentData = allProjectDocuments.find(doc => {
@@ -124,8 +163,39 @@ const Viewer = () => {
               const matchesNavigation = navigationSlug === documentId
               const matchesId = doc.id === documentId
 
-              return matchesViewer || matchesNavigation || matchesId
+              const matches = matchesViewer || matchesNavigation || matchesId
+              if (matches) {
+                console.log('✅ Viewer: Document matched!', {
+                  documentName: doc.name,
+                  matchType: matchesId
+                    ? 'ID'
+                    : matchesNavigation
+                      ? 'navigation slug'
+                      : 'viewer slug',
+                })
+              }
+              return matches
             })
+
+            if (documentData) {
+              console.log(
+                '✅ Viewer: Document found by slug',
+                documentData.name,
+              )
+            } else {
+              console.warn(
+                '❌ Viewer: No document matched. Searched documentId:',
+                documentId,
+              )
+              console.log(
+                'Available documents:',
+                allProjectDocuments.map(d => ({
+                  id: d.id,
+                  name: d.name,
+                  slug: createSlug(d.name),
+                })),
+              )
+            }
           } catch (error) {
             console.error('Viewer: Error searching documents by slug:', error)
           }
@@ -134,8 +204,40 @@ const Viewer = () => {
         if (!isMounted) return
 
         if (documentData) {
-          setDocument(documentData)
+          console.log('✅ Viewer: Setting document', documentData)
+
+          // Check if the S3 URL might be expired and refresh it
+          if (documentData.url) {
+            console.log('🔗 Viewer: Document has URL, checking if fresh...')
+            // Refresh the document to get a fresh presigned URL
+            try {
+              const refreshedDoc = await documentService.getDocument(
+                companyId!,
+                projectData.id,
+                documentData.id,
+              )
+              if (refreshedDoc && refreshedDoc.url) {
+                console.log('✅ Viewer: URL refreshed successfully')
+                setDocument(refreshedDoc)
+              } else {
+                console.log(
+                  '⚠️ Viewer: Using original document (refresh failed)',
+                )
+                setDocument(documentData)
+              }
+            } catch (refreshError) {
+              console.warn(
+                'Viewer: URL refresh failed, using original:',
+                refreshError,
+              )
+              setDocument(documentData)
+            }
+          } else {
+            console.log('⚠️ Viewer: Document has no URL')
+            setDocument(documentData)
+          }
         } else {
+          console.error('❌ Viewer: Document not found after all attempts')
           toast({
             title: 'Document not found',
             description: 'The requested document could not be found.',

@@ -20,6 +20,7 @@ import {
   useDeviceScrollFixes,
 } from '@/hooks/use-device-fixes'
 import { initializeMobileDeviceFixes } from '@/utils/mobile-device-fixes'
+import { useSessionExpiration } from '@/hooks/useSessionExpiration'
 
 // Eagerly load critical components
 // HomePage now wrapped by RootRoute for conditional dashboard redirect
@@ -98,6 +99,9 @@ const App = () => {
   useDeviceFixes()
   useDeviceLayoutFixes()
   useDeviceScrollFixes()
+
+  // Listen for session expiration events and auto sign-out
+  useSessionExpiration()
 
   useEffect(() => {
     // Initialize mobile device fixes immediately

@@ -16,7 +16,7 @@ export function useActivities(companyId: string) {
   return useQuery({
     queryKey: queryKeys.activities.byCompany(companyId),
     queryFn: () => userActivityService.getActivitiesByCompany(companyId),
-    enabled: !!companyId && companyId !== 'default',
+    enabled: !!companyId && companyId !== 'default', // Skip query for 'default'
     staleTime: 2 * 60 * 1000, // 2 minutes - activities change more frequently
   })
 }

@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::scopeiq-fileupload",
+        "arn:aws:s3:::scopeiq-fileupload/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["cognito-idp:*"],
+      "Resource": [
+        "arn:aws:cognito-idp:ap-southeast-2:*:userpool/ap-southeast-2_5YHqOMRto"
+      ]
+    }
+  ]
+}

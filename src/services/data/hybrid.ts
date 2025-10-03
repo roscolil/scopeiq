@@ -221,23 +221,32 @@ export const hybridDocumentService = {
 
       if (dbDocument.s3Key) {
         try {
+          console.log(
+            '🔐 Hybrid: Generating fresh presigned URL for s3Key:',
+            dbDocument.s3Key,
+          )
           // Always generate fresh pre-signed URLs for security and to avoid expiration
           s3Url = await getSignedDownloadUrl(dbDocument.s3Key)
+          console.log(
+            '✅ Hybrid: Fresh URL generated:',
+            s3Url.substring(0, 100) + '...',
+          )
 
           // Update the database with the new URL (async, don't wait)
           databaseDocumentService
             .updateDocument(documentId, { s3Url })
             .catch(console.error)
         } catch (error) {
-          console.warn(
-            `Failed to generate S3 URL for ${dbDocument.s3Key}:`,
+          console.error(
+            `❌ Hybrid: Failed to generate S3 URL for ${dbDocument.s3Key}:`,
             error,
           )
           // Keep the existing URL as fallback (though it might not work)
+          console.warn('⚠️ Hybrid: Using old URL from database as fallback')
         }
       } else {
         console.warn(
-          `Document ${documentId} has no S3 key, cannot generate pre-signed URL`,
+          `❌ Hybrid: Document ${documentId} has no S3 key, cannot generate pre-signed URL`,
         )
       }
 

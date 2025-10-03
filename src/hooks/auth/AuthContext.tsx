@@ -24,6 +24,7 @@ import {
   signOut as amplifySignOut,
   getCurrentUser,
   fetchUserAttributes,
+  fetchAuthSession,
   resendSignUpCode,
   confirmSignUp,
   resetPassword as amplifyResetPassword,
@@ -84,18 +85,24 @@ const AuthActionsContext = createContext<AuthActions | null>(null)
 
 const AUTH_CACHE_KEY = 'authState'
 const AUTH_TIMESTAMP_KEY = 'authTimestamp'
+const TOKEN_ISSUED_KEY = 'tokenIssuedAt'
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 hours
+const TOKEN_MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours - must match Cognito config
+const TOKEN_CHECK_INTERVAL = 60 * 1000 // Check token validity every 1 minute
 
-function storeAuthState(userData: User) {
+function storeAuthState(userData: User, tokenIssuedAt?: string) {
   const userJson = JSON.stringify(userData)
   const timestamp = Date.now().toString()
+  const issuedAt = tokenIssuedAt || new Date().toISOString()
 
   try {
     // Store in both session and local storage for redundancy
     sessionStorage.setItem(AUTH_CACHE_KEY, userJson)
     sessionStorage.setItem(AUTH_TIMESTAMP_KEY, timestamp)
+    sessionStorage.setItem(TOKEN_ISSUED_KEY, issuedAt)
     localStorage.setItem(AUTH_CACHE_KEY, userJson)
     localStorage.setItem(AUTH_TIMESTAMP_KEY, timestamp)
+    localStorage.setItem(TOKEN_ISSUED_KEY, issuedAt)
   } catch (error) {
     console.warn('Failed to cache auth state:', error)
   }
@@ -130,10 +137,64 @@ function clearAuthState() {
   try {
     sessionStorage.removeItem(AUTH_CACHE_KEY)
     sessionStorage.removeItem(AUTH_TIMESTAMP_KEY)
+    sessionStorage.removeItem(TOKEN_ISSUED_KEY)
     localStorage.removeItem(AUTH_CACHE_KEY)
     localStorage.removeItem(AUTH_TIMESTAMP_KEY)
+    localStorage.removeItem(TOKEN_ISSUED_KEY)
   } catch (error) {
     console.warn('Failed to clear auth state:', error)
+  }
+}
+
+/**
+ * Validate that the Cognito token is still valid (not expired)
+ * Returns true if valid, false if expired
+ */
+async function validateToken(): Promise<boolean> {
+  try {
+    const session = await fetchAuthSession()
+
+    // Check if we have valid tokens
+    if (!session.tokens?.idToken || !session.tokens?.accessToken) {
+      console.warn('No valid tokens found in session')
+      return false
+    }
+
+    // Check token expiration from JWT payload
+    const idToken = session.tokens.idToken
+    const tokenIssuedAt = idToken.payload['custom:tokenIssuedAt'] as
+      | string
+      | undefined
+
+    // If token has custom timestamp, validate against 24-hour limit
+    if (tokenIssuedAt) {
+      const issuedTime = new Date(tokenIssuedAt).getTime()
+      const tokenAge = Date.now() - issuedTime
+
+      if (tokenAge > TOKEN_MAX_AGE) {
+        console.warn(
+          'Token has exceeded 24-hour maximum age:',
+          tokenAge / 1000 / 60 / 60,
+          'hours',
+        )
+        return false
+      }
+    }
+
+    // Check token expiration time from JWT
+    const expirationTime = (idToken.payload.exp as number) * 1000 // Convert to milliseconds
+    const currentTime = Date.now()
+
+    if (currentTime >= expirationTime) {
+      console.warn('Token has expired')
+      return false
+    }
+
+    // Token is valid
+    return true
+  } catch (error) {
+    console.warn('Token validation failed:', error)
+    return false
   }
 }
 
@@ -145,6 +206,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
+
+  // =========================================================================
+  // Token Validation & Auto Sign-Out
+  // =========================================================================
+
+  useEffect(() => {
+    // Periodic token validation - check every minute
+    const intervalId = setInterval(async () => {
+      if (!user) return
+
+      const isValid = await validateToken()
+
+      if (!isValid) {
+        console.warn('🔒 Token expired or invalid - automatically signing out')
+
+        // Auto sign-out
+        try {
+          await amplifySignOut()
+          setUser(null)
+          clearAuthState()
+
+          // Optional: Show a toast notification to the user
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('auth:session-expired', {
+                detail: {
+                  message: 'Your session has expired. Please sign in again.',
+                },
+              }),
+            )
+          }
+        } catch (error) {
+          console.error('Error during auto sign-out:', error)
+        }
+      }
+    }, TOKEN_CHECK_INTERVAL)
+
+    return () => clearInterval(intervalId)
+  }, [user])
 
   // =========================================================================
   // Initial Auth Check (on mount)
@@ -168,12 +268,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // No cache, do full auth check
       try {
-        const [amplifyUser, attrs] = await Promise.all([
+        // Validate token first
+        const isTokenValid = await validateToken()
+
+        if (!isTokenValid) {
+          console.warn(
+            'Token validation failed on initialization - signing out',
+          )
+          if (isMounted) {
+            setUser(null)
+            clearAuthState()
+            setIsLoading(false)
+            setIsInitialized(true)
+          }
+          return
+        }
+
+        const [amplifyUser, attrs, session] = await Promise.all([
           getCurrentUser(),
           fetchUserAttributes(),
+          fetchAuthSession(),
         ])
 
         if (!isMounted) return
+
+        // Extract token issue time from custom claims
+        const tokenIssuedAt = session.tokens?.idToken?.payload[
+          'custom:tokenIssuedAt'
+        ] as string | undefined
 
         const userData: User = {
           id: amplifyUser.userId,
@@ -186,7 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         setUser(userData)
-        storeAuthState(userData)
+        storeAuthState(userData, tokenIssuedAt)
 
         // Sync with database in background
         userService
@@ -219,12 +341,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const verifyAuthInBackground = async () => {
       try {
-        const [amplifyUser, attrs] = await Promise.all([
+        // First validate the token
+        const isTokenValid = await validateToken()
+
+        if (!isTokenValid) {
+          console.warn(
+            'Token validation failed during background check - signing out',
+          )
+          if (isMounted) {
+            setUser(null)
+            clearAuthState()
+          }
+          return
+        }
+
+        const [amplifyUser, attrs, session] = await Promise.all([
           getCurrentUser(),
           fetchUserAttributes(),
+          fetchAuthSession(),
         ])
 
         if (!isMounted) return
+
+        // Extract token issue time from custom claims
+        const tokenIssuedAt = session.tokens?.idToken?.payload[
+          'custom:tokenIssuedAt'
+        ] as string | undefined
 
         const userData: User = {
           id: amplifyUser.userId,
@@ -239,7 +381,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Update if changed
         setUser(prev => {
           if (JSON.stringify(prev) !== JSON.stringify(userData)) {
-            storeAuthState(userData)
+            storeAuthState(userData, tokenIssuedAt)
             return userData
           }
           return prev
@@ -283,10 +425,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const result = await amplifySignIn({ username: email, password })
 
         if (result.isSignedIn) {
-          const [amplifyUser, attrs] = await Promise.all([
+          const [amplifyUser, attrs, session] = await Promise.all([
             getCurrentUser(),
             fetchUserAttributes(),
+            fetchAuthSession(),
           ])
+
+          // Validate token immediately after sign-in
+          const isTokenValid = await validateToken()
+          if (!isTokenValid) {
+            throw new Error('Token validation failed immediately after sign-in')
+          }
+
+          // Extract token issue time from custom claims
+          const tokenIssuedAt = session.tokens?.idToken?.payload[
+            'custom:tokenIssuedAt'
+          ] as string | undefined
 
           const dbUser = await userService.createOrSyncUser()
 
@@ -300,7 +454,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
 
           setUser(userData)
-          storeAuthState(userData)
+          storeAuthState(userData, tokenIssuedAt)
+
+          console.log(
+            '✅ User signed in successfully. Token will expire in 24 hours.',
+          )
 
           return userData
         } else {

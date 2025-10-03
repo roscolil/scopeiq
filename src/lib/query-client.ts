@@ -16,8 +16,8 @@ export const queryClient = new QueryClient({
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Refetch on window focus for data freshness
       refetchOnWindowFocus: true,
-      // Don't refetch on mount if data is still fresh
-      refetchOnMount: false,
+      // Refetch on mount if data is stale (important for navigation back)
+      refetchOnMount: 'always',
       // Network mode - online, always, or offlineFirst
       networkMode: 'online',
     },

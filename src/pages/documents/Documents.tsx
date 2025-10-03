@@ -164,12 +164,16 @@ const Documents = () => {
   // Load cached data immediately on mount
   // Sync React Query data with local state
   React.useEffect(() => {
-    if (documentsRQ && documentsRQ.length > 0 && !isDocumentsLoadingRQ) {
-      console.log('📋 React Query: Loading documents data')
+    if (documentsRQ !== undefined && !isDocumentsLoadingRQ) {
+      console.log(
+        '📋 React Query: Loading documents data',
+        documentsRQ.length,
+        'documents',
+      )
       setDocuments(documentsRQ)
       setIsDocumentsLoading(false)
-    } else {
-      setIsDocumentsLoading(isDocumentsLoadingRQ)
+    } else if (isDocumentsLoadingRQ) {
+      setIsDocumentsLoading(true)
     }
   }, [documentsRQ, isDocumentsLoadingRQ])
 

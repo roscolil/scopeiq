@@ -23,14 +23,30 @@ export const AutocompleteInput = forwardRef<
   AutocompleteInputProps
 >(({ value, onChange, onBlur, name }, ref) => {
   const isMobile = useIsMobile()
+  const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY
+
+  console.log('🗺️ Google Places: API Key present?', !!apiKey)
+  console.log(
+    '🗺️ Google Places: API Key (first 10 chars):',
+    apiKey?.substring(0, 10),
+  )
+
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY,
+    googleMapsApiKey: apiKey,
     libraries,
   })
+
+  console.log(
+    '🗺️ Google Places: isLoaded =',
+    isLoaded,
+    'loadError =',
+    loadError,
+  )
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    console.log('✅ Google Places: Autocomplete loaded successfully')
     autocompleteRef.current = autocomplete
 
     // Configure autocomplete options for better mobile experience
@@ -66,7 +82,14 @@ export const AutocompleteInput = forwardRef<
     }
   }
 
-  if (loadError) return <div>Error loading maps</div>
+  if (loadError) {
+    console.error('❌ Google Places: Load error:', loadError)
+    return (
+      <div className="text-red-500 text-sm p-2 border border-red-300 rounded">
+        Error loading Google Maps: {loadError.message}
+      </div>
+    )
+  }
   if (!isLoaded)
     return (
       <div className="flex justify-center items-center py-4">

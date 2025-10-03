@@ -47,9 +47,7 @@ import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentDeletionEvents } from '@/services/utils/document-events'
 
-// React Query hooks - optional performance enhancement
-import { useProject } from '@/hooks/queries/useProjects'
-import { useDocumentsByProject } from '@/hooks/queries/useDocuments'
+// React Query - using only for cache invalidation, not for fetching
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 
@@ -63,12 +61,8 @@ const ProjectDetails = () => {
   const isMobile = useIsMobile()
   const queryClient = useQueryClient()
 
-  // React Query hooks - provide automatic caching and background refetching
-  const { data: projectDataRQ, isLoading: isProjectLoadingRQ } = useProject(
-    projectId || '',
-  )
-  const { data: documentsDataRQ = [], isLoading: isDocumentsLoadingRQ } =
-    useDocumentsByProject(projectId || '')
+  // Note: Using queryClient only for cache invalidation
+  // Keeping existing manual fetch logic for reliability
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -488,26 +482,27 @@ const ProjectDetails = () => {
     }
   }, [project?.id, DOCUMENTS_CACHE_KEY, setCachedDocumentsData])
 
-  // Sync React Query data with local state
+  // Load cached data immediately on mount
   useEffect(() => {
-    if (projectDataRQ && !isProjectLoadingRQ) {
-      console.log('🏗️ React Query: Loading project data')
-      setProject(projectDataRQ)
+    const cachedProject = getCachedProject()
+    if (cachedProject && !cachedProject.isStale) {
+      console.log('🏗️ Loading cached project data')
+      setProject(cachedProject.data)
       setIsProjectLoading(false)
-    } else {
-      setIsProjectLoading(isProjectLoadingRQ)
     }
-  }, [projectDataRQ, isProjectLoadingRQ])
 
-  useEffect(() => {
-    if (documentsDataRQ && !isDocumentsLoadingRQ) {
-      console.log('📋 React Query: Loading documents data')
-      setProjectDocuments(documentsDataRQ)
+    const cachedDocuments = getCachedDocuments()
+    if (cachedDocuments && !cachedDocuments.isStale) {
+      console.log('📋 Loading cached documents data')
+      setProjectDocuments(cachedDocuments.data || [])
       setIsDocumentsLoading(false)
-    } else {
-      setIsDocumentsLoading(isDocumentsLoadingRQ)
+    } else if (cachedDocuments && cachedDocuments.isStale) {
+      // Show stale data immediately but mark for refresh
+      console.log('📋 Loading stale cached documents data, will refresh soon')
+      setProjectDocuments(cachedDocuments.data || [])
+      setIsDocumentsLoading(true) // Keep loading state to trigger refresh
     }
-  }, [documentsDataRQ, isDocumentsLoadingRQ])
+  }, [getCachedProject, getCachedDocuments])
 
   useEffect(() => {
     const fetchProjectData = async () => {

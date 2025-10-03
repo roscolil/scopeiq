@@ -95,12 +95,16 @@ const Projects = () => {
 
   // Sync React Query data with local state
   useEffect(() => {
-    if (projectsRQ && projectsRQ.length > 0 && !isLoadingRQ) {
-      console.log('📁 React Query: Loading projects data')
+    if (projectsRQ !== undefined && !isLoadingRQ) {
+      console.log(
+        '📁 React Query: Loading projects data',
+        projectsRQ.length,
+        'projects',
+      )
       setProjects(projectsRQ)
       setLoading(false)
-    } else {
-      setLoading(isLoadingRQ)
+    } else if (isLoadingRQ) {
+      setLoading(true)
     }
   }, [projectsRQ, isLoadingRQ])
 

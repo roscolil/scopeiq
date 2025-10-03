@@ -16,7 +16,7 @@ export function useDocumentsByCompany(companyId: string) {
   return useQuery({
     queryKey: queryKeys.documents.byCompany(companyId),
     queryFn: () => documentService.getAllDocuments(),
-    enabled: !!companyId && companyId !== 'default',
+    enabled: !!companyId, // Allow 'default' companyId
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

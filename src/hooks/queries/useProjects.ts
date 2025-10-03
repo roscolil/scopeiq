@@ -16,7 +16,7 @@ export function useProjects(companyId: string) {
   return useQuery({
     queryKey: queryKeys.projects.byCompany(companyId),
     queryFn: () => projectService.getProjects(),
-    enabled: !!companyId && companyId !== 'default',
+    enabled: !!companyId, // Allow 'default' companyId
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
