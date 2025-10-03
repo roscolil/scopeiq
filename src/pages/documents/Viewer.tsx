@@ -201,40 +201,9 @@ const Viewer = () => {
         if (!isMounted) return
 
         if (documentData) {
-          console.log('✅ Viewer: Setting document', documentData)
-
-          // Check if the S3 URL might be expired and refresh it
-          if (documentData.url) {
-            console.log('🔗 Viewer: Document has URL, checking if fresh...')
-            // Refresh the document to get a fresh presigned URL
-            try {
-              const refreshedDoc = await documentService.getDocument(
-                companyId!,
-                projectData.id,
-                documentData.id,
-              )
-              if (refreshedDoc && refreshedDoc.url) {
-                console.log('✅ Viewer: URL refreshed successfully')
-                setDocument(refreshedDoc)
-              } else {
-                console.log(
-                  '⚠️ Viewer: Using original document (refresh failed)',
-                )
-                setDocument(documentData)
-              }
-            } catch (refreshError) {
-              console.warn(
-                'Viewer: URL refresh failed, using original:',
-                refreshError,
-              )
-              setDocument(documentData)
-            }
-          } else {
-            console.log('⚠️ Viewer: Document has no URL')
-            setDocument(documentData)
-          }
+          // Document service already returns fresh presigned URLs
+          setDocument(documentData)
         } else {
-          console.error('❌ Viewer: Document not found after all attempts')
           toast({
             title: 'Document not found',
             description: 'The requested document could not be found.',

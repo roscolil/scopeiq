@@ -328,11 +328,13 @@ const Projects = () => {
           {loading ? (
             <ProjectListSkeleton itemCount={expectedProjectCount} />
           ) : (
-            <ProjectList
-              projects={projects}
-              companyId={(companyId || 'default-company').toLowerCase()}
-              onCreateProject={() => setIsDialogOpen(true)}
-            />
+            <div className="content-fade-in">
+              <ProjectList
+                projects={projects}
+                companyId={(companyId || 'default-company').toLowerCase()}
+                onCreateProject={() => setIsDialogOpen(true)}
+              />
+            </div>
           )}
         </div>
       </Layout>

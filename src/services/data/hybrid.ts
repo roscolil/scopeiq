@@ -146,10 +146,26 @@ export const hybridDocumentService = {
   // Get all documents for a project (read from DB)
   async getDocumentsByProject(projectId: string): Promise<HybridDocument[]> {
     try {
+      console.log('🔍 Hybrid: Fetching documents for projectId:', projectId)
+
       // Read from database for fast queries
       const dbDocuments =
         await databaseDocumentService.getDocumentsByProject(projectId)
       const companyId = await getCurrentCompanyId()
+
+      console.log(
+        '📋 Hybrid: Database returned',
+        dbDocuments.length,
+        'documents',
+      )
+      console.log(
+        '📄 Hybrid: Documents:',
+        dbDocuments.map(d => ({
+          id: d.id,
+          name: d.name,
+          projectId: d.projectId,
+        })),
+      )
 
       // Convert to expected format - skip URL generation on list load for performance
       // URLs will be refreshed when document is actually viewed

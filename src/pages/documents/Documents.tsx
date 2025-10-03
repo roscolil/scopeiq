@@ -536,21 +536,23 @@ const Documents = () => {
           {isDocumentsLoading ? (
             <DocumentListSkeleton itemCount={3} />
           ) : documents.length > 0 ? (
-            <DocumentList
-              documents={documents}
-              projectId={resolvedProject?.id || projectId}
-              companyId={companyId || 'default-company'}
-              projectName={projectName}
-              onDelete={handleDeleteDocument}
-              onRetryProcessing={async () => {
-                // Force refresh after retry
-                setTimeout(() => {
-                  window.location.reload()
-                }, 1000)
-              }}
-            />
+            <div className="content-fade-in">
+              <DocumentList
+                documents={documents}
+                projectId={resolvedProject?.id || projectId}
+                companyId={companyId || 'default-company'}
+                projectName={projectName}
+                onDelete={handleDeleteDocument}
+                onRetryProcessing={async () => {
+                  // Force refresh after retry
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 1000)
+                }}
+              />
+            </div>
           ) : (
-            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
+            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20 content-fade-in">
               <p className="text-gray-400 mb-4">
                 No documents in this project yet
               </p>
@@ -621,7 +623,7 @@ const Documents = () => {
                   itemCount={expectedProjectCount}
                 />
               ) : projectsWithDocuments.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-6 content-fade-in">
                   {projectsWithDocuments.map(project => (
                     <div key={project.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-center mb-4">
@@ -703,21 +705,23 @@ const Documents = () => {
               {isDocumentsLoading ? (
                 <DocumentListSkeleton itemCount={expectedDocumentCount} />
               ) : documents.length > 0 ? (
-                <DocumentList
-                  documents={documents}
-                  projectId=""
-                  companyId={companyId || 'default-company'}
-                  projectName=""
-                  onDelete={handleDeleteDocument}
-                  onRetryProcessing={async () => {
-                    // Force refresh after retry
-                    setTimeout(() => {
-                      window.location.reload()
-                    }, 1000)
-                  }}
-                />
+                <div className="content-fade-in">
+                  <DocumentList
+                    documents={documents}
+                    projectId=""
+                    companyId={companyId || 'default-company'}
+                    projectName=""
+                    onDelete={handleDeleteDocument}
+                    onRetryProcessing={async () => {
+                      // Force refresh after retry
+                      setTimeout(() => {
+                        window.location.reload()
+                      }, 1000)
+                    }}
+                  />
+                </div>
               ) : (
-                <div className="text-center p-8 border rounded-lg bg-secondary/20">
+                <div className="text-center p-8 border rounded-lg bg-secondary/20 content-fade-in">
                   <p className="text-gray-400 mb-4">No documents found</p>
                   <Button
                     onClick={() =>

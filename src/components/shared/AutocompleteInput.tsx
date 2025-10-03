@@ -23,30 +23,14 @@ export const AutocompleteInput = forwardRef<
   AutocompleteInputProps
 >(({ value, onChange, onBlur, name }, ref) => {
   const isMobile = useIsMobile()
-  const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY
-
-  console.log('🗺️ Google Places: API Key present?', !!apiKey)
-  console.log(
-    '🗺️ Google Places: API Key (first 10 chars):',
-    apiKey?.substring(0, 10),
-  )
-
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: apiKey,
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY,
     libraries,
   })
-
-  console.log(
-    '🗺️ Google Places: isLoaded =',
-    isLoaded,
-    'loadError =',
-    loadError,
-  )
 
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    console.log('✅ Google Places: Autocomplete loaded successfully')
     autocompleteRef.current = autocomplete
 
     // Configure autocomplete options for better mobile experience
@@ -66,7 +50,6 @@ export const AutocompleteInput = forwardRef<
 
     // Use formatted_address which is more reliable for autocomplete
     const selectedAddress = place.formatted_address || place.name || ''
-    console.log('Google Places selected:', selectedAddress)
 
     // Update the value immediately to prevent form validation issues
     onChange(selectedAddress)
