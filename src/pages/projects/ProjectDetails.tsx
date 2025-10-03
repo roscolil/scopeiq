@@ -241,21 +241,13 @@ const ProjectDetails = () => {
 
   // Delayed wake word enable toast (after project fully loaded)
   useEffect(() => {
-    console.debug('[wakeword-prompt] effect run', {
-      projectId,
-      hasProject: !!project,
-      isProjectLoading,
-    })
     if (!projectId) {
-      console.debug('[wakeword-prompt] abort: missing projectId')
       return
     }
     if (isProjectLoading) {
-      console.debug('[wakeword-prompt] abort: still loading project')
       return
     }
     if (!project) {
-      console.debug('[wakeword-prompt] abort: project object not set yet')
       return
     }
     const PROMPT_KEY = 'wakeword.enable.prompt.shown.v1'
@@ -263,9 +255,6 @@ const ProjectDetails = () => {
       try {
         const prompted = localStorage.getItem(PROMPT_KEY)
         if (prompted) {
-          console.debug(
-            '[wakeword-prompt] already prompted (localStorage key present)',
-          )
           return
         }
         const consentVal = localStorage.getItem(WAKEWORD_CONSENT_KEY)
@@ -274,13 +263,8 @@ const ProjectDetails = () => {
           !consentVal ||
           consentVal === 'declined' ||
           (consentVal === 'true' && !enabledVal)
-        console.debug('[wakeword-prompt] state check', {
-          consentVal,
-          enabledVal,
-          shouldPrompt,
-        })
+
         if (!shouldPrompt) {
-          console.debug('[wakeword-prompt] abort: conditions not met to prompt')
           return
         }
         const t = toast({
@@ -294,7 +278,6 @@ const ProjectDetails = () => {
                 <button
                   onClick={() => {
                     try {
-                      console.debug('[wakeword-prompt] Enable Now clicked')
                       acceptConsent(true) // also enables
                       localStorage.setItem(PROMPT_KEY, 'true')
                     } catch {
@@ -314,9 +297,6 @@ const ProjectDetails = () => {
                 </button>
                 <button
                   onClick={() => {
-                    console.debug(
-                      '[wakeword-prompt] Dismiss clicked, setting prompt key',
-                    )
                     localStorage.setItem(PROMPT_KEY, 'true')
                     t.dismiss()
                   }}
@@ -328,7 +308,6 @@ const ProjectDetails = () => {
             </div>
           ),
         })
-        console.debug('[wakeword-prompt] toast shown, marking key')
         localStorage.setItem(PROMPT_KEY, 'true')
       } catch {
         /* noop */
