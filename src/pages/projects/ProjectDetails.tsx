@@ -534,7 +534,11 @@ const ProjectDetails = () => {
           setIsDocumentsLoading(true)
         }
 
-        const projectData = await projectService.resolveProject(projectId)
+        // PARALLEL API CALLS - Fetch project and documents simultaneously
+        const [projectData, documents] = await Promise.all([
+          projectService.resolveProject(projectId),
+          documentService.getDocumentsByProject(projectId),
+        ])
 
         if (projectData) {
           // Transform data to our Project type
@@ -552,9 +556,7 @@ const ProjectDetails = () => {
           setProject(transformedProject)
           setIsProjectLoading(false)
 
-          const documents = await documentService.getDocumentsByProject(
-            projectData.id,
-          )
+          // Transform documents data
           const transformedDocuments: Document[] = (documents || []).map(
             doc => ({
               id: doc.id,

@@ -88,9 +88,6 @@ const Viewer = () => {
       try {
         setIsLoading(true)
 
-        // Add a small delay to prevent race conditions
-        await new Promise(resolve => setTimeout(resolve, 10))
-
         // Check if component is still mounted
         if (!isMounted) return
 
