@@ -20,6 +20,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { usePermissions, useUserContext } from '@/hooks/user-roles'
 
 // React Query hooks for enhanced performance
 import { useProjects } from '@/hooks/queries/useProjects'
@@ -37,6 +38,12 @@ const Projects = () => {
   usePrefetch(true)
 
   const queryClient = useQueryClient()
+
+  // Check user permissions and context
+  const { userContext } = useUserContext()
+  const { hasPermission } = usePermissions()
+  const canCreateProject = hasPermission('canCreateProjects')
+  const canViewAllProjects = hasPermission('canViewAllProjects')
 
   // React Query hooks - provide automatic caching and background refetching
   const { data: projectsRQ = [], isLoading: isLoadingRQ } = useProjects(
@@ -101,24 +108,47 @@ const Projects = () => {
         projectsRQ.length,
         'projects',
       )
-      setProjects(projectsRQ)
+
+      // Filter projects based on user permissions
+      let filteredProjects = projectsRQ
+      if (!canViewAllProjects && userContext?.projectIds) {
+        filteredProjects = projectsRQ.filter(p =>
+          userContext.projectIds.includes(p.id),
+        )
+        console.log(
+          '📁 Filtered to assigned projects:',
+          filteredProjects.length,
+          'of',
+          projectsRQ.length,
+        )
+      }
+
+      setProjects(filteredProjects)
       setLoading(false)
     } else if (isLoadingRQ) {
       setLoading(true)
     }
-  }, [projectsRQ, isLoadingRQ])
+  }, [projectsRQ, isLoadingRQ, canViewAllProjects, userContext])
 
   // Load cached projects immediately on mount
   useEffect(() => {
     if (companyId) {
       const cached = getCachedProjects()
       if (cached) {
-        setProjects(cached)
+        // Filter cached projects based on user permissions
+        let filteredProjects = cached
+        if (!canViewAllProjects && userContext?.projectIds) {
+          filteredProjects = cached.filter(p =>
+            userContext.projectIds.includes(p.id),
+          )
+        }
+
+        setProjects(filteredProjects)
         setLoading(false)
-        setExpectedProjectCount(Math.max(cached.length, 1))
+        setExpectedProjectCount(Math.max(filteredProjects.length, 1))
       }
     }
-  }, [companyId, getCachedProjects])
+  }, [companyId, getCachedProjects, canViewAllProjects, userContext])
 
   // Load cached project count from localStorage
   useEffect(() => {
@@ -170,7 +200,21 @@ const Projects = () => {
           }),
         )
 
-        setProjects(transformedProjects)
+        // Filter projects based on user permissions
+        let filteredProjects = transformedProjects
+        if (!canViewAllProjects && userContext?.projectIds) {
+          filteredProjects = transformedProjects.filter(p =>
+            userContext.projectIds.includes(p.id),
+          )
+          console.log(
+            '📁 Manual load: Filtered to assigned projects:',
+            filteredProjects.length,
+            'of',
+            transformedProjects.length,
+          )
+        }
+
+        setProjects(filteredProjects)
 
         // Cache the fresh data
         setCachedProjects(transformedProjects)
@@ -307,7 +351,7 @@ const Projects = () => {
             </Button> */}
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                {projects.length > 0 && (
+                {canCreateProject && projects.length > 0 && (
                   <DialogTrigger asChild>
                     <Button size="sm">
                       <Plus className="h-4 w-4 mr-1" />

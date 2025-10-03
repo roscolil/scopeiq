@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
+import { AuditLogViewer } from '@/components/admin/AuditLogViewer'
 import {
   Dialog,
   DialogContent,
@@ -76,9 +77,9 @@ const initialAbbrevState: LoadState<AdminAbbreviation[]> = {
 const AdminConsole: React.FC = () => {
   const [categoriesState, setCategoriesState] = useState(initialCategoriesState)
   const [abbrevState, setAbbrevState] = useState(initialAbbrevState)
-  const [activeTab, setActiveTab] = useState<'categories' | 'abbreviations'>(
-    'categories',
-  )
+  const [activeTab, setActiveTab] = useState<
+    'categories' | 'abbreviations' | 'audit'
+  >('categories')
   const { toast } = useToast()
 
   // Category modal + form state
@@ -1145,12 +1146,13 @@ const AdminConsole: React.FC = () => {
       <Tabs
         value={activeTab}
         onValueChange={(v: string) =>
-          setActiveTab(v as 'categories' | 'abbreviations')
+          setActiveTab(v as 'categories' | 'abbreviations' | 'audit')
         }
       >
         <TabsList>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="abbreviations">Abbreviations</TabsTrigger>
+          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
         </TabsList>
         <TabsContent
           value="categories"
@@ -1163,6 +1165,9 @@ const AdminConsole: React.FC = () => {
           className="mt-6 focus-visible:outline-none"
         >
           {renderAbbreviations()}
+        </TabsContent>
+        <TabsContent value="audit" className="mt-6 focus-visible:outline-none">
+          <AuditLogViewer />
         </TabsContent>
       </Tabs>
       {/* Bulk Delete Confirmation Dialog */}

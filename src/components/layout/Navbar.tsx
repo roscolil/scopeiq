@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   HardHat,
   FolderOpen,
@@ -10,6 +11,9 @@ import {
   LogIn,
   LogOut,
   Settings,
+  Shield,
+  ShieldCheck,
+  User as UserIcon,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -99,13 +103,53 @@ export const Navbar = () => {
     return location.pathname === path
   }
 
+  // Get role icon and color
+  const getRoleConfig = () => {
+    switch (userRole) {
+      case 'Admin':
+        return {
+          icon: <ShieldCheck className="h-3.5 w-3.5" />,
+          textColor: scrolled ? 'text-red-700' : 'text-red-400',
+          iconColor: scrolled ? 'text-red-600' : 'text-red-400',
+          label: 'Admin',
+        }
+      case 'Owner':
+        return {
+          icon: <Shield className="h-3.5 w-3.5" />,
+          textColor: scrolled ? 'text-blue-700' : 'text-blue-400',
+          iconColor: scrolled ? 'text-blue-600' : 'text-blue-400',
+          label: 'Owner',
+        }
+      case 'User':
+        return {
+          icon: <UserIcon className="h-3.5 w-3.5" />,
+          textColor: scrolled ? 'text-green-700' : 'text-green-400',
+          iconColor: scrolled ? 'text-green-600' : 'text-green-400',
+          label: 'User',
+        }
+      default:
+        return {
+          icon: <UserIcon className="h-3.5 w-3.5" />,
+          textColor: scrolled ? 'text-gray-700' : 'text-gray-400',
+          iconColor: scrolled ? 'text-gray-600' : 'text-gray-400',
+          label: userRole || 'User',
+        }
+    }
+  }
+
+  const roleConfig = getRoleConfig()
+
   return (
     <header
-      className={`sticky top-0 z-50 w-full border-b transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 w-full border-b transition-colors duration-500 ease-in-out ${
         scrolled
           ? 'border-gray-200 bg-white/95 backdrop-blur-md shadow-sm'
-          : 'border-white/20 bg-transparent backdrop-blur-md'
+          : 'border-white/20 bg-black/50 backdrop-blur-md'
       }`}
+      style={{
+        transition:
+          'background-color 0.5s ease-in-out, border-color 0.5s ease-in-out, box-shadow 0.3s ease-in-out',
+      }}
     >
       <div className="container-2xl h-16 flex items-center justify-between">
         {/* Left side: Logo and menu items */}
@@ -190,7 +234,24 @@ export const Navbar = () => {
                   ))}
 
                 {isAuthenticated ? (
-                  <div className="mt-4 pt-4 border-t border-gray-600">
+                  <div className="mt-4 pt-4 border-t border-gray-600 space-y-2">
+                    {/* Role Indicator - Mobile */}
+                    {userRole && (
+                      <div className="px-4 py-2">
+                        <div className="text-xs text-gray-400 mb-2">
+                          Logged in as:
+                        </div>
+                        <div
+                          className={`flex items-center gap-1.5 ${roleConfig.textColor} font-medium text-sm`}
+                        >
+                          <span className={roleConfig.iconColor}>
+                            {roleConfig.icon}
+                          </span>
+                          {roleConfig.label}
+                        </div>
+                      </div>
+                    )}
+
                     <Link
                       to={
                         companyId
@@ -238,6 +299,37 @@ export const Navbar = () => {
 
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-2">
+              {/* Role Indicator */}
+              {userRole && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <span
+                          className={`text-xs font-medium ${
+                            scrolled ? 'text-gray-600' : 'text-gray-300'
+                          }`}
+                        >
+                          Logged in as:
+                        </span>
+                        <div
+                          className={`flex items-center gap-1 ${roleConfig.textColor} font-medium text-sm`}
+                        >
+                          <span className={roleConfig.iconColor}>
+                            {roleConfig.icon}
+                          </span>
+                          {roleConfig.label}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <span>Your role: {roleConfig.label}</span>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {/* Sign Out Button */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

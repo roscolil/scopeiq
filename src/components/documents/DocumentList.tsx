@@ -47,6 +47,7 @@ import {
   type ProcessingMessage,
 } from '@/services/utils/processing-messages'
 import { PrefetchDocumentLink } from '@/components/shared/PrefetchLinks'
+import { usePermissions } from '@/hooks/user-roles'
 
 interface DocumentListProps {
   documents: Document[]
@@ -75,6 +76,13 @@ export const DocumentList = ({
 }: DocumentListProps) => {
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  // Check user permissions
+  const { hasPermission, canAccessProject } = usePermissions()
+  const canDeleteDocuments =
+    hasPermission('canDeleteDocuments') && canAccessProject(projectId)
+  const canDownloadDocuments = hasPermission('canDownloadDocuments')
+
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [documentToDelete, setDocumentToDelete] =
     React.useState<Document | null>(null)
@@ -482,28 +490,32 @@ export const DocumentList = ({
                               Retry Processing
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={e => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              downloadDocument(doc)
-                            }}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={e => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleDeleteClick(doc)
-                            }}
-                            disabled={doc.status === 'processing'}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {canDownloadDocuments && (
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                downloadDocument(doc)
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </DropdownMenuItem>
+                          )}
+                          {canDeleteDocuments && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={e => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleDeleteClick(doc)
+                              }}
+                              disabled={doc.status === 'processing'}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

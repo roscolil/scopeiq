@@ -27,6 +27,7 @@ import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { projectService, documentService } from '@/services/data/hybrid'
 import type { Project, Document } from '@/types'
+import { usePermissions } from '@/hooks/user-roles'
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,11 @@ const ProjectDetails = () => {
 
   // Note: Using queryClient only for cache invalidation
   // Keeping existing manual fetch logic for reliability
+
+  // Check user permissions
+  const { hasPermission } = usePermissions()
+  const canEditProject = hasPermission('canEditProjects')
+  const canDeleteProject = hasPermission('canDeleteProjects')
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -1202,18 +1208,22 @@ const ProjectDetails = () => {
                   >
                     {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setIsEditDialogOpen(true)}
-                    className="p-3 text-base"
-                  >
-                    Edit Project
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-destructive p-3 text-base"
-                  >
-                    Delete Project
-                  </DropdownMenuItem>
+                  {canEditProject && (
+                    <DropdownMenuItem
+                      onClick={() => setIsEditDialogOpen(true)}
+                      className="p-3 text-base"
+                    >
+                      Edit Project
+                    </DropdownMenuItem>
+                  )}
+                  {canDeleteProject && (
+                    <DropdownMenuItem
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="text-destructive p-3 text-base"
+                    >
+                      Delete Project
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -1226,81 +1236,85 @@ const ProjectDetails = () => {
                   {showAITools ? 'Hide AI Tools' : 'Show AI Tools'}
                 </Button>
 
-                <Dialog
-                  open={isEditDialogOpen}
-                  onOpenChange={setIsEditDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Project</DialogTitle>
-                    </DialogHeader>
-                    <ProjectForm
-                      onSubmit={handleUpdateProject}
-                      defaultValues={{
-                        address: project.address || '',
-                        streetNumber: project.streetNumber || '',
-                        streetName: project.streetName || '',
-                        suburb: project.suburb || '',
-                        postcode: project.postcode || '',
-                        name: project.name,
-                        description: project.description,
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
+                {canEditProject && (
+                  <Dialog
+                    open={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                  >
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Project</DialogTitle>
+                      </DialogHeader>
+                      <ProjectForm
+                        onSubmit={handleUpdateProject}
+                        defaultValues={{
+                          address: project.address || '',
+                          streetNumber: project.streetNumber || '',
+                          streetName: project.streetName || '',
+                          suburb: project.suburb || '',
+                          postcode: project.postcode || '',
+                          name: project.name,
+                          description: project.description,
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
 
-                <Dialog
-                  open={isDeleteDialogOpen}
-                  onOpenChange={setIsDeleteDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Delete Project</DialogTitle>
-                      <DialogDescription>
-                        Are you sure you want to delete this project? This
-                        action cannot be undone.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
+                {canDeleteProject && (
+                  <Dialog
+                    open={isDeleteDialogOpen}
+                    onOpenChange={setIsDeleteDialogOpen}
+                  >
+                    <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        onClick={() => setIsDeleteDialogOpen(false)}
+                        size="sm"
+                        className="text-destructive"
                       >
-                        Cancel
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
                       </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={handleDeleteProject}
-                        disabled={isDeleteLoading}
-                      >
-                        {isDeleteLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          'Delete Project'
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete Project</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to delete this project? This
+                          action cannot be undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsDeleteDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={handleDeleteProject}
+                          disabled={isDeleteLoading}
+                        >
+                          {isDeleteLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete Project'
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             )}
           </div>

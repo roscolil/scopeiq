@@ -3,6 +3,7 @@
 
 import { generateClient } from 'aws-amplify/data'
 import type { Schema } from '../../amplify/data/resource'
+import { auditLog } from '../audit/audit-log'
 
 // Types
 export type UserRole = 'Owner' | 'Admin' | 'User'
@@ -320,6 +321,15 @@ class UserManagementService {
         throw new Error('Failed to create invitation')
       }
 
+      // Audit log invitation sent
+      await auditLog.logInvitationSent(
+        input.invitedBy,
+        invitation.id,
+        invitation.email,
+        invitation.role,
+        input.projectIds,
+      )
+
       // Generate acceptance URL (you may want to customize this)
       const acceptUrl = `${window.location.origin}/accept-invitation/${invitation.id}`
 
@@ -496,6 +506,108 @@ Jacq of All Trades Team
     return ROLE_PERMISSIONS[role][action]
   }
 
+  // User project assignment methods
+  async assignUserToProjects(
+    userId: string,
+    projectIds: string[],
+  ): Promise<boolean> {
+    try {
+      if (!client.models?.UserProject) {
+        console.warn('UserProject model not available. Using fallback storage.')
+
+        // Fallback: Store in localStorage
+        const key = `user_projects_${userId}`
+        localStorage.setItem(key, JSON.stringify(projectIds))
+        return true
+      }
+
+      // First, get existing assignments
+      const { data: existingAssignments } =
+        await client.models.UserProject.list({
+          filter: { userId: { eq: userId } },
+        })
+
+      // Remove assignments that are no longer in the new list
+      if (existingAssignments) {
+        for (const assignment of existingAssignments) {
+          if (!projectIds.includes(assignment.projectId)) {
+            await client.models.UserProject.delete({
+              id: assignment.id as string & string[],
+            })
+          }
+        }
+      }
+
+      // Add new assignments
+      const existingProjectIds =
+        existingAssignments?.map(a => a.projectId) || []
+      for (const projectId of projectIds) {
+        if (!existingProjectIds.includes(projectId)) {
+          await client.models.UserProject.create({
+            userId: userId as string & string[],
+            projectId: projectId as string & string[],
+          })
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error assigning user to projects:', error)
+      return false
+    }
+  }
+
+  async removeUserFromProject(
+    userId: string,
+    projectId: string,
+  ): Promise<boolean> {
+    try {
+      if (!client.models?.UserProject) {
+        console.warn('UserProject model not available.')
+        return true
+      }
+
+      // Query and delete UserProject record
+      const { data: assignments } = await client.models.UserProject.list({
+        filter: {
+          userId: { eq: userId },
+          projectId: { eq: projectId },
+        },
+      })
+
+      if (assignments && assignments.length > 0) {
+        await client.models.UserProject.delete({
+          id: assignments[0].id as string & string[],
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error removing user from project:', error)
+      return false
+    }
+  }
+
+  async getUserProjectAssignments(userId: string): Promise<string[]> {
+    try {
+      if (!client.models?.UserProject) {
+        // Fallback: Check localStorage
+        const key = `user_projects_${userId}`
+        const stored = localStorage.getItem(key)
+        return stored ? JSON.parse(stored) : []
+      }
+
+      const { data: assignments } = await client.models.UserProject.list({
+        filter: { userId: { eq: userId } },
+      })
+
+      return assignments?.map(a => a.projectId) || []
+    } catch (error) {
+      console.error('Error getting user project assignments:', error)
+      return []
+    }
+  }
+
   // Simplified methods for now
   async updateUser(id: string, input: UpdateUserInput): Promise<User | null> {
     return null
@@ -579,6 +691,15 @@ Jacq of All Trades Team
     localStorage.setItem(
       `users_${input.companyId}`,
       JSON.stringify(updatedUsers),
+    )
+
+    // Audit log user creation
+    // Note: createdBy should be passed in input in real implementation
+    await auditLog.logUserCreated(
+      'system', // In production, pass actual creator ID
+      user.id,
+      user.email,
+      user.role,
     )
 
     return user

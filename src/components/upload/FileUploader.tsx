@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Document } from '@/types'
 import { documentService } from '@/services/data/hybrid'
+import { usePermissions } from '@/hooks/user-roles'
 
 // Python backend imports
 import { usePythonDocumentUpload } from '@/hooks/usePythonDocumentUpload'
@@ -90,6 +91,12 @@ interface RejectedFileInfo {
 
 export const FileUploader = (props: FileUploaderProps) => {
   const { projectId, companyId, onUploadComplete, onBatchComplete } = props
+
+  // Check user permissions
+  const { hasPermission, canAccessProject } = usePermissions()
+  const canUploadDocuments =
+    hasPermission('canUploadDocuments') && canAccessProject(projectId)
+
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -998,6 +1005,20 @@ export const FileUploader = (props: FileUploaderProps) => {
   //     </Badge>
   //   )
   // }
+
+  // Check permission before rendering uploader
+  if (!canUploadDocuments) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed rounded-lg bg-muted/50">
+        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Upload Not Permitted</h3>
+        <p className="text-sm text-muted-foreground max-w-md">
+          You don't have permission to upload documents to this project. Please
+          contact your administrator if you need access.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full max-h-[78vh] overflow-hidden">

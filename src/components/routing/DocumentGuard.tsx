@@ -5,6 +5,9 @@ import NotFound from '@/pages/core/NotFound'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { createSlug } from '@/utils/ui/navigation'
 import { measureGuardPerformance } from '@/utils/performance'
+import { usePermissions, useUserContext } from '@/hooks/user-roles'
+import { UnauthorizedAccess } from '@/utils/auth/authorization'
+import { AuditLogger } from '@/services/audit/audit-log'
 
 // In-memory existence cache (fast, non-persistent)
 const documentCache = new Map<string, boolean>()
@@ -48,10 +51,17 @@ const writePersisted = (projectId: string, docKey: string, exists: boolean) => {
 
 export const DocumentGuard = () => {
   const { companyId, projectId, documentId } = useParams()
-  const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
+  const [state, setState] = useState<
+    'checking' | 'ok' | 'invalid' | 'unauthorized'
+  >('checking')
   const [fastPath, setFastPath] = useState(false)
   const revalidatedRef = useRef(false)
   const location = useLocation()
+
+  // Check user permissions - documents inherit project access
+  const { canAccessProject } = usePermissions()
+  const { userContext, loading: contextLoading } = useUserContext()
+  const hasDocumentAccess = projectId ? canAccessProject(projectId) : false
 
   useEffect(() => {
     let cancelled = false
@@ -60,6 +70,44 @@ export const DocumentGuard = () => {
         setState('invalid')
         return
       }
+
+      // Wait for user context to load before checking permissions
+      if (contextLoading) {
+        setState('checking')
+        return
+      }
+
+      // Check user permissions first (cheap check)
+      if (!hasDocumentAccess) {
+        // Audit log access denial
+        if (userContext?.userId && projectId && documentId) {
+          AuditLogger.checkRouteAccess(
+            userContext.userId,
+            userContext.role,
+            `/project/${projectId}/document/${documentId}`,
+            false,
+            {
+              reason: 'Document in unassigned project',
+              projectId,
+              documentId,
+            },
+          ).catch(err => console.warn('Audit log failed:', err))
+        }
+        setState('unauthorized')
+        return
+      }
+
+      // Audit log successful access (after document validation)
+      if (userContext?.userId && projectId && documentId && !cancelled) {
+        AuditLogger.checkRouteAccess(
+          userContext.userId,
+          userContext.role,
+          `/project/${projectId}/document/${documentId}`,
+          true,
+          { projectId, documentId },
+        ).catch(err => console.warn('Audit log failed:', err))
+      }
+
       const cacheKey = `${projectId}:${documentId}`
 
       // 1. In-memory cache
@@ -167,7 +215,14 @@ export const DocumentGuard = () => {
     return () => {
       cancelled = true
     }
-  }, [companyId, projectId, documentId])
+  }, [
+    companyId,
+    projectId,
+    documentId,
+    hasDocumentAccess,
+    contextLoading,
+    userContext,
+  ])
 
   // if (state === 'checking') {
   //   return (
@@ -179,6 +234,17 @@ export const DocumentGuard = () => {
   //     </div>
   //   )
   // }
+  if (state === 'unauthorized') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <UnauthorizedAccess
+          message="You don't have access to this document. It may be in a project you're not assigned to."
+          showReturnHome={true}
+        />
+      </div>
+    )
+  }
+
   if (state === 'invalid') return <NotFound />
   if (state === 'checking') return null
   return <Outlet />

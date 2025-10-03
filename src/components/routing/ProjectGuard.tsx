@@ -5,6 +5,9 @@ import NotFound from '@/pages/core/NotFound'
 import { projectService } from '@/services/data/hybrid'
 import IQPageLoader from '@/components/shared/IQPageLoader'
 import { measureGuardPerformance } from '@/utils/performance'
+import { usePermissions, useUserContext } from '@/hooks/user-roles'
+import { UnauthorizedAccess } from '@/utils/auth/authorization'
+import { AuditLogger } from '@/services/audit/audit-log'
 
 // In-memory cache + TTL persistence for consistent performance
 const projectCache = new Map<string, boolean>()
@@ -42,10 +45,17 @@ const writePersisted = (projectId: string, exists: boolean) => {
 
 export const ProjectGuard = () => {
   const { projectId } = useParams()
-  const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
+  const [state, setState] = useState<
+    'checking' | 'ok' | 'invalid' | 'unauthorized'
+  >('checking')
   const [fastPath, setFastPath] = useState(false)
   const revalidatedRef = useRef(false)
   const location = useLocation()
+
+  // Check user permissions
+  const { canAccessProject } = usePermissions()
+  const { userContext, loading: contextLoading } = useUserContext()
+  const hasProjectAccess = projectId ? canAccessProject(projectId) : false
 
   useEffect(() => {
     let cancelled = false
@@ -54,6 +64,42 @@ export const ProjectGuard = () => {
       if (!id) {
         setState('invalid')
         return
+      }
+
+      // Wait for user context to load before checking permissions
+      if (contextLoading) {
+        setState('checking')
+        return
+      }
+
+      // Check user permissions first (cheap check)
+      if (!hasProjectAccess) {
+        // Audit log access denial
+        if (userContext?.userId) {
+          AuditLogger.checkRouteAccess(
+            userContext.userId,
+            userContext.role,
+            `/project/${id}`,
+            false,
+            {
+              reason: 'Project not assigned to user',
+              projectId: id,
+            },
+          ).catch(err => console.warn('Audit log failed:', err))
+        }
+        setState('unauthorized')
+        return
+      }
+
+      // Audit log successful access
+      if (userContext?.userId && !cancelled) {
+        AuditLogger.checkRouteAccess(
+          userContext.userId,
+          userContext.role,
+          `/project/${id}`,
+          true,
+          { projectId: id },
+        ).catch(err => console.warn('Audit log failed:', err))
       }
 
       // 1. In-memory cache (fastest)
@@ -117,7 +163,7 @@ export const ProjectGuard = () => {
     return () => {
       cancelled = true
     }
-  }, [projectId])
+  }, [projectId, hasProjectAccess, contextLoading, userContext])
 
   // if (state === 'checking') {
   //   return (
@@ -127,6 +173,17 @@ export const ProjectGuard = () => {
   //     />
   //   )
   // }
+
+  if (state === 'unauthorized') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <UnauthorizedAccess
+          message="You don't have access to this project."
+          showReturnHome={true}
+        />
+      </div>
+    )
+  }
 
   if (state === 'invalid') return <NotFound />
   if (state === 'checking') {

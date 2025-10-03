@@ -26,39 +26,86 @@ import {
   type User,
   type UserInvitation,
 } from '@/services/auth/user-management'
+import { useUserContext, usePermissions } from '@/hooks/user-roles'
+import { PageLoader } from '@/components/shared/PageLoader'
+import { UnauthorizedAccess } from '@/utils/auth/authorization'
+import { projectService } from '@/services/data/hybrid'
+import type { Project } from '@/types'
+import { MultiSelect } from '@/components/shared/MultiSelect'
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([])
-  const [invitations, setInvitations] = useState<UserInvitation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [inviteLoading, setInviteLoading] = useState(false)
+  // Get current user context
+  const { userContext, loading: contextLoading } = useUserContext()
+  const { hasPermission } = usePermissions()
   const { toast } = useToast()
 
-  // Invite form state
+  const [users, setUsers] = useState<User[]>([])
+  const [invitations, setInvitations] = useState<UserInvitation[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [inviteLoading, setInviteLoading] = useState(false)
+
+  // Check if user has permission to manage users
+  const canManageUsers = hasPermission('canManageUsers')
+
+  // Invite form state - now using real context values
   const [inviteForm, setInviteForm] = useState({
     email: '',
     role: 'User' as UserRole,
-    inviterName: 'Current User', // In real app, get from auth context
-    companyName: 'Your Company', // In real app, get from user's company
+    projectIds: [] as string[], // Projects to assign for User role
   })
+
+  // Early return if loading context
+  if (contextLoading) {
+    return <PageLoader type="default" />
+  }
+
+  // Check if user context is available
+  if (!userContext) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8">
+          <UnauthorizedAccess
+            message="Unable to load user information. Please sign in again."
+            showReturnHome={true}
+          />
+        </div>
+      </Layout>
+    )
+  }
+
+  // Check permission to manage users
+  if (!canManageUsers) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8">
+          <UnauthorizedAccess
+            message="You don't have permission to manage users."
+            showReturnHome={true}
+          />
+        </div>
+      </Layout>
+    )
+  }
 
   // Load initial data
   useEffect(() => {
+    if (!userContext?.companyId) return
+
     const loadInitialData = async () => {
       try {
         setLoading(true)
 
-        // Get company ID (in real app, get from current user context)
-        const companyId = 'company-1'
-
-        // Load users and invitations
-        const [usersData, invitationsData] = await Promise.all([
-          userManagementService.getUsersByCompany(companyId),
-          userManagementService.getInvitationsByCompany(companyId),
+        // Load users, invitations, and projects for the current user's company
+        const [usersData, invitationsData, projectsData] = await Promise.all([
+          userManagementService.getUsersByCompany(userContext.companyId),
+          userManagementService.getInvitationsByCompany(userContext.companyId),
+          projectService.getProjects(userContext.companyId),
         ])
 
         setUsers(usersData)
         setInvitations(invitationsData)
+        setProjects(projectsData)
       } catch (error) {
         console.error('Error loading user data:', error)
         toast({
@@ -72,23 +119,24 @@ export default function UserManagement() {
     }
 
     loadInitialData()
-  }, [toast])
+  }, [userContext, toast])
 
   const loadData = async () => {
+    if (!userContext?.companyId) return
+
     try {
       setLoading(true)
 
-      // Get company ID (in real app, get from current user context)
-      const companyId = 'company-1'
-
-      // Load users and invitations
-      const [usersData, invitationsData] = await Promise.all([
-        userManagementService.getUsersByCompany(companyId),
-        userManagementService.getInvitationsByCompany(companyId),
+      // Load users, invitations, and projects for the current user's company
+      const [usersData, invitationsData, projectsData] = await Promise.all([
+        userManagementService.getUsersByCompany(userContext.companyId),
+        userManagementService.getInvitationsByCompany(userContext.companyId),
+        projectService.getProjects(userContext.companyId),
       ])
 
       setUsers(usersData)
       setInvitations(invitationsData)
+      setProjects(projectsData)
     } catch (error) {
       console.error('Error loading user data:', error)
       toast({
@@ -104,10 +152,26 @@ export default function UserManagement() {
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!userContext?.companyId || !userContext?.userId) return
+
+    // Validation
     if (!inviteForm.email.trim()) {
       toast({
         title: 'Error',
         description: 'Email is required',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Require project selection for User role
+    if (
+      inviteForm.role === 'User' &&
+      (!inviteForm.projectIds || inviteForm.projectIds.length === 0)
+    ) {
+      toast({
+        title: 'Error',
+        description: 'Users must be assigned to at least one project',
         variant: 'destructive',
       })
       return
@@ -119,10 +183,11 @@ export default function UserManagement() {
       const invitation = await userManagementService.inviteUser({
         email: inviteForm.email.trim().toLowerCase(),
         role: inviteForm.role,
-        companyId: 'company-1', // In real app, get from current user context
-        invitedBy: 'current-user-id', // In real app, get from auth context
-        inviterName: inviteForm.inviterName,
-        companyName: inviteForm.companyName,
+        companyId: userContext.companyId,
+        invitedBy: userContext.userId,
+        inviterName: userContext.name,
+        companyName: userContext.companyId, // TODO: Get actual company name
+        projectIds: inviteForm.projectIds,
       })
 
       if (invitation) {
@@ -133,8 +198,9 @@ export default function UserManagement() {
 
         // Reset form
         setInviteForm({
-          ...inviteForm,
           email: '',
+          role: 'User' as UserRole,
+          projectIds: [],
         })
 
         // Reload data
@@ -237,45 +303,102 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleInviteUser} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={inviteForm.email}
-                    onChange={e =>
-                      setInviteForm({ ...inviteForm, email: e.target.value })
-                    }
-                    required
-                  />
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="user@example.com"
+                      value={inviteForm.email}
+                      onChange={e =>
+                        setInviteForm({ ...inviteForm, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select
+                      value={inviteForm.role}
+                      onValueChange={(value: UserRole) =>
+                        setInviteForm({
+                          ...inviteForm,
+                          role: value,
+                          projectIds: [],
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="User">
+                          <div className="flex flex-col items-start">
+                            <span>User</span>
+                            <span className="text-xs text-muted-foreground">
+                              Limited access to assigned projects
+                            </span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Owner">
+                          <div className="flex flex-col items-start">
+                            <span>Owner</span>
+                            <span className="text-xs text-muted-foreground">
+                              Full company access
+                            </span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Admin">
+                          <div className="flex flex-col items-start">
+                            <span>Admin</span>
+                            <span className="text-xs text-muted-foreground">
+                              Company administrator
+                            </span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
-                    value={inviteForm.role}
-                    onValueChange={(value: UserRole) =>
-                      setInviteForm({ ...inviteForm, role: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="User">User</SelectItem>
-                      <SelectItem value="Owner">Owner</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Project selection - required for User role */}
+                {inviteForm.role === 'User' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="projects">
+                      Assign to Projects{' '}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <MultiSelect
+                      onValueChange={value =>
+                        setInviteForm({ ...inviteForm, projectIds: value })
+                      }
+                      placeholder="Select at least one project"
+                      variant="inverted"
+                      animation={2}
+                      options={projects.map(p => ({
+                        label: p.name,
+                        value: p.id,
+                      }))}
+                      value={inviteForm.projectIds}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Users can only access assigned projects. At least one
+                      project is required.
+                    </p>
+                  </div>
+                )}
 
-                <div className="flex items-end">
+                <div className="flex justify-end">
                   <Button
                     type="submit"
-                    disabled={inviteLoading}
-                    className="w-full"
+                    disabled={
+                      inviteLoading ||
+                      (inviteForm.role === 'User' &&
+                        inviteForm.projectIds.length === 0)
+                    }
                   >
                     {inviteLoading ? (
                       <>
