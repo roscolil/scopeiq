@@ -65,9 +65,20 @@ const ProjectDetails = () => {
   // Keeping existing manual fetch logic for reliability
 
   const [project, setProject] = useState<Project | null>(null)
-  const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
+  const [projectDocuments, setProjectDocuments] = useState<Document[]>(() => {
+    console.log('🔧 Initial projectDocuments state: []')
+    return []
+  })
   const [isProjectLoading, setIsProjectLoading] = useState(true)
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true)
+
+  // Debug: Log whenever projectDocuments changes
+  useEffect(() => {
+    console.log('🔄 projectDocuments state changed:', {
+      count: projectDocuments.length,
+      documents: projectDocuments.map(d => d.name),
+    })
+  }, [projectDocuments])
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleteLoading, setIsDeleteLoading] = useState(false)
@@ -535,10 +546,22 @@ const ProjectDetails = () => {
         }
 
         // PARALLEL API CALLS - Fetch project and documents simultaneously
+        const startTime = performance.now()
+        console.log('⏱️ Starting parallel fetch...')
+
         const [projectData, documents] = await Promise.all([
           projectService.resolveProject(projectId),
           documentService.getDocumentsByProject(projectId),
         ])
+
+        const endTime = performance.now()
+        const duration = ((endTime - startTime) / 1000).toFixed(2)
+
+        console.log(`📋 ProjectDetails: Fetched data in ${duration}s`, {
+          projectData: projectData?.name,
+          documentsCount: documents?.length || 0,
+          duration: `${duration}s`,
+        })
 
         if (projectData) {
           // Transform data to our Project type
@@ -580,6 +603,14 @@ const ProjectDetails = () => {
           setCachedDocumentsData(transformedDocuments)
           setProjectDocuments(transformedDocuments)
           setIsDocumentsLoading(false)
+
+          console.log('✅ ProjectDetails: Set documents', {
+            count: transformedDocuments.length,
+            documents: transformedDocuments.map(d => ({
+              id: d.id,
+              name: d.name,
+            })),
+          })
         } else {
           // Set project to null or show error state
           setProject(null)

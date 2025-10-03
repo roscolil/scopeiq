@@ -151,47 +151,29 @@ export const hybridDocumentService = {
         await databaseDocumentService.getDocumentsByProject(projectId)
       const companyId = await getCurrentCompanyId()
 
-      // Convert to expected format and generate pre-signed URLs if needed
-      const documents = await Promise.all(
-        dbDocuments.map(async doc => {
-          let s3Url = doc.s3Url
-          const thumbnailUrl = doc.thumbnailUrl
+      // Convert to expected format - skip URL generation on list load for performance
+      // URLs will be refreshed when document is actually viewed
+      const documents = dbDocuments.map(doc => {
+        const s3Url = doc.s3Url
+        const thumbnailUrl = doc.thumbnailUrl
 
-          // Generate fresh pre-signed URLs if we have S3 keys
-          if (doc.s3Key) {
-            try {
-              s3Url = await getSignedDownloadUrl(doc.s3Key)
-              // Update the database with the new URL (async, don't wait)
-              databaseDocumentService
-                .updateDocument(doc.id, { s3Url })
-                .catch(console.error)
-            } catch (error) {
-              console.warn(`Failed to generate S3 URL for ${doc.s3Key}:`, error)
-            }
-          } else {
-            console.warn(
-              `Document ${doc.id} has no S3 key, cannot generate pre-signed URL`,
-            )
-          }
-
-          return {
-            id: doc.id,
-            name: doc.name,
-            type: doc.type,
-            size: doc.size,
-            status: doc.status,
-            url: s3Url || '',
-            thumbnailUrl: thumbnailUrl || '',
-            projectId: doc.projectId,
-            content: doc.content || '',
-            createdAt: doc.createdAt || new Date().toISOString(),
-            updatedAt: doc.updatedAt,
-            categoryIds: doc.categoryIds || undefined,
-            primaryCategoryId: doc.primaryCategoryId || undefined,
-            suggestedCategoryIds: doc.suggestedCategoryIds || undefined,
-          } as HybridDocument
-        }),
-      )
+        return {
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: doc.size,
+          status: doc.status,
+          url: s3Url || '',
+          thumbnailUrl: thumbnailUrl || '',
+          projectId: doc.projectId,
+          content: doc.content || '',
+          createdAt: doc.createdAt || new Date().toISOString(),
+          updatedAt: doc.updatedAt,
+          categoryIds: doc.categoryIds || undefined,
+          primaryCategoryId: doc.primaryCategoryId || undefined,
+          suggestedCategoryIds: doc.suggestedCategoryIds || undefined,
+        } as HybridDocument
+      })
 
       return documents
     } catch (error) {
