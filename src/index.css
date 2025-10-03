@@ -9,7 +9,7 @@
       transform: translateX(100%);
     }
   }
-  
+
   /* Fade in animation for progressive loading */
   @keyframes fadeIn {
     from {
@@ -21,12 +21,12 @@
       transform: translateY(0);
     }
   }
-  
+
   /* Smooth content transition */
   .content-fade-in {
     animation: fadeIn 0.4s ease-out;
   }
-  
+
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     *,
