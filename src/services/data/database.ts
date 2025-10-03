@@ -62,8 +62,6 @@ export const databaseDocumentService = {
   // Get all documents for a project
   async getDocumentsByProject(projectId: string): Promise<DatabaseDocument[]> {
     try {
-      console.log(`🔍 DB: Fetching ALL documents for project ID: ${projectId}`)
-
       // Accumulate all raw document model items (Amplify returns generated model objects)
       interface RawDoc {
         id: string | string[]
@@ -259,16 +257,9 @@ export const databaseDocumentService = {
           )
         }
 
-        console.log(
-          `📄 DB: Page ${page} fetched ${pageData.length} documents (nextToken=${newToken ? 'yes' : 'no'})`,
-        )
         all.push(...pageData)
         nextToken = newToken as string | undefined
       } while (nextToken)
-
-      console.log(
-        `📊 DB: Aggregated total ${all.length} documents for project ${projectId}`,
-      )
 
       const mappedDocuments: DatabaseDocument[] = all.map(raw => {
         // Some generated Amplify model fields may appear as arrays due to codegen quirks; normalize scalars.
@@ -315,15 +306,6 @@ export const databaseDocumentService = {
           updatedAt: norm(raw.updatedAt) || undefined,
         }
       })
-
-      console.log(
-        `📋 DB: Mapped documents:`,
-        mappedDocuments.map(d => ({
-          id: d.id,
-          name: d.name,
-          status: d.status,
-        })),
-      )
 
       if (schemaOutdatedFallbackUsed) {
         console.warn(
