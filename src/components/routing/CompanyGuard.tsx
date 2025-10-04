@@ -77,8 +77,6 @@ export const CompanyGuard = () => {
         return
       }
 
-      console.log('✅ CompanyGuard: Access granted')
-
       // Potential future async company existence check hook (e.g. via service)
       await measureGuardPerformance('CompanyGuard', async () => {
         // Placeholder: plug real existence check here if desired.
