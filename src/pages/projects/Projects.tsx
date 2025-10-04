@@ -107,7 +107,7 @@ const Projects = () => {
       let filteredProjects = projectsRQ
       if (!canViewAllProjects && userContext?.projectIds) {
         filteredProjects = projectsRQ.filter(p =>
-          userContext.projectIds.includes(p.id),
+          userContext!.projectIds.includes(p.id),
         )
       }
 
@@ -127,7 +127,7 @@ const Projects = () => {
         let filteredProjects = cached
         if (!canViewAllProjects && userContext?.projectIds) {
           filteredProjects = cached.filter(p =>
-            userContext.projectIds.includes(p.id),
+            userContext!.projectIds.includes(p.id),
           )
         }
 
@@ -192,7 +192,7 @@ const Projects = () => {
         let filteredProjects = transformedProjects
         if (!canViewAllProjects && userContext?.projectIds) {
           filteredProjects = transformedProjects.filter(p =>
-            userContext.projectIds.includes(p.id),
+            userContext!.projectIds.includes(p.id),
           )
         }
 
@@ -228,7 +228,7 @@ const Projects = () => {
     companyId,
     getCachedProjects,
     setCachedProjects,
-    userContext.projectIds,
+    userContext,
   ])
 
   const handleCreateProject = async (projectData: {
