@@ -103,23 +103,11 @@ const Projects = () => {
   // Sync React Query data with local state
   useEffect(() => {
     if (projectsRQ !== undefined && !isLoadingRQ) {
-      console.log(
-        '📁 React Query: Loading projects data',
-        projectsRQ.length,
-        'projects',
-      )
-
       // Filter projects based on user permissions
       let filteredProjects = projectsRQ
       if (!canViewAllProjects && userContext?.projectIds) {
         filteredProjects = projectsRQ.filter(p =>
           userContext.projectIds.includes(p.id),
-        )
-        console.log(
-          '📁 Filtered to assigned projects:',
-          filteredProjects.length,
-          'of',
-          projectsRQ.length,
         )
       }
 
@@ -206,12 +194,6 @@ const Projects = () => {
           filteredProjects = transformedProjects.filter(p =>
             userContext.projectIds.includes(p.id),
           )
-          console.log(
-            '📁 Manual load: Filtered to assigned projects:',
-            filteredProjects.length,
-            'of',
-            transformedProjects.length,
-          )
         }
 
         setProjects(filteredProjects)
@@ -254,8 +236,7 @@ const Projects = () => {
     state?: string
     postcode?: string
   }) => {
-    console.log('Projects: Creating project with data:', projectData)
-
+ 
     try {
       // Create project using API
       const newProject = await projectService.createProject(companyId!, {
@@ -265,8 +246,6 @@ const Projects = () => {
       })
 
       if (newProject) {
-        console.log('Projects: Project created successfully:', newProject)
-
         // Transform and add to local state
         const transformedProject: Project = {
           id: newProject.id,
