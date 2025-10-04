@@ -20,6 +20,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { usePermissions, useUserContext } from '@/hooks/user-roles'
 
 // React Query hooks for enhanced performance
 import { useProjects } from '@/hooks/queries/useProjects'
@@ -37,6 +38,12 @@ const Projects = () => {
   usePrefetch(true)
 
   const queryClient = useQueryClient()
+
+  // Check user permissions and context
+  const { userContext } = useUserContext()
+  const { hasPermission } = usePermissions()
+  const canCreateProject = hasPermission('canCreateProjects')
+  const canViewAllProjects = hasPermission('canViewAllProjects')
 
   // React Query hooks - provide automatic caching and background refetching
   const { data: projectsRQ = [], isLoading: isLoadingRQ } = useProjects(
@@ -96,29 +103,40 @@ const Projects = () => {
   // Sync React Query data with local state
   useEffect(() => {
     if (projectsRQ !== undefined && !isLoadingRQ) {
-      console.log(
-        '📁 React Query: Loading projects data',
-        projectsRQ.length,
-        'projects',
-      )
-      setProjects(projectsRQ)
+      // Filter projects based on user permissions
+      let filteredProjects = projectsRQ
+      if (!canViewAllProjects && userContext?.projectIds) {
+        filteredProjects = projectsRQ.filter(p =>
+          userContext!.projectIds.includes(p.id),
+        )
+      }
+
+      setProjects(filteredProjects)
       setLoading(false)
     } else if (isLoadingRQ) {
       setLoading(true)
     }
-  }, [projectsRQ, isLoadingRQ])
+  }, [projectsRQ, isLoadingRQ, canViewAllProjects, userContext])
 
   // Load cached projects immediately on mount
   useEffect(() => {
     if (companyId) {
       const cached = getCachedProjects()
       if (cached) {
-        setProjects(cached)
+        // Filter cached projects based on user permissions
+        let filteredProjects = cached
+        if (!canViewAllProjects && userContext?.projectIds) {
+          filteredProjects = cached.filter(p =>
+            userContext!.projectIds.includes(p.id),
+          )
+        }
+
+        setProjects(filteredProjects)
         setLoading(false)
-        setExpectedProjectCount(Math.max(cached.length, 1))
+        setExpectedProjectCount(Math.max(filteredProjects.length, 1))
       }
     }
-  }, [companyId, getCachedProjects])
+  }, [companyId, getCachedProjects, canViewAllProjects, userContext])
 
   // Load cached project count from localStorage
   useEffect(() => {
@@ -170,7 +188,15 @@ const Projects = () => {
           }),
         )
 
-        setProjects(transformedProjects)
+        // Filter projects based on user permissions
+        let filteredProjects = transformedProjects
+        if (!canViewAllProjects && userContext?.projectIds) {
+          filteredProjects = transformedProjects.filter(p =>
+            userContext!.projectIds.includes(p.id),
+          )
+        }
+
+        setProjects(filteredProjects)
 
         // Cache the fresh data
         setCachedProjects(transformedProjects)
@@ -197,7 +223,13 @@ const Projects = () => {
       }
     }
     loadProjects()
-  }, [companyId, getCachedProjects, setCachedProjects])
+  }, [
+    canViewAllProjects,
+    companyId,
+    getCachedProjects,
+    setCachedProjects,
+    userContext,
+  ])
 
   const handleCreateProject = async (projectData: {
     address: string
@@ -210,8 +242,6 @@ const Projects = () => {
     state?: string
     postcode?: string
   }) => {
-    console.log('Projects: Creating project with data:', projectData)
-
     try {
       // Create project using API
       const newProject = await projectService.createProject(companyId!, {
@@ -221,8 +251,6 @@ const Projects = () => {
       })
 
       if (newProject) {
-        console.log('Projects: Project created successfully:', newProject)
-
         // Transform and add to local state
         const transformedProject: Project = {
           id: newProject.id,
@@ -307,7 +335,7 @@ const Projects = () => {
             </Button> */}
 
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                {projects.length > 0 && (
+                {canCreateProject && projects.length > 0 && (
                   <DialogTrigger asChild>
                     <Button size="sm">
                       <Plus className="h-4 w-4 mr-1" />

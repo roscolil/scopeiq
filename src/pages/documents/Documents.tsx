@@ -165,11 +165,6 @@ const Documents = () => {
   // Sync React Query data with local state
   React.useEffect(() => {
     if (documentsRQ !== undefined && !isDocumentsLoadingRQ) {
-      console.log(
-        '📋 React Query: Loading documents data',
-        documentsRQ.length,
-        'documents',
-      )
       setDocuments(documentsRQ)
       setIsDocumentsLoading(false)
     } else if (isDocumentsLoadingRQ) {

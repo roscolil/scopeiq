@@ -10,6 +10,9 @@ export * from './ai'
 // Authentication Services - User management and authentication
 export * from './auth'
 
+// Audit Services - Security audit logging and monitoring
+export * from './audit'
+
 // File Services - Upload, processing, and extraction
 export * from './file'
 

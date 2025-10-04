@@ -1,6 +1,7 @@
 import React from 'react'
 import { usePermissions, type UserContext } from '../hooks/user-roles'
 import type { UserRole, RolePermissions } from '../types/entities'
+import { AuditLogger } from '../services/audit/audit-log'
 
 /**
  * Hook for programmatic authorization checks
@@ -16,12 +17,30 @@ export function useAuthorization() {
     requireProject?: string
     requireAnyPermission?: boolean
   }): boolean => {
+    // Get user context for logging
+    const userContext = (permissions as any).userContext
+
     // Check role requirements
     if (config.requireRole) {
       const roles = Array.isArray(config.requireRole)
         ? config.requireRole
         : [config.requireRole]
-      if (!permissions.hasAnyRole(roles)) {
+      const hasRole = permissions.hasAnyRole(roles)
+
+      // Audit log the role check
+      if (userContext?.userId) {
+        AuditLogger.checkPermission(
+          userContext.userId,
+          `role:${roles.join('|')}`,
+          hasRole,
+          {
+            requiredRole: roles,
+            projectId: config.requireProject,
+          },
+        ).catch(err => console.warn('Audit log failed:', err))
+      }
+
+      if (!hasRole) {
         return false
       }
     }
@@ -36,17 +55,41 @@ export function useAuthorization() {
         ? perms.some(permission => permissions.hasPermission(permission))
         : perms.every(permission => permissions.hasPermission(permission))
 
+      // Audit log the permission check
+      if (userContext?.userId) {
+        AuditLogger.checkPermission(
+          userContext.userId,
+          perms.join(','),
+          hasRequiredPermissions,
+          {
+            requiredPermission: perms,
+            projectId: config.requireProject,
+          },
+        ).catch(err => console.warn('Audit log failed:', err))
+      }
+
       if (!hasRequiredPermissions) {
         return false
       }
     }
 
     // Check project access requirements
-    if (
-      config.requireProject &&
-      !permissions.canAccessProject(config.requireProject)
-    ) {
-      return false
+    if (config.requireProject) {
+      const hasAccess = permissions.canAccessProject(config.requireProject)
+
+      // Audit log project access check
+      if (userContext?.userId) {
+        AuditLogger.checkProjectAccess(
+          userContext.userId,
+          userContext.role,
+          config.requireProject,
+          hasAccess,
+        ).catch(err => console.warn('Audit log failed:', err))
+      }
+
+      if (!hasAccess) {
+        return false
+      }
     }
 
     return true

@@ -1,7 +1,7 @@
 import React from 'react'
-import { usePermissions } from '../hooks/user-roles'
-import { useAuthorization } from '../hooks/auth-utils'
-import type { UserRole, RolePermissions } from '../types/entities'
+import { usePermissions } from '../../hooks/user-roles'
+import { useAuthorization } from '../../hooks/auth-utils'
+import type { UserRole, RolePermissions } from '../../types/entities'
 
 // Authorization component props
 interface ProtectedComponentProps {

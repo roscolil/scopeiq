@@ -37,13 +37,27 @@ import {
   User as ServiceUser,
 } from '@/services/auth/user-management'
 
-const userFormSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  role: z.enum(['Owner', 'Admin', 'User'] as const),
-  projectIds: z.array(z.string()).optional(),
-  isActive: z.boolean().optional(),
-})
+const userFormSchema = z
+  .object({
+    email: z.string().email('Please enter a valid email address'),
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    role: z.enum(['Owner', 'Admin', 'User'] as const),
+    projectIds: z.array(z.string()).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    data => {
+      // Require project selection for User role
+      if (data.role === 'User') {
+        return data.projectIds && data.projectIds.length > 0
+      }
+      return true
+    },
+    {
+      message: 'Users must be assigned to at least one project',
+      path: ['projectIds'],
+    },
+  )
 
 type UserFormValues = z.infer<typeof userFormSchema>
 
@@ -173,19 +187,49 @@ export function UserForm({
           )}
         />
 
-        {/* Project assignment - hide for Owner and Admin roles as they have broader access */}
-        {selectedRole !== 'Owner' &&
-          selectedRole !== 'Admin' &&
+        {/* Project assignment - required for User role */}
+        {selectedRole === 'User' && (
+          <Controller
+            control={form.control}
+            name="projectIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Assign to Projects <span className="text-destructive">*</span>
+                </FormLabel>
+                <MultiSelect
+                  onValueChange={field.onChange}
+                  placeholder="Select at least one project"
+                  variant="inverted"
+                  animation={2}
+                  options={projects.map(p => ({
+                    label: p.name,
+                    value: p.id,
+                  }))}
+                  value={field.value || []}
+                />
+                <FormDescription>
+                  Users can only view and upload documents in assigned projects.
+                  At least one project is required.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Project assignment - optional for Admin/Owner (if needed for editing) */}
+        {(selectedRole === 'Admin' || selectedRole === 'Owner') &&
           !isInvitation && (
             <Controller
               control={form.control}
               name="projectIds"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to Projects</FormLabel>
+                  <FormLabel>Assign to Specific Projects (Optional)</FormLabel>
                   <MultiSelect
                     onValueChange={field.onChange}
-                    placeholder="Select projects"
+                    placeholder="Leave empty for access to all projects"
                     variant="inverted"
                     animation={2}
                     options={projects.map(p => ({
@@ -195,9 +239,8 @@ export function UserForm({
                     value={field.value || []}
                   />
                   <FormDescription>
-                    {selectedRole === 'User'
-                      ? 'Users can only view documents in selected projects.'
-                      : 'Owners and Admins can manage selected projects and their documents.'}
+                    Admins and Owners have access to all company projects by
+                    default.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -207,6 +250,7 @@ export function UserForm({
 
         {/* Info message for invitations */}
         {isInvitation &&
+          selectedRole !== 'User' &&
           selectedRole !== 'Owner' &&
           selectedRole !== 'Admin' && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">

@@ -149,8 +149,14 @@ const schema = a.schema({
       projectAssignments: a.hasMany('InvitationProject', 'invitationId'),
     })
     .authorization(allow => [
-      allow.owner('userPools').to(['read']), // Owners can only read, not update ownership
-      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+      // Admin has full access
+      allow.groups(['Admin'], 'userPools').to(['create', 'read', 'update', 'delete']),
+      // Owner can manage invitations in their company
+      allow.groups(['Owner'], 'userPools').to(['create', 'read', 'update', 'delete']),
+      // Users can read (to see pending invitations)
+      allow.groups(['User'], 'userPools').to(['read']),
+      // Invitation recipient can read their own
+      allow.owner('userPools').to(['read']),
     ])
     .secondaryIndexes(index => [
       index('companyId')
@@ -170,8 +176,12 @@ const schema = a.schema({
       project: a.belongsTo('Project', 'projectId'),
     })
     .authorization(allow => [
-      allow.owner('userPools').to(['read']), // Owners can only read, not update ownership
-      allow.groups(['Admin']).to(['create', 'read', 'update', 'delete']),
+      // Admin has full access
+      allow.groups(['Admin'], 'userPools').to(['create', 'read', 'update', 'delete']),
+      // Owner can manage invitation-project assignments
+      allow.groups(['Owner'], 'userPools').to(['create', 'read', 'delete']),
+      // Users can read their own
+      allow.owner('userPools').to(['read']),
     ]),
 
   // Enhanced Project model
