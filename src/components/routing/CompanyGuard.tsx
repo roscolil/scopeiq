@@ -66,18 +66,6 @@ export const CompanyGuard = () => {
       const paramLower = localDecoded.trim().toLowerCase()
       const userLower = (user.companyId || '').trim().toLowerCase()
 
-      console.log('🔍 CompanyGuard validation:', {
-        urlParam: localDecoded,
-        userCompanyId: user.companyId,
-        paramNormalized,
-        userNormalized,
-        paramLower,
-        userLower,
-        normalizedMatch: paramNormalized === userNormalized,
-        rawMatch: user.companyId === localDecoded,
-        caseInsensitiveMatch: paramLower === userLower,
-      })
-
       if (
         paramNormalized !== userNormalized &&
         user.companyId !== localDecoded &&
