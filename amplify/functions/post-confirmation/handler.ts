@@ -33,14 +33,12 @@ export const handler: PostConfirmationTriggerHandler = async event => {
     email?.split('@')[0] ||
     'User'
 
-  // In post-confirmation trigger, groups are not available in the event
-  // We'll determine role based on existing users in the company or default to Owner
-  const userRole: 'Admin' | 'Owner' | 'User' = 'Owner' // Default for first user in company
+  // SECURITY: All signups are assigned 'Owner' role by default
+  // Admin role must be manually assigned by a superuser (principle of least privilege)
+  // This prevents unauthorized admin access through the signup flow
+  const userRole: 'Owner' = 'Owner'
 
-  // Note: Group assignment happens separately through Cognito admin operations
-  // The actual role will be determined by group membership in the pre-token-generation trigger
-
-  console.log('Determined user role:', userRole)
+  console.log('Assigning default Owner role to new signup')
 
   if (!email) {
     console.error('No email found in user attributes')

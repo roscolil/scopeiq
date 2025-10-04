@@ -44,9 +44,9 @@ const formSchema = z
         },
       ),
     confirmPassword: z.string(),
-    role: z.enum(['Admin', 'Owner', 'User'], {
-      required_error: 'Please select a role',
-    }),
+    // Role is automatically set to 'Owner' for all signups
+    // Admin privileges must be manually assigned by a superuser
+    // This follows the principle of least privilege for security
   })
   .refine(data => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -69,18 +69,21 @@ const SignUp = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      role: undefined,
     },
   })
 
   const onSubmit = async (data: FormValues) => {
     try {
       setError(null)
+      // All signups are assigned 'Owner' role by default
+      // Admin role must be manually assigned by a superuser
+      const role = 'Owner'
+
       console.log('Attempting to create account with:', {
         email: data.email,
         name: data.name,
         company: data.company,
-        role: data.role,
+        role: role,
       })
 
       await signUp({
@@ -91,7 +94,7 @@ const SignUp = () => {
             given_name: data.name,
             email: data.email,
             'custom:companyName': data.company, // Pass company name to be used in post-confirmation
-            'custom:role': data.role,
+            'custom:role': role,
           },
         },
       })
@@ -168,32 +171,20 @@ const SignUp = () => {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Owner">Owner</SelectItem>
-                      <SelectItem value="User">User</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Role Information - Auto-assigned */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-900">
+                  Account Role: Owner
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  All new accounts are created with Owner privileges. Admin
+                  access must be manually assigned by a superuser for security.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <FormField
             control={form.control}
