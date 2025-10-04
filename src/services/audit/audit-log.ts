@@ -650,4 +650,3 @@ export const AuditLogger = {
   exportJSON: () => auditLog.exportLogs(),
   exportCSV: () => auditLog.exportLogsCSV(),
 }
-

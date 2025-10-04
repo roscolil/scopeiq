@@ -11,4 +11,3 @@ export type {
   PermissionCheckMetadata,
   AccessDenialMetadata,
 } from './audit-log'
-

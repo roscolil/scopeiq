@@ -185,4 +185,3 @@ See [AUDIT_LOGGING.md](./src/docs/AUDIT_LOGGING.md) for complete guide.
 - Service: `src/services/audit/audit-log.ts`
 - Viewer: `src/components/admin/AuditLogViewer.tsx`
 - Docs: `src/docs/AUDIT_LOGGING.md`
-
