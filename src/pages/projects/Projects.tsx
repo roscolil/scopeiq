@@ -223,7 +223,13 @@ const Projects = () => {
       }
     }
     loadProjects()
-  }, [companyId, getCachedProjects, setCachedProjects])
+  }, [
+    canViewAllProjects,
+    companyId,
+    getCachedProjects,
+    setCachedProjects,
+    userContext.projectIds,
+  ])
 
   const handleCreateProject = async (projectData: {
     address: string
@@ -236,7 +242,6 @@ const Projects = () => {
     state?: string
     postcode?: string
   }) => {
- 
     try {
       // Create project using API
       const newProject = await projectService.createProject(companyId!, {
