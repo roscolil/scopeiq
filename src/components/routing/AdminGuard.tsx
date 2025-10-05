@@ -1,6 +1,7 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuthorization } from '@/hooks/auth-utils'
+import { useUserContext } from '@/hooks/user-roles'
 import { PageLoader } from '@/components/shared/PageLoader'
 import type { RolePermissions } from '@/types/entities'
 
@@ -24,11 +25,10 @@ interface AuthorizationReturn {
 const AdminGuard: React.FC = () => {
   const { userRole, isAuthorized } =
     useAuthorization() as unknown as AuthorizationReturn
+  const { loading: contextLoading } = useUserContext()
 
-  // We treat absence of authorization utilities gracefully (should not happen)
-  const loading = false // useAuthorization internally handles loading via hooks used in user-roles
-
-  if (loading) {
+  // Wait for user context to load before checking permissions
+  if (contextLoading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <PageLoader type="default" />
