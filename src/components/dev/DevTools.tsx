@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/card'
 import { useUserContext } from '@/hooks/user-roles'
 import type { UserRole } from '@/types/entities'
+import { storageManager } from '@/utils/storage'
 
 const DEV_ROLE_OVERRIDE_KEY = 'dev:roleOverride'
 const DEV_PROJECTS_OVERRIDE_KEY = 'dev:projectsOverride'
@@ -49,6 +50,7 @@ interface DevToolsProps {
 export const DevTools: React.FC<DevToolsProps> = ({ isOpen, onOpenChange }) => {
   const [overrideRole, setOverrideRole] = useState<UserRole | null>(null)
   const [overrideProjects, setOverrideProjects] = useState<string>('')
+  const [storageStats, setStorageStats] = useState(storageManager.getStats())
   const { userContext } = useUserContext()
 
   // Load overrides from localStorage on mount
@@ -305,6 +307,67 @@ export const DevTools: React.FC<DevToolsProps> = ({ isOpen, onOpenChange }) => {
                   </p>
                 </div>
               )}
+
+              {/* Storage Stats */}
+              <div className="space-y-1.5 pt-2 border-t border-gray-200">
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  Storage Usage
+                </label>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Used:</span>
+                    <span className="text-xs font-mono font-medium">
+                      {storageStats.totalSizeMB}/{storageStats.maxSizeMB} MB (
+                      {storageStats.usagePercent}%)
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        parseFloat(storageStats.usagePercent) > 80
+                          ? 'bg-red-500'
+                          : parseFloat(storageStats.usagePercent) > 50
+                            ? 'bg-orange-500'
+                            : 'bg-green-500'
+                      }`}
+                      style={{ width: `${storageStats.usagePercent}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded">
+                    <span className="text-xs text-gray-600">Items:</span>
+                    <span className="text-xs font-mono font-medium">
+                      {storageStats.itemCount}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <Button
+                    onClick={() => {
+                      storageManager.cleanOldCaches()
+                      setStorageStats(storageManager.getStats())
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                  >
+                    Clean Caches
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setStorageStats(storageManager.getStats())
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                  >
+                    Refresh
+                  </Button>
+                </div>
+              </div>
 
               {/* Actions */}
               <div className="space-y-2 pt-2 border-t border-gray-200">

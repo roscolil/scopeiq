@@ -155,19 +155,19 @@ export function useUserContext() {
           ) as UserRole | null
           const projectsOverride = localStorage.getItem('dev:projectsOverride')
 
-          console.log('[DevTools] Found overrides:', {
-            roleOverride,
-            projectsOverride,
-            originalRole: context.role,
-          })
+          // console.log('[DevTools] Found overrides:', {
+          //   roleOverride,
+          //   projectsOverride,
+          //   originalRole: context.role,
+          // })
 
           if (
             roleOverride &&
             ['Admin', 'Owner', 'User'].includes(roleOverride)
           ) {
-            console.log(
-              `[DevTools] ✅ Role override active: ${context.role} → ${roleOverride}`,
-            )
+            // console.log(
+            //   `[DevTools] ✅ Role override active: ${context.role} → ${roleOverride}`,
+            // )
             context = {
               ...context,
               role: roleOverride,
@@ -180,7 +180,7 @@ export function useUserContext() {
               .split(',')
               .map(s => s.trim())
               .filter(Boolean)
-            console.log(`[DevTools] ✅ Projects override active:`, projects)
+            // console.log(`[DevTools] ✅ Projects override active:`, projects)
             context = {
               ...context,
               projectIds: projects,

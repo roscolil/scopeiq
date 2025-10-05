@@ -51,13 +51,20 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
 
   useEffect(() => {
     let cancelled = false
+    let loadedPdf: PDFDocumentProxy | null = null
+
     setLoading(true)
     setError(null)
     ;(async () => {
       try {
         const task = getDocument({ url })
         const doc = await task.promise
-        if (cancelled) return
+        if (cancelled) {
+          // Document loaded but component unmounted - clean it up
+          doc.destroy()
+          return
+        }
+        loadedPdf = doc
         setPdf(doc)
       } catch (e) {
         if (!cancelled) setError('Failed to load PDF')
@@ -65,10 +72,43 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
         if (!cancelled) setLoading(false)
       }
     })()
+
     return () => {
       cancelled = true
+      // Cleanup PDF document to free memory
+      if (loadedPdf) {
+        try {
+          loadedPdf.destroy()
+          console.log('[PDF] Document destroyed on unmount')
+        } catch (error) {
+          console.warn('[PDF] Error destroying document:', error)
+        }
+      }
+      // Clear main canvas to free memory
+      const canvas = canvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+        }
+        canvas.width = 0
+        canvas.height = 0
+      }
     }
   }, [url])
+
+  // Cleanup thumbnails on unmount
+  useEffect(() => {
+    return () => {
+      // Revoke thumbnail blob URLs to free memory
+      Object.values(thumbnails).forEach(url => {
+        if (url.startsWith('blob:')) {
+          URL.revokeObjectURL(url)
+        }
+      })
+      console.log('[PDF] Cleaned up thumbnail blob URLs')
+    }
+  }, [thumbnails])
 
   const renderPage = useCallback(async () => {
     if (!pdf) return

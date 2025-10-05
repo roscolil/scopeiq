@@ -71,13 +71,17 @@ export interface AccessDenialMetadata {
 
 class AuditLogService {
   private logs: AuditLogEntry[] = []
-  private maxLogsInMemory = 1000
+  private maxLogsInMemory = 1000 // Maximum logs to keep in memory
+  private maxLogsInStorage = 1000 // Maximum logs to persist
+  private maxLogAgeDays = 7 // Maximum age for logs in days
   private storageKey = 'audit_logs'
   private enabled = true
 
   constructor() {
     // Load existing logs from localStorage on init
     this.loadLogs()
+    // Clean old logs on startup
+    this.cleanOldLogs()
   }
 
   /**
@@ -496,6 +500,29 @@ class AuditLogService {
   }
 
   /**
+   * Clean logs older than maxLogAgeDays
+   */
+  private cleanOldLogs(): void {
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - this.maxLogAgeDays)
+    const cutoffTime = cutoffDate.getTime()
+
+    const originalCount = this.logs.length
+    this.logs = this.logs.filter(log => {
+      const logTime = new Date(log.timestamp).getTime()
+      return logTime > cutoffTime
+    })
+
+    const removed = originalCount - this.logs.length
+    if (removed > 0) {
+      console.log(
+        `[AUDIT] Cleaned ${removed} old logs (older than ${this.maxLogAgeDays} days)`,
+      )
+      this.saveLogs()
+    }
+  }
+
+  /**
    * Private: Load logs from localStorage
    */
   private loadLogs(): void {
@@ -504,8 +531,18 @@ class AuditLogService {
     try {
       const stored = localStorage.getItem(this.storageKey)
       if (stored) {
-        this.logs = JSON.parse(stored)
+        const allLogs = JSON.parse(stored)
+        // Limit to maxLogsInStorage when loading
+        this.logs = allLogs.slice(0, this.maxLogsInStorage)
         console.log(`[AUDIT] Loaded ${this.logs.length} logs from storage`)
+
+        // If we truncated, save the truncated version
+        if (allLogs.length > this.maxLogsInStorage) {
+          console.log(
+            `[AUDIT] Truncated ${allLogs.length - this.maxLogsInStorage} old logs`,
+          )
+          this.saveLogs()
+        }
       }
     } catch (error) {
       console.error('[AUDIT] Error loading logs:', error)
@@ -520,13 +557,25 @@ class AuditLogService {
     if (typeof window === 'undefined') return
 
     try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.logs))
+      // Only save up to maxLogsInStorage
+      const logsToSave = this.logs.slice(0, this.maxLogsInStorage)
+      localStorage.setItem(this.storageKey, JSON.stringify(logsToSave))
     } catch (error) {
       console.error('[AUDIT] Error saving logs:', error)
-      // If quota exceeded, keep only recent logs
+      // If quota exceeded, keep only most recent 100 logs
       if (error instanceof Error && error.name === 'QuotaExceededError') {
+        console.warn('[AUDIT] Storage quota exceeded, reducing to 100 logs')
         this.logs = this.logs.slice(0, 100)
-        localStorage.setItem(this.storageKey, JSON.stringify(this.logs))
+        try {
+          localStorage.setItem(this.storageKey, JSON.stringify(this.logs))
+        } catch (e) {
+          // If still failing, clear audit logs entirely
+          console.error(
+            '[AUDIT] Cannot save even 100 logs, clearing audit storage',
+          )
+          localStorage.removeItem(this.storageKey)
+          this.logs = []
+        }
       }
     }
   }
