@@ -40,11 +40,11 @@ const AdminGuard: React.FC = () => {
 
   if (!allowed) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Access Denied</h1>
-        <p className="max-w-md text-sm text-muted-foreground">
+      <div className="flex h-full flex-col items-center mt-20 justify-center gap-4 p-8 text-center">
+        <h1 className="text-3xl font-semibold text-red-500 tracking-tight">Access Denied</h1>
+        <p className="max-w-md text text-gray-300">
           You must be an administrator to view this area. Your current role is:{' '}
-          <span className="font-medium">{userRole}</span>.
+          <span className="font-medium underline">{userRole}</span>.
         </p>
       </div>
     )
