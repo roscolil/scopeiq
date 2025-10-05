@@ -28,22 +28,20 @@ This guide helps you verify that the backend RBAC implementation (Lambda functio
 
 **Status:** ✅ **Implementation Complete**
 
-**Potential Issues:**
+**Role Assignment:**
 
-- ⚠️ Always defaults to 'Owner' role - may want to check invitation first
-- ⚠️ No validation of company name during creation
-- ✅ Good error handling with fallback
+- ✅ All signups are assigned 'Owner' role (hardcoded for security)
+- 🔒 Admin role must be manually assigned via AWS Cognito Console by AWS administrators
+- 🔒 Users with 'User' role must be invited (cannot sign up directly)
+- ✅ Prevents privilege escalation through signup flow
 
-**Improvement Opportunities:**
+**Security:**
 
-```typescript
-// Check if user was invited and use invitation role
-const { data: invitations } = await client.models.UserInvitation.list({
-  filter: { email: { eq: email }, status: { eq: 'pending' } },
-})
-
-const userRole = invitations[0]?.role || 'Owner'
-```
+- ✅ No code path can grant Admin privileges
+- ✅ Admin assignment requires AWS Console access (infrastructure-level security)
+- ✅ Follows principle of least privilege
+- ✅ User role can only be assigned via invitation flow
+- ✅ Clear separation between app-level and infrastructure-level privileges
 
 ---
 

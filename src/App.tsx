@@ -22,6 +22,7 @@ import {
 } from '@/hooks/use-device-fixes'
 import { initializeMobileDeviceFixes } from '@/utils/mobile-device-fixes'
 import { useSessionExpiration } from '@/hooks/useSessionExpiration'
+import { storageManager } from '@/utils/storage'
 
 // Eagerly load critical components
 // HomePage now wrapped by RootRoute for conditional dashboard redirect
@@ -107,6 +108,10 @@ const App = () => {
   useEffect(() => {
     // Initialize mobile device fixes immediately
     initializeMobileDeviceFixes()
+
+    // Initialize storage manager with cleanup
+    storageManager.initialize()
+    console.log('[App] Storage initialized:', storageManager.getStats())
 
     prefetchOnIdle()
 

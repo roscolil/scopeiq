@@ -34,7 +34,11 @@ import { useAuthorization } from '@/hooks/auth-utils'
 import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
 import { routes } from '@/utils/ui/navigation'
 
-export const Navbar = () => {
+interface NavbarProps {
+  onDevToolsClick?: () => void
+}
+
+export const Navbar = ({ onDevToolsClick }: NavbarProps = {}) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, user, signOut: authSignOut } = useAuth()
@@ -45,6 +49,9 @@ export const Navbar = () => {
   const { userRole, isAuthorized } = useAuthorization() as AuthorizationSubset
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+
+  // Only show DevTools button in development mode
+  const isDevelopment = import.meta.env.DEV
 
   // Track scroll position to adjust navbar colors
   useEffect(() => {
@@ -238,16 +245,32 @@ export const Navbar = () => {
                     {/* Role Indicator - Mobile */}
                     {userRole && (
                       <div className="px-4 py-2">
-                        <div className="text-xs text-gray-400 mb-2">
-                          Logged in as:
-                        </div>
-                        <div
-                          className={`flex items-center gap-1.5 ${roleConfig.textColor} font-medium text-sm`}
-                        >
-                          <span className={roleConfig.iconColor}>
-                            {roleConfig.icon}
-                          </span>
-                          {roleConfig.label}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-xs text-gray-400 mb-2">
+                              Logged in as:
+                            </div>
+                            <div
+                              className={`flex items-center gap-1.5 ${roleConfig.textColor} font-medium text-sm`}
+                            >
+                              <span className={roleConfig.iconColor}>
+                                {roleConfig.icon}
+                              </span>
+                              {roleConfig.label}
+                            </div>
+                          </div>
+
+                          {/* DevTools Button - Mobile (Development Only) */}
+                          {isDevelopment && onDevToolsClick && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={onDevToolsClick}
+                              className="h-8 w-8 p-0 hover:bg-orange-500/20"
+                            >
+                              <Settings className="h-4 w-4 text-orange-400" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -301,32 +324,61 @@ export const Navbar = () => {
             <div className="hidden md:flex items-center gap-2">
               {/* Role Indicator */}
               {userRole && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 cursor-help">
-                        <span
-                          className={`text-xs font-medium ${
-                            scrolled ? 'text-gray-600' : 'text-gray-300'
-                          }`}
-                        >
-                          Logged in as:
-                        </span>
-                        <div
-                          className={`flex items-center gap-1 ${roleConfig.textColor} font-medium text-sm`}
-                        >
-                          <span className={roleConfig.iconColor}>
-                            {roleConfig.icon}
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-help">
+                          <span
+                            className={`text-xs font-medium ${
+                              scrolled ? 'text-gray-600' : 'text-gray-300'
+                            }`}
+                          >
+                            Logged in as:
                           </span>
-                          {roleConfig.label}
+                          <div
+                            className={`flex items-center gap-1 ${roleConfig.textColor} font-medium text-sm`}
+                          >
+                            <span className={roleConfig.iconColor}>
+                              {roleConfig.icon}
+                            </span>
+                            {roleConfig.label}
+                          </div>
                         </div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <span>Your role: {roleConfig.label}</span>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <span>Your role: {roleConfig.label}</span>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {/* DevTools Button (Development Only) */}
+                  {isDevelopment && onDevToolsClick && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onDevToolsClick}
+                            className={`h-7 w-7 p-0 ${
+                              scrolled
+                                ? 'hover:bg-orange-100'
+                                : 'hover:bg-orange-500/20'
+                            }`}
+                          >
+                            <Settings
+                              className={`h-4 w-4 ${scrolled ? 'text-orange-600' : 'text-orange-400'}`}
+                            />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span>Open Dev Tools</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               )}
 
               {/* Sign Out Button */}

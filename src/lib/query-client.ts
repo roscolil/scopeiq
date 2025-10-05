@@ -7,19 +7,26 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time: how long data is considered fresh (5 minutes)
-      staleTime: 5 * 60 * 1000,
-      // Cache time: how long inactive data stays in cache (30 minutes)
-      gcTime: 30 * 60 * 1000,
+      // Stale time: how long data is considered fresh
+      // Default: 2 minutes (most data updates reasonably frequently)
+      staleTime: 2 * 60 * 1000,
+      // Garbage-collection time: how long inactive data stays in cache
+      // Default: 10 minutes to limit memory footprint
+      gcTime: 10 * 60 * 1000,
       // Retry failed requests (useful for network issues)
       retry: 2,
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
       // Refetch on window focus for data freshness
       refetchOnWindowFocus: true,
       // Refetch on mount if data is stale (important for navigation back)
-      refetchOnMount: 'always',
+      refetchOnMount: 'always', // ensures quick GC after navigation
       // Network mode - online, always, or offlineFirst
       networkMode: 'online',
+      // Reduce memory churn by avoiding refetch on reconnect for large pages
+      refetchOnReconnect: false,
+      // Do not keep previous data for very large lists by default
+      // Individual queries can override with keepPreviousData: true
+      keepPreviousData: false,
     },
     mutations: {
       // Retry mutations only once

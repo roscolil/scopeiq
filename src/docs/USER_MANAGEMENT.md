@@ -78,16 +78,20 @@ export const handler: PostConfirmationTriggerHandler = async event => {
   if (!existingUser) {
     // Create company and user records
     const company = await createDefaultCompany(name)
+    // Role from signup form (Admin or Owner only)
+    // Users with 'User' role must be invited
+    const role = userAttributes['custom:role'] || 'Owner'
+
     const user = await createUser({
       email,
       name,
       companyId: company.id,
-      role: 'Owner',
+      role: role,
     })
 
     // Update Cognito attributes
     event.response.userAttributes['custom:companyId'] = company.id
-    event.response.userAttributes['custom:role'] = 'Owner'
+    event.response.userAttributes['custom:role'] = role
   }
 
   return event

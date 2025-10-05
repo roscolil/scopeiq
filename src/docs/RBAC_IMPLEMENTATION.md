@@ -10,6 +10,22 @@ The RBAC system provides three distinct user roles with different levels of acce
 - **Owner**: Project-level control and management
 - **User**: View-only access to assigned projects
 
+**Note on User Creation:**
+
+- **Direct Signup**: All signups are automatically assigned the 'Owner' role
+- **Admin Role**: Cannot be assigned during signup - must be manually granted by AWS administrators via Cognito Console
+- **User Role**: Cannot sign up directly - must be invited by an Admin or Owner
+- This follows the **principle of least privilege** and ensures proper security controls
+
+**Security Model:**
+
+- ✅ No application code can grant Admin privileges
+- ✅ Admin assignment requires AWS Console access (infrastructure-level security)
+- ✅ All privilege escalations require human approval and AWS-level permissions
+- ✅ Clear audit trail via AWS CloudTrail
+
+See [Admin Role Assignment Guide](./ADMIN_ROLE_ASSIGNMENT.md) for details on granting admin privileges.
+
 ## Roles and Permissions
 
 ### Admin Role

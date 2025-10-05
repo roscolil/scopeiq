@@ -145,7 +145,52 @@ export function useUserContext() {
         setLoading(true)
         setError(null)
 
-        const context = await getCurrentUserContext()
+        let context = await getCurrentUserContext()
+
+        // Apply dev overrides in development mode only
+        if (import.meta.env.DEV && context) {
+          console.log('[DevTools] Checking for overrides...')
+          const roleOverride = localStorage.getItem(
+            'dev:roleOverride',
+          ) as UserRole | null
+          const projectsOverride = localStorage.getItem('dev:projectsOverride')
+
+          // console.log('[DevTools] Found overrides:', {
+          //   roleOverride,
+          //   projectsOverride,
+          //   originalRole: context.role,
+          // })
+
+          if (
+            roleOverride &&
+            ['Admin', 'Owner', 'User'].includes(roleOverride)
+          ) {
+            // console.log(
+            //   `[DevTools] ✅ Role override active: ${context.role} → ${roleOverride}`,
+            // )
+            context = {
+              ...context,
+              role: roleOverride,
+              permissions: ROLE_PERMISSIONS[roleOverride],
+            }
+          }
+
+          if (projectsOverride) {
+            const projects = projectsOverride
+              .split(',')
+              .map(s => s.trim())
+              .filter(Boolean)
+            // console.log(`[DevTools] ✅ Projects override active:`, projects)
+            context = {
+              ...context,
+              projectIds: projects,
+            }
+          }
+
+          if (!roleOverride && !projectsOverride) {
+            console.log('[DevTools] No overrides active - using real role')
+          }
+        }
 
         if (mounted) {
           setUserContext(context)
