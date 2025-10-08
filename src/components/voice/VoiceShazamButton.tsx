@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { novaSonic } from '@/services/api/nova-sonic'
-import { Mic, Brain } from 'lucide-react'
+import { Mic, Hammer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -727,21 +727,26 @@ export const VoiceShazamButton = ({
             0%, 100% { height: 12px; transform: scaleY(1); }
             50% { height: 24px; transform: scaleY(1.8); }
           }
-          @keyframes brain-pulse {
-            0%, 100% { 
-              transform: scale(2.5); 
-              opacity: 0.9;
+          /* Hammer processing animation */
+          @keyframes hammer-swing {
+            0% {
+              transform: scale(2.8) rotate(-15deg);
+              opacity: 0.95;
             }
-            50% { 
-              transform: scale(3.2); 
+            50% {
+              transform: scale(3.05) rotate(10deg);
               opacity: 1;
             }
+            100% {
+              transform: scale(2.8) rotate(-15deg);
+              opacity: 0.95;
+            }
           }
-          @keyframes brain-glow {
-            0%, 100% { 
+          @keyframes hammer-glow {
+            0%, 100% {
               box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
             }
-            50% { 
+            50% {
               box-shadow: 0 0 40px rgba(255, 255, 255, 0.6);
             }
           }
@@ -833,18 +838,19 @@ export const VoiceShazamButton = ({
                 >
                   {showProcessing ? (
                     <div className="relative flex items-center justify-center">
-                      {/* AI Processing Brain */}
+                      {/* Processing: Animated Hammer */}
                       <div
                         className="absolute inset-0 rounded-full"
                         style={{
-                          animation: 'brain-glow 2s ease-in-out infinite',
+                          animation: 'hammer-glow 2s ease-in-out infinite',
                         }}
                       />
-                      <Brain
+                      <Hammer
                         className="text-white"
                         strokeWidth={1.5}
                         style={{
-                          animation: 'brain-pulse 1.5s ease-in-out infinite',
+                          transformOrigin: '60% 20%',
+                          animation: 'hammer-swing 1.2s ease-in-out infinite',
                         }}
                       />
                     </div>
