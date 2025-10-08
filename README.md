@@ -1,4 +1,4 @@
-# 🏗️ Jacq of All Trades
+# 🏗️ Jack of All Trades
 
 > **AI-Powered Construction Document Management Platform**  
 > Intelligent document organization, semantic search, and project collaboration for the construction industry.
@@ -11,9 +11,9 @@
 
 ---
 
-## 🚀 **What is Jacq of All Trades?**
+## 🚀 **What is Jack of All Trades?**
 
-Jacq of All Trades revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
+Jack of All Trades revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
 
 ### ✨ **Key Features**
 
@@ -329,9 +329,9 @@ Need help? We're here for you!
 
 ---
 
-## 🏆 **Why Jacq of All Trades?**
+## 🏆 **Why Jack of All Trades?**
 
-> _"Before Jacq of All Trades, finding the right specification took hours. Now it takes seconds."_  
+> _"Before Jack of All Trades, finding the right specification took hours. Now it takes seconds."_  
 > — **Sarah Chen**, Project Manager at BuildTech Solutions
 
 > _"The voice search feature is a game-changer when you're on-site with dirty hands."_  

@@ -24,7 +24,7 @@ export const handler: Schema['sendInvitationEmail']['functionHandler'] =
       const fromEmail = process.env.FROM_EMAIL || 'noreply@scopeiq.com'
 
       // Create email content
-      const subject = `Invitation to join ${companyName} on Jacq of All Trades`
+      const subject = `Invitation to join ${companyName} on Jack of All Trades`
 
       const htmlBody = `
       <!DOCTYPE html>
@@ -46,17 +46,17 @@ export const handler: Schema['sendInvitationEmail']['functionHandler'] =
           <div class="container">
             <div class="header">
               <h1>🎉 You're Invited!</h1>
-              <p>Join your team on Jacq of All Trades</p>
+              <p>Join your team on Jack of All Trades</p>
             </div>
             
             <div class="content">
               <h2>Hello ${recipientName || recipientEmail}!</h2>
-              
-              <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on Jacq of All Trades.</p>
-              
+
+              <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on Jack of All Trades.</p>
+
               <p>You've been assigned the role of: <span class="role-badge">${role}</span></p>
               
-              <p>Jacq of All Trades helps teams collaborate on documents with AI-powered insights and streamlined workflows.</p>
+              <p>Jack of All Trades helps teams collaborate on documents with AI-powered insights and streamlined workflows.</p>
               
               <p>Click the button below to accept your invitation and get started:</p>
               
@@ -80,7 +80,7 @@ export const handler: Schema['sendInvitationEmail']['functionHandler'] =
             <div class="footer">
               <p>This invitation was sent by ${inviterName} from ${companyName}.</p>
               <p>If you believe this invitation was sent in error, you can safely ignore this email.</p>
-              <p>&copy; 2025 Jacq of All Trades. All rights reserved.</p>
+              <p>&copy; 2025 Jack of All Trades. All rights reserved.</p>
             </div>
           </div>
         </body>
@@ -88,11 +88,11 @@ export const handler: Schema['sendInvitationEmail']['functionHandler'] =
     `
 
       const textBody = `
-You're invited to join ${companyName} on Jacq of All Trades!
+You're invited to join ${companyName} on Jack of All Trades!
 
-${inviterName} has invited you to join ${companyName} on Jacq of All Trades as a ${role}.
+${inviterName} has invited you to join ${companyName} on Jack of All Trades as a ${role}.
 
-Jacq of All Trades helps teams collaborate on documents with AI-powered insights and streamlined workflows.
+Jack of All Trades helps teams collaborate on documents with AI-powered insights and streamlined workflows.
 
 Accept your invitation: ${acceptUrl}
 
@@ -106,7 +106,7 @@ What's next:
 This invitation was sent by ${inviterName} from ${companyName}.
 If you believe this invitation was sent in error, you can safely ignore this email.
 
-© 2025 Jacq of All Trades. All rights reserved.
+© 2025 Jack of All Trades. All rights reserved.
     `
 
       // Send email using SES

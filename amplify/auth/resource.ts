@@ -6,9 +6,9 @@ export const auth = defineAuth({
   loginWith: {
     email: {
       verificationEmailStyle: 'CODE',
-      verificationEmailSubject: 'Welcome to Jacq of All Trades - Verify Your Account',
+      verificationEmailSubject: 'Welcome to Jack of All Trades - Verify Your Account',
       verificationEmailBody: createCode =>
-        `Welcome to Jacq of All Trades! Use this verification code to complete your account setup: ${createCode()}`,
+        `Welcome to Jack of All Trades! Use this verification code to complete your account setup: ${createCode()}`,
     },
   },
   // Cognito Groups for role-based access control

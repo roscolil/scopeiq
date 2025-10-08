@@ -1,4 +1,4 @@
-// Advanced Route Prefetching Strategy for Jacq of All Trades
+// Advanced Route Prefetching Strategy for Jack of All Trades
 import { ComponentType, ReactElement } from 'react'
 
 // Define prefetch strategies

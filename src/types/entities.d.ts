@@ -1,5 +1,5 @@
 /**
- * Core entity type definitions for Jacq of All Trades
+ * Core entity type definitions for Jack of All Trades
  * Defines the main data structures used throughout the application
  */
 

@@ -1,5 +1,5 @@
 /**
- * Component-specific type definitions for Jacq of All Trades
+ * Component-specific type definitions for Jack of All Trades
  * Defines props and state types for React components
  */
 

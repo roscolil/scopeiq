@@ -17,7 +17,7 @@ export const Footer = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                Jacq of All Trades
+                Jack of All Trades
               </span>
               <span className="text-xs text-gray-400 font-medium">
                 © {currentYear}

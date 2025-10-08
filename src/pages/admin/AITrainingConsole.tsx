@@ -383,7 +383,7 @@ const AITrainingConsole = () => {
                       </h3>
                       <p className="text-slate-200 mb-4">
                         A comprehensive AI Training & Knowledge Management
-                        Console for Jacq of All Trades that follows
+                        Console for Jack of All Trades that follows
                         industry-standard approaches.
                       </p>
                     </div>

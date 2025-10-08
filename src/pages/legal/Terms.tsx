@@ -53,7 +53,7 @@ const Terms = () => {
                 1. Acceptance of Terms
               </h2>
               <p>
-                By accessing and using Jacq of All Trades ("the Service"), you
+                By accessing and using Jack of All Trades ("the Service"), you
                 accept and agree to be bound by the terms and provision of this
                 agreement. If you do not agree to abide by the above, please do
                 not use this service.
@@ -65,7 +65,7 @@ const Terms = () => {
                 2. Description of Service
               </h2>
               <p>
-                Jacq of All Trades is a document management and AI-powered
+                Jack of All Trades is a document management and AI-powered
                 analysis platform that allows users to upload, organize, and
                 query documents using artificial intelligence. The Service
                 includes features for document storage, processing, and
@@ -133,7 +133,7 @@ const Terms = () => {
                   Service.
                 </p>
                 <p>
-                  5.2. By uploading content, you grant Jacq of All Trades a
+                  5.2. By uploading content, you grant Jack of All Trades a
                   limited license to process, store, and analyze your content to
                   provide the Service.
                 </p>
@@ -186,7 +186,7 @@ const Terms = () => {
                 8. Limitation of Liability
               </h2>
               <p>
-                To the maximum extent permitted by law, Jacq of All Trades shall
+                To the maximum extent permitted by law, Jack of All Trades shall
                 not be liable for any indirect, incidental, special,
                 consequential, or punitive damages, or any loss of profits or
                 revenues, whether incurred directly or indirectly, or any loss
