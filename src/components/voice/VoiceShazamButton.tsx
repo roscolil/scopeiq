@@ -861,15 +861,15 @@ export const VoiceShazamButton = ({
         </div>
 
         {/* Button container with fixed dimensions to prevent layout shift */}
-        <div 
+        <div
           ref={containerRef}
           className="relative"
-          style={{ 
-            width: '154px', 
+          style={{
+            width: '154px',
             height: '154px',
             // Reserve space for rings to prevent layout shift
             padding: '8px',
-            margin: '-8px' 
+            margin: '-8px',
           }}
         >
           {(() => {
@@ -900,16 +900,20 @@ export const VoiceShazamButton = ({
                       ? '0 0 40px rgba(16, 185, 129, 0.6)'
                       : '0 0 30px rgba(0,0,0,0.5)',
                   // Use transform for scaling to avoid layout shift
-                  transform: showProcessing || showListeningVisual
-                    ? 'scale(1.05)'
-                    : 'scale(1)',
+                  transform:
+                    showProcessing || showListeningVisual
+                      ? 'scale(1.05)'
+                      : 'scale(1)',
                   // Add ring effect via box-shadow to avoid layout shift
                   ...(showProcessing && {
-                    boxShadow: '0 0 40px rgba(234, 88, 12, 0.6), 0 0 0 8px rgba(234, 88, 12, 0.4)'
+                    boxShadow:
+                      '0 0 40px rgba(234, 88, 12, 0.6), 0 0 0 8px rgba(234, 88, 12, 0.4)',
                   }),
-                  ...(showListeningVisual && !showProcessing && {
-                    boxShadow: '0 0 40px rgba(16, 185, 129, 0.6), 0 0 0 8px rgba(16, 185, 129, 0.4)'
-                  }),
+                  ...(showListeningVisual &&
+                    !showProcessing && {
+                      boxShadow:
+                        '0 0 40px rgba(16, 185, 129, 0.6), 0 0 0 8px rgba(16, 185, 129, 0.4)',
+                    }),
                   position: 'relative',
                   zIndex: 200,
                 }}
