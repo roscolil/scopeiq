@@ -103,13 +103,16 @@ class NovaSonicService {
   }
 
   /**
-   * Track initial user interaction to unlock audio autoplay on iOS/Safari.
+   * Track initial user interaction to unlock audio autoplay on iOS/Safari and Android Chrome.
    */
   private setupUserInteractionTracking() {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
 
-    if (!isSafari && !isIOS) {
+    if (!isSafari && !isIOS && !isAndroidChrome) {
       // Non‑restricted platforms: treat as immediately unlocked
       this.audioContextUnlocked = true
       this.userInteractionReceived = true
@@ -124,7 +127,14 @@ class NovaSonicService {
 
     const handleUserInteraction = async () => {
       if (this.userInteractionReceived) return
-      console.log('🍎 User interaction detected - unlocking audio')
+
+      let platformLabel = '🍎'
+      if (isAndroidChrome) platformLabel = '🤖'
+      else if (isSafari || isIOS) platformLabel = '🍎'
+
+      console.log(
+        `${platformLabel} User interaction detected - unlocking audio`,
+      )
       this.userInteractionReceived = true
       try {
         const silentAudio = new Audio()
@@ -132,9 +142,18 @@ class NovaSonicService {
           'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAVJZfh9bS7aV8sbwP1x9Q='
         silentAudio.volume = 0
         silentAudio.muted = true
+
+        // Android Chrome specific configuration
+        if (isAndroidChrome) {
+          ;(
+            silentAudio as HTMLAudioElement & { playsInline?: boolean }
+          ).playsInline = true
+          silentAudio.preload = 'auto'
+        }
+
         await silentAudio.play()
         this.audioContextUnlocked = true
-        console.log('✅ Audio context unlocked successfully')
+        console.log(`${platformLabel} Audio context unlocked successfully`)
         if (this.unlockPromiseResolver) {
           this.unlockPromiseResolver()
           this.unlockPromiseResolver = null
@@ -144,13 +163,13 @@ class NovaSonicService {
           if (!this.isAudioUnlocked()) return
           if (this.pendingAudio) {
             console.log(
-              '🔁 Retrying pending audio play after unlock fallback window',
+              `${platformLabel} Retrying pending audio play after unlock fallback window`,
             )
             this.playPendingAudio().catch(() => {})
           }
         }, 350)
       } catch (e) {
-        console.warn('⚠️ Failed to unlock audio context:', e)
+        console.warn(`${platformLabel} Failed to unlock audio context:`, e)
       } finally {
         document.removeEventListener('touchstart', handleUserInteraction)
         document.removeEventListener('touchend', handleUserInteraction)
@@ -355,6 +374,9 @@ class NovaSonicService {
   } {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
 
     if (!this.client) {
       return {
@@ -364,12 +386,15 @@ class NovaSonicService {
       }
     }
 
-    if (isSafari || isIOS) {
+    if (isSafari || isIOS || isAndroidChrome) {
       if (!this.userInteractionReceived) {
+        let platformName = 'Safari/iOS'
+        if (isAndroidChrome) platformName = 'Android Chrome'
+
         return {
           available: false,
           needsInteraction: true,
-          message: 'Click any button to enable audio playback on Safari/iOS',
+          message: `Click any button to enable audio playback on ${platformName}`,
         }
       } else {
         return {
@@ -521,16 +546,20 @@ class NovaSonicService {
   }
 
   /**
-   * Play audio directly in the browser with Safari compatibility
+   * Play audio directly in the browser with Safari and Android Chrome compatibility
    */
   async playAudio(
     audioData: Uint8Array,
     format: string = 'mp3',
   ): Promise<void> {
-    // On iOS/Safari, attempt Web Audio first (after unlock) to bypass element autoplay quirks
+    // On iOS/Safari/Android Chrome, attempt Web Audio first (after unlock) to bypass element autoplay quirks
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    if ((isSafari || isIOS) && this.isAudioUnlocked()) {
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
+
+    if ((isSafari || isIOS || isAndroidChrome) && this.isAudioUnlocked()) {
       const ok = await this.playViaWebAudio(audioData, format)
       if (ok) return
     }
@@ -546,6 +575,9 @@ class NovaSonicService {
   ): Promise<void> {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
 
     return new Promise((resolve, reject) => {
       try {
@@ -563,8 +595,8 @@ class NovaSonicService {
         }
         this.currentAudio = audio
 
-        // Safari/iOS specific configuration
-        if (isSafari || isIOS) {
+        // Safari/iOS/Android Chrome specific configuration
+        if (isSafari || isIOS || isAndroidChrome) {
           audio.preload = 'auto'
           ;(audio as HTMLAudioElement & { playsInline: boolean }).playsInline =
             true
@@ -572,11 +604,16 @@ class NovaSonicService {
 
           // Check if user interaction has occurred
           if (!this.userInteractionReceived) {
+            const platformEmoji = isAndroidChrome ? '🤖' : '🍎'
+            const platformName = isAndroidChrome
+              ? 'Android Chrome'
+              : 'Safari/iOS'
+
             console.warn(
-              '🍎 Safari: No user interaction detected - audio may be blocked',
+              `${platformEmoji} ${platformName}: No user interaction detected - audio may be blocked`,
             )
             console.warn(
-              '🍎 Audio playback requires user interaction on Safari/iOS',
+              `${platformEmoji} Audio playback requires user interaction on ${platformName}`,
             )
 
             // Store the audio for later playback when user interaction occurs
@@ -588,8 +625,13 @@ class NovaSonicService {
             if (playPromise) {
               playPromise.catch(error => {
                 if (error.name === 'NotAllowedError') {
+                  const platformEmoji = isAndroidChrome ? '🤖' : '🍎'
+                  const platformName = isAndroidChrome
+                    ? 'Android Chrome'
+                    : 'Safari'
+
                   console.warn(
-                    '🍎 Expected: Safari blocked autoplay - waiting for user interaction',
+                    `${platformEmoji} Expected: ${platformName} blocked autoplay - waiting for user interaction`,
                   )
                   // Clean up but don't reject - this is expected behavior
                   URL.revokeObjectURL(audioUrl)
@@ -643,10 +685,18 @@ class NovaSonicService {
             .catch(playError => {
               console.error('❌ Audio play() failed:', playError)
 
-              // Handle Safari/iOS specific errors
-              if ((isSafari || isIOS) && playError.name === 'NotAllowedError') {
+              // Handle Safari/iOS/Android Chrome specific errors
+              if (
+                (isSafari || isIOS || isAndroidChrome) &&
+                playError.name === 'NotAllowedError'
+              ) {
+                const platformEmoji = isAndroidChrome ? '🤖' : '🍎'
+                const platformName = isAndroidChrome
+                  ? 'Android Chrome'
+                  : 'Safari/iOS'
+
                 console.warn(
-                  '🍎 Safari/iOS blocked audio playback - will retry on next gesture or unlock',
+                  `${platformEmoji} ${platformName} blocked audio playback - will retry on next gesture or unlock`,
                 )
                 this.pendingAudio = audio
                 // Attach one-time gesture listeners to re-attempt playback ASAP
@@ -748,7 +798,7 @@ class NovaSonicService {
   }
 
   /**
-   * Synthesize and play speech in one call with Safari compatibility
+   * Synthesize and play speech in one call with Safari and Android Chrome compatibility
    */
   async speak(
     text: string,
@@ -756,15 +806,23 @@ class NovaSonicService {
   ): Promise<boolean> {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
 
     try {
       console.log('🗣️ Speaking with AWS Polly:', text.substring(0, 50) + '...')
 
-      // Check for Safari restrictions
-      if (isSafari && !this.userInteractionReceived) {
-        console.warn('🍎 Safari: Audio playback requires user interaction')
+      // Check for browser restrictions
+      if ((isSafari || isAndroidChrome) && !this.userInteractionReceived) {
+        const platformName = isSafari ? 'Safari' : 'Android Chrome'
+        const platformEmoji = isSafari ? '🍎' : '🤖'
+
         console.warn(
-          '🍎 Tip: User should click a button or interact with the page first',
+          `${platformEmoji} ${platformName}: Audio playback requires user interaction`,
+        )
+        console.warn(
+          `${platformEmoji} Tip: User should click a button or interact with the page first`,
         )
       }
 
@@ -773,19 +831,22 @@ class NovaSonicService {
     } catch (error) {
       console.error('❌ Failed to speak:', error)
 
-      // Safari specific handling
+      // Platform-specific handling
       if (
-        isSafari &&
+        (isSafari || isAndroidChrome) &&
         error instanceof Error &&
         error.message.includes('NotAllowedError')
       ) {
+        const platformName = isSafari ? 'Safari' : 'Android Chrome'
+        const platformEmoji = isSafari ? '🍎' : '🤖'
+
         console.warn(
-          '🍎 Safari audio blocked - this is expected behavior without user gesture',
+          `${platformEmoji} ${platformName} audio blocked - this is expected behavior without user gesture`,
         )
         console.warn(
-          '🍎 To enable audio: user must click a button or interact with the page',
+          `${platformEmoji} To enable audio: user must click a button or interact with the page`,
         )
-        return false // Return false for Safari to indicate audio was blocked
+        return false // Return false to indicate audio was blocked
       }
 
       return false
@@ -817,11 +878,18 @@ class NovaSonicService {
       return Promise.resolve(true)
     }
 
-    // If locked (Safari/iOS) push to unlock queue (existing speakQueue) for earliest opportunity
+    // If locked (Safari/iOS/Android Chrome) push to unlock queue (existing speakQueue) for earliest opportunity
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    if ((isSafari || isIOS) && !this.isAudioUnlocked()) {
-      console.log('🍎 Audio locked - deferring via initial unlock queue')
+    const isAndroid = /Android/i.test(navigator.userAgent)
+    const isChrome = /Chrome/i.test(navigator.userAgent)
+    const isAndroidChrome = isAndroid && isChrome
+
+    if ((isSafari || isIOS || isAndroidChrome) && !this.isAudioUnlocked()) {
+      const platformEmoji = isAndroidChrome ? '🤖' : '🍎'
+      console.log(
+        `${platformEmoji} Audio locked - deferring via initial unlock queue`,
+      )
       return this.queueSpeak(text, options)
     }
 
