@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { novaSonic } from '@/services/api/nova-sonic'
-import { Mic, Hammer } from 'lucide-react'
+import { Mic } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -59,6 +59,10 @@ export const VoiceShazamButton = ({
   const [hasTranscript, setHasTranscript] = useState(false)
   const lastSubmittedTranscriptRef = useRef<string>('')
   const hasSubmittedRef = useRef<boolean>(false)
+  // NEW: Persist user intent to keep listening; used for auto-restarts after onend
+  const shouldAutoRestartRef = useRef<boolean>(false)
+  // Queue a tap during processing so it starts listening when processing finishes
+  const pendingStartRef = useRef<boolean>(false)
   const endLoopGuardRef = useRef<{ lastEnd: number; attempts: number }>({
     lastEnd: 0,
     attempts: 0,
@@ -69,6 +73,7 @@ export const VoiceShazamButton = ({
     useState(false)
   // Will assign after isListening is derived
   const prevListeningRef = useRef<boolean>(false)
+  const prevProcessingRef = useRef<boolean>(false)
 
   // Centralized submission finalizer to ensure recognition fully stops
   const finalizeSubmission = useCallback(
@@ -90,6 +95,8 @@ export const VoiceShazamButton = ({
       setStatus('Got result!')
       setInternalIsListening(false)
       hasSubmittedRef.current = true
+      // Ensure we don't auto-restart after a submission
+      shouldAutoRestartRef.current = false
       lastSubmittedTranscriptRef.current = trimmed
       forceStopRef.current = true
       setSilenceTimer(prev => {
@@ -218,12 +225,9 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Android-specific: Don't auto-restart in non-continuous mode
+          // Allow controlled auto-restart on Android too when user intended to keep listening
           if (isAndroid) {
-            console.log(
-              '🤖 Android: Recognition ended, not restarting (non-continuous mode)',
-            )
-            return
+            console.log('🤖 Android: Recognition ended')
           }
 
           const now = Date.now()
@@ -257,8 +261,8 @@ export const VoiceShazamButton = ({
             return
           }
 
-          // Optional: auto restart for continuous capture (only if user was listening)
-          if (internalIsListening) {
+          // Optional: auto restart for continuous capture based on user intent
+          if (shouldAutoRestartRef.current) {
             const delay = Math.min(
               300 * 2 ** endLoopGuardRef.current.attempts, // Increased base delay from 150ms to 300ms
               5000, // Increased max delay from 3000ms to 5000ms
@@ -267,7 +271,7 @@ export const VoiceShazamButton = ({
             setTimeout(() => {
               if (
                 !forceStopRef.current &&
-                internalIsListening &&
+                shouldAutoRestartRef.current &&
                 !hasSubmittedRef.current
               ) {
                 try {
@@ -482,10 +486,70 @@ export const VoiceShazamButton = ({
     }
   }, [silenceTimer, selfContained])
 
+  // Reset to initial idle state when processing finishes
+  useEffect(() => {
+    // Detect transition from processing -> not processing
+    if (prevProcessingRef.current && !isProcessing) {
+      // Clear any timers
+      setSilenceTimer(prev => {
+        if (prev) clearTimeout(prev)
+        return null
+      })
+      if (fallbackFinalizeTimerRef.current) {
+        clearTimeout(fallbackFinalizeTimerRef.current)
+        fallbackFinalizeTimerRef.current = null
+      }
+
+      // Reset internal flags/state to page-load idle
+      hasSubmittedRef.current = false
+      shouldAutoRestartRef.current = false
+      lastSubmittedTranscriptRef.current = ''
+      forceStopRef.current = false
+      setHasTranscript(false)
+      setTranscript('')
+      setInternalIsListening(false)
+      setRecentlyStoppedListening(false)
+      setPulseAnimation(false)
+      setStatus('Ready')
+      // Re-show the help hint post-response; it will auto-hide after 5s
+      setShowHelpMessage(true)
+
+      // If user tapped during processing, start listening now
+      if (pendingStartRef.current) {
+        console.log('🎯 Starting queued listening after processing finished')
+        pendingStartRef.current = false
+        // Use a small delay to let the UI settle
+        setTimeout(() => {
+          if (!isProcessing && recognition) {
+            // Manually trigger start without calling internalToggleListening to avoid dependency issues
+            shouldAutoRestartRef.current = true
+            setInternalIsListening(true)
+            setStatus('Initializing...')
+            try {
+              recognition.start()
+            } catch (error) {
+              console.error('Queued start failed:', error)
+              setInternalIsListening(false)
+              shouldAutoRestartRef.current = false
+            }
+          }
+        }, 100)
+      }
+    }
+    prevProcessingRef.current = isProcessing
+  }, [isProcessing, recognition])
+
   // Self-contained toggle listening function
-  const internalToggleListening = async () => {
+  const internalToggleListening = useCallback(async () => {
     if (!selfContained || !recognition) {
       console.error('❌ No recognition instance or not in self-contained mode')
+      return
+    }
+
+    // If processing, queue the start for when processing finishes
+    if (isProcessing) {
+      console.log('🎯 Queueing start for when processing finishes')
+      pendingStartRef.current = true
       return
     }
 
@@ -499,6 +563,8 @@ export const VoiceShazamButton = ({
       console.log('🛑 Stopping recognition...')
       recognition.stop()
       setInternalIsListening(false)
+      // User explicitly stopped - don't auto-restart
+      shouldAutoRestartRef.current = false
       hasSubmittedRef.current = false
       lastSubmittedTranscriptRef.current = ''
       forceStopRef.current = true
@@ -538,6 +604,8 @@ export const VoiceShazamButton = ({
 
       // IMMEDIATE FEEDBACK: Set UI state immediately before any async operations
       setInternalIsListening(true)
+      // User intended to listen; allow auto-restarts on transient onend
+      shouldAutoRestartRef.current = true
       setStatus('Initializing...')
 
       // Reset all state when starting
@@ -646,7 +714,7 @@ export const VoiceShazamButton = ({
         }
       }
     }
-  }
+  }, [selfContained, recognition, isProcessing, internalIsListening])
 
   // Determine which toggle function to use
   const toggleListening = selfContained
@@ -679,14 +747,15 @@ export const VoiceShazamButton = ({
     prevListeningRef.current = isListening
   }, [isListening, isProcessing])
 
-  // Hide help message after 5 seconds
+  // Hide help message after 5 seconds; allow re-show later by keying on showHelpMessage
   useEffect(() => {
+    if (!showHelpMessage) return
     const timer = setTimeout(() => {
       setShowHelpMessage(false)
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [showHelpMessage])
 
   // Handle click outside to hide
   useEffect(() => {
@@ -730,24 +799,40 @@ export const VoiceShazamButton = ({
           /* Hammer processing animation */
           @keyframes hammer-swing {
             0% {
-              transform: scale(2.8) rotate(-15deg);
-              opacity: 0.95;
+              transform: scale(0.9) rotate(-18deg);
+              opacity: 0.98;
             }
             50% {
-              transform: scale(3.05) rotate(10deg);
+              transform: scale(0.9) rotate(12deg);
               opacity: 1;
             }
             100% {
-              transform: scale(2.8) rotate(-15deg);
-              opacity: 0.95;
+              transform: scale(0.9) rotate(-18deg);
+              opacity: 0.98;
             }
           }
-          @keyframes hammer-glow {
-            0%, 100% {
-              box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+          /* Removed hammer-glow (white outer glow) */
+          /* Impact-synced pulse: peak at top of swing (0%) */
+          @keyframes hammer-impact-ring {
+            0% {
+              transform: scale(1.0);
+              opacity: 0.55;
             }
-            50% {
-              box-shadow: 0 0 40px rgba(255, 255, 255, 0.6);
+            20% {
+              transform: scale(1.25);
+              opacity: 0.25;
+            }
+            35% {
+              transform: scale(1.4);
+              opacity: 0.1;
+            }
+            45% {
+              transform: scale(1.5);
+              opacity: 0;
+            }
+            100% {
+              transform: scale(1.5);
+              opacity: 0;
             }
           }
         `,
@@ -763,7 +848,7 @@ export const VoiceShazamButton = ({
         )}
 
         {showTranscript && (
-          <div className="bg-background/90 backdrop-blur-sm rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="bg-background rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
             <p className="text-md text-center font-medium tracking-tight">
               {showTranscript}
             </p>
@@ -780,16 +865,15 @@ export const VoiceShazamButton = ({
                 disabled={isProcessing}
                 className={cn(
                   'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
-                  'border-4 border-background transition-all duration-300',
+                  'border-4 border-white transition-all duration-300',
                   showProcessing
-                    ? 'bg-transparent hover:bg-transparent ring-8 ring-orange-400 scale-105 !opacity-100'
+                    ? 'bg-orange-600 hover:bg-orange-600 ring-8 ring-orange-400 scale-105 !opacity-100'
                     : showListeningVisual
-                      ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105'
-                      : 'bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95',
-                  pulseAnimation &&
-                    showListeningVisual &&
-                    'animate-pulse shadow-2xl',
-                  showProcessing && 'animate-pulse shadow-2xl',
+                      ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105 !opacity-100'
+                      : 'bg-primary hover:bg-primary hover:scale-110 active:scale-95',
+                  // Remove animate-pulse to avoid opacity animation in listening state
+                  pulseAnimation && showListeningVisual && 'shadow-2xl',
+                  showProcessing && 'shadow-2xl',
                 )}
                 style={{
                   boxShadow: showProcessing
@@ -808,48 +892,49 @@ export const VoiceShazamButton = ({
                       : 'Tap to start voice input'
                 }
               >
-                {/* Solid background overlay for processing state */}
-                {showProcessing && (
-                  <div
-                    className="absolute inset-0 bg-orange-600 rounded-full z-0"
-                    style={{ backgroundColor: '#d97706' }}
-                  />
-                )}
+                {/* Solid background handled directly via button bg in processing state */}
 
                 <div
                   className={cn(
                     'absolute inset-0 rounded-full',
                     showProcessing
-                      ? 'bg-orange-600 opacity-50 animate-pulse' // Processing state - highest priority
+                      ? 'hidden' // solid background only in processing
                       : showListeningVisual
-                        ? 'bg-emerald-500 opacity-40 animate-ping' // Listening state
-                        : pulseAnimation
-                          ? 'bg-primary opacity-40 animate-ping' // Default pulse animation
-                          : 'hidden', // Hidden when none of the above
+                        ? 'hidden' // Remove translucent/animated overlay in listening state
+                        : 'hidden', // No overlay in blue waiting state
                   )}
                 />
                 {/* Additional processing animation ring */}
                 {showProcessing && (
-                  <div className="absolute inset-0 rounded-full bg-orange-400 opacity-30 animate-ping animation-delay-200" />
+                  <div
+                    className="absolute inset-0 rounded-full bg-orange-400"
+                    style={{
+                      animation: 'hammer-impact-ring 1.2s ease-out infinite',
+                    }}
+                  />
                 )}
                 <div
                   className="flex items-center justify-center overflow-visible relative z-10"
                   style={{ width: '96px', height: '96px' }}
                 >
                   {showProcessing ? (
-                    <div className="relative flex items-center justify-center">
-                      {/* Processing: Animated Hammer */}
-                      <div
-                        className="absolute inset-0 rounded-full"
+                    <div
+                      className="relative flex items-center justify-center"
+                      style={{ transform: 'translate(-2px, -4px)' }}
+                    >
+                      {/* Processing: Animated Hammer (from public asset) */}
+                      <img
+                        src="/hammer-tool.svg"
+                        alt="Processing"
+                        draggable={false}
                         style={{
-                          animation: 'hammer-glow 2s ease-in-out infinite',
-                        }}
-                      />
-                      <Hammer
-                        className="text-white"
-                        strokeWidth={1.5}
-                        style={{
-                          transformOrigin: '60% 20%',
+                          width: '144%',
+                          height: '144%',
+                          objectFit: 'contain',
+                          display: 'block',
+                          // Pivot near the handle end for a realistic swing
+                          transformOrigin: '52% 92%',
+                          filter: 'brightness(0) invert(1)', // ensure it renders white like the old icon
                           animation: 'hammer-swing 1.2s ease-in-out infinite',
                         }}
                       />

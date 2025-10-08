@@ -1671,12 +1671,12 @@ export const AIActions = ({
 
               {/* Show text being spoken */}
               {/* {currentSpeakingText && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
-                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                <div className="mt-2 p-3 bg-secondary/10 border border-secondary/30 rounded-lg hidden md:block">
+                  <div className="flex items-center gap-2 text-foreground text-sm font-medium mb-1">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                     AI is speaking:
                   </div>
-                  <div className="text-blue-800 text-sm leading-relaxed">
+                  <div className="text-foreground text-sm leading-relaxed">
                     {currentSpeakingText}
                   </div>
                 </div>
@@ -1974,11 +1974,11 @@ export const AIActions = ({
                 <div className="space-y-3">
                   {/* Display the question for context */}
                   {results.query && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h4 className="font-medium text-blue-900 mb-2">
+                    <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-3">
+                      <h4 className="font-medium text-foreground mb-2">
                         Your Question:
                       </h4>
-                      <p className="text-blue-800 text-sm">{results.query}</p>
+                      <p className="text-foreground text-sm">{results.query}</p>
                     </div>
                   )}
 
@@ -2104,13 +2104,11 @@ export const AIActions = ({
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            className="h-24 w-24 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-            title="Show voice button"
+            variant="secondary"
+            className="h-9 px-3 rounded-full shadow-soft hover:shadow-medium text-foreground border"
+            title="Show voice input"
           >
-            <Mic
-              className="text-white"
-              style={{ width: '36px', height: '36px' }}
-            />
+            Voice
           </Button>
         </div>
       )}
