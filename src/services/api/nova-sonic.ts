@@ -111,6 +111,10 @@ class NovaSonicService {
     const isAndroid = /Android/i.test(navigator.userAgent)
     const isChrome = /Chrome/i.test(navigator.userAgent)
     const isAndroidChrome = isAndroid && isChrome
+    
+    // Enhanced iOS detection including PWA mode
+    const isIOSPWA = isIOS && (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    const isIOSWebApp = isIOS && window.matchMedia('(display-mode: standalone)').matches
 
     if (!isSafari && !isIOS && !isAndroidChrome) {
       // Non‑restricted platforms: treat as immediately unlocked
@@ -118,6 +122,14 @@ class NovaSonicService {
       this.userInteractionReceived = true
       this.unlockPromise = Promise.resolve()
       return
+    }
+
+    // Enhanced logging for iOS variants
+    if (isIOSPWA) {
+      console.log('🍎 Detected iOS PWA mode - may need special handling')
+    }
+    if (isIOSWebApp) {
+      console.log('🍎 Detected iOS Web App mode - enhanced audio unlocking')
     }
 
     // Promise that resolves on first unlock
@@ -134,6 +146,7 @@ class NovaSonicService {
 
       console.log(
         `${platformLabel} User interaction detected - unlocking audio`,
+        { isIOSPWA, isIOSWebApp, isSafari, isIOS }
       )
       this.userInteractionReceived = true
       try {
@@ -143,12 +156,25 @@ class NovaSonicService {
         silentAudio.volume = 0
         silentAudio.muted = true
 
-        // Android Chrome specific configuration
+        // Platform specific configuration
         if (isAndroidChrome) {
           ;(
             silentAudio as HTMLAudioElement & { playsInline?: boolean }
           ).playsInline = true
           silentAudio.preload = 'auto'
+        }
+        
+        // Enhanced iOS configuration for reliability
+        if (isIOS) {
+          ;(silentAudio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
+          silentAudio.preload = 'none' // Prevent aggressive preloading on iOS
+          silentAudio.crossOrigin = null // Avoid CORS issues with data URIs
+          
+          // iOS PWA mode needs extra care
+          if (isIOSPWA || isIOSWebApp) {
+            silentAudio.autoplay = false // Explicitly disable autoplay
+            silentAudio.muted = true // Ensure muted for reliability
+          }
         }
 
         await silentAudio.play()
@@ -186,15 +212,62 @@ class NovaSonicService {
   }
 
   /**
-   * Ensure a single persistent <audio> element is used for all playback (improves iOS reliability).
+   * Ensure a single persistent <audio> element is used for all playbook (improves iOS reliability).
+   * Enhanced with Safari-specific optimizations.
    */
   private ensureOutputAudio(): HTMLAudioElement {
-    if (this.outputAudio) return this.outputAudio
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
+    if (this.outputAudio) {
+      // Check if element is still valid (Safari may invalidate under memory pressure)
+      if ((isIOS || isSafari) && (!this.outputAudio.parentNode || this.outputAudio.error)) {
+        console.log('🍎 Recreating audio element due to Safari invalidation')
+        this.outputAudio = null
+      } else {
+        return this.outputAudio
+      }
+    }
+    
     const audio = document.createElement('audio')
-    audio.preload = 'auto'
-    ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
-    audio.controls = false
-    audio.style.display = 'none'
+    
+    // Enhanced Safari/iOS configuration
+    if (isIOS || isSafari) {
+      audio.preload = 'none' // Prevent aggressive preloading that can cause issues
+      ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
+      audio.controls = false
+      audio.style.display = 'none'
+      
+      // iOS-specific attributes for better compatibility
+      audio.crossOrigin = null
+      audio.autoplay = false
+      
+      // Add Safari-specific error recovery
+      audio.addEventListener('error', (e) => {
+        console.warn('🍎 Safari audio element error:', e)
+        // Clear the element so it gets recreated
+        if (this.outputAudio === audio) {
+          this.outputAudio = null
+        }
+      }, { passive: true })
+      
+      // Handle Safari suspension/resume
+      audio.addEventListener('suspend', () => {
+        console.log('🍎 Safari audio element suspended')
+      }, { passive: true })
+      
+      audio.addEventListener('stalled', () => {
+        console.warn('🍎 Safari audio element stalled')
+      }, { passive: true })
+      
+    } else {
+      // Standard configuration for other browsers
+      audio.preload = 'auto'
+      ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
+      audio.controls = false
+      audio.style.display = 'none'
+    }
+    
     document.body.appendChild(audio)
     this.outputAudio = audio
     return audio
@@ -236,8 +309,12 @@ class NovaSonicService {
   /**
    * Ensure (or lazily create) an AudioContext for Web Audio playback.
    * Attempts to resume if suspended (common on iOS after backgrounding).
+   * Enhanced with Safari-specific reliability improvements.
    */
   private async ensureAudioContext(): Promise<AudioContext> {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
     if (!this.audioCtx) {
       try {
         interface AudioContextWindow extends Window {
@@ -250,32 +327,129 @@ class NovaSonicService {
                 .AudioContext
             : undefined) || w.webkitAudioContext
         if (!Ctor) throw new Error('AudioContext not supported')
-        this.audioCtx = new Ctor()
+        
+        // Safari/iOS specific configuration
+        const contextOptions: AudioContextOptions = {}
+        if (isIOS || isSafari) {
+          // Use lower sample rate for iOS compatibility and memory efficiency
+          contextOptions.sampleRate = 24000
+        }
+        
+        this.audioCtx = new Ctor(contextOptions)
+        
+        // Add event listeners for Safari state management
+        if (isIOS || isSafari) {
+          this.setupSafariContextListeners()
+        }
+        
       } catch (e) {
         console.warn('⚠️ Failed to create AudioContext', e)
         throw e
       }
     }
+    
+    // Enhanced suspend/resume handling for Safari
     if (this.audioCtx.state === 'suspended') {
       try {
-        await this.audioCtx.resume()
-        console.log('🔄 AudioContext resumed')
+        // Multiple resume attempts for iOS reliability
+        let resumed = false
+        for (let attempt = 0; attempt < 3 && !resumed; attempt++) {
+          try {
+            await this.audioCtx.resume()
+            resumed = this.audioCtx.state !== 'suspended'
+            if (resumed) {
+              console.log(`🔄 AudioContext resumed (attempt ${attempt + 1})`)
+            } else if (attempt < 2) {
+              // Brief delay before retry
+              await new Promise(resolve => setTimeout(resolve, 50))
+            }
+          } catch (resumeError) {
+            console.warn(`⚠️ AudioContext resume attempt ${attempt + 1} failed:`, resumeError)
+            if (attempt === 2) throw resumeError
+          }
+        }
+        
+        if (!resumed) {
+          console.warn('⚠️ AudioContext remains suspended after 3 attempts')
+          // Create new context as fallback
+          this.audioCtx = null
+          return this.ensureAudioContext()
+        }
       } catch (e) {
-        console.warn('⚠️ Failed to resume AudioContext', e)
+        console.warn('⚠️ Failed to resume AudioContext, recreating:', e)
+        this.audioCtx = null
+        return this.ensureAudioContext()
       }
     }
     return this.audioCtx
   }
 
   /**
+   * Setup Safari-specific AudioContext event listeners for reliability
+   */
+  private setupSafariContextListeners() {
+    if (!this.audioCtx) return
+    
+    // Handle page visibility changes (Safari suspends context when tab goes background)
+    const handleVisibilityChange = () => {
+      if (!this.audioCtx) return
+      
+      if (document.visibilityState === 'visible' && this.audioCtx.state === 'suspended') {
+        console.log('🍎 Page became visible, attempting AudioContext resume')
+        this.audioCtx.resume().catch(e => console.warn('⚠️ Resume on visibility failed:', e))
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true })
+    
+    // Handle focus/blur for additional reliability
+    const handleFocus = () => {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        console.log('🍎 Window focused, checking AudioContext state')
+        // Small delay to ensure iOS is ready
+        setTimeout(() => {
+          if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume().catch(e => console.warn('⚠️ Resume on focus failed:', e))
+          }
+        }, 100)
+      }
+    }
+    
+    window.addEventListener('focus', handleFocus, { passive: true })
+    
+    // Listen for context state changes
+    if ('onstatechange' in this.audioCtx) {
+      this.audioCtx.onstatechange = () => {
+        console.log(`🍎 AudioContext state changed to: ${this.audioCtx?.state}`)
+      }
+    }
+  }
+
+  /**
    * Play via Web Audio API. Returns true if successful, false if we should fallback.
+   * Enhanced with Safari-specific reliability improvements.
    */
   private async playViaWebAudio(
     audioData: Uint8Array,
     format: string,
   ): Promise<boolean> {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
     try {
       const ctx = await this.ensureAudioContext()
+      
+      // Safari/iOS specific: Check context state before proceeding
+      if ((isIOS || isSafari) && ctx.state !== 'running') {
+        console.warn('🍎 AudioContext not in running state, attempting resume')
+        try {
+          await ctx.resume()
+        } catch (e) {
+          console.warn('⚠️ Failed to resume context for Web Audio playback', e)
+          return false
+        }
+      }
+      
       // MP3 / PCM both acceptable; decodeAudioData handles container based on browser support.
       const arrayBuf = audioData.buffer.slice(
         audioData.byteOffset,
@@ -283,7 +457,30 @@ class NovaSonicService {
       )
       // Ensure we pass a plain ArrayBuffer (not SharedArrayBuffer) & clone to avoid detachment issues
       const clone = arrayBuf.slice(0)
-      const audioBuffer = await ctx.decodeAudioData(clone as ArrayBuffer)
+      
+      let audioBuffer: AudioBuffer
+      try {
+        audioBuffer = await ctx.decodeAudioData(clone as ArrayBuffer)
+      } catch (decodeError) {
+        // Safari sometimes fails to decode on first attempt
+        if (isIOS || isSafari) {
+          console.warn('🍎 Initial decode failed, retrying...', decodeError)
+          // Try with a fresh clone
+          const freshClone = audioData.buffer.slice(
+            audioData.byteOffset,
+            audioData.byteOffset + audioData.byteLength,
+          )
+          try {
+            audioBuffer = await ctx.decodeAudioData(freshClone as ArrayBuffer)
+          } catch (retryError) {
+            console.warn('⚠️ Decode retry failed, fallback to element', retryError)
+            return false
+          }
+        } else {
+          throw decodeError
+        }
+      }
+      
       // Stop any prior source
       if (this.activeSource) {
         try {
@@ -293,21 +490,47 @@ class NovaSonicService {
         }
         this.activeSource = null
       }
+      
       const source = ctx.createBufferSource()
       source.buffer = audioBuffer
-      source.connect(ctx.destination)
+      
+      // Safari/iOS: Add gain node for better control
+      if (isIOS || isSafari) {
+        const gainNode = ctx.createGain()
+        gainNode.gain.value = 1.0
+        source.connect(gainNode)
+        gainNode.connect(ctx.destination)
+      } else {
+        source.connect(ctx.destination)
+      }
+      
       this.activeSource = source
+      
       source.onended = () => {
         if (this.activeSource === source) {
           this.activeSource = null
         }
         console.log('✅ Web Audio buffer playback ended')
       }
+      
+      // Safari/iOS: Add better error monitoring (onended handles most cleanup)
+      if (isIOS || isSafari) {
+        // Add timeout fallback for Safari issues
+        setTimeout(() => {
+          if (this.activeSource === source && ctx.state !== 'running') {
+            console.warn('🍎 Safari Web Audio may be stalled, cleaning up')
+            if (this.activeSource === source) {
+              this.activeSource = null
+            }
+          }
+        }, 30000) // 30 second timeout
+      }
+      
       source.start(0)
-      console.log('🎧 Playing via Web Audio path (buffer)')
+      console.log(`🎧 Playing via Web Audio path (${isIOS || isSafari ? 'Safari/iOS' : 'standard'})`)
       return true
     } catch (e) {
-      console.warn('⚠️ Web Audio path failed, will fallback to element', e)
+      console.warn(`⚠️ Web Audio path failed${(isIOS || isSafari) ? ' (Safari/iOS)' : ''}, will fallback to element`, e)
       return false
     }
   }
@@ -317,6 +540,85 @@ class NovaSonicService {
    */
   isAvailable(): boolean {
     return this.client !== null
+  }
+
+  /**
+   * Get comprehensive Safari/iOS debugging information
+   */
+  getSafariDebugInfo(): object {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOSPWA = isIOS && (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    const isIOSWebApp = isIOS && window.matchMedia('(display-mode: standalone)').matches
+    
+    return {
+      // Browser detection
+      platform: {
+        isIOS,
+        isSafari,
+        isIOSPWA,
+        isIOSWebApp,
+        userAgent: navigator.userAgent,
+        standalone: (window.navigator as Navigator & { standalone?: boolean }).standalone,
+        displayMode: window.matchMedia('(display-mode: standalone)').matches
+      },
+      
+      // Audio state
+      audio: {
+        contextUnlocked: this.audioContextUnlocked,
+        userInteractionReceived: this.userInteractionReceived,
+        contextState: this.audioCtx?.state || 'not-created',
+        outputAudioExists: !!this.outputAudio,
+        currentAudioExists: !!this.currentAudio,
+        pendingAudioExists: !!this.pendingAudio,
+        activeSourceExists: !!this.activeSource,
+        autoplayBlocked: this.autoplayBlocked,
+        lastAutoplayBlockedAt: this.lastAutoplayBlockedAt,
+        speakQueueLength: this.speakQueue.length,
+        playbackQueueLength: this.playbackQueue.length
+      },
+      
+      // System state
+      system: {
+        documentVisibility: document.visibilityState,
+        windowFocused: document.hasFocus(),
+        memoryInfo: (performance as Performance & { 
+          memory?: { 
+            usedJSHeapSize: number; 
+            totalJSHeapSize: number; 
+            jsHeapSizeLimit: number 
+          } 
+        }).memory ? {
+          used: (performance as Performance & { 
+            memory: { 
+              usedJSHeapSize: number; 
+              totalJSHeapSize: number; 
+              jsHeapSizeLimit: number 
+            } 
+          }).memory.usedJSHeapSize,
+          total: (performance as Performance & { 
+            memory: { 
+              usedJSHeapSize: number; 
+              totalJSHeapSize: number; 
+              jsHeapSizeLimit: number 
+            } 
+          }).memory.totalJSHeapSize,
+          limit: (performance as Performance & { 
+            memory: { 
+              usedJSHeapSize: number; 
+              totalJSHeapSize: number; 
+              jsHeapSizeLimit: number 
+            } 
+          }).memory.jsHeapSizeLimit
+        } : 'not-available'
+      },
+      
+      // Timestamps for tracking
+      timestamps: {
+        lastSpokenAt: this.lastSpokenAt,
+        lastSpokenText: this.lastSpokenText?.substring(0, 50) + '...'
+      }
+    }
   }
 
   /**
@@ -987,19 +1289,92 @@ class NovaSonicService {
   }
 
   /**
+   * Check Safari/iOS audio health and perform recovery if needed
+   */
+  private async safariHealthCheck(): Promise<boolean> {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
+    if (!isIOS && !isSafari) return true
+    
+    let needsRecovery = false
+    
+    // Check AudioContext health
+    if (this.audioCtx) {
+      if (this.audioCtx.state === 'suspended') {
+        console.log('🍎 Safari health check: AudioContext suspended')
+        try {
+          await this.audioCtx.resume()
+          console.log('🍎 Safari health check: AudioContext resumed')
+        } catch (e) {
+          console.warn('🍎 Safari health check: AudioContext resume failed', e)
+          needsRecovery = true
+        }
+      } else if (this.audioCtx.state === 'closed') {
+        console.log('🍎 Safari health check: AudioContext closed, needs recreation')
+        needsRecovery = true
+      }
+    }
+    
+    // Check output audio element health
+    if (this.outputAudio) {
+      if (this.outputAudio.error || !this.outputAudio.parentNode) {
+        console.log('🍎 Safari health check: Audio element needs recreation')
+        this.outputAudio = null
+      }
+    }
+    
+    // Perform recovery if needed
+    if (needsRecovery) {
+      console.log('🍎 Safari health check: Performing audio recovery')
+      this.audioCtx = null
+      try {
+        await this.ensureAudioContext()
+        console.log('🍎 Safari health check: Recovery successful')
+        return true
+      } catch (e) {
+        console.warn('🍎 Safari health check: Recovery failed', e)
+        return false
+      }
+    }
+    
+    return true
+  }
+
+  /**
    * Attempt playback with limited retries (handles transient iOS failures)
+   * Enhanced with Safari-specific health checks and recovery
    */
   private async tryPlayWithRetry(
     audioData: Uint8Array,
     format: string,
     retries: number,
   ): Promise<boolean> {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
+        // Safari health check before each attempt
+        if ((isIOS || isSafari) && attempt > 0) {
+          const healthOk = await this.safariHealthCheck()
+          if (!healthOk) {
+            console.warn('🍎 Safari health check failed, skipping retry')
+            break
+          }
+        }
+        
         await this.playAudio(audioData, format)
+        
+        // Success - log for Safari debugging
+        if ((isIOS || isSafari) && attempt > 0) {
+          console.log(`🍎 Safari playback succeeded on attempt ${attempt + 1}`)
+        }
         return true
+        
       } catch (err) {
         const blocked = (err as { code?: string })?.code === 'AUTOPLAY_BLOCKED'
+        
         if (attempt === retries) {
           if (blocked && this.pendingAudio) {
             console.warn(
@@ -1018,16 +1393,31 @@ class NovaSonicService {
               .catch(() => {})
             return true
           }
-          console.warn('⚠️ Exhausted audio play retries (non-autoplay)')
+          
+          // Log final failure for Safari debugging
+          if (isIOS || isSafari) {
+            console.warn('🍎 Safari: Exhausted audio play retries', {
+              attempt: attempt + 1,
+              error: err,
+              debugInfo: this.getSafariDebugInfo()
+            })
+          } else {
+            console.warn('⚠️ Exhausted audio play retries (non-autoplay)')
+          }
           return false
         }
-        // Small jittered delay
-        await new Promise(r => setTimeout(r, 120 + attempt * 80))
+        
+        // Progressive delay with Safari-specific considerations
+        const baseDelay = isIOS || isSafari ? 200 : 120
+        const jitter = isIOS || isSafari ? 100 : 80
+        await new Promise(r => setTimeout(r, baseDelay + attempt * jitter))
+        
         // Attempt force unlock mid-retry for iOS if still locked
         if (!this.isAudioUnlocked()) {
           this.forceUnlockAudio().catch(() => {})
         }
-        console.log('🔁 Retrying audio playback attempt', attempt + 1)
+        
+        console.log(`🔁 Retrying audio playback attempt ${attempt + 1}${(isIOS || isSafari) ? ' (Safari/iOS)' : ''}`)
       }
     }
     return false
@@ -1127,3 +1517,13 @@ export const novaSonic = new NovaSonicService()
 // Export class for custom instances
 export { NovaSonicService }
 export type { NovaSonicOptions, NovaSonicResponse }
+
+// Safari debugging helper - add to global scope for easy testing
+if (typeof window !== 'undefined' && (typeof process === 'undefined' || process.env.NODE_ENV !== 'production')) {
+  ;(window as Window & { _novaSonicDebug?: object })._novaSonicDebug = {
+    getDebugInfo: () => novaSonic.getSafariDebugInfo(),
+    forceUnlock: () => novaSonic.forceUnlockAudio(),
+    testSpeak: (text: string = 'Test Safari TTS playback') => novaSonic.speak(text),
+    getService: () => novaSonic
+  }
+}
