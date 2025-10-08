@@ -840,21 +840,38 @@ export const VoiceShazamButton = ({
       />
 
       <div className="fixed bottom-20 left-0 right-0 z-[100] flex flex-col items-center VoiceShazamButton">
-        {/* Help message */}
-        {showHelpMessage && !isListening && (
-          <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full mb-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
-            🎤 Tap to speak • Auto-submits after silence
-          </div>
-        )}
+        {/* Help message - Fixed positioning to prevent layout shift */}
+        <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2">
+          {showHelpMessage && !isListening && (
+            <div className="bg-black/80 text-white text-sm px-4 py-2 rounded-full animate-in fade-in slide-in-from-bottom-3 duration-500 whitespace-nowrap">
+              🎤 Tap to speak • Auto-submits after silence
+            </div>
+          )}
+        </div>
 
-        {showTranscript && (
-          <div className="bg-background rounded-lg p-4 mb-8 max-w-[90%] shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <p className="text-md text-center font-medium tracking-tight">
-              {showTranscript}
-            </p>
-          </div>
-        )}
-        <div ref={containerRef}>
+        {/* Transcript - Fixed positioning to prevent layout shift */}
+        <div className="absolute bottom-full mb-8 left-1/2 transform -translate-x-1/2 max-w-[90vw]">
+          {showTranscript && (
+            <div className="bg-background rounded-lg p-4 shadow-xl border border-primary/30 animate-in fade-in slide-in-from-bottom-5 duration-300">
+              <p className="text-md text-center font-medium tracking-tight">
+                {showTranscript}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Button container with fixed dimensions to prevent layout shift */}
+        <div 
+          ref={containerRef}
+          className="relative"
+          style={{ 
+            width: '154px', 
+            height: '154px',
+            // Reserve space for rings to prevent layout shift
+            padding: '8px',
+            margin: '-8px' 
+          }}
+        >
           {(() => {
             const showProcessing = isProcessing
             const showListeningVisual =
@@ -865,12 +882,13 @@ export const VoiceShazamButton = ({
                 disabled={isProcessing}
                 className={cn(
                   'h-[154px] w-[154px] rounded-full shadow-xl flex items-center justify-center',
-                  'border-4 border-white transition-all duration-300',
+                  'border-4 border-white transition-all duration-300 absolute inset-0',
+                  // Remove scale transforms that cause layout shift - use transform in style instead
                   showProcessing
-                    ? 'bg-orange-600 hover:bg-orange-600 ring-8 ring-orange-400 scale-105 !opacity-100'
+                    ? 'bg-orange-600 hover:bg-orange-600 !opacity-100'
                     : showListeningVisual
-                      ? 'bg-emerald-500 hover:bg-emerald-600 ring-8 ring-emerald-400 scale-105 !opacity-100'
-                      : 'bg-primary hover:bg-primary hover:scale-110 active:scale-95',
+                      ? 'bg-emerald-500 hover:bg-emerald-600 !opacity-100'
+                      : 'bg-primary hover:bg-primary',
                   // Remove animate-pulse to avoid opacity animation in listening state
                   pulseAnimation && showListeningVisual && 'shadow-2xl',
                   showProcessing && 'shadow-2xl',
@@ -881,6 +899,17 @@ export const VoiceShazamButton = ({
                     : showListeningVisual
                       ? '0 0 40px rgba(16, 185, 129, 0.6)'
                       : '0 0 30px rgba(0,0,0,0.5)',
+                  // Use transform for scaling to avoid layout shift
+                  transform: showProcessing || showListeningVisual
+                    ? 'scale(1.05)'
+                    : 'scale(1)',
+                  // Add ring effect via box-shadow to avoid layout shift
+                  ...(showProcessing && {
+                    boxShadow: '0 0 40px rgba(234, 88, 12, 0.6), 0 0 0 8px rgba(234, 88, 12, 0.4)'
+                  }),
+                  ...(showListeningVisual && !showProcessing && {
+                    boxShadow: '0 0 40px rgba(16, 185, 129, 0.6), 0 0 0 8px rgba(16, 185, 129, 0.4)'
+                  }),
                   position: 'relative',
                   zIndex: 200,
                 }}
