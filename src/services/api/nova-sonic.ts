@@ -80,6 +80,9 @@ class NovaSonicService {
     mode: 'queue' as 'queue' | 'interrupt', // default behavior when interrupt flag not provided
   }
 
+  // Callback for playback completion events
+  private playbackCompletionCallbacks: (() => void)[] = []
+
   constructor() {
     this.initializeClient()
     this.setupUserInteractionTracking()
@@ -218,7 +221,7 @@ class NovaSonicService {
   }
 
   /**
-   * Ensure a single persistent <audio> element is used for all playbook (improves iOS reliability).
+   * Ensure a single persistent <audio> element is used for all playback (improves iOS reliability).
    * Enhanced with Safari-specific optimizations.
    */
   private ensureOutputAudio(): HTMLAudioElement {
@@ -547,6 +550,9 @@ class NovaSonicService {
           this.activeSource = null
         }
         console.log('✅ Web Audio buffer playback ended')
+
+        // Emit completion event for voice recognition state management
+        this.notifyPlaybackComplete()
       }
 
       // Safari/iOS: Add better error monitoring (onended handles most cleanup)
@@ -1020,6 +1026,10 @@ class NovaSonicService {
           if (this.currentAudio === audio) {
             this.currentAudio = null
           }
+
+          // Emit completion event for voice recognition state management
+          this.notifyPlaybackComplete()
+
           resolve()
         }
 
@@ -1289,6 +1299,7 @@ class NovaSonicService {
     try {
       const result = await this.synthesizeSpeech(next.text, next.options)
       if (!result.success) {
+        console.log('🔄 Synthesis failed, resolving with false')
         next.resolve(false)
       } else {
         // Attempt playback with retries
@@ -1301,6 +1312,10 @@ class NovaSonicService {
           this.lastSpokenText = next.text
           this.lastSpokenAt = Date.now()
         }
+        console.log('🔄 Playback queue item completed, resolving Promise:', {
+          ok,
+          isSpeaking: this.isSpeaking,
+        })
         next.resolve(ok)
       }
     } catch (e) {
@@ -1493,6 +1508,34 @@ class NovaSonicService {
       })
     }
     return this.unlockPromise
+  }
+
+  /**
+   * Add callback for playback completion events
+   */
+  onPlaybackComplete(callback: () => void): () => void {
+    this.playbackCompletionCallbacks.push(callback)
+    // Return unsubscribe function
+    return () => {
+      const index = this.playbackCompletionCallbacks.indexOf(callback)
+      if (index > -1) {
+        this.playbackCompletionCallbacks.splice(index, 1)
+      }
+    }
+  }
+
+  /**
+   * Notify all registered callbacks when playback completes
+   */
+  private notifyPlaybackComplete(): void {
+    console.log('🔄 Notifying playback completion to registered callbacks')
+    this.playbackCompletionCallbacks.forEach(callback => {
+      try {
+        callback()
+      } catch (error) {
+        console.error('Error in playback completion callback:', error)
+      }
+    })
   }
 
   /**

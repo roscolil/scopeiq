@@ -190,6 +190,35 @@ export const AIActions = ({
     scrollToBottom()
   }, [chatHistory])
 
+  // Register callback for nova-sonic playback completion
+  useEffect(() => {
+    const unsubscribe = novaSonic.onPlaybackComplete(() => {
+      console.log(
+        '🎤 TTS playback completed, resetting voice state for follow-up queries',
+      )
+      setIsVoicePlaying(false)
+      setCurrentSpeakingText('')
+
+      // If we should resume listening after TTS, do it here
+      if (shouldResumeListening) {
+        console.log('🎤 Resuming voice input after TTS completion')
+        setTimeout(() => {
+          setIsListening(true)
+          setShouldResumeListening(false)
+          toast({
+            title: 'Voice input resumed',
+            description: 'Ready for your next question...',
+            duration: 2000,
+          })
+        }, 1000) // Give a moment for everything to settle
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [shouldResumeListening, toast])
+
   // Use semantic search hook for real search functionality
   const {
     results: searchResults,
@@ -249,14 +278,21 @@ export const AIActions = ({
 
         // Wait for voice to complete
         console.log('🎵 Waiting for voice synthesis to complete...')
-        await novaSonic.speakPrompt(prompt, { voice: options.voice })
+        const speakResult = await novaSonic.speakPrompt(prompt, {
+          voice: options.voice,
+        })
 
-        console.log('✅ Voice output completed successfully')
+        console.log('✅ Voice output Promise resolved:', {
+          speakResult,
+          isVoicePlaying,
+        })
 
         // If stopListeningAfter is true, don't resume listening
         if (options.stopListeningAfter) {
           console.log('🎤 Stopping microphone listening after verbal response')
           setShouldResumeListening(false)
+        } else {
+          console.log('🎤 Voice will allow resume listening after completion')
         }
       } catch (error) {
         console.error('❌ Voice synthesis error:', error)
@@ -267,7 +303,7 @@ export const AIActions = ({
         // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
-        console.log('🔄 Voice playing set to false')
+        console.log('🔄 Voice playing set to false in finally block')
       }
     },
     [isListening, silenceTimer, isVoicePlaying],
