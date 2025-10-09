@@ -12,8 +12,13 @@ export const Footer = () => {
           {/* Brand */}
           <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
-              <FilePlus className="h-5 w-5 text-emerald-400" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+              <img
+                src="/hammer-green.svg"
+                alt="Jack of All Trades"
+                className="h-8 w-8"
+                draggable={false}
+              />
+              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">

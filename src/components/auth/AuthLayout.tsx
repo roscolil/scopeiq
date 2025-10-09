@@ -40,8 +40,13 @@ export const AuthLayout = ({
               className="font-bold text-2xl flex items-center justify-center gap-3 text-white hover:text-emerald-400 transition-colors"
             >
               <div className="relative">
-                <FilePlus className="h-8 w-8 text-emerald-400" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" />
+                <img
+                  src="/hammer-green.svg"
+                  alt="Jack of All Trades"
+                  className="h-10 w-10"
+                  draggable={false}
+                />
+                {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
               </div>
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                 Jack of All Trades
