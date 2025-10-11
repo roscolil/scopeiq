@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import CompanyGuard from '@/components/routing/CompanyGuard'
 import ProjectGuard from '@/components/routing/ProjectGuard'
 import DocumentGuard from '@/components/routing/DocumentGuard'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
 import {
@@ -72,7 +72,25 @@ const RootRedirect = () => {
 
   if (isAuthenticated && user?.companyId) {
     const companySegment = (user.companyId || 'default').toLowerCase()
-    return <Navigate to={`/${companySegment}`} replace />
+
+    // Ensure companySegment is valid for URL routing
+    const validCompanySegment =
+      companySegment.replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '') ||
+      'default'
+
+    // Add debug logging for mobile browsers
+    const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      console.log('🔄 Mobile redirect:', {
+        originalCompanyId: user.companyId,
+        companySegment,
+        validCompanySegment,
+        targetPath: `/${validCompanySegment}`,
+        userAgent: navigator.userAgent,
+      })
+    }
+
+    return <Navigate to={`/${validCompanySegment}`} replace />
   }
 
   return <HomePage />
