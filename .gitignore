@@ -42,3 +42,6 @@ config/secrets.json
 .amplify
 # amplify_outputs*
 amplifyconfiguration*
+
+# Label Studio
+mydata/*
