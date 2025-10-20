@@ -49,6 +49,13 @@ import {
 import { VoiceId } from '@aws-sdk/client-polly'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import { semanticSearch } from '@/services/ai/embedding'
+import {
+  getNoResultsMessage,
+  hasValidSearchResults,
+  getResultCount,
+  meetsConfidenceThreshold,
+  getTopRelevance,
+} from '@/utils/aiResponseHelpers'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
@@ -674,7 +681,118 @@ export const AIActions = ({
 
           const searchResponse = await semanticSearch(searchParams)
 
-          // Build context from search results
+          // Check if we have meaningful results - EARLY EXIT LOGIC
+          const hasResults = hasValidSearchResults(searchResponse)
+          const resultCount = getResultCount(searchResponse)
+          const MIN_RELEVANCE_THRESHOLD = 0.25 // Minimum relevance score to proceed
+
+          // Early exit if no results found
+          if (!hasResults || resultCount === 0) {
+            const userMessage: ChatMessage = {
+              id: `user-${Date.now()}`,
+              type: 'user',
+              content: queryToUse,
+              timestamp: new Date(),
+              query: queryToUse,
+            }
+
+            const noResultsMessage = getNoResultsMessage(
+              queryScope,
+              documentId,
+              projectName,
+            )
+
+            const aiMessage: ChatMessage = {
+              id: `ai-${Date.now()}`,
+              type: 'ai',
+              content: noResultsMessage,
+              timestamp: new Date(),
+            }
+
+            setChatHistory(prev => [...prev, userMessage, aiMessage])
+            setResults({
+              type: 'ai',
+              aiAnswer: noResultsMessage,
+              query: queryToUse,
+            })
+
+            // Clear query and exit early - DON'T call OpenAI
+            setQuery('')
+            setIsLoading(false)
+
+            // Provide voice feedback
+            if (noResultsMessage && noResultsMessage !== lastSpokenResponse) {
+              setLastSpokenResponse(noResultsMessage)
+              setTimeout(() => {
+                if (!isVoicePlaying) {
+                  speakWithStateTracking(noResultsMessage, {
+                    voice: 'Ruth',
+                    stopListeningAfter: true,
+                  }).catch(console.error)
+                }
+              }, 1000)
+            }
+
+            return // Exit early!
+          }
+
+          // Check if results meet minimum confidence threshold
+          if (
+            !meetsConfidenceThreshold(searchResponse, MIN_RELEVANCE_THRESHOLD)
+          ) {
+            const topRelevance = getTopRelevance(searchResponse)
+            console.log(
+              `⚠️ Low confidence results: ${topRelevance.toFixed(3)} < ${MIN_RELEVANCE_THRESHOLD}`,
+            )
+
+            const userMessage: ChatMessage = {
+              id: `user-${Date.now()}`,
+              type: 'user',
+              content: queryToUse,
+              timestamp: new Date(),
+              query: queryToUse,
+            }
+
+            const lowConfidenceMessage = `I found ${resultCount} document${resultCount !== 1 ? 's' : ''}, but they don't seem highly relevant to your question (confidence: ${(topRelevance * 100).toFixed(1)}%). Could you try rephrasing or providing more specific details?`
+
+            const aiMessage: ChatMessage = {
+              id: `ai-${Date.now()}`,
+              type: 'ai',
+              content: lowConfidenceMessage,
+              timestamp: new Date(),
+            }
+
+            setChatHistory(prev => [...prev, userMessage, aiMessage])
+            setResults({
+              type: 'ai',
+              aiAnswer: lowConfidenceMessage,
+              query: queryToUse,
+            })
+
+            // Clear query and exit
+            setQuery('')
+            setIsLoading(false)
+
+            // Provide voice feedback
+            if (
+              lowConfidenceMessage &&
+              lowConfidenceMessage !== lastSpokenResponse
+            ) {
+              setLastSpokenResponse(lowConfidenceMessage)
+              setTimeout(() => {
+                if (!isVoicePlaying) {
+                  speakWithStateTracking(lowConfidenceMessage, {
+                    voice: 'Ruth',
+                    stopListeningAfter: true,
+                  }).catch(console.error)
+                }
+              }, 1000)
+            }
+
+            return // Exit early!
+          }
+
+          // Build context from search results (only if we have good results)
           let context = ``
           if (queryScope === 'document' && documentId && document) {
             context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
@@ -683,27 +801,14 @@ export const AIActions = ({
           }
 
           // Add relevant document content as context
-          if (
-            searchResponse &&
-            searchResponse.documents &&
-            searchResponse.documents[0] &&
-            searchResponse.documents[0].length > 0
-          ) {
-            const relevantContent = searchResponse.documents[0]
-              .slice(0, 3) // Use top 3 results
-              .map((doc, i) => {
-                return `Content: ${doc}`
-              })
-              .join('\n\n')
+          const relevantContent = searchResponse
+            .documents![0].slice(0, 3) // Use top 3 results
+            .map((doc, i) => {
+              return `Content: ${doc}`
+            })
+            .join('\n\n')
 
-            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, base it on the content provided above.`
-          } else {
-            if (queryScope === 'document') {
-              context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
-            } else {
-              context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
-            }
-          }
+          context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, base it on the content provided above.`
 
           // Try Python backend first, fallback to existing OpenAI
           let response: string
@@ -853,13 +958,11 @@ export const AIActions = ({
 
           const searchResponse = await semanticSearch(searchParams)
 
-          // Check if we got results
-          if (
-            searchResponse &&
-            searchResponse.ids &&
-            searchResponse.ids[0] &&
-            searchResponse.ids[0].length > 0
-          ) {
+          // Check if we got results using helper function
+          const hasResults = hasValidSearchResults(searchResponse)
+          const resultCount = getResultCount(searchResponse)
+
+          if (hasResults && resultCount > 0) {
             // Add user search query to chat history
             const userMessage: ChatMessage = {
               id: `user-search-${Date.now()}`,
@@ -870,7 +973,6 @@ export const AIActions = ({
             }
 
             // Add search results summary to chat history
-            const resultCount = searchResponse.ids[0].length
             const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
             const aiMessage: ChatMessage = {
               id: `ai-search-${Date.now()}`,
@@ -898,12 +1000,18 @@ export const AIActions = ({
               query: query,
             }
 
+            // Use helper function for consistent no-results message
+            const noResultsMessage = getNoResultsMessage(
+              queryScope,
+              documentId,
+              projectName,
+            )
+
             // Add no results message to chat history
             const aiMessage: ChatMessage = {
               id: `ai-no-results-${Date.now()}`,
               type: 'ai',
-              content:
-                "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
+              content: noResultsMessage,
               timestamp: new Date(),
             }
 
