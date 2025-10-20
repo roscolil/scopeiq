@@ -556,14 +556,7 @@ export const AIActions = ({
       'could',
       'would',
     ]
-    const questionMarkers = [
-      '?',
-      'explain',
-      'tell me',
-      'show me',
-      'help me',
-      'find out',
-    ]
+    const questionMarkers = ['?', 'explain', 'tell me', 'show me', 'help me']
 
     const lowerText = text.toLowerCase()
     const startsWithQuestionWord = questionWords.some(word =>
@@ -573,7 +566,7 @@ export const AIActions = ({
       lowerText.includes(marker),
     )
 
-    return startsWithQuestionWord || hasQuestionMarker
+    return startsWithQuestionWord || hasQuestionMarker || true // Treat all as potential questions
   }
 
   const handleQuery = useCallback(
@@ -645,11 +638,6 @@ export const AIActions = ({
         }
       }
 
-      console.log('Starting query:', {
-        query: queryToUse,
-        projectId,
-        queryScope,
-      })
       setIsLoading(true)
       setResults(null)
       setLastSpokenResponse('') // Clear previous spoken response for new queries
@@ -681,10 +669,11 @@ export const AIActions = ({
 
           const searchResponse = await semanticSearch(searchParams)
 
-          // Check if we have meaningful results - EARLY EXIT LOGIC
+          // Check if we have meaningful results
           const hasResults = hasValidSearchResults(searchResponse)
           const resultCount = getResultCount(searchResponse)
-          const MIN_RELEVANCE_THRESHOLD = 0.25 // Minimum relevance score to proceed
+          const MIN_RELEVANCE_THRESHOLD = 0.7 // 70% threshold - backend handles confidence filtering
+          const topRelevance = getTopRelevance(searchResponse)
 
           // Early exit if no results found
           if (!hasResults || resultCount === 0) {
@@ -741,9 +730,6 @@ export const AIActions = ({
             !meetsConfidenceThreshold(searchResponse, MIN_RELEVANCE_THRESHOLD)
           ) {
             const topRelevance = getTopRelevance(searchResponse)
-            console.log(
-              `⚠️ Low confidence results: ${topRelevance.toFixed(3)} < ${MIN_RELEVANCE_THRESHOLD}`,
-            )
 
             const userMessage: ChatMessage = {
               id: `user-${Date.now()}`,
@@ -963,6 +949,10 @@ export const AIActions = ({
           const resultCount = getResultCount(searchResponse)
 
           if (hasResults && resultCount > 0) {
+            // Check search result confidence
+            const MIN_SEARCH_RELEVANCE = 0.7 // 70% threshold - backend handles confidence filtering
+            const topRelevance = getTopRelevance(searchResponse)
+
             // Add user search query to chat history
             const userMessage: ChatMessage = {
               id: `user-search-${Date.now()}`,
@@ -972,24 +962,63 @@ export const AIActions = ({
               query: query,
             }
 
-            // Add search results summary to chat history
-            const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
-            const aiMessage: ChatMessage = {
-              id: `ai-search-${Date.now()}`,
-              type: 'ai',
-              content: searchSummary,
-              timestamp: new Date(),
+            // Check if results are relevant enough
+            if (topRelevance < MIN_SEARCH_RELEVANCE) {
+              // Low relevance search results
+              const lowRelevanceMessage = `I found ${resultCount} document${resultCount > 1 ? 's' : ''}, but they don't appear to be very relevant to "${query}" (best match: ${(topRelevance * 100).toFixed(1)}%). 
+
+Try:
+• Using more specific keywords
+• Checking if documents about this topic have been uploaded
+• Rephrasing your search query`
+
+              const aiMessage: ChatMessage = {
+                id: `ai-search-low-${Date.now()}`,
+                type: 'ai',
+                content: lowRelevanceMessage,
+                timestamp: new Date(),
+              }
+
+              setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+              // Still show the results but with warning
+              setResults({
+                type: 'search',
+                searchResults: searchResponse as typeof searchResults,
+              })
+
+              toast({
+                title: 'Low Relevance Results',
+                description: `Found ${resultCount} documents but relevance is low. Try different keywords.`,
+                variant: 'default',
+              })
+
+              setQuery('')
+            } else {
+              // Good relevance - show normal message
+              const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
+              const aiMessage: ChatMessage = {
+                id: `ai-search-${Date.now()}`,
+                type: 'ai',
+                content: searchSummary,
+                timestamp: new Date(),
+              }
+
+              setChatHistory(prev => [...prev, userMessage, aiMessage])
+
+              setResults({
+                type: 'search',
+                searchResults: searchResponse as typeof searchResults,
+              })
+
+              toast({
+                title: 'Search Complete',
+                description: `Found ${resultCount} relevant results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
+              })
+
+              // Clear the query field after successful search
+              setQuery('')
             }
-
-            setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-            setResults({
-              type: 'search',
-              searchResults: searchResponse as typeof searchResults,
-            })
-
-            // Clear the query field after successful search
-            setQuery('')
           } else {
             // Add user search query to chat history even when no results
             const userMessage: ChatMessage = {
@@ -1028,11 +1057,6 @@ export const AIActions = ({
             // Clear the query field
             setQuery('')
           }
-
-          toast({
-            title: 'Search Complete',
-            description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
-          })
         }
       } catch (error) {
         console.error('Query Error:', error)
