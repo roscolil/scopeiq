@@ -566,7 +566,7 @@ export const AIActions = ({
       lowerText.includes(marker),
     )
 
-    return startsWithQuestionWord || hasQuestionMarker || true // Treat all as potential questions
+    return startsWithQuestionWord || hasQuestionMarker || true // INFO Treat all as potential questions
   }
 
   const handleQuery = useCallback(
