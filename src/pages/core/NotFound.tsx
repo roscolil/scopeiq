@@ -1,18 +1,31 @@
 import { useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import MobileAuthRedirect from '@/components/routing/MobileAuthRedirect'
 
 const NotFound = () => {
   const location = useLocation()
 
   useEffect(() => {
+    const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
     console.error(
       '404 Error: User attempted to access non-existent route:',
       location.pathname,
+      isMobile ? '(Mobile device)' : '(Desktop)',
+      {
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        state: location.state,
+        userAgent: navigator.userAgent,
+      },
     )
-  }, [location.pathname])
+  }, [location])
 
   return (
     <>
+      {/* Mobile auth redirect check */}
+      <MobileAuthRedirect />
+
       {/* Dark gradient background */}
       <div className="fixed inset-0 -z-10">
         {/* Base dark gradient layers */}

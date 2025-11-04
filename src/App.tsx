@@ -5,8 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import CompanyGuard from '@/components/routing/CompanyGuard'
 import ProjectGuard from '@/components/routing/ProjectGuard'
 import DocumentGuard from '@/components/routing/DocumentGuard'
-import AdminGuard from '@/components/routing/AdminGuard'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
 import MobileAuthCTA from '@/components/auth/MobileAuthCTA'
@@ -75,10 +74,27 @@ const RootRedirect = () => {
   // While loading initial auth state, show landing page (keeps perceived performance high)
   if (isLoading) return <HomePage />
 
-  // If user is authenticated and has a valid companyId (not 'default'), redirect to dashboard
-  if (isAuthenticated && user?.companyId && user.companyId !== 'default') {
-    const companySegment = user.companyId.toLowerCase()
-    return <Navigate to={`/${companySegment}`} replace />
+  if (isAuthenticated && user?.companyId) {
+    const companySegment = (user.companyId || 'default').toLowerCase()
+
+    // Ensure companySegment is valid for URL routing
+    const validCompanySegment =
+      companySegment.replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '') ||
+      'default'
+
+    // Add debug logging for mobile browsers
+    const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      console.log('🔄 Mobile redirect:', {
+        originalCompanyId: user.companyId,
+        companySegment,
+        validCompanySegment,
+        targetPath: `/${validCompanySegment}`,
+        userAgent: navigator.userAgent,
+      })
+    }
+
+    return <Navigate to={`/${validCompanySegment}`} replace />
   }
 
   // For unauthenticated users or users still syncing (companyId === 'default'), show homepage

@@ -654,7 +654,10 @@ const Dashboard = () => {
           {/* Stats Overview */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Active Projects Card */}
-            <Card className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20">
+            <Card
+              className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
+              onClick={() => navigate(routes.company.projects.list(companyId))}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                 <CardTitle className="text-xs sm:text-sm font-medium">
                   Active Projects

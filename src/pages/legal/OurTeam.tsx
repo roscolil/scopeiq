@@ -56,7 +56,7 @@ const OurTeam = () => {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold mb-4 text-white">Our Team</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Meet the passionate individuals behind Jacq of All Trades who are
+            Meet the passionate individuals behind Jack of All Trades who are
             dedicated to revolutionizing how construction professionals work
             with documents and data.
           </p>

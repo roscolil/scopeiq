@@ -202,16 +202,34 @@ export const AIActions = ({
     scrollToBottom()
   }, [chatHistory])
 
-  // Reset duplicate guards whenever a new dictation session starts
+  // Register callback for nova-sonic playback completion
   useEffect(() => {
-    const onDictationStart = () => {
-      console.log('[dictation] start → resetting duplicate guards')
-      setLastProcessedTranscript('')
-      setAndroidTranscriptHistory([])
+    const unsubscribe = novaSonic.onPlaybackComplete(() => {
+      console.log(
+        '🎤 TTS playback completed, resetting voice state for follow-up queries',
+      )
+      setIsVoicePlaying(false)
+      setCurrentSpeakingText('')
+
+      // If we should resume listening after TTS, do it here
+      if (shouldResumeListening) {
+        console.log('🎤 Resuming voice input after TTS completion')
+        setTimeout(() => {
+          setIsListening(true)
+          setShouldResumeListening(false)
+          toast({
+            title: 'Voice input resumed',
+            description: 'Ready for your next question...',
+            duration: 2000,
+          })
+        }, 1000) // Give a moment for everything to settle
+      }
+    })
+
+    return () => {
+      unsubscribe()
     }
-    window.addEventListener('dictation:start', onDictationStart)
-    return () => window.removeEventListener('dictation:start', onDictationStart)
-  }, [])
+  }, [shouldResumeListening, toast])
 
   // Use semantic search hook for real search functionality
   const {
@@ -295,14 +313,21 @@ export const AIActions = ({
         }
         // Wait for voice to complete
         console.log('🎵 Waiting for voice synthesis to complete...')
-        await novaSonic.speakPrompt(prompt, { voice: options.voice })
+        const speakResult = await novaSonic.speakPrompt(prompt, {
+          voice: options.voice,
+        })
 
-        console.log('✅ Voice output completed successfully')
+        console.log('✅ Voice output Promise resolved:', {
+          speakResult,
+          isVoicePlaying,
+        })
 
         // If stopListeningAfter is true, don't resume listening
         if (options.stopListeningAfter) {
           console.log('🎤 Stopping microphone listening after verbal response')
           setShouldResumeListening(false)
+        } else {
+          console.log('🎤 Voice will allow resume listening after completion')
         }
       } catch (error) {
         console.error('❌ Voice synthesis error:', error)
@@ -325,25 +350,7 @@ export const AIActions = ({
         // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
-        console.log('🔄 Voice playing set to false')
-        try {
-          window.dispatchEvent(new CustomEvent('ai:speech:complete'))
-        } catch {
-          /* noop */
-        }
-        // If something was queued while we were speaking, play it next
-        if (queuedSpeechRef.current && audioUnlockedRef.current) {
-          const next = queuedSpeechRef.current
-          queuedSpeechRef.current = null
-          setTimeout(() => {
-            console.log(
-              '▶️ Playing queued voice response after previous finished',
-            )
-            speakWithStateTracking(next.prompt, next.options).catch(
-              console.error,
-            )
-          }, 75)
-        }
+        console.log('🔄 Voice playing set to false in finally block')
       }
     },
     [isListening, silenceTimer, isVoicePlaying],
@@ -2021,14 +2028,14 @@ export const AIActions = ({
                 }}
               />
 
-              {/* Show text being spoken (desktop) */}
-              {currentSpeakingText && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
-                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+              {/* Show text being spoken */}
+              {/* {currentSpeakingText && (
+                <div className="mt-2 p-3 bg-secondary/10 border border-secondary/30 rounded-lg hidden md:block">
+                  <div className="flex items-center gap-2 text-foreground text-sm font-medium mb-1">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                     AI is speaking:
                   </div>
-                  <div className="text-blue-800 text-sm leading-relaxed">
+                  <div className="text-foreground text-sm leading-relaxed">
                     {currentSpeakingText}
                   </div>
                 </div>
@@ -2328,11 +2335,11 @@ export const AIActions = ({
                 <div className="space-y-3">
                   {/* Display the question for context */}
                   {results.query && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h4 className="font-medium text-blue-900 mb-2">
+                    <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-3">
+                      <h4 className="font-medium text-foreground mb-2">
                         Your Question:
                       </h4>
-                      <p className="text-blue-800 text-sm">{results.query}</p>
+                      <p className="text-foreground text-sm">{results.query}</p>
                     </div>
                   )}
 
@@ -2454,13 +2461,11 @@ export const AIActions = ({
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            className="h-24 w-24 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-            title="Show voice button"
+            variant="secondary"
+            className="h-9 px-3 rounded-full shadow-soft hover:shadow-medium text-foreground border"
+            title="Show voice input"
           >
-            <Mic
-              className="text-white"
-              style={{ width: '36px', height: '36px' }}
-            />
+            Voice
           </Button>
         </div>
       )}

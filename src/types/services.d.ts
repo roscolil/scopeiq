@@ -1,5 +1,5 @@
 /**
- * Service and API type definitions for Jacq of All Trades
+ * Service and API type definitions for Jack of All Trades
  * Defines input/output types and service interfaces
  */
 

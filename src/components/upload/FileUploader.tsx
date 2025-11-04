@@ -1000,90 +1000,91 @@ export const FileUploader = (props: FileUploaderProps) => {
   // }
 
   return (
-    <div className="flex flex-col h-full max-h-[78vh] overflow-hidden">
-      {/* Static (non-scrolling) region: drag/drop area + category selector */}
-      <div className="space-y-6 flex-shrink-0">
-        {/* Backend Status */}
-        {/* <div className="flex items-center justify-between">
+    <div className="space-y-6 w-full max-w-2xl mx-auto px-2 sm:px-4 md:px-6 lg:px-0">
+      {/* Backend Status */}
+      {/* <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Upload Documents</h3>
         {getBackendBadge()}
       </div> */}
 
-        {/* Upload Area */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={cn(
-            'border-2 border-dashed rounded-xl p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden',
-            isDragging
-              ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
-              : 'border-muted-foreground/20 hover:border-muted-foreground/40',
-            selectedFiles.length > 0
-              ? 'bg-gradient-to-br from-secondary/30 to-secondary/50 border-border/50'
-              : 'bg-gradient-to-br from-background/50 to-muted/20 hover:to-muted/30',
-          )}
-        >
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+      {/* Upload Area */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={cn(
+          'border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden w-full',
+          isDragging
+            ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
+            : 'border-muted-foreground/20 hover:border-muted-foreground/40',
+          selectedFiles.length > 0
+            ? 'bg-gradient-to-br from-secondary/30 to-secondary/50 border-border/50'
+            : 'bg-gradient-to-br from-background/50 to-muted/20 hover:to-muted/30',
+        )}
+      >
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
-          <div className="relative flex flex-col items-center justify-center gap-4">
-            <div
-              className={cn(
-                'p-4 rounded-full transition-all duration-300',
-                isDragging
-                  ? 'bg-primary/20 scale-110'
-                  : selectedFiles.length > 0
-                    ? 'bg-green-100 dark:bg-green-900/30'
-                    : 'bg-muted/50 hover:bg-muted/70',
-              )}
-            >
-              {selectedFiles.length > 0 ? (
-                <div className="flex items-center gap-2">
-                  <Upload className="h-10 w-10 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">
-                    {selectedFiles.length} file
-                    {selectedFiles.length > 1 ? 's' : ''} selected
-                  </span>
-                </div>
-              ) : (
-                <Upload className="h-10 w-10 text-gray-400" />
-              )}
+        <div className="relative flex flex-col items-center justify-center gap-4 w-full">
+          <div
+            className={cn(
+              'p-3 sm:p-4 rounded-full transition-all duration-300',
+              isDragging
+                ? 'bg-primary/20 scale-110'
+                : selectedFiles.length > 0
+                  ? 'bg-green-100 dark:bg-green-900/30'
+                  : 'bg-muted/50 hover:bg-muted/70',
+            )}
+          >
+            {selectedFiles.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
+                <span className="text-xs sm:text-sm font-medium text-green-700">
+                  {selectedFiles.length} file
+                  {selectedFiles.length > 1 ? 's' : ''} selected
+                </span>
+              </div>
+            ) : (
+              <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
+            )}
+          </div>
+
+          <div className="space-y-4 w-full">
+            <div className="text-center space-y-2">
+              <p className="text-xs sm:text-sm font-medium text-foreground">
+                Drag & drop your documents here
+              </p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
+                Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
+                supported
+              </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-sm font-medium text-foreground">
-                  Drag & drop your documents here
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
-                  supported
-                </p>
-              </div>
-
-              <div className="flex gap-2 justify-center">
-                <label htmlFor="file-upload" className="flex justify-center">
-                  <Input
-                    id="file-upload"
-                    type="file"
-                    className="hidden"
-                    multiple
-                    onChange={handleFileChange}
-                    accept=".pdf,.docx,.txt,.doc"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
-                    asChild
-                  >
-                    <span>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Browse Files
-                    </span>
-                  </Button>
-                </label>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center w-full">
+              <label
+                htmlFor="file-upload"
+                className="flex-1 flex justify-center"
+              >
+                <Input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={handleFileChange}
+                  accept=".pdf,.docx,.txt,.doc"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                  asChild
+                >
+                  <span className="flex items-center justify-center">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Browse Files
+                  </span>
+                </Button>
+              </label>
 
                 {/* Browse Folders hidden per request */}
                 {/* <label htmlFor="folder-upload" className="flex justify-center">
@@ -1118,8 +1119,8 @@ export const FileUploader = (props: FileUploaderProps) => {
 
       {/* Scrollable region containing dynamic file list & progress */}
       {selectedFiles.length > 0 && (
-        <div className="mt-6 flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
-          <div className="flex justify-between items-center">
+        <div className="space-y-4 w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
             <h3 className="text-sm font-medium">
               Selected Files ({selectedFiles.length})
             </h3>
@@ -1187,28 +1188,23 @@ export const FileUploader = (props: FileUploaderProps) => {
             </p>
           )}
 
-          {/* Individual File List (takes natural height within scroll container) */}
-          <div className="space-y-2">
+          {/* Individual File List */}
+          <div className="space-y-2 max-h-60 overflow-y-auto w-full">
             {selectedFiles.map(fileItem => (
               <div
                 key={fileItem.id}
-                className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border transition-colors',
-                  fileItem.status === 'failed'
-                    ? 'bg-red-50 dark:bg-red-950/20 border-red-300/60'
-                    : 'bg-secondary/20 border-border/30',
-                )}
+                className="flex flex-col xs:flex-row items-start xs:items-center gap-2 xs:gap-3 p-2 sm:p-3 bg-secondary/20 rounded-lg border border-border/30 w-full"
               >
                 {getFileIcon(fileItem.file)}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex items-center gap-2 w-full">
+                    <p className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[220px]">
                       {fileItem.file.name}
                     </p>
                     {getStatusIcon(fileItem.status)}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-muted-foreground">
                     <span>
                       {(fileItem.file.size / 1024 / 1024).toFixed(2)} MB
                     </span>
@@ -1216,7 +1212,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                       <>
                         <span>•</span>
                         {fileItem.processingMessage ? (
-                          <span className="text-amber-600 font-medium">
+                          <span className="text-amber-600 font-medium truncate max-w-[100px] sm:max-w-[200px]">
                             {fileItem.processingMessage.includes(
                               'Processing chunk batch',
                             )
@@ -1237,12 +1233,8 @@ export const FileUploader = (props: FileUploaderProps) => {
                     {fileItem.status === 'failed' && fileItem.error && (
                       <div className="flex items-start gap-1 mt-1">
                         <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-red-600 text-xs leading-tight">
-                          {fileItem.failureType
-                            ? `${fileItem.failureType.toUpperCase()}: `
-                            : ''}
-                          {fileItem.error || 'Upload failed'}
-                          {fileItem.retryable === false && ' (non-retryable)'}
+                        <span className="text-red-600 text-[11px] sm:text-xs leading-tight">
+                          {fileItem.error}
                         </span>
                       </div>
                     )}
@@ -1286,9 +1278,9 @@ export const FileUploader = (props: FileUploaderProps) => {
       )}
 
       {/* Selection Summary */}
-      {/* {selectionSummary && (
-        <div className="text-xs rounded-md border p-3 bg-muted/30 space-y-1">
-          <div className="flex flex-wrap gap-3 items-center">
+      {selectionSummary && (
+        <div className="text-xs rounded-md border p-2 sm:p-3 bg-muted/30 space-y-1 w-full">
+          <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
             <span className="font-medium">Selection:</span>
             <span>{selectionSummary.accepted} accepted</span>
             <span>
