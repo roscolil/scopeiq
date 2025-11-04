@@ -1086,8 +1086,8 @@ export const FileUploader = (props: FileUploaderProps) => {
                 </Button>
               </label>
 
-                {/* Browse Folders hidden per request */}
-                {/* <label htmlFor="folder-upload" className="flex justify-center">
+              {/* Browse Folders hidden per request */}
+              {/* <label htmlFor="folder-upload" className="flex justify-center">
                   <Input
                     id="folder-upload"
                     type="file"
@@ -1109,13 +1109,12 @@ export const FileUploader = (props: FileUploaderProps) => {
                     </span>
                   </Button>
                 </label> */}
-              </div>
             </div>
           </div>
         </div>
-
-        {/* Categories UI hidden for now */}
       </div>
+
+      {/* Categories UI hidden for now */}
 
       {/* Scrollable region containing dynamic file list & progress */}
       {selectedFiles.length > 0 && (
@@ -1317,7 +1316,7 @@ export const FileUploader = (props: FileUploaderProps) => {
             </ul>
           )}
         </div>
-      )} */}
+      )}
     </div>
   )
 }

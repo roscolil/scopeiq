@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Brain,
-  Search,
   FileSearch,
   Copy,
   MessageSquare,
@@ -39,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { callOpenAI } from '@/services/ai/openai'
 import { novaSonic } from '@/services/api/nova-sonic'
 import {
   Tooltip,
@@ -48,8 +46,6 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip'
 import { VoiceId } from '@aws-sdk/client-polly'
-import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import { semanticSearch } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
@@ -81,15 +77,7 @@ export const AIActions = ({
 }: AIActionsProps) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{
-    type: 'search' | 'ai'
-    searchResults?: {
-      ids: string[][]
-      distances?: number[][]
-      metadatas?: Array<
-        Array<{ name?: string } & Record<string, string | number | boolean>>
-      >
-      documents?: string[][]
-    }
+    type: 'ai'
     aiAnswer?: string
     query?: string
   } | null>(null)
@@ -230,14 +218,6 @@ export const AIActions = ({
       unsubscribe()
     }
   }, [shouldResumeListening, toast])
-
-  // Use semantic search hook for real search functionality
-  const {
-    results: searchResults,
-    loading: isSearching,
-    error: searchError,
-    search,
-  } = useSemanticSearch(projectId || '')
 
   // Loop-safe voice wrapper
   const speakWithStateTracking = useCallback(
@@ -671,45 +651,6 @@ export const AIActions = ({
     }
   }
 
-  // Smart query detection - determines if it's a search or AI question
-  const isQuestion = (text: string): boolean => {
-    const questionWords = [
-      'what',
-      'how',
-      'why',
-      'when',
-      'where',
-      'who',
-      'which',
-      'can',
-      'does',
-      'is',
-      'are',
-      'will',
-      'should',
-      'could',
-      'would',
-    ]
-    const questionMarkers = [
-      '?',
-      'explain',
-      'tell me',
-      'show me',
-      'help me',
-      'find out',
-    ]
-
-    const lowerText = text.toLowerCase()
-    const startsWithQuestionWord = questionWords.some(word =>
-      lowerText.startsWith(word + ' '),
-    )
-    const hasQuestionMarker = questionMarkers.some(marker =>
-      lowerText.includes(marker),
-    )
-
-    return startsWithQuestionWord || hasQuestionMarker
-  }
-
   const handleQuery = useCallback(
     async (queryText?: string) => {
       const queryToUse = queryText || query
@@ -791,278 +732,101 @@ export const AIActions = ({
       setEnhancedAIProgress('') // Clear previous progress state
 
       try {
-        if (isQuestion(queryToUse)) {
-          // Handle as AI question - first get relevant content via semantic search
-          const searchParams: {
-            projectId: string
-            query: string
-            topK: number
-            documentId?: string
-          } = {
-            projectId: projectId,
-            query: queryToUse,
-            topK: 50, // Increased to capture more chunks - construction docs have many small chunks
-          }
+        // Always route to Python backend
+        const pythonResponse = await handleEnhancedAIQueryWithPython({
+          query: queryToUse,
+          projectId: projectId,
+          documentId: queryScope === 'document' ? documentId : undefined,
+          projectName,
+          document: document || undefined,
+          queryScope,
+          onProgress: stage => {
+            console.log('Enhanced AI Progress:', stage)
+            const formattedStage = formatProgressMessage(stage)
 
-          // Only add documentId filter for document-specific queries if we have a valid document
-          if (
-            queryScope === 'document' &&
-            documentId &&
-            document?.status === 'processed'
-          ) {
-            searchParams.documentId = documentId
-          }
-
-          const searchResponse = await semanticSearch(searchParams)
-
-          // Build context from search results
-          let context = ``
-          if (queryScope === 'document' && documentId && document) {
-            context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
-          } else {
-            context = `Project ID: ${projectId}\nSearching across entire project.\n`
-          }
-
-          // Add relevant document content as context
-          if (
-            searchResponse &&
-            searchResponse.documents &&
-            searchResponse.documents[0] &&
-            searchResponse.documents[0].length > 0
-          ) {
-            const relevantContent = searchResponse.documents[0]
-              .slice(0, 3) // Use top 3 results
-              .map((doc, i) => {
-                return `Content: ${doc}`
-              })
-              .join('\n\n')
-
-            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, base it on the content provided above.`
-          } else {
-            if (queryScope === 'document') {
-              context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
-            } else {
-              context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
+            // Clear any existing timer
+            if (progressTimerRef.current) {
+              clearTimeout(progressTimerRef.current)
             }
-          }
 
-          // Try Python backend first, fallback to existing OpenAI
-          let response: string
-          try {
-            if (currentBackend === 'python' && backendHealth) {
-              const pythonResponse = await handleEnhancedAIQueryWithPython({
-                query: queryToUse,
-                projectId: projectId,
-                documentId: queryScope === 'document' ? documentId : undefined,
-                projectName,
-                document: document || undefined,
-                queryScope,
-                onProgress: stage => {
-                  console.log('Enhanced AI Progress:', stage)
-                  const formattedStage = formatProgressMessage(stage)
+            // Set the new progress immediately
+            setEnhancedAIProgress(formattedStage)
 
-                  // Clear any existing timer
-                  if (progressTimerRef.current) {
-                    clearTimeout(progressTimerRef.current)
-                  }
-
-                  // Set the new progress immediately
-                  setEnhancedAIProgress(formattedStage)
-
-                  // Set a minimum display duration for visibility
-                  progressTimerRef.current = setTimeout(() => {
-                    // Only clear if this is still the current stage
-                    setEnhancedAIProgress(prev =>
-                      prev === formattedStage ? prev : prev,
-                    )
-                  }, 800) // Keep each stage visible for at least 800ms
-                },
-                options: {
-                  usePythonBackend: true,
-                  fallbackToExisting: true,
-                  onBackendSwitch: backend => {
-                    setCurrentBackend(backend)
-                    console.log(`Switched to ${backend} backend`)
-                  },
-                },
-              })
-              response = pythonResponse.response
-            } else {
-              response = await callOpenAI(queryToUse, context)
-            }
-          } catch (error) {
-            console.warn('Primary backend failed, falling back:', error)
-            // Fallback to existing system
-            response = await callOpenAI(queryToUse, context)
-          }
-
-          // Add user message to chat history
-          const userMessage: ChatMessage = {
-            id: `user-${Date.now()}`,
-            type: 'user',
-            content: queryToUse,
-            timestamp: new Date(),
-            query: queryToUse,
-          }
-
-          // Add AI response to chat history
-          const aiMessage: ChatMessage = {
-            id: `ai-${Date.now()}`,
-            type: 'ai',
-            content: response,
-            timestamp: new Date(),
-          }
-
-          setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-          setResults({
-            type: 'ai',
-            aiAnswer: response,
-            query: queryToUse,
-          })
-
-          // Prepare replay availability
-          setCanReplay(false)
-
-          // Clear the query field after successful AI response
-          setQuery('')
-
-          // Only show toast on desktop, not mobile
-          if (!isMobile) {
-            toast({
-              title: 'AI Analysis Complete',
-              description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
-            })
-          }
-
-          // Always try to speak AI response (queued if audio locked). Deduplicate only if identical text already queued & playing.
-          if (response && response.length > 0) {
-            const shouldSpeak =
-              response !== lastSpokenResponse || !isVoicePlaying
-            if (shouldSpeak) {
-              console.log(
-                '🗣️ Speaking AI response (always-on):',
-                response.slice(0, 80),
+            // Set a minimum display duration for visibility
+            progressTimerRef.current = setTimeout(() => {
+              // Only clear if this is still the current stage
+              setEnhancedAIProgress(prev =>
+                prev === formattedStage ? prev : prev,
               )
-              setLastSpokenResponse(response)
-              setTimeout(() => {
-                speakWithStateTracking(response, {
-                  voice: 'Ruth',
-                  stopListeningAfter: true,
-                }).catch(console.error)
-                setTimeout(() => setCanReplay(true), 1500)
-              }, 400) // slightly shorter delay now that we always speak
-            }
-          }
-        } else {
-          // Handle as semantic search with proper document scoping
-          const searchParams: {
-            projectId: string
-            query: string
-            topK: number
-            documentId?: string
-          } = {
-            projectId: projectId,
-            query: queryToUse,
-            topK: 10, // More results for search than AI context
-          }
+            }, 800) // Keep each stage visible for at least 800ms
+          },
+          options: {
+            usePythonBackend: true,
+            fallbackToExisting: false,
+            onBackendSwitch: backend => {
+              setCurrentBackend(backend)
+              console.log(`Switched to ${backend} backend`)
+            },
+          },
+        })
+        const response = pythonResponse.response
 
-          // Only add documentId filter for document-specific queries if we have a valid document
-          if (
-            queryScope === 'document' &&
-            documentId &&
-            document?.status === 'processed'
-          ) {
-            searchParams.documentId = documentId
-          }
+        // Add user message to chat history
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          type: 'user',
+          content: queryToUse,
+          timestamp: new Date(),
+          query: queryToUse,
+        }
 
-          const searchResponse = await semanticSearch(searchParams)
+        // Add AI response to chat history
+        const aiMessage: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          type: 'ai',
+          content: response,
+          timestamp: new Date(),
+        }
 
-          // Check if we got results
-          if (
-            searchResponse &&
-            searchResponse.ids &&
-            searchResponse.ids[0] &&
-            searchResponse.ids[0].length > 0
-          ) {
-            // Add user search query to chat history
-            const userMessage: ChatMessage = {
-              id: `user-search-${Date.now()}`,
-              type: 'user',
-              content: query,
-              timestamp: new Date(),
-              query: query,
-            }
+        setChatHistory(prev => [...prev, userMessage, aiMessage])
 
-            // Add search results summary to chat history
-            const resultCount = searchResponse.ids[0].length
-            const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
-            const aiMessage: ChatMessage = {
-              id: `ai-search-${Date.now()}`,
-              type: 'ai',
-              content: searchSummary,
-              timestamp: new Date(),
-            }
+        setResults({
+          type: 'ai',
+          aiAnswer: response,
+          query: queryToUse,
+        })
 
-            setChatHistory(prev => [...prev, userMessage, aiMessage])
+        // Prepare replay availability
+        setCanReplay(false)
 
-            setResults({
-              type: 'search',
-              searchResults: searchResponse as typeof searchResults,
-            })
+        // Clear the query field after successful AI response
+        setQuery('')
 
-            // Always speak the summary (will queue if locked)
-            speakWithStateTracking(searchSummary, {
-              voice: 'Ruth',
-              stopListeningAfter: true,
-            }).catch(console.error)
-
-            // Clear the query field after successful search
-            setQuery('')
-          } else {
-            // Add user search query to chat history even when no results
-            const userMessage: ChatMessage = {
-              id: `user-no-results-${Date.now()}`,
-              type: 'user',
-              content: query,
-              timestamp: new Date(),
-              query: query,
-            }
-
-            // Add no results message to chat history
-            const noResultsMsg =
-              "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question."
-            const aiMessage: ChatMessage = {
-              id: `ai-no-results-${Date.now()}`,
-              type: 'ai',
-              content: noResultsMsg,
-              timestamp: new Date(),
-            }
-
-            setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-            // No results found for search query
-            toast({
-              title: 'No Results Found',
-              description:
-                'Try rephrasing your search or asking a different question.',
-              variant: 'destructive',
-            })
-
-            // Speak the no results message
-            speakWithStateTracking(noResultsMsg, {
-              voice: 'Ruth',
-              stopListeningAfter: true,
-            }).catch(console.error)
-
-            // Clear the query field
-            setQuery('')
-          }
-
+        // Only show toast on desktop, not mobile
+        if (!isMobile) {
           toast({
-            title: 'Search Complete',
-            description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
+            title: 'AI Analysis Complete',
+            description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
           })
+        }
+
+        // Always try to speak AI response (queued if audio locked). Deduplicate only if identical text already queued & playing.
+        if (response && response.length > 0) {
+          const shouldSpeak = response !== lastSpokenResponse || !isVoicePlaying
+          if (shouldSpeak) {
+            console.log(
+              '🗣️ Speaking AI response (always-on):',
+              response.slice(0, 80),
+            )
+            setLastSpokenResponse(response)
+            setTimeout(() => {
+              speakWithStateTracking(response, {
+                voice: 'Ruth',
+                stopListeningAfter: true,
+              }).catch(console.error)
+              setTimeout(() => setCanReplay(true), 1500)
+            }, 400)
+          }
         }
       } catch (error) {
         console.error('Query Error:', error)
@@ -1255,52 +1019,13 @@ export const AIActions = ({
       setResults,
       setQuery,
       setIsLoading,
-      currentBackend,
-      backendHealth,
+      setCurrentBackend,
       isVoicePlaying,
       lastSpokenResponse,
       setLastSpokenResponse,
       lastSubmissionTime,
     ],
   )
-
-  // Handle search results from the hook - DISABLED to prevent conflicts
-  // We handle search results directly in handleQuery() instead
-  /*
-  useEffect(() => {
-    // Only process search results if we actually submitted a query
-    if (!hasSubmittedQuery) return
-
-    if (
-      searchResults &&
-      searchResults.ids &&
-      searchResults.ids[0] &&
-      searchResults.ids[0].length > 0
-    ) {
-      setResults({
-        type: 'search',
-        searchResults: searchResults,
-      })
-      // Reset the flag after successful results
-      setHasSubmittedQuery(false)
-    } else if (
-      searchResults &&
-      searchResults.ids &&
-      searchResults.ids[0] &&
-      searchResults.ids[0].length === 0 &&
-      query.trim()
-    ) {
-      // No results found - show toast only (no voice)
-      toast({
-        title: 'No Results Found',
-        description: 'Try rephrasing your question or asking about something else.',
-        variant: 'destructive',
-      })
-      // Reset the flag after showing no results
-      setHasSubmittedQuery(false)
-    }
-  }, [searchResults, query, speakWithStateTracking, toast, hasSubmittedQuery])
-  */
 
   // Stop voice input when voice output is playing
   useEffect(() => {
@@ -1330,10 +1055,6 @@ export const AIActions = ({
       return () => clearTimeout(timer)
     }
   }, [isVoicePlaying, shouldResumeListening, toast])
-
-  const handleSearch = () => {
-    handleQuery()
-  }
 
   // Legacy method - redirecting to the newer handleQuery method
   const askQuestion = async () => {
@@ -2040,6 +1761,7 @@ export const AIActions = ({
                   </div>
                 </div>
               )}
+              */}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
@@ -2148,17 +1870,8 @@ export const AIActions = ({
                     </>
                   ) : (
                     <>
-                      {isQuestion(query) ? (
-                        <>
-                          <MessageSquare className="w-4 h-4" />
-                          <span>Ask AI ✨</span>
-                        </>
-                      ) : (
-                        <>
-                          <Search className="w-4 h-4" />
-                          <span>Ask AI</span>
-                        </>
-                      )}
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Ask AI ✨</span>
                     </>
                   )}
                 </Button>
@@ -2168,76 +1881,6 @@ export const AIActions = ({
                 )}
               </div>
             </div>
-
-            {searchError && (
-              <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                {searchError}
-              </div>
-            )}
-
-            {/* Display Search Results */}
-            {results?.type === 'search' &&
-              results.searchResults &&
-              results.searchResults.ids &&
-              results.searchResults.ids[0] &&
-              results.searchResults.ids[0].length > 0 && (
-                <div className="bg-gradient-to-r from-secondary/30 to-secondary/10 p-4 rounded-xl border text-sm space-y-3 mb-4 shadow-soft">
-                  <div className="flex justify-between items-center">
-                    <Badge variant="outline" className="shadow-soft">
-                      <Search className="h-3 w-3 mr-1" />
-                      Search Results ({results.searchResults.ids[0].length}{' '}
-                      found)
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 hover:bg-secondary/80"
-                      onClick={() => {
-                        const resultsText = results
-                          .searchResults!.ids[0].map(
-                            (id: string, i: number) =>
-                              `Document: ${results.searchResults!.metadatas?.[0]?.[i]?.name || id}\n${results.searchResults!.documents?.[0]?.[i] || 'No content preview available'}`,
-                          )
-                          .join('\n\n')
-                        copyToClipboard(resultsText)
-                      }}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    {results.searchResults.ids[0].map(
-                      (id: string, i: number) => (
-                        <div
-                          key={id}
-                          className="p-3 bg-background rounded-lg shadow-soft border text-xs"
-                        >
-                          <div className="font-medium text-primary mb-2">
-                            Document:{' '}
-                            {results.searchResults!.metadatas?.[0]?.[i]?.name ||
-                              id}
-                          </div>
-                          <div className="text-foreground mb-2 leading-relaxed">
-                            {results.searchResults!.documents?.[0]?.[i] ||
-                              'No content preview available'}
-                          </div>
-                          <div className="text-xs text-gray-400 flex justify-between">
-                            <span>ID: {id}</span>
-                            <span className="font-medium">
-                              Relevance:{' '}
-                              {(
-                                1 -
-                                (results.searchResults!.distances?.[0]?.[i] ||
-                                  0)
-                              ).toFixed(3)}
-                            </span>
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
 
             {/* Chat History Display */}
             {chatHistory.length > 0 && (
@@ -2363,21 +2006,6 @@ export const AIActions = ({
                       {results.aiAnswer}
                     </div>
                   </div>
-                </div>
-              )}
-
-            {/* No Results Message */}
-            {results?.type === 'search' &&
-              results.searchResults &&
-              (!results.searchResults.ids ||
-                !results.searchResults.ids[0] ||
-                results.searchResults.ids[0].length === 0) &&
-              !isLoading &&
-              query && (
-                <div className="text-gray-400 text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
-                  No results found for "
-                  <span className="font-medium">{query}</span>". Try different
-                  search terms or ask a question for AI analysis.
                 </div>
               )}
           </div>
