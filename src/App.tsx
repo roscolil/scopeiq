@@ -15,13 +15,11 @@ import {
 } from '@/utils/performance/route-prefetch'
 
 // Eagerly load critical components
-// HomePage now wrapped by RootRoute for conditional dashboard redirect
-// (Still imported inside RootRoute component.)
-import RootRoute from '@/components/routing/RootRoute'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
 import Dashboard from './pages/dashboard/Dashboard' // Load Dashboard eagerly
+import HomePage from './pages/dashboard/IndexPage' // Import HomePage for RootRedirect
 
 // Lazy load secondary pages
 const Documents = lazy(() => import('./pages/documents/Documents'))
@@ -134,15 +132,8 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public root route with conditional redirect to dashboard when authenticated */}
-              <Route path="/" element={<RootRoute />} />
+              <Route path="/" element={<RootRedirect />} />
               {/* Public routes - eagerly loaded */}
-              <Route
-                path="/"
-                element={
-                  // Inline component to decide between landing page or dashboard redirect
-                  <RootRedirect />
-                }
-              />
               <Route path="/auth">
                 <Route path="signin" element={<SignIn />} />
                 <Route path="signup" element={<SignUp />} />
