@@ -770,13 +770,8 @@ export const VoiceShazamButton = ({
       console.log('📡 wakeword:activate-mic received', {
         internalIsListening,
         isProcessing,
-        ttsActive,
         canShow: !isMobileOnly || isMobileView,
       })
-      if (ttsActive) {
-        console.log('🔇 Ignoring wakeword during active TTS')
-        return
-      }
       // Only respond if button is visible (mobile-only either disabled or we are on mobile)
       const canShow = !isMobileOnly || isMobileView
       if (!canShow) return
@@ -795,7 +790,6 @@ export const VoiceShazamButton = ({
     internalIsListening,
     isProcessing,
     internalToggleListening,
-    ttsActive,
   ])
 
   // Grace window: if we transition from listening -> not listening while processing hasn't started yet,
