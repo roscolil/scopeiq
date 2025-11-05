@@ -2084,16 +2084,22 @@ export const AIActions = ({
         />
       )}
 
-      {/* Show voice button when hidden - larger floating button in bottom-left (mobile only) */}
+      {/* Show voice button when hidden - larger floating button in bottom-right (mobile only) */}
       {hideShazamButton && isMobile && (
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            variant="secondary"
-            className="h-9 px-3 rounded-full shadow-soft hover:shadow-medium text-foreground border"
+            className="h-24 w-24 rounded-full shadow-xl flex items-center justify-center border-4 border-white bg-primary hover:bg-primary transition-all duration-300"
             title="Show voice input"
+            style={{
+              boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+            }}
           >
-            Voice
+            <Mic
+              className="text-white"
+              strokeWidth={1.5}
+              style={{ transform: 'scale(0.8)', width: '100%', height: '100%' }}
+            />
           </Button>
         </div>
       )}
