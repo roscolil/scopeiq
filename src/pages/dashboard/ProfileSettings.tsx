@@ -667,17 +667,20 @@ const ProfileSettings = () => {
                 >
                   Security
                 </TabsTrigger>
+                {/* User Management and Invitations tabs visible but disabled on mobile */}
                 {canManageUsers && (
                   <>
                     <TabsTrigger
                       value="userManagement"
                       className="text-xs px-3 py-2.5 min-w-[70px]"
+                      disabled
                     >
                       Users
                     </TabsTrigger>
                     <TabsTrigger
                       value="invitations"
                       className="text-xs px-3 py-2.5 min-w-[70px]"
+                      disabled
                     >
                       Invites
                     </TabsTrigger>
@@ -691,13 +694,19 @@ const ProfileSettings = () => {
               <TabsList>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
-                <TabsTrigger value="voice">Voice</TabsTrigger>
+                {/* Voice tab visible but disabled */}
+                <TabsTrigger value="voice" disabled>
+                  Voice
+                </TabsTrigger>
+                {/* User Management and Invitations tabs visible but disabled */}
                 {canManageUsers && (
                   <>
-                    <TabsTrigger value="userManagement">
+                    <TabsTrigger value="userManagement" disabled>
                       User Management
                     </TabsTrigger>
-                    <TabsTrigger value="invitations">Invitations</TabsTrigger>
+                    <TabsTrigger value="invitations" disabled>
+                      Invitations
+                    </TabsTrigger>
                   </>
                 )}
               </TabsList>
