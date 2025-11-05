@@ -79,11 +79,13 @@ export const DEFAULT_PYTHON_BACKEND_CONFIG: PythonBackendConfig = {
  * Configuration for production
  */
 export const PRODUCTION_PYTHON_BACKEND_CONFIG: PythonBackendConfig = {
-  baseURL: 'https://ai-backend.scopeiq.com',
-  timeout: 60000,
-  retryAttempts: 5,
-  retryDelay: 2000,
-  enableFallback: true,
+  baseURL:
+    import.meta.env.VITE_PYTHON_AI_BACKEND_URL ||
+    'https://ai-backend.scopeiq.com',
+  timeout: parseInt(import.meta.env.VITE_PYTHON_AI_TIMEOUT || '60000'),
+  retryAttempts: parseInt(import.meta.env.VITE_PYTHON_AI_RETRY_ATTEMPTS || '5'),
+  retryDelay: parseInt(import.meta.env.VITE_PYTHON_AI_RETRY_DELAY || '2000'),
+  enableFallback: import.meta.env.VITE_ENABLE_AI_BACKEND_FALLBACK !== 'false',
 }
 
 /**
