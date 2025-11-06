@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+// import { CategoryMultiSelect } from '@/components/upload/CategoryMultiSelect'
 import {
   Upload,
   X,
@@ -33,6 +34,15 @@ import { usePythonDocumentUpload } from '@/hooks/usePythonDocumentUpload'
 import { checkPythonBackendHealth } from '@/services/file/python-document-upload'
 import { getPythonBackendConfig } from '@/config/python-backend'
 
+// Failure classification type
+type FailureType =
+  | 'validation'
+  | 'network'
+  | 'auth'
+  | 'server'
+  | 'processing'
+  | 'unknown'
+
 interface FileUploaderProps {
   projectId: string
   companyId: string
@@ -43,7 +53,16 @@ interface FileUploaderProps {
    */
   onBatchComplete?: (
     uploadedFiles: Document[],
-    summary: { success: number; failed: number },
+    summary: {
+      success: number
+      failed: number
+      failures?: Array<{
+        name: string
+        failureType?: FailureType
+        retryable?: boolean
+        message?: string
+      }>
+    },
   ) => void
 }
 
@@ -57,6 +76,9 @@ interface FileUploadItem {
   documentId?: string // Database document ID
   pythonDocumentId?: string // Python backend document ID
   backend?: 'python' | 'existing'
+  failureType?: FailureType
+  retryable?: boolean
+  retryCount?: number
 }
 
 // Add new interfaces near existing ones
@@ -78,6 +100,9 @@ export const FileUploader = (props: FileUploaderProps) => {
   const [processingMessages, setProcessingMessages] = useState<
     Record<string, string>
   >({})
+  // Batch progress tracking (so counter increments instead of staying at 1)
+  const [batchTotal, setBatchTotal] = useState(0)
+  const [batchCurrent, setBatchCurrent] = useState(0) // 1-based index of current file in batch
   const [backendHealth, setBackendHealth] = useState<boolean | null>(null)
   const [currentBackend, setCurrentBackend] = useState<'python' | 'existing'>(
     'python',
@@ -88,6 +113,8 @@ export const FileUploader = (props: FileUploaderProps) => {
     rejected: RejectedFileInfo[]
   } | null>(null)
   const [showRejected, setShowRejected] = useState(false)
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
+  // const [categoryTouched, setCategoryTouched] = useState(false)
 
   // Ref to store mapping between Python document IDs and file items for immediate access
   const pythonDocumentMapping = useRef<
@@ -95,6 +122,36 @@ export const FileUploader = (props: FileUploaderProps) => {
   >(new Map())
 
   const { toast } = useToast()
+
+  // Classify errors for better retry & display handling
+  const classifyError = (
+    err: unknown,
+  ): { failureType: FailureType; retryable: boolean } => {
+    let message = ''
+    if (err instanceof Error) message = err.message.toLowerCase()
+    else message = String(err).toLowerCase()
+
+    if (message.includes('unsupported type') || message.includes('too large')) {
+      return { failureType: 'validation', retryable: false }
+    }
+    if (
+      message.includes('network') ||
+      message.includes('timeout') ||
+      message.includes('fetch')
+    ) {
+      return { failureType: 'network', retryable: true }
+    }
+    if (message.includes('unauthorized') || message.includes('forbidden')) {
+      return { failureType: 'auth', retryable: false }
+    }
+    if (message.match(/5\d{2}/)) {
+      return { failureType: 'server', retryable: true }
+    }
+    if (message.includes('embedding') || message.includes('processing')) {
+      return { failureType: 'processing', retryable: true }
+    }
+    return { failureType: 'unknown', retryable: true }
+  }
 
   // Python document upload hook
   const pythonUpload = usePythonDocumentUpload({
@@ -357,6 +414,7 @@ export const FileUploader = (props: FileUploaderProps) => {
           status: 'pending',
           progress: 0,
           backend: currentBackend,
+          retryCount: 0,
         })
       } else {
         rejected.push({
@@ -457,6 +515,8 @@ export const FileUploader = (props: FileUploaderProps) => {
                 : 'processing',
             url: result.s3Url,
             s3Key: result.s3Key,
+            categoryIds: selectedCategoryIds,
+            primaryCategoryId: selectedCategoryIds[0],
           },
         )
 
@@ -529,6 +589,8 @@ export const FileUploader = (props: FileUploaderProps) => {
             status: 'processing',
             url: result.url,
             s3Key: result.key,
+            categoryIds: selectedCategoryIds,
+            primaryCategoryId: selectedCategoryIds[0],
           },
         )
 
@@ -543,65 +605,67 @@ export const FileUploader = (props: FileUploaderProps) => {
           ),
         )
 
-        // Process embedding in background - console logs will show progress
+        // Fire-and-forget embedding processing (does not alter immediate return value)
         if (newDocument?.id) {
-          try {
-            const fileText = await extractTextFromFile(fileItem.file)
-            if (fileText && fileText.trim().length > 0) {
-              await processEmbeddingOnly(fileText, projectId, newDocument.id, {
-                name: fileItem.file.name,
-                type: fileItem.file.type,
-                url: result.url,
-                s3Key: result.key,
-                companyId,
-                size: result.size,
-              })
-
-              await documentService.updateDocument(
-                companyId,
-                projectId,
-                newDocument.id,
-                {
-                  status: 'processed',
-                  content: fileText,
-                },
-              )
-
-              // Notify parent component of status update
-              const updatedDocument = {
-                ...newDocument,
-                status: 'processed' as const,
-                content: fileText,
-              }
-              onUploadComplete(updatedDocument as Document)
-            } else {
-              // No text content extracted, keeping status as processing
-            }
-          } catch (embeddingError) {
-            // Update document status to failed due to processing error
+          ;(async () => {
             try {
-              await documentService.updateDocument(
-                companyId,
-                projectId,
-                newDocument.id,
-                {
-                  status: 'failed',
-                },
-              )
+              const fileText = await extractTextFromFile(fileItem.file)
+              if (fileText && fileText.trim().length > 0) {
+                await processEmbeddingOnly(
+                  fileText,
+                  projectId,
+                  newDocument.id,
+                  {
+                    name: fileItem.file.name,
+                    type: fileItem.file.type,
+                    url: result.url,
+                    s3Key: result.key,
+                    companyId,
+                    size: result.size,
+                  },
+                )
 
-              // Notify parent component of status update
-              const failedDocument = {
-                ...newDocument,
-                status: 'failed' as const,
+                await documentService.updateDocument(
+                  companyId,
+                  projectId,
+                  newDocument.id,
+                  {
+                    status: 'processed',
+                    content: fileText,
+                  },
+                )
+
+                const updatedDocument = {
+                  ...newDocument,
+                  status: 'processed' as const,
+                  content: fileText,
+                }
+                onUploadComplete(updatedDocument as Document)
               }
-              onUploadComplete(failedDocument as Document)
-            } catch (updateError) {
-              // Failed to update document status
+            } catch (embeddingError) {
+              try {
+                await documentService.updateDocument(
+                  companyId,
+                  projectId,
+                  newDocument.id,
+                  { status: 'failed' },
+                )
+                const failedDocument = {
+                  ...newDocument,
+                  status: 'failed' as const,
+                }
+                onUploadComplete(failedDocument as Document)
+              } catch {
+                // Secondary update failure ignored: main embedding failure already surfaced via failed status update.
+              }
             }
-          }
+          })()
         }
+
+        return newDocument as Document
       }
     } catch (error) {
+      const { failureType, retryable } = classifyError(error)
       setSelectedFiles(prev =>
         prev.map(f =>
           f.id === fileItem.id
@@ -609,15 +673,17 @@ export const FileUploader = (props: FileUploaderProps) => {
                 ...f,
                 status: 'failed' as const,
                 error: formatErrorMessage(error),
+                failureType,
+                retryable,
+                retryCount: (f.retryCount ?? 0) + 1,
               }
             : f,
         ),
       )
       throw error
     }
-    // Existing backend path already invoked onUploadComplete for initial and subsequent status changes.
-    // Return null to avoid double counting in batch array (python path returns the initial created document).
-    return null
+    // Both backend paths return the initial created Document for batch aggregation.
+    // (Python path returns earlier inside its branch.)
   }
 
   const uploadAllFiles = async () => {
@@ -628,13 +694,24 @@ export const FileUploader = (props: FileUploaderProps) => {
     setProgressHistory([{ time: Date.now(), progress: 0 }])
 
     const pendingFiles = selectedFiles.filter(f => f.status === 'pending')
+    setBatchTotal(pendingFiles.length)
+    setBatchCurrent(0)
     let successCount = 0
     let failCount = 0
     const successfulDocuments: Document[] = []
 
+    const failureDetails: Array<{
+      name: string
+      failureType?: FailureType
+      retryable?: boolean
+      message?: string
+    }> = []
     try {
       // Upload files sequentially to avoid overwhelming the server
-      for (const fileItem of pendingFiles) {
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const fileItem = pendingFiles[i]
+        // Update current counter (1-based) before starting this file
+        setBatchCurrent(i + 1)
         try {
           const doc = await uploadSingleFileInternal(fileItem)
           if (doc) {
@@ -643,6 +720,13 @@ export const FileUploader = (props: FileUploaderProps) => {
           successCount++
         } catch (error) {
           failCount++
+          const { failureType, retryable } = classifyError(error)
+          failureDetails.push({
+            name: fileItem.file.name,
+            failureType,
+            retryable,
+            message: formatErrorMessage(error),
+          })
         }
       }
 
@@ -672,6 +756,7 @@ export const FileUploader = (props: FileUploaderProps) => {
         onBatchComplete(successfulDocuments, {
           success: successCount,
           failed: failCount,
+          failures: failureDetails,
         })
       }
 
@@ -682,6 +767,11 @@ export const FileUploader = (props: FileUploaderProps) => {
     } finally {
       setIsUploading(false)
       setProgressHistory([])
+      // Reset batch counters shortly after completion to avoid flicker
+      setTimeout(() => {
+        setBatchCurrent(0)
+        setBatchTotal(0)
+      }, 1200)
     }
   }
 
@@ -865,8 +955,10 @@ export const FileUploader = (props: FileUploaderProps) => {
       return <FileText className="h-5 w-5 text-red-500" />
     } else if (file.type.includes('image')) {
       return <FileImage className="h-5 w-5 text-blue-500" />
+    } else if (file.type.includes('docx') || file.type.includes('doc')) {
+      return <FileText className="h-5 w-5 text-blue-600" />
     } else {
-      return <File className="h-5 w-5 text-green-500" />
+      return <File className="h-5 w-5 text-gray-500" />
     }
   }
 
@@ -908,7 +1000,7 @@ export const FileUploader = (props: FileUploaderProps) => {
   // }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-2xl mx-auto px-2 sm:px-4 md:px-6 lg:px-0">
       {/* Backend Status */}
       {/* <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Upload Documents</h3>
@@ -921,7 +1013,7 @@ export const FileUploader = (props: FileUploaderProps) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'border-2 border-dashed rounded-xl p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden',
+          'border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 transition-all duration-300 ease-in-out relative overflow-hidden w-full',
           isDragging
             ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 scale-[1.02] shadow-lg'
             : 'border-muted-foreground/20 hover:border-muted-foreground/40',
@@ -933,10 +1025,10 @@ export const FileUploader = (props: FileUploaderProps) => {
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
-        <div className="relative flex flex-col items-center justify-center gap-4">
+        <div className="relative flex flex-col items-center justify-center gap-4 w-full">
           <div
             className={cn(
-              'p-4 rounded-full transition-all duration-300',
+              'p-3 sm:p-4 rounded-full transition-all duration-300',
               isDragging
                 ? 'bg-primary/20 scale-110'
                 : selectedFiles.length > 0
@@ -946,30 +1038,33 @@ export const FileUploader = (props: FileUploaderProps) => {
           >
             {selectedFiles.length > 0 ? (
               <div className="flex items-center gap-2">
-                <Upload className="h-10 w-10 text-green-600" />
-                <span className="text-sm font-medium text-green-700">
+                <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
+                <span className="text-xs sm:text-sm font-medium text-green-700">
                   {selectedFiles.length} file
                   {selectedFiles.length > 1 ? 's' : ''} selected
                 </span>
               </div>
             ) : (
-              <Upload className="h-10 w-10 text-gray-400" />
+              <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 w-full">
             <div className="text-center space-y-2">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-xs sm:text-sm font-medium text-foreground">
                 Drag & drop your documents here
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
                 Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
                 supported
               </p>
             </div>
 
-            <div className="flex gap-2 justify-center">
-              <label htmlFor="file-upload" className="flex justify-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center w-full">
+              <label
+                htmlFor="file-upload"
+                className="flex-1 flex justify-center"
+              >
                 <Input
                   id="file-upload"
                   type="file"
@@ -981,47 +1076,50 @@ export const FileUploader = (props: FileUploaderProps) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                  className="w-full sm:w-auto hover:bg-primary hover:text-primary-foreground transition-all duration-200 hover:scale-105 border-dashed"
                   asChild
                 >
-                  <span>
+                  <span className="flex items-center justify-center">
                     <Plus className="h-4 w-4 mr-2" />
                     Browse Files
                   </span>
                 </Button>
               </label>
 
+              {/* Browse Folders hidden per request */}
               {/* <label htmlFor="folder-upload" className="flex justify-center">
-                <Input
-                  id="folder-upload"
-                  type="file"
-                  className="hidden"
-                  // @ts-expect-error - webkitdirectory is not in TypeScript but works in browsers
-                  webkitdirectory=""
-                  multiple
-                  onChange={handleFolderChange}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hover:bg-secondary hover:text-secondary-foreground transition-all duration-200 hover:scale-105 border-dashed"
-                  asChild
-                >
-                  <span>
-                    <Folder className="h-4 w-4 mr-2" />
-                    Browse Folders
-                  </span>
-                </Button>
-              </label> */}
+                  <Input
+                    id="folder-upload"
+                    type="file"
+                    className="hidden"
+                    // @ts-expect-error - webkitdirectory is not in TypeScript but works in browsers
+                    webkitdirectory=""
+                    multiple
+                    onChange={handleFolderChange}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover:bg-secondary hover:text-secondary-foreground transition-all duration-200 hover:scale-105 border-dashed"
+                    asChild
+                  >
+                    <span>
+                      <Folder className="h-4 w-4 mr-2" />
+                      Browse Folders
+                    </span>
+                  </Button>
+                </label> */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* File List */}
+      {/* Categories UI hidden for now */}
+
+      {/* Scrollable region containing dynamic file list & progress */}
       {selectedFiles.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
+        <div className="space-y-4 w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
             <h3 className="text-sm font-medium">
               Selected Files ({selectedFiles.length})
             </h3>
@@ -1045,7 +1143,9 @@ export const FileUploader = (props: FileUploaderProps) => {
                 Clear All
               </Button>
               <Button
-                onClick={uploadAllFiles}
+                onClick={() => {
+                  uploadAllFiles()
+                }}
                 disabled={
                   isUploading ||
                   selectedFiles.every(f => f.status !== 'pending')
@@ -1069,9 +1169,9 @@ export const FileUploader = (props: FileUploaderProps) => {
               <div className="flex justify-between text-xs">
                 <span>Upload Progress</span>
                 <span>
-                  Uploading{' '}
-                  {selectedFiles.filter(f => f.status === 'uploading').length}{' '}
-                  of {selectedFiles.length} files
+                  {batchCurrent > 0
+                    ? `Uploading ${batchCurrent} of ${batchTotal} files`
+                    : 'Preparing files...'}
                 </span>
               </div>
               <Progress value={getOverallProgress()} className="w-full h-2" />
@@ -1088,22 +1188,22 @@ export const FileUploader = (props: FileUploaderProps) => {
           )}
 
           {/* Individual File List */}
-          <div className="space-y-2 max-h-60 overflow-y-auto">
+          <div className="space-y-2 max-h-60 overflow-y-auto w-full">
             {selectedFiles.map(fileItem => (
               <div
                 key={fileItem.id}
-                className="flex items-center gap-3 p-3 bg-secondary/20 rounded-lg border border-border/30"
+                className="flex flex-col xs:flex-row items-start xs:items-center gap-2 xs:gap-3 p-2 sm:p-3 bg-secondary/20 rounded-lg border border-border/30 w-full"
               >
                 {getFileIcon(fileItem.file)}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex items-center gap-2 w-full">
+                    <p className="text-xs sm:text-sm font-medium truncate max-w-[120px] sm:max-w-[220px]">
                       {fileItem.file.name}
                     </p>
                     {getStatusIcon(fileItem.status)}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-muted-foreground">
                     <span>
                       {(fileItem.file.size / 1024 / 1024).toFixed(2)} MB
                     </span>
@@ -1111,7 +1211,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                       <>
                         <span>•</span>
                         {fileItem.processingMessage ? (
-                          <span className="text-amber-600 font-medium">
+                          <span className="text-amber-600 font-medium truncate max-w-[100px] sm:max-w-[200px]">
                             {fileItem.processingMessage.includes(
                               'Processing chunk batch',
                             )
@@ -1132,7 +1232,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                     {fileItem.status === 'failed' && fileItem.error && (
                       <div className="flex items-start gap-1 mt-1">
                         <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-red-600 text-xs leading-tight">
+                        <span className="text-red-600 text-[11px] sm:text-xs leading-tight">
                           {fileItem.error}
                         </span>
                       </div>
@@ -1178,8 +1278,8 @@ export const FileUploader = (props: FileUploaderProps) => {
 
       {/* Selection Summary */}
       {selectionSummary && (
-        <div className="text-xs rounded-md border p-3 bg-muted/30 space-y-1">
-          <div className="flex flex-wrap gap-3 items-center">
+        <div className="text-xs rounded-md border p-2 sm:p-3 bg-muted/30 space-y-1 w-full">
+          <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
             <span className="font-medium">Selection:</span>
             <span>{selectionSummary.accepted} accepted</span>
             <span>

@@ -39,6 +39,9 @@ export const VoiceShazamButton = ({
   console.log('🎯 VoiceShazamButton rendered', { isProcessing, selfContained })
   const [pulseAnimation, setPulseAnimation] = useState(false)
   const [showHelpMessage, setShowHelpMessage] = useState(true)
+  // Block re-showing the help toast until after TTS completes
+  const [helpBlockedUntilSpeechComplete, setHelpBlockedUntilSpeechComplete] =
+    useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const isMobileView = useIsMobile()
 
@@ -112,6 +115,13 @@ export const VoiceShazamButton = ({
       } catch {
         /* already stopped */
       }
+      // Ensure global dictation state reflects we are no longer listening,
+      // in case recognition onend isn't fired or arrives late on some platforms
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+      } catch {
+        /* noop */
+      }
       if (onTranscript) {
         onTranscript(trimmed)
       }
@@ -150,6 +160,8 @@ export const VoiceShazamButton = ({
         const isAndroid = /Android/i.test(navigator.userAgent)
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
         const isChrome = /Chrome/i.test(navigator.userAgent)
+        // Android-mode: we want exact Android behavior on Android and ALL Safari (mobile + desktop)
+        const isAndroidMode = isAndroid || isSafari
 
         console.log('🍎 Browser detection:', {
           isSafari,
@@ -161,20 +173,15 @@ export const VoiceShazamButton = ({
         })
 
         // Optimized configuration based on platform
-        if (isSafari && isMobile) {
-          // Safari mobile configuration - optimized for iOS
-          recognitionInstance.continuous = true
-          recognitionInstance.interimResults = true
-          recognitionInstance.lang = 'en-US'
-          console.log('🍎 Configured for Safari mobile with interim results')
-        } else if (isAndroid) {
+        if (isAndroidMode) {
           // Android Chrome configuration - specific fixes for duplicate issues
           recognitionInstance.continuous = false // Disable continuous on Android to prevent loops
           recognitionInstance.interimResults = false // Disable interim results on Android for stability
           recognitionInstance.lang = 'en-US'
           recognitionInstance.maxAlternatives = 1
           console.log(
-            '🤖 Configured for Android Chrome (non-continuous, final results only)',
+            '🤖 Configured for Android-mode (non-continuous, final results only)',
+            { isAndroid, isSafari },
           )
         } else if (isChrome && !isMobile) {
           // Desktop Chrome - optimized for maximum responsiveness
@@ -212,12 +219,22 @@ export const VoiceShazamButton = ({
 
           // Immediate visual feedback - start pulse animation
           setPulseAnimation(true)
+          try {
+            window.dispatchEvent(new Event('dictation:start'))
+          } catch {
+            /* noop */
+          }
         }
 
         recognitionInstance.onend = () => {
           console.log('⏹️ Speech recognition ended', { isAndroid })
           setStatus('Stopped')
           setInternalIsListening(false)
+          try {
+            window.dispatchEvent(new Event('dictation:stop'))
+          } catch {
+            /* noop */
+          }
 
           if (forceStopRef.current) {
             console.log('Force stop active, skipping auto-restart')
@@ -305,8 +322,8 @@ export const VoiceShazamButton = ({
 
           const results = Array.from(event.results)
 
-          // Android-specific handling - different approach for non-continuous mode
-          if (isAndroid) {
+          // Android-mode handling - different approach for non-continuous mode
+          if (isAndroidMode) {
             // Android Chrome in non-continuous mode - get final result only
             let finalTranscript = ''
             for (let i = 0; i < results.length; i++) {
@@ -442,7 +459,18 @@ export const VoiceShazamButton = ({
                   trimmedTranscript,
                   'silence-threshold',
                 )
-              }, SILENCE_DURATION_MS)
+                setStatus('Got result!')
+                setInternalIsListening(false)
+                hasSubmittedRef.current = true
+                lastSubmittedTranscriptRef.current = trimmedTranscript
+
+                // Stop recognition
+                try {
+                  recognitionInstance.stop()
+                } catch (error) {
+                  console.log('Recognition already stopped')
+                }
+              }, 1500) // 1.5 second silence detection
 
               console.log(
                 `⏰ Started ${SILENCE_DURATION_MS}ms silence timer for:`,
@@ -579,6 +607,12 @@ export const VoiceShazamButton = ({
         clearTimeout(fallbackFinalizeTimerRef.current)
         fallbackFinalizeTimerRef.current = null
       }
+      // Ensure wakeword engine resumes immediately
+      try {
+        window.dispatchEvent(new Event('dictation:stop'))
+      } catch {
+        /* noop */
+      }
       setHasTranscript(false)
       setTranscript('') // Clear transcript when stopping
     } else {
@@ -634,6 +668,7 @@ export const VoiceShazamButton = ({
       const isAndroid = /Android/i.test(navigator.userAgent)
       const isChrome = /Chrome/i.test(navigator.userAgent) && !isAndroid
       const isDesktopSafari = isSafari && !isMobile
+      const isAndroidMode = isAndroid || isSafari
 
       if (isSafari && isMobile) {
         // iOS Safari - request permissions first but start immediately after
@@ -666,16 +701,14 @@ export const VoiceShazamButton = ({
           console.error('🍎 iOS Safari permission error:', error)
           setStatus(`Permission error: ${error}`)
         }
-      } else if (isAndroid) {
-        // Android-specific start logic for non-continuous mode
+      } else if (isAndroidMode) {
+        // Android-mode start logic for non-continuous mode (Android + all Safari)
         try {
-          console.log(
-            '🤖 Android: Starting non-continuous recognition immediately',
-          )
+          console.log('🤖 Android-mode: Starting recognition immediately')
           recognition.start()
           setStatus('Ready to listen!')
         } catch (error) {
-          console.error('🤖 Android start error:', error)
+          console.error('🤖 Android-mode start error:', error)
           setStatus(`Start error: ${error}`)
           setInternalIsListening(false)
         }
@@ -729,6 +762,35 @@ export const VoiceShazamButton = ({
       setPulseAnimation(false)
     }
   }, [isListening])
+
+  // Programmatic activation via wakeword event
+  useEffect(() => {
+    if (!selfContained) return
+    const handler = () => {
+      console.log('📡 wakeword:activate-mic received', {
+        internalIsListening,
+        isProcessing,
+        canShow: !isMobileOnly || isMobileView,
+      })
+      // Only respond if button is visible (mobile-only either disabled or we are on mobile)
+      const canShow = !isMobileOnly || isMobileView
+      if (!canShow) return
+      // Avoid starting if already listening or currently processing upstream
+      if (internalIsListening || isProcessing) return
+      // Start listening
+      console.log('🎤 Wakeword activating mic (selfContained Shazam)')
+      internalToggleListening()
+    }
+    window.addEventListener('wakeword:activate-mic', handler)
+    return () => window.removeEventListener('wakeword:activate-mic', handler)
+  }, [
+    selfContained,
+    isMobileOnly,
+    isMobileView,
+    internalIsListening,
+    isProcessing,
+    internalToggleListening,
+  ])
 
   // Grace window: if we transition from listening -> not listening while processing hasn't started yet,
   // keep showing the listening visual briefly to avoid mic flash.

@@ -8,13 +8,16 @@ import DocumentGuard from '@/components/routing/DocumentGuard'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
+import MobileAuthCTA from '@/components/auth/MobileAuthCTA'
 import {
   prefetchOnIdle,
   cleanupPrefetchObserver,
 } from '@/utils/performance/route-prefetch'
 
 // Eagerly load critical components
-import HomePage from '@/pages/dashboard/IndexPage'
+// HomePage now wrapped by RootRoute for conditional dashboard redirect
+// (Still imported inside RootRoute component.)
+import RootRoute from '@/components/routing/RootRoute'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
@@ -40,6 +43,7 @@ const CommonTermsManagement = lazy(
   () => import('./pages/admin/CommonTermsManagement'),
 )
 const AITrainingConsole = lazy(() => import('./pages/admin/AITrainingConsole'))
+const AdminConsole = lazy(() => import('./pages/admin/AdminConsole'))
 
 // Enhanced loading fallback components with modern design
 const PageLoadingFallback = ({
@@ -93,6 +97,7 @@ const RootRedirect = () => {
     return <Navigate to={`/${validCompanySegment}`} replace />
   }
 
+  // For unauthenticated users or users still syncing (companyId === 'default'), show homepage
   return <HomePage />
 }
 
@@ -128,6 +133,8 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public root route with conditional redirect to dashboard when authenticated */}
+              <Route path="/" element={<RootRoute />} />
               {/* Public routes - eagerly loaded */}
               <Route
                 path="/"
@@ -231,8 +238,20 @@ const App = () => {
                 }
               />
 
-              {/* Authenticated routes - company scoped */}
+              {/* Authenticated routes (global + company scoped) */}
               <Route element={<AuthenticatedLayout />}>
+                {/* Global admin route (not company-scoped) */}
+                {/* <Route element={<AdminGuard />}> */}
+                <Route
+                  path="admin"
+                  element={
+                    <EnhancedSuspense fallbackType="default">
+                      <AdminConsole />
+                    </EnhancedSuspense>
+                  }
+                />
+                {/* </Route> */}
+                {/* Company-scoped routes */}
                 <Route path=":companyId" element={<CompanyGuard />}>
                   <Route index element={<Dashboard />} />
                   <Route
@@ -317,6 +336,8 @@ const App = () => {
                 }
               />
             </Routes>
+            {/* Mobile unauthenticated CTA */}
+            <MobileAuthCTA />
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>

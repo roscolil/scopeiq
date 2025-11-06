@@ -161,7 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name:
             attrs.given_name || attrs.name || attrs.email?.split('@')[0] || '',
           role: 'User', // Default role
-          companyId: 'default', // Will be updated
+          companyId: attrs['custom:companyId'] || 'default', // Use Cognito value or default
           ...attrs,
         }
 

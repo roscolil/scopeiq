@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FilePlus, Heart } from 'lucide-react'
+import { FilePlus, Heart, HardHat } from 'lucide-react'
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear()

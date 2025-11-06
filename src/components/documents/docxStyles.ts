@@ -16,27 +16,31 @@ export const docxStyleMap: string[] = [
 
 // Tailwind utility classes applied after conversion
 const classMap: Record<string, string> = {
-  'h1.docx-h1': 'text-2xl font-semibold mt-6 mb-4 tracking-tight',
-  'h2.docx-h2': 'text-xl font-semibold mt-5 mb-3 tracking-tight',
-  'h3.docx-h3': 'text-lg font-semibold mt-4 mb-2 tracking-tight',
-  'h4.docx-h4': 'text-base font-semibold mt-4 mb-2',
+  // Use em-based sizes so container font-size scaling (zoom) cascades
+  'h1.docx-h1':
+    'font-semibold mt-6 mb-4 tracking-tight text-black text-[1.875em] leading-tight', // ~30px at 16px base
+  'h2.docx-h2':
+    'font-semibold mt-5 mb-3 tracking-tight text-black text-[1.55em] leading-snug', // ~24.8px
+  'h3.docx-h3':
+    'font-semibold mt-4 mb-2 tracking-tight text-black text-[1.35em]', // ~21.6px
+  'h4.docx-h4': 'font-semibold mt-4 mb-2 text-black text-[1.15em]', // ~18.4px
   'h5.docx-h5':
-    'text-sm font-semibold mt-3 mb-1.5 uppercase tracking-wide text-gray-600',
+    'font-semibold mt-3 mb-1.5 uppercase tracking-wide text-black text-[0.95em]', // ~15.2px
   'h6.docx-h6':
-    'text-xs font-semibold mt-3 mb-1 uppercase tracking-wider text-gray-500',
-  p: 'my-3 leading-relaxed text-sm text-gray-800 dark:text-gray-200',
-  ul: 'list-disc ml-6 my-3 space-y-1',
-  ol: 'list-decimal ml-6 my-3 space-y-1',
-  li: 'leading-snug',
+    'font-semibold mt-3 mb-1 uppercase tracking-wider text-black text-[0.82em]', // ~13.1px
+  p: 'my-3 leading-relaxed text-black text-[1em]',
+  ul: 'list-disc ml-6 my-3 space-y-1 text-black',
+  ol: 'list-decimal ml-6 my-3 space-y-1 text-black',
+  li: 'leading-snug text-black',
   blockquote:
-    'border-l-4 border-cyan-500/60 pl-4 italic my-4 text-gray-700 dark:text-gray-300 bg-cyan-50/40 dark:bg-cyan-900/10 rounded-sm py-1',
-  table: 'w-full border-collapse text-sm my-4',
-  thead: 'bg-gray-100 dark:bg-gray-800',
-  th: 'border px-2 py-1 text-left font-medium bg-gray-50 dark:bg-gray-800',
-  td: 'border px-2 py-1 align-top',
-  code: 'font-mono text-[13px] bg-slate-800/90 text-slate-100 px-1.5 py-0.5 rounded',
-  pre: 'bg-slate-900 text-slate-100 rounded-md p-4 overflow-auto text-sm my-4',
-  a: 'text-cyan-600 dark:text-cyan-400 underline underline-offset-2 hover:text-cyan-500 dark:hover:text-cyan-300 transition',
+    'border-l-4 border-cyan-500/60 pl-4 italic my-4 text-black bg-cyan-50/60 rounded-sm py-1',
+  table: 'w-full border-collapse my-4 text-black text-sm',
+  thead: 'bg-gray-100',
+  th: 'border px-2 py-1 text-left font-medium bg-gray-50 text-black',
+  td: 'border px-2 py-1 align-top text-black',
+  code: 'font-mono text-[0.81em] bg-slate-800/90 text-white px-1.5 py-0.5 rounded',
+  pre: 'bg-slate-900 text-white rounded-md p-4 overflow-auto my-4 text-[0.85em]',
+  a: 'text-blue-600 underline underline-offset-2 hover:text-blue-500 transition',
 }
 
 // Post-process the raw HTML string: add Tailwind classes, wrap tables, etc.
@@ -45,6 +49,26 @@ export const transformDocxHtml = (html: string): string => {
     if (!html) return html
     const parser = new DOMParser()
     const doc = parser.parseFromString(html, 'text/html')
+
+    // Remove inline font-size / line-height styles that block container scaling
+    doc.querySelectorAll('[style]').forEach(el => {
+      const style = el.getAttribute('style') || ''
+      if (/font-size|line-height/i.test(style)) {
+        const filtered = style
+          .split(';')
+          .map(s => s.trim())
+          .filter(
+            rule =>
+              rule &&
+              !/^font-size\s*:/i.test(rule) &&
+              !/^line-height\s*:/i.test(rule) &&
+              !/^mso-line-height-rule\s*:/i.test(rule),
+          )
+          .join('; ')
+        if (filtered) el.setAttribute('style', filtered)
+        else el.removeAttribute('style')
+      }
+    })
 
     // Apply class mappings
     Object.entries(classMap).forEach(([selector, classes]) => {
