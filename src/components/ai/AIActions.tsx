@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Brain,
-  Search,
   FileSearch,
   Copy,
   MessageSquare,
@@ -28,6 +27,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { VoiceInput } from '@/components/voice/VoiceInput'
 import { VoiceShazamButton } from '@/components/voice/VoiceShazamButton'
+import { AutoplayFallbackButton } from '@/components/voice'
 import { ChatExport } from '@/components/ai/ChatExport'
 import { answerQuestionWithBedrock } from '@/utils/aws/aws'
 import { Textarea } from '@/components/ui/textarea'
@@ -38,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { callOpenAI } from '@/services/ai/openai'
 import { novaSonic } from '@/services/api/nova-sonic'
 import {
   Tooltip,
@@ -47,11 +46,12 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip'
 import { VoiceId } from '@aws-sdk/client-polly'
-import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import { semanticSearch } from '@/services/ai/embedding'
 import { documentService } from '@/services/data/hybrid'
 import { Document } from '@/types'
 import { retryDocumentProcessing } from '@/utils/data/document-recovery'
+import useWakeWordPreference, {
+  WAKEWORD_PREF_EVENT,
+} from '@/hooks/useWakeWordPreference'
 
 // Python backend imports
 import { usePythonChat } from '@/hooks/usePythonChat'
@@ -77,15 +77,7 @@ export const AIActions = ({
 }: AIActionsProps) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{
-    type: 'search' | 'ai'
-    searchResults?: {
-      ids: string[][]
-      distances?: number[][]
-      metadatas?: Array<
-        Array<{ name?: string } & Record<string, string | number | boolean>>
-      >
-      documents?: string[][]
-    }
+    type: 'ai'
     aiAnswer?: string
     query?: string
   } | null>(null)
@@ -140,6 +132,14 @@ export const AIActions = ({
   const [silenceTimer, setSilenceTimer] = useState<NodeJS.Timeout | null>(null)
   const hasTranscriptRef = useRef(false)
 
+  // Broadcast dictation activity so wake word listener can suspend to avoid dual recognizers
+  useEffect(() => {
+    const evtName = isListening ? 'dictation:start' : 'dictation:stop'
+    window.dispatchEvent(new Event(evtName))
+    // Debug
+    console.log('[dictation-activity] dispatched', evtName)
+  }, [isListening])
+
   // Python backend state - enhancing existing functionality
   const [backendConfig, setBackendConfig] = useState<BackendConfig | null>(null)
   const [currentBackend, setCurrentBackend] = useState<
@@ -190,13 +190,34 @@ export const AIActions = ({
     scrollToBottom()
   }, [chatHistory])
 
-  // Use semantic search hook for real search functionality
-  const {
-    results: searchResults,
-    loading: isSearching,
-    error: searchError,
-    search,
-  } = useSemanticSearch(projectId || '')
+  // Register callback for nova-sonic playback completion
+  useEffect(() => {
+    const unsubscribe = novaSonic.onPlaybackComplete(() => {
+      console.log(
+        '🎤 TTS playback completed, resetting voice state for follow-up queries',
+      )
+      setIsVoicePlaying(false)
+      setCurrentSpeakingText('')
+
+      // If we should resume listening after TTS, do it here
+      if (shouldResumeListening) {
+        console.log('🎤 Resuming voice input after TTS completion')
+        setTimeout(() => {
+          setIsListening(true)
+          setShouldResumeListening(false)
+          toast({
+            title: 'Voice input resumed',
+            description: 'Ready for your next question...',
+            duration: 2000,
+          })
+        }, 1000) // Give a moment for everything to settle
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [shouldResumeListening, toast])
 
   // Loop-safe voice wrapper
   const speakWithStateTracking = useCallback(
@@ -210,14 +231,31 @@ export const AIActions = ({
         novaSonicAvailable: novaSonic.isAvailable(),
       })
 
+      // --- Autoplay / Audio Unlock Gating ---------------------------------
+      // Browsers may block programmatic audio (TTS) before a user gesture.
+      // We maintain a simple unlock flag & queue one pending utterance.
+      // --------------------------------------------------------------------
+      // Refs declared outside callback (hoisted below)
+      if (!audioUnlockedRef.current) {
+        console.log('🔒 Audio locked (no user gesture yet). Queuing speech.')
+        // Keep only the most recent pending request
+        pendingSpeechRef.current = { prompt, options }
+        // Show the in-app unlock banner (with Play button) after processing
+        setShowAudioUnlock(true)
+        return
+      }
+
       if (!novaSonic.isAvailable()) {
         console.log('❌ Nova Sonic not available')
         return
       }
 
-      // Prevent overlapping voice responses
+      // Prevent overlapping voice responses: queue the latest to play next
       if (isVoicePlaying) {
-        console.log('🔄 Skipping voice response - already playing audio')
+        queuedSpeechRef.current = { prompt, options }
+        console.log(
+          '⏳ Queued voice response to play after current audio finishes',
+        )
         return
       }
 
@@ -247,19 +285,44 @@ export const AIActions = ({
           setIsListening(false)
         }
 
+        // Signal that TTS is starting so other components (e.g., wakeword listener) can gate appropriately
+        try {
+          window.dispatchEvent(new CustomEvent('ai:speech:start'))
+        } catch {
+          /* noop */
+        }
         // Wait for voice to complete
         console.log('🎵 Waiting for voice synthesis to complete...')
-        await novaSonic.speakPrompt(prompt, { voice: options.voice })
+        const speakResult = await novaSonic.speakPrompt(prompt, {
+          voice: options.voice,
+        })
 
-        console.log('✅ Voice output completed successfully')
+        console.log('✅ Voice output Promise resolved:', {
+          speakResult,
+          isVoicePlaying,
+        })
 
         // If stopListeningAfter is true, don't resume listening
         if (options.stopListeningAfter) {
           console.log('🎤 Stopping microphone listening after verbal response')
           setShouldResumeListening(false)
+        } else {
+          console.log('🎤 Voice will allow resume listening after completion')
         }
       } catch (error) {
         console.error('❌ Voice synthesis error:', error)
+        // Handle autoplay block gracefully & requeue
+        if (
+          error instanceof DOMException &&
+          (error.name === 'NotAllowedError' ||
+            /notallowed/i.test(error.message))
+        ) {
+          console.log('🔐 Detected autoplay block, marking audio as locked')
+          audioUnlockedRef.current = false
+          pendingSpeechRef.current = { prompt, options }
+          // Show the in-app unlock banner (with Play button) instead of a toast
+          setShowAudioUnlock(true)
+        }
         // Reset voice playing state on error
         setIsVoicePlaying(false)
         setCurrentSpeakingText('')
@@ -267,11 +330,105 @@ export const AIActions = ({
         // Clear speaking text and voice state when audio finishes
         setCurrentSpeakingText('')
         setIsVoicePlaying(false)
-        console.log('🔄 Voice playing set to false')
+        console.log('🔄 Voice playing set to false in finally block')
       }
     },
     [isListening, silenceTimer, isVoicePlaying],
   )
+
+  // --- Audio Unlock Management --------------------------------------------
+  // Tracks whether the user has interacted (pointer/keyboard) enabling audio.
+  // ------------------------------------------------------------------------
+  const audioUnlockedRef = useRef<boolean>(false)
+  const pendingSpeechRef = useRef<{
+    prompt: string
+    options: { voice?: VoiceId; stopListeningAfter?: boolean }
+  } | null>(null)
+  const audioUnlockToastShownRef = useRef(false)
+  // Mobile banner to make audio unlock more obvious
+  const [showAudioUnlock, setShowAudioUnlock] = useState<boolean>(false)
+  // Guard to avoid duplicate unlock handling and mitigate ghost clicks
+  const unlockingRef = useRef<boolean>(false)
+  // Queue one pending voice while current audio plays
+  const queuedSpeechRef = useRef<{
+    prompt: string
+    options: { voice?: VoiceId; stopListeningAfter?: boolean }
+  } | null>(null)
+
+  // Centralized unlock action used by the banner controls
+  const performAudioUnlock = useCallback(async () => {
+    if (unlockingRef.current) return
+    unlockingRef.current = true
+    try {
+      if (novaSonic.enableAudioForSafari) {
+        await novaSonic.enableAudioForSafari().catch(() => {})
+      }
+      const maybe = novaSonic as typeof novaSonic & {
+        forceUnlockAudio?: () => Promise<boolean>
+      }
+      if (maybe.forceUnlockAudio) {
+        await maybe.forceUnlockAudio().catch(() => {})
+      }
+      // Mark unlocked and attempt pending speech
+      audioUnlockedRef.current = true
+      if (pendingSpeechRef.current && !isVoicePlaying) {
+        const { prompt, options } = pendingSpeechRef.current
+        pendingSpeechRef.current = null
+        await speakWithStateTracking(prompt, options)
+      }
+    } finally {
+      // Delay hide slightly to avoid iOS ghost-click hitting underlying UI
+      setTimeout(() => setShowAudioUnlock(false), 50)
+      unlockingRef.current = false
+    }
+  }, [isVoicePlaying, speakWithStateTracking])
+
+  useEffect(() => {
+    const unlock = () => {
+      if (!audioUnlockedRef.current) {
+        audioUnlockedRef.current = true
+        console.log('🔓 Audio unlocked via user interaction')
+        setShowAudioUnlock(false)
+        // Try to proactively unlock audio playback paths on iOS/Safari and others
+        try {
+          if (novaSonic.enableAudioForSafari) {
+            novaSonic.enableAudioForSafari().catch(() => {})
+          }
+          type UnlockCapable = typeof novaSonic & {
+            forceUnlockAudio?: () => Promise<boolean>
+          }
+          const maybeUnlock = novaSonic as UnlockCapable
+          if (maybeUnlock.forceUnlockAudio) {
+            maybeUnlock.forceUnlockAudio().catch(() => {})
+          }
+        } catch {
+          /* noop */
+        }
+        // Flush queued speech if present & not already playing
+        if (pendingSpeechRef.current && !isVoicePlaying) {
+          const { prompt, options } = pendingSpeechRef.current
+          ;(async () => {
+            // small delay to ensure gesture registration fully propagated
+            await new Promise(res => setTimeout(res, 50))
+            console.log('▶️ Playing previously queued speech after unlock')
+            pendingSpeechRef.current = null
+            speakWithStateTracking(prompt, options).catch(console.error)
+          })()
+        }
+      }
+    }
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('touchstart', unlock, { passive: true })
+    window.addEventListener('keydown', unlock)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('touchstart', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [isVoicePlaying, speakWithStateTracking])
+
+  // Do not show the unlock banner on initial load; it will be shown
+  // on-demand when a voice response is queued due to locked audio.
 
   // Fetch document status on component mount and set up live polling
   useEffect(() => {
@@ -494,45 +651,6 @@ export const AIActions = ({
     }
   }
 
-  // Smart query detection - determines if it's a search or AI question
-  const isQuestion = (text: string): boolean => {
-    const questionWords = [
-      'what',
-      'how',
-      'why',
-      'when',
-      'where',
-      'who',
-      'which',
-      'can',
-      'does',
-      'is',
-      'are',
-      'will',
-      'should',
-      'could',
-      'would',
-    ]
-    const questionMarkers = [
-      '?',
-      'explain',
-      'tell me',
-      'show me',
-      'help me',
-      'find out',
-    ]
-
-    const lowerText = text.toLowerCase()
-    const startsWithQuestionWord = questionWords.some(word =>
-      lowerText.startsWith(word + ' '),
-    )
-    const hasQuestionMarker = questionMarkers.some(marker =>
-      lowerText.includes(marker),
-    )
-
-    return startsWithQuestionWord || hasQuestionMarker
-  }
-
   const handleQuery = useCallback(
     async (queryText?: string) => {
       const queryToUse = queryText || query
@@ -614,304 +732,272 @@ export const AIActions = ({
       setEnhancedAIProgress('') // Clear previous progress state
 
       try {
-        if (isQuestion(queryToUse)) {
-          // Handle as AI question - first get relevant content via semantic search
-          const searchParams: {
-            projectId: string
-            query: string
-            topK: number
-            documentId?: string
-          } = {
-            projectId: projectId,
-            query: queryToUse,
-            topK: 50, // Increased to capture more chunks - construction docs have many small chunks
-          }
+        // Always route to Python backend
+        const pythonResponse = await handleEnhancedAIQueryWithPython({
+          query: queryToUse,
+          projectId: projectId,
+          documentId: queryScope === 'document' ? documentId : undefined,
+          projectName,
+          document: document || undefined,
+          queryScope,
+          onProgress: stage => {
+            console.log('Enhanced AI Progress:', stage)
+            const formattedStage = formatProgressMessage(stage)
 
-          // Only add documentId filter for document-specific queries if we have a valid document
-          if (
-            queryScope === 'document' &&
-            documentId &&
-            document?.status === 'processed'
-          ) {
-            searchParams.documentId = documentId
-          }
-
-          const searchResponse = await semanticSearch(searchParams)
-
-          // Build context from search results
-          let context = ``
-          if (queryScope === 'document' && documentId && document) {
-            context = `Document ID: ${documentId}\nDocument Name: ${document.name || 'Unknown'}\n`
-          } else {
-            context = `Project ID: ${projectId}\nSearching across entire project.\n`
-          }
-
-          // Add relevant document content as context
-          if (
-            searchResponse &&
-            searchResponse.documents &&
-            searchResponse.documents[0] &&
-            searchResponse.documents[0].length > 0
-          ) {
-            const relevantContent = searchResponse.documents[0]
-              .slice(0, 3) // Use top 3 results
-              .map((doc, i) => {
-                return `Content: ${doc}`
-              })
-              .join('\n\n')
-
-            context += `\nRelevant Documents:\n${relevantContent}\n\nIMPORTANT: When providing your answer, base it on the content provided above.`
-          } else {
-            if (queryScope === 'document') {
-              context += `\nNo content found for this specific document. The document may not have been fully processed or may not contain extractable text content.`
-            } else {
-              context += `\nNo relevant document content found for this query. The system may not have processed documents for this project yet.`
-            }
-          }
-
-          // Try Python backend first, fallback to existing OpenAI
-          let response: string
-          try {
-            if (currentBackend === 'python' && backendHealth) {
-              const pythonResponse = await handleEnhancedAIQueryWithPython({
-                query: queryToUse,
-                projectId: projectId,
-                documentId: queryScope === 'document' ? documentId : undefined,
-                projectName,
-                document: document || undefined,
-                queryScope,
-                onProgress: stage => {
-                  console.log('Enhanced AI Progress:', stage)
-                  const formattedStage = formatProgressMessage(stage)
-
-                  // Clear any existing timer
-                  if (progressTimerRef.current) {
-                    clearTimeout(progressTimerRef.current)
-                  }
-
-                  // Set the new progress immediately
-                  setEnhancedAIProgress(formattedStage)
-
-                  // Set a minimum display duration for visibility
-                  progressTimerRef.current = setTimeout(() => {
-                    // Only clear if this is still the current stage
-                    setEnhancedAIProgress(prev =>
-                      prev === formattedStage ? prev : prev,
-                    )
-                  }, 800) // Keep each stage visible for at least 800ms
-                },
-                options: {
-                  usePythonBackend: true,
-                  fallbackToExisting: true,
-                  onBackendSwitch: backend => {
-                    setCurrentBackend(backend)
-                    console.log(`Switched to ${backend} backend`)
-                  },
-                },
-              })
-              response = pythonResponse.response
-            } else {
-              response = await callOpenAI(queryToUse, context)
-            }
-          } catch (error) {
-            console.warn('Primary backend failed, falling back:', error)
-            // Fallback to existing system
-            response = await callOpenAI(queryToUse, context)
-          }
-
-          // Add user message to chat history
-          const userMessage: ChatMessage = {
-            id: `user-${Date.now()}`,
-            type: 'user',
-            content: queryToUse,
-            timestamp: new Date(),
-            query: queryToUse,
-          }
-
-          // Add AI response to chat history
-          const aiMessage: ChatMessage = {
-            id: `ai-${Date.now()}`,
-            type: 'ai',
-            content: response,
-            timestamp: new Date(),
-          }
-
-          setChatHistory(prev => [...prev, userMessage, aiMessage])
-
-          setResults({
-            type: 'ai',
-            aiAnswer: response,
-            query: queryToUse,
-          })
-
-          // Prepare replay availability
-          setCanReplay(false)
-
-          // Clear the query field after successful AI response
-          setQuery('')
-
-          // Only show toast on desktop, not mobile
-          if (!isMobile) {
-            toast({
-              title: 'AI Analysis Complete',
-              description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
-            })
-          }
-
-          // Provide voice feedback with the actual AI answer
-          if (
-            response &&
-            response.length > 0 &&
-            response !== lastSpokenResponse
-          ) {
-            console.log(
-              '🎵 Preparing to speak AI response:',
-              response.substring(0, 50) + '...',
-            )
-            setLastSpokenResponse(response) // Mark this response as being spoken
-
-            setTimeout(() => {
-              // Check if we should speak (not already playing and this is still the current response)
-              if (!isVoicePlaying) {
-                console.log('🗣️ Starting voice response playback')
-                // Speak the full answer - no truncation
-                speakWithStateTracking(response, {
-                  voice: 'Ruth',
-                  stopListeningAfter: true,
-                }).catch(console.error)
-                // Allow replay after initial playback finishes (delay approximate to speech start)
-                setTimeout(() => {
-                  setCanReplay(true)
-                }, 1500)
-              } else {
-                console.log('🔄 Skipping voice response - already speaking')
-              }
-            }, 1000)
-          } else if (response === lastSpokenResponse) {
-            console.log(
-              '🔄 Skipping duplicate voice response:',
-              response.substring(0, 50) + '...',
-            )
-          }
-        } else {
-          // Handle as semantic search with proper document scoping
-          const searchParams: {
-            projectId: string
-            query: string
-            topK: number
-            documentId?: string
-          } = {
-            projectId: projectId,
-            query: queryToUse,
-            topK: 10, // More results for search than AI context
-          }
-
-          // Only add documentId filter for document-specific queries if we have a valid document
-          if (
-            queryScope === 'document' &&
-            documentId &&
-            document?.status === 'processed'
-          ) {
-            searchParams.documentId = documentId
-          }
-
-          const searchResponse = await semanticSearch(searchParams)
-
-          // Check if we got results
-          if (
-            searchResponse &&
-            searchResponse.ids &&
-            searchResponse.ids[0] &&
-            searchResponse.ids[0].length > 0
-          ) {
-            // Add user search query to chat history
-            const userMessage: ChatMessage = {
-              id: `user-search-${Date.now()}`,
-              type: 'user',
-              content: query,
-              timestamp: new Date(),
-              query: query,
+            // Clear any existing timer
+            if (progressTimerRef.current) {
+              clearTimeout(progressTimerRef.current)
             }
 
-            // Add search results summary to chat history
-            const resultCount = searchResponse.ids[0].length
-            const searchSummary = `Found ${resultCount} relevant document${resultCount > 1 ? 's' : ''} for your search.`
-            const aiMessage: ChatMessage = {
-              id: `ai-search-${Date.now()}`,
-              type: 'ai',
-              content: searchSummary,
-              timestamp: new Date(),
-            }
+            // Set the new progress immediately
+            setEnhancedAIProgress(formattedStage)
 
-            setChatHistory(prev => [...prev, userMessage, aiMessage])
+            // Set a minimum display duration for visibility
+            progressTimerRef.current = setTimeout(() => {
+              // Only clear if this is still the current stage
+              setEnhancedAIProgress(prev =>
+                prev === formattedStage ? prev : prev,
+              )
+            }, 800) // Keep each stage visible for at least 800ms
+          },
+          options: {
+            usePythonBackend: true,
+            fallbackToExisting: false,
+            onBackendSwitch: backend => {
+              setCurrentBackend(backend)
+              console.log(`Switched to ${backend} backend`)
+            },
+          },
+        })
+        const response = pythonResponse.response
 
-            setResults({
-              type: 'search',
-              searchResults: searchResponse as typeof searchResults,
-            })
+        // Add user message to chat history
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          type: 'user',
+          content: queryToUse,
+          timestamp: new Date(),
+          query: queryToUse,
+        }
 
-            // Clear the query field after successful search
-            setQuery('')
-          } else {
-            // Add user search query to chat history even when no results
-            const userMessage: ChatMessage = {
-              id: `user-no-results-${Date.now()}`,
-              type: 'user',
-              content: query,
-              timestamp: new Date(),
-              query: query,
-            }
+        // Add AI response to chat history
+        const aiMessage: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          type: 'ai',
+          content: response,
+          timestamp: new Date(),
+        }
 
-            // Add no results message to chat history
-            const aiMessage: ChatMessage = {
-              id: `ai-no-results-${Date.now()}`,
-              type: 'ai',
-              content:
-                "I couldn't find any relevant documents for your search. Try rephrasing your query or asking a different question.",
-              timestamp: new Date(),
-            }
+        setChatHistory(prev => [...prev, userMessage, aiMessage])
 
-            setChatHistory(prev => [...prev, userMessage, aiMessage])
+        setResults({
+          type: 'ai',
+          aiAnswer: response,
+          query: queryToUse,
+        })
 
-            // No results found for search query
-            toast({
-              title: 'No Results Found',
-              description:
-                'Try rephrasing your search or asking a different question.',
-              variant: 'destructive',
-            })
+        // Prepare replay availability
+        setCanReplay(false)
 
-            // Clear the query field
-            setQuery('')
-          }
+        // Clear the query field after successful AI response
+        setQuery('')
 
+        // Only show toast on desktop, not mobile
+        if (!isMobile) {
           toast({
-            title: 'Search Complete',
-            description: `Found results ${queryScope === 'document' ? 'in this document' : projectName ? `in project "${projectName}"` : 'across the project'}.`,
+            title: 'AI Analysis Complete',
+            description: `Your question about the ${queryScope === 'document' ? 'document' : projectName ? `project "${projectName}"` : 'project'} has been answered.`,
           })
+        }
+
+        // Always try to speak AI response (queued if audio locked). Deduplicate only if identical text already queued & playing.
+        if (response && response.length > 0) {
+          const shouldSpeak = response !== lastSpokenResponse || !isVoicePlaying
+          if (shouldSpeak) {
+            console.log(
+              '🗣️ Speaking AI response (always-on):',
+              response.slice(0, 80),
+            )
+            setLastSpokenResponse(response)
+            setTimeout(() => {
+              speakWithStateTracking(response, {
+                voice: 'Ruth',
+                stopListeningAfter: true,
+              }).catch(console.error)
+              setTimeout(() => setCanReplay(true), 1500)
+            }, 400)
+          }
         }
       } catch (error) {
         console.error('Query Error:', error)
 
-        let title = 'Query Failed'
-        let description =
-          'Please try again or contact support if the problem persists.'
-
-        if (error instanceof Error) {
-          const errorMessage = error.message
-          if (errorMessage.includes('API key is not configured')) {
-            title = 'Configuration Error'
-            description =
-              'OpenAI API key is missing from environment variables.'
-          } else if (errorMessage.includes('OpenAI API error')) {
-            title = 'AI Service Error'
-            description = errorMessage.replace('OpenAI API error: ', '')
+        // Rich error-to-toast mapping for clearer guidance
+        const mapErrorToToast = (err: unknown) => {
+          const fallback = {
+            title: 'Query Failed',
+            description:
+              'Something went wrong while processing your request. Please try again.',
           }
+          try {
+            // Network-level hints
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              return {
+                title: 'You appear to be offline',
+                description:
+                  'Check your internet connection and try again. If you are on mobile, toggle airplane mode off and on.',
+              }
+            }
+
+            // Normalize to Error-like
+            type ErrorLike = {
+              message?: string
+              toString?: () => string
+              status?: number | string
+              code?: number | string
+              response?: { status?: number; data?: unknown }
+              data?: unknown
+            }
+            const e = err as ErrorLike
+            const msg: string = e?.message || e?.toString?.() || ''
+            const code: number | string | undefined = e?.status || e?.code
+
+            // Fetch/HTTP response details if present
+            const httpStatus: number | undefined = e?.response?.status
+            const httpBody: unknown = e?.response?.data ?? e?.data
+
+            const hasErrorField = (x: unknown): x is { error: unknown } =>
+              typeof x === 'object' && x !== null && 'error' in x
+
+            // Common categories
+            if (typeof httpStatus === 'number') {
+              // Authentication / permission
+              if (httpStatus === 401 || httpStatus === 403) {
+                return {
+                  title: 'Authentication Required',
+                  description:
+                    'Your session may have expired or lacks permission. Please sign in again and retry.',
+                }
+              }
+              // Rate limit
+              if (httpStatus === 429) {
+                return {
+                  title: 'Too Many Requests',
+                  description:
+                    'You’re being rate limited. Wait a few seconds and try again. If this persists, reduce rapid follow-ups.',
+                }
+              }
+              // Server errors
+              if (httpStatus >= 500) {
+                return {
+                  title: 'Server Unavailable',
+                  description:
+                    'Our AI service is having trouble right now. Please try again shortly.',
+                }
+              }
+              // Client errors with body message
+              if (httpStatus >= 400 && hasErrorField(httpBody)) {
+                const val = httpBody.error
+                if (typeof val === 'string') {
+                  return { title: 'Request Error', description: val }
+                }
+                if (val && typeof val === 'object') {
+                  // If API returns structured error
+                  const maybeMsg = (val as { message?: unknown }).message
+                  if (typeof maybeMsg === 'string') {
+                    return { title: 'Request Error', description: maybeMsg }
+                  }
+                }
+                // Fallback generic for 4xx
+                return {
+                  title: 'Request Error',
+                  description:
+                    'Your request could not be processed. Please review and try again.',
+                }
+              }
+            }
+
+            // Specific message heuristics
+            if (/API key is not configured/i.test(msg)) {
+              return {
+                title: 'Configuration Error',
+                description:
+                  'OpenAI API key is missing or invalid. Set the key in your environment and reload the app.',
+              }
+            }
+            if (/OpenAI API error/i.test(msg)) {
+              return {
+                title: 'AI Service Error',
+                description: msg.replace(/OpenAI API error:?\s*/i, ''),
+              }
+            }
+            if (
+              /Failed to fetch|NetworkError|TypeError: Failed to fetch/i.test(
+                msg,
+              )
+            ) {
+              return {
+                title: 'Network Error',
+                description:
+                  'We couldn’t reach the server. Check your connection or VPN, and try again.',
+              }
+            }
+            if (/CORS/i.test(msg)) {
+              return {
+                title: 'CORS Error',
+                description:
+                  'A cross‑origin request was blocked. If you’re developing locally, ensure the backend allows your origin.',
+              }
+            }
+            if (/timeout/i.test(msg)) {
+              return {
+                title: 'Request Timed Out',
+                description:
+                  'The server took too long to respond. Try again; if this continues, the service may be under load.',
+              }
+            }
+            if (/Bad gateway|502|503|504/i.test(msg)) {
+              return {
+                title: 'Upstream Unavailable',
+                description:
+                  'An upstream service is down temporarily. Please retry in a bit.',
+              }
+            }
+
+            // Python backend fallback context
+            if (
+              /Using existing backend/i.test(msg) ||
+              /Falling back to existing backend/i.test(msg)
+            ) {
+              return {
+                title: 'Fallback in Effect',
+                description:
+                  'The Python backend was unavailable; we used the existing backend instead. Results may vary slightly.',
+              }
+            }
+
+            // Prisma/DB-ish hints (if any appear)
+            if (/database|db|prisma/i.test(msg)) {
+              return {
+                title: 'Data Service Error',
+                description:
+                  'There was a problem retrieving data. Please retry; if it persists, contact support.',
+              }
+            }
+
+            // Generic fallback with surfaced message if helpful
+            if (msg) {
+              return { title: 'Query Failed', description: msg }
+            }
+          } catch {
+            // ignore mapping errors, use fallback
+          }
+          return fallback
         }
 
+        const mapped = mapErrorToToast(error)
         toast({
-          title,
-          description,
+          title: mapped.title,
+          description: mapped.description,
           variant: 'destructive',
         })
       } finally {
@@ -933,52 +1019,13 @@ export const AIActions = ({
       setResults,
       setQuery,
       setIsLoading,
-      currentBackend,
-      backendHealth,
+      setCurrentBackend,
       isVoicePlaying,
       lastSpokenResponse,
       setLastSpokenResponse,
       lastSubmissionTime,
     ],
   )
-
-  // Handle search results from the hook - DISABLED to prevent conflicts
-  // We handle search results directly in handleQuery() instead
-  /*
-  useEffect(() => {
-    // Only process search results if we actually submitted a query
-    if (!hasSubmittedQuery) return
-
-    if (
-      searchResults &&
-      searchResults.ids &&
-      searchResults.ids[0] &&
-      searchResults.ids[0].length > 0
-    ) {
-      setResults({
-        type: 'search',
-        searchResults: searchResults,
-      })
-      // Reset the flag after successful results
-      setHasSubmittedQuery(false)
-    } else if (
-      searchResults &&
-      searchResults.ids &&
-      searchResults.ids[0] &&
-      searchResults.ids[0].length === 0 &&
-      query.trim()
-    ) {
-      // No results found - show toast only (no voice)
-      toast({
-        title: 'No Results Found',
-        description: 'Try rephrasing your question or asking about something else.',
-        variant: 'destructive',
-      })
-      // Reset the flag after showing no results
-      setHasSubmittedQuery(false)
-    }
-  }, [searchResults, query, speakWithStateTracking, toast, hasSubmittedQuery])
-  */
 
   // Stop voice input when voice output is playing
   useEffect(() => {
@@ -988,9 +1035,9 @@ export const AIActions = ({
     }
   }, [isVoicePlaying, isListening])
 
-  // Resume listening after voice playback finishes
+  // Resume listening after voice playback finishes (only when no queued speech)
   useEffect(() => {
-    if (!isVoicePlaying && shouldResumeListening) {
+    if (!isVoicePlaying && shouldResumeListening && !queuedSpeechRef.current) {
       console.log('🎤 Voice finished, preparing to resume listening...')
 
       // Give a moment for everything to settle
@@ -1001,17 +1048,13 @@ export const AIActions = ({
         toast({
           title: 'Voice input resumed',
           description: 'Ready for your next question...',
-          duration: 2000,
+          duration: 1500,
         })
       }, 1500) // Slightly longer delay for more reliability
 
       return () => clearTimeout(timer)
     }
   }, [isVoicePlaying, shouldResumeListening, toast])
-
-  const handleSearch = () => {
-    handleQuery()
-  }
 
   // Legacy method - redirecting to the newer handleQuery method
   const askQuestion = async () => {
@@ -1188,6 +1231,27 @@ export const AIActions = ({
     }
   }, [isListening, silenceTimer, isMobile, toast])
 
+  // Programmatic activation via custom event (e.g., wake word)
+  useEffect(() => {
+    const handler = () => {
+      // On mobile, VoiceShazamButton owns wakeword activation; avoid conflicts
+      if (isMobile) return
+      // Only start if not already listening and not currently playing voice
+      if (!isListening && !isVoicePlaying) {
+        // Provide subtle hint only on desktop
+        if (!isMobile) {
+          toast({
+            title: 'Listening…',
+            description: 'Wake word activated. Speak your question.',
+          })
+        }
+        toggleListening()
+      }
+    }
+    window.addEventListener('wakeword:activate-mic', handler)
+    return () => window.removeEventListener('wakeword:activate-mic', handler)
+  }, [isListening, isVoicePlaying, isMobile, toast, toggleListening])
+
   const handleTranscript = useCallback(
     (text: string) => {
       // In preventLoop mode, this should rarely be called since we avoid final transcript submission
@@ -1277,7 +1341,7 @@ export const AIActions = ({
               })
             }
           },
-          isMobile ? 1500 : 2000,
+          isMobile ? 1500 : 1500,
         ) // Shorter timeout on mobile for better responsiveness
 
         setSilenceTimer(timer)
@@ -1461,8 +1525,82 @@ export const AIActions = ({
   //   await handleQuery()
   // }
 
+  // Subtle passive wake word indicator (reads preference; listening state managed in ProjectDetails)
+  const { enabled: wakeEnabled, consent: wakeConsent } = useWakeWordPreference()
+  const [wakeListeningState, setWakeListeningState] = useState<
+    'active' | 'off'
+  >('off')
+  useEffect(() => {
+    const update = () => {
+      // We can't easily read internal state of the hook here without prop drilling; treat enabled+consent as active proxy
+      setWakeListeningState(
+        wakeEnabled && wakeConsent === 'true' ? 'active' : 'off',
+      )
+    }
+    update()
+    window.addEventListener(WAKEWORD_PREF_EVENT, update)
+    return () => window.removeEventListener(WAKEWORD_PREF_EVENT, update)
+  }, [wakeEnabled, wakeConsent])
+
   return (
     <>
+      {/* Mobile audio unlock banner (fixed at top) - only show after processing completes and only when a voice response was queued due to lock */}
+      {isMobile && showAudioUnlock && !isLoading && !isVoicePlaying && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[200] px-3 pt-3"
+          onPointerDown={e => {
+            // Prevent event from generating a synthetic click on underlying elements
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onTouchStart={e => {
+            // iOS: prevent ghost click
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onClick={e => {
+            // Swallow clicks at container level
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+        >
+          <div className="mx-auto max-w-md bg-gradient-to-r from-primary to-accent text-white rounded-xl shadow-2xl ring-2 ring-white/30 border border-white/20">
+            <div className="p-3 flex items-center justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-semibold">Enable Audio Playback</div>
+                <div className="opacity-90">
+                  Tap once to allow AI voice responses.
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-sm"
+                onPointerDown={e => {
+                  // Handle unlock on pointerdown and prevent synthetic click propagation
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+                onTouchStart={e => {
+                  // Fallback for older iOS that may not fully support pointer events
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+                onClick={e => {
+                  // Swallow click; run unlock if not already handled
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void performAudioUnlock()
+                }}
+              >
+                Play now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <Card className="mb-16 md:mb-0 animate-fade-in">
         <CardHeader className="pb-3" style={{ display: 'none' }}>
           <div className="flex items-center gap-3">
@@ -1569,29 +1707,7 @@ export const AIActions = ({
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Unlock insights with intelligent search & AI analysis
                 </p>
-                {/* <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-2xs">
-                    {queryScope === 'document' && documentId
-                      ? 'Document scope'
-                      : 'Project scope'}
-                  </Badge>
-                  {/* Show scope selector when we have both options 
-                  {documentId && document && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-2xs h-5 px-2"
-                      onClick={() =>
-                        setQueryScope(
-                          queryScope === 'document' ? 'project' : 'document',
-                        )
-                      }
-                    >
-                      Switch to{' '}
-                      {queryScope === 'document' ? 'Project' : 'Document'}
-                    </Button>
-                  )}
-                </div> */}
+                {/* Scope/status controls removed (prevent nested JSX comments causing TS parse errors). */}
               </div>
             </div>
 
@@ -1635,16 +1751,17 @@ export const AIActions = ({
 
               {/* Show text being spoken */}
               {/* {currentSpeakingText && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg hidden md:block">
-                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                <div className="mt-2 p-3 bg-secondary/10 border border-secondary/30 rounded-lg hidden md:block">
+                  <div className="flex items-center gap-2 text-foreground text-sm font-medium mb-1">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                     AI is speaking:
                   </div>
-                  <div className="text-blue-800 text-sm leading-relaxed">
+                  <div className="text-foreground text-sm leading-relaxed">
                     {currentSpeakingText}
                   </div>
                 </div>
-              )} */}
+              )}
+              */}
             </div>
 
             <div className="flex justify-between gap-3 mb-4">
@@ -1714,9 +1831,7 @@ export const AIActions = ({
                             {state === 'replay' && (
                               <RotateCcw className="h-4 w-4" />
                             )}
-                            {/* {state === 'idle' && (
-                              <Volume2 className="h-4 w-4" />
-                            )} */}
+                            {/* idle-state icon intentionally omitted */}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top" sideOffset={6}>
@@ -1733,7 +1848,7 @@ export const AIActions = ({
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Button
                   onClick={() => handleQuery()}
                   disabled={
@@ -1755,92 +1870,17 @@ export const AIActions = ({
                     </>
                   ) : (
                     <>
-                      {isQuestion(query) ? (
-                        <>
-                          <MessageSquare className="w-4 h-4" />
-                          <span>Ask AI ✨</span>
-                        </>
-                      ) : (
-                        <>
-                          <Search className="w-4 h-4" />
-                          <span>Ask AI</span>
-                        </>
-                      )}
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Ask AI ✨</span>
                     </>
                   )}
                 </Button>
+                {/* Mobile-only manual Play Response fallback when autoplay is blocked and wake word is enabled */}
+                {isMobile && wakeEnabled && wakeConsent === 'true' && (
+                  <AutoplayFallbackButton className="ml-2 block md:hidden" />
+                )}
               </div>
             </div>
-
-            {searchError && (
-              <div className="text-destructive text-sm mb-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                {searchError}
-              </div>
-            )}
-
-            {/* Display Search Results */}
-            {results?.type === 'search' &&
-              results.searchResults &&
-              results.searchResults.ids &&
-              results.searchResults.ids[0] &&
-              results.searchResults.ids[0].length > 0 && (
-                <div className="bg-gradient-to-r from-secondary/30 to-secondary/10 p-4 rounded-xl border text-sm space-y-3 mb-4 shadow-soft">
-                  <div className="flex justify-between items-center">
-                    <Badge variant="outline" className="shadow-soft">
-                      <Search className="h-3 w-3 mr-1" />
-                      Search Results ({results.searchResults.ids[0].length}{' '}
-                      found)
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 hover:bg-secondary/80"
-                      onClick={() => {
-                        const resultsText = results
-                          .searchResults!.ids[0].map(
-                            (id: string, i: number) =>
-                              `Document: ${results.searchResults!.metadatas?.[0]?.[i]?.name || id}\n${results.searchResults!.documents?.[0]?.[i] || 'No content preview available'}`,
-                          )
-                          .join('\n\n')
-                        copyToClipboard(resultsText)
-                      }}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    {results.searchResults.ids[0].map(
-                      (id: string, i: number) => (
-                        <div
-                          key={id}
-                          className="p-3 bg-background rounded-lg shadow-soft border text-xs"
-                        >
-                          <div className="font-medium text-primary mb-2">
-                            Document:{' '}
-                            {results.searchResults!.metadatas?.[0]?.[i]?.name ||
-                              id}
-                          </div>
-                          <div className="text-foreground mb-2 leading-relaxed">
-                            {results.searchResults!.documents?.[0]?.[i] ||
-                              'No content preview available'}
-                          </div>
-                          <div className="text-xs text-gray-400 flex justify-between">
-                            <span>ID: {id}</span>
-                            <span className="font-medium">
-                              Relevance:{' '}
-                              {(
-                                1 -
-                                (results.searchResults!.distances?.[0]?.[i] ||
-                                  0)
-                              ).toFixed(3)}
-                            </span>
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
 
             {/* Chat History Display */}
             {chatHistory.length > 0 && (
@@ -1938,11 +1978,11 @@ export const AIActions = ({
                 <div className="space-y-3">
                   {/* Display the question for context */}
                   {results.query && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h4 className="font-medium text-blue-900 mb-2">
+                    <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-3">
+                      <h4 className="font-medium text-foreground mb-2">
                         Your Question:
                       </h4>
-                      <p className="text-blue-800 text-sm">{results.query}</p>
+                      <p className="text-foreground text-sm">{results.query}</p>
                     </div>
                   )}
 
@@ -1968,21 +2008,6 @@ export const AIActions = ({
                   </div>
                 </div>
               )}
-
-            {/* No Results Message */}
-            {results?.type === 'search' &&
-              results.searchResults &&
-              (!results.searchResults.ids ||
-                !results.searchResults.ids[0] ||
-                results.searchResults.ids[0].length === 0) &&
-              !isLoading &&
-              query && (
-                <div className="text-gray-400 text-sm mb-4 p-3 bg-muted/20 rounded-lg border">
-                  No results found for "
-                  <span className="font-medium">{query}</span>". Try different
-                  search terms or ask a question for AI analysis.
-                </div>
-              )}
           </div>
         </CardContent>
       </Card>
@@ -2003,21 +2028,20 @@ export const AIActions = ({
 
             // Android-specific enhanced duplicate prevention
             if (isAndroid) {
-              // Check against recent Android transcripts (last 5)
+              // Check against recent Android transcripts (last 5) for exact duplicates only
               const recentDuplicates = androidTranscriptHistory.slice(-5)
+              const normalized = trimmedText.toLowerCase()
               const isDuplicateInHistory = recentDuplicates.some(
-                historyText =>
-                  historyText === trimmedText ||
-                  (historyText.length > 5 &&
-                    trimmedText.length > 5 &&
-                    (historyText.includes(trimmedText.slice(0, -2)) ||
-                      trimmedText.includes(historyText.slice(0, -2)))),
+                h => h.toLowerCase() === normalized,
               )
 
               if (isDuplicateInHistory) {
                 console.log(
-                  '🤖 Android: Transcript found in recent history, skipping:',
-                  { current: trimmedText, history: recentDuplicates },
+                  '🤖 Android: Exact duplicate in recent history, skipping:',
+                  {
+                    current: trimmedText,
+                    history: recentDuplicates,
+                  },
                 )
                 return
               }
@@ -2029,18 +2053,15 @@ export const AIActions = ({
             }
 
             // Enhanced duplicate prevention for all platforms
-            const isExactDuplicate = trimmedText === lastProcessedTranscript
-            const isSimilarDuplicate =
-              lastProcessedTranscript &&
-              trimmedText.length > 5 &&
-              (lastProcessedTranscript.includes(trimmedText.slice(0, -2)) ||
-                trimmedText.includes(lastProcessedTranscript.slice(0, -2)))
+            const isExactDuplicate =
+              trimmedText.toLowerCase() ===
+              lastProcessedTranscript.toLowerCase()
 
-            if (isExactDuplicate || isSimilarDuplicate) {
-              console.log(
-                '🔄 Duplicate/similar transcript detected, skipping:',
-                { current: trimmedText, last: lastProcessedTranscript },
-              )
+            if (isExactDuplicate) {
+              console.log('🔄 Exact duplicate transcript detected, skipping:', {
+                current: trimmedText,
+                last: lastProcessedTranscript,
+              })
               return
             }
 
@@ -2063,17 +2084,21 @@ export const AIActions = ({
         />
       )}
 
-      {/* Show voice button when hidden - larger floating button in bottom-left (mobile only) */}
+      {/* Show voice button when hidden - larger floating button in bottom-right (mobile only) */}
       {hideShazamButton && isMobile && (
         <div className="fixed bottom-4 right-4 z-[99]">
           <Button
             onClick={() => setHideShazamButton(false)}
-            className="h-24 w-24 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-            title="Show voice button"
+            className="h-24 w-24 rounded-full shadow-xl flex items-center justify-center border-4 border-white bg-primary hover:bg-primary transition-all duration-300"
+            title="Show voice input"
+            style={{
+              boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+            }}
           >
             <Mic
               className="text-white"
-              style={{ width: '36px', height: '36px' }}
+              strokeWidth={1.5}
+              style={{ transform: 'scale(0.8)', width: '100%', height: '100%' }}
             />
           </Button>
         </div>

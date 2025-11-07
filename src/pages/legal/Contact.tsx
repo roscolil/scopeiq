@@ -126,7 +126,7 @@ const Contact = () => {
               </h1>
               <p className="text-slate-300 text-lg max-w-2xl mx-auto">
                 Get in touch with our team. We'd love to hear from you and help
-                with any questions about Jacq.
+                with any questions about Jack.
               </p>
             </div>
           </div>
@@ -142,7 +142,7 @@ const Contact = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-slate-300">
-                  <p>Jacq's Headquarters</p>
+                  <p>Jack's Headquarters</p>
                   <p>123 Innovation Drive</p>
                   <p>Tech District, Melbourne VIC 3000</p>
                   <p>Australia</p>

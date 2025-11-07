@@ -8,9 +8,9 @@ import {
 
 const faqData = [
   {
-    question: 'What types of documents can I analyze with Jacq?',
+    question: 'What types of documents can I analyze with Jack?',
     answer:
-      'Jacq supports a wide range of document formats including PDF, DOCX, TXT, JPG, and PNG files. Our platform is particularly optimized for construction documents such as plans, specifications, and quotes.',
+      'Jack supports a wide range of document formats including PDF, DOCX, TXT, JPG, and PNG files. Our platform is particularly optimized for construction documents such as plans, specifications, and quotes.',
   },
   {
     question: 'How does the document intelligence work?',
@@ -25,7 +25,7 @@ const faqData = [
   {
     question: 'Can I organize documents into projects?',
     answer:
-      'Absolutely. Jacq allows you to create projects and organize related documents together, making it easier to manage complex construction jobs with multiple document sets.',
+      'Absolutely. Jack allows you to create projects and organize related documents together, making it easier to manage complex construction jobs with multiple document sets.',
   },
   {
     question: 'How accurate is the information extraction?',
@@ -35,7 +35,7 @@ const faqData = [
   {
     question: 'Do you offer team collaboration features?',
     answer:
-      'Yes, Jacq supports team collaboration with shared projects, document access controls, and the ability to share insights across your organization.',
+      'Yes, Jack supports team collaboration with shared projects, document access controls, and the ability to share insights across your organization.',
   },
 ]
 

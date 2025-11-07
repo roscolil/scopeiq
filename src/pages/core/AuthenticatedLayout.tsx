@@ -56,7 +56,19 @@ class AuthErrorBoundary extends Component<
 }
 
 const AuthenticatedLayoutInner = () => {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
+
+  // Debug logging for mobile browsers
+  const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+  if (isMobile) {
+    console.log('🔐 AuthenticatedLayout mobile check:', {
+      isAuthenticated,
+      isLoading,
+      hasUser: !!user,
+      companyId: user?.companyId,
+      userAgent: navigator.userAgent,
+    })
+  }
 
   if (isLoading) {
     return (
@@ -67,6 +79,9 @@ const AuthenticatedLayoutInner = () => {
   }
 
   if (!isAuthenticated) {
+    if (isMobile) {
+      console.log('🔐 Mobile user not authenticated, redirecting to signin')
+    }
     return <Navigate to="/auth/signin" replace />
   }
 

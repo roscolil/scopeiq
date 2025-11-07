@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
-  HardHat,
   FolderOpen,
   Home,
   Menu,
@@ -26,12 +25,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/aws-auth'
+import { useAuthorization } from '@/hooks/auth-utils'
 import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
 
 export const Navbar = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, user, signOut: authSignOut } = useAuth()
+  interface AuthorizationSubset {
+    userRole: string
+    isAuthorized: (arg: { requireRole?: string | string[] }) => boolean
+  }
+  const { userRole, isAuthorized } = useAuthorization() as AuthorizationSubset
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -71,6 +76,16 @@ export const Navbar = () => {
       path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
+    // Admin route hidden for now
+    // ...(isAuthorized?.({ requireRole: 'Admin' })
+    //   ? [
+    //       {
+    //         name: 'Admin',
+    //         path: '/admin',
+    //         icon: <Settings className="w-5 h-5 mr-2" />,
+    //       },
+    //     ]
+    //   : []),
   ]
 
   const isActive = (path: string) => {
@@ -97,11 +112,16 @@ export const Navbar = () => {
             }`}
           >
             <div className="relative">
-              <HardHat className="h-6 w-6 text-emerald-400" />
+              <img
+                src="/hammer-green.svg"
+                alt="Jack of All Trades"
+                className="h-10 w-10"
+                draggable={false}
+              />
               {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
             <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent text-2xl">
-              Jacq of All Trades
+              Jack of All Trades
             </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}

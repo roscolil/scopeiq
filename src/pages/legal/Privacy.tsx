@@ -53,7 +53,7 @@ const Privacy = () => {
                 1. Introduction
               </h2>
               <p>
-                Jacq of All Trades ("we," "our," or "us") is committed to
+                Jack of All Trades ("we," "our," or "us") is committed to
                 protecting your privacy. This Privacy Policy explains how we
                 collect, use, disclose, and safeguard your information when you
                 use our document management and AI analysis service.
@@ -113,7 +113,7 @@ const Privacy = () => {
               <div className="space-y-3">
                 <p>We use your information to:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li>Provide and maintain the Jacq of All Trades service</li>
+                  <li>Provide and maintain the Jack of All Trades service</li>
                   <li>
                     Process and analyze your documents using AI technology
                   </li>
@@ -185,7 +185,7 @@ const Privacy = () => {
                   <p>
                     We may disclose your information if required by law, legal
                     process, or to protect the rights, property, or safety of
-                    Jacq of All Trades, our users, or others.
+                    Jack of All Trades, our users, or others.
                   </p>
                 </div>
 

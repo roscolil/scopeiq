@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
@@ -6,55 +6,55 @@ import { FileUploader } from '@/components/upload/FileUploader'
 import {
   ProjectDetailsSkeleton,
   DocumentListSkeleton,
-  AIActionsSkeleton,
 } from '@/components/shared/skeletons'
 import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
-  Edit,
-  Trash2,
-  Plus,
   ChevronDown,
-  RefreshCw,
+  Edit,
   Loader2,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { AIActions } from '@/components/ai/AIActions'
+import useWakeWordPreference, {
+  WAKEWORD_CONSENT_KEY,
+  WAKEWORD_ENABLED_KEY,
+} from '@/hooks/useWakeWordPreference'
+import { useWakeWord } from '@/hooks/useWakeWord'
+import { usePrefetch } from '@/utils/performance'
+import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { projectService, documentService } from '@/services/data/hybrid'
+import type { Project, Document } from '@/types'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
-import { ProjectForm } from '@/components/projects/ProjectForm'
-import { Project, Document } from '@/types'
-import { useToast } from '@/hooks/use-toast'
-import { AIActions } from '@/components/ai/AIActions'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { ProjectSelector } from '@/components/projects/ProjectSelector'
-import { useDocumentStatusPolling } from '@/hooks/use-document-status-polling'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ProjectForm } from '@/components/projects/ProjectForm'
+import { toast } from '@/components/ui/use-toast'
 import { routes } from '@/utils/ui/navigation'
-import { projectService, documentService } from '@/services/data/hybrid'
-import { usePrefetch } from '@/utils/performance'
+import { documentDeletionEvents } from '@/services/utils/document-events'
 
+// Component
 const ProjectDetails = () => {
-  const { companyId, projectId } = useParams<{
-    companyId: string // Company ID
-    projectId: string // Project slug (from project name)
-  }>()
   const navigate = useNavigate()
-  const { toast } = useToast()
+  const { companyId, projectId } = useParams<{
+    companyId: string
+    projectId: string
+  }>()
   const isMobile = useIsMobile()
-
-  // Enable prefetching for likely navigation paths
-  usePrefetch(true)
 
   const [project, setProject] = useState<Project | null>(null)
   const [projectDocuments, setProjectDocuments] = useState<Document[]>([])
@@ -68,6 +68,254 @@ const ProjectDetails = () => {
   const [recentlyUploadedDocuments, setRecentlyUploadedDocuments] = useState<
     Set<string>
   >(new Set())
+  // Ref to flag when wake word triggered (to avoid duplicate activations)
+  const wakeTriggerRef = useRef<number>(0)
+  // Wake permission persistence key (kept in sync with useWakeWord hook)
+  const WAKE_PERM_KEY = 'wakeword.permission.granted'
+  const [wakePermissionGranted, setWakePermissionGranted] = useState<boolean>(
+    () => {
+      try {
+        return localStorage.getItem(WAKE_PERM_KEY) === 'true'
+      } catch {
+        return false
+      }
+    },
+  )
+
+  // Helper to proactively request mic permission on mobile (one-time)
+  const primeMicPermission = useCallback(async () => {
+    if (typeof navigator === 'undefined') return
+    try {
+      if (
+        !('mediaDevices' in navigator) ||
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        toast({
+          title: 'Microphone not available',
+          description: 'Your browser does not support microphone access.',
+          variant: 'destructive',
+        })
+        return
+      }
+      // Request permission with an explicit user gesture (button tap)
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+      try {
+        localStorage.setItem(WAKE_PERM_KEY, 'true')
+      } catch {
+        /* noop */
+      }
+      setWakePermissionGranted(true)
+      // Notify any listeners that wake permissions are primed
+      try {
+        window.dispatchEvent(new Event('wakeword:primed'))
+        // Reuse ai:speech:complete signal which the wake listener uses to rearm immediately
+        window.dispatchEvent(new Event('ai:speech:complete'))
+      } catch {
+        /* noop */
+      }
+      toast({
+        title: 'Hands-free enabled',
+        description: 'You can now say “Hey Jacq” to start speaking.',
+      })
+    } catch (err) {
+      console.error('Mic permission request failed:', err)
+      toast({
+        title: 'Microphone permission required',
+        description:
+          'Please allow microphone access in your browser settings to enable hands-free mode.',
+        variant: 'destructive',
+      })
+    }
+  }, [])
+
+  // Simple global query focus helper: we attempt to find the textarea inside AIActions after mount
+  const focusQueryInput = () => {
+    // The Textarea in AIActions has placeholder containing 'Ask anything'
+    const el = document.querySelector<HTMLTextAreaElement>(
+      'textarea[placeholder*="Ask anything"]',
+    )
+    if (el) {
+      el.focus()
+      // Optionally place a visual hint
+      if (!el.value) {
+        el.value = ''
+      }
+      // Move caret to end
+      el.selectionStart = el.selectionEnd = el.value.length
+    }
+  }
+
+  const openChatPanelMobile = () => {
+    // For now, scroll AIActions into view.
+    const aiActions =
+      document.querySelector('.AIActions') ||
+      document.querySelector('[data-ai-actions]')
+    if (aiActions && 'scrollIntoView' in aiActions) {
+      ;(aiActions as HTMLElement).scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
+    // Focus query afterwards
+    setTimeout(() => focusQueryInput(), 600)
+  }
+
+  const handleWakeWord = () => {
+    const now = Date.now()
+    if (now - wakeTriggerRef.current < 4000) return // throttle
+    wakeTriggerRef.current = now
+    if (isMobile) {
+      openChatPanelMobile()
+    } else {
+      focusQueryInput()
+    }
+    // Dispatch event to start mic with minimal delay so user can speak naturally.
+    // Reduced from 250ms -> 60ms. If the textarea was already focused we fire almost immediately.
+    const alreadyFocused = document.activeElement?.tagName === 'TEXTAREA'
+    const delay = alreadyFocused ? 10 : 60
+    setTimeout(() => {
+      window.dispatchEvent(new Event('wakeword:activate-mic'))
+    }, delay)
+  }
+
+  // Centralized preference integration for passive listener
+  const { enabled, consent, acceptConsent, setEnabled } =
+    useWakeWordPreference()
+  const [isDictationActive, setIsDictationActive] = useState(false)
+
+  // Listen for dictation activity events from AIActions to suspend wake listener reliably
+  useEffect(() => {
+    const onStart = () => {
+      setIsDictationActive(true)
+    }
+    const onStop = () => {
+      setIsDictationActive(false)
+    }
+    window.addEventListener('dictation:start', onStart)
+    window.addEventListener('dictation:stop', onStop)
+    return () => {
+      window.removeEventListener('dictation:start', onStart)
+      window.removeEventListener('dictation:stop', onStop)
+    }
+  }, [])
+  useWakeWord({
+    enabled: enabled && consent === 'true',
+    onWake: handleWakeWord,
+    isDictationActive,
+    autoStart: true,
+    // If previously granted/primed, bypass user-interaction gate so it can auto-start
+    requireUserInteraction: !wakePermissionGranted,
+    watchdogIntervalMs: 6000,
+    debug: true,
+  })
+
+  // Enable prefetching for likely navigation paths
+  usePrefetch(true)
+
+  // Delayed wake word enable toast (after project fully loaded)
+  useEffect(() => {
+    console.debug('[wakeword-prompt] effect run', {
+      projectId,
+      hasProject: !!project,
+      isProjectLoading,
+    })
+    if (!projectId) {
+      console.debug('[wakeword-prompt] abort: missing projectId')
+      return
+    }
+    if (isProjectLoading) {
+      console.debug('[wakeword-prompt] abort: still loading project')
+      return
+    }
+    if (!project) {
+      console.debug('[wakeword-prompt] abort: project object not set yet')
+      return
+    }
+    const PROMPT_KEY = 'wakeword.enable.prompt.shown.v1'
+    const timer = setTimeout(() => {
+      try {
+        const prompted = localStorage.getItem(PROMPT_KEY)
+        if (prompted) {
+          console.debug(
+            '[wakeword-prompt] already prompted (localStorage key present)',
+          )
+          return
+        }
+        const consentVal = localStorage.getItem(WAKEWORD_CONSENT_KEY)
+        const enabledVal = localStorage.getItem(WAKEWORD_ENABLED_KEY) === 'true'
+        const shouldPrompt =
+          !consentVal ||
+          consentVal === 'declined' ||
+          (consentVal === 'true' && !enabledVal)
+        console.debug('[wakeword-prompt] state check', {
+          consentVal,
+          enabledVal,
+          shouldPrompt,
+        })
+        if (!shouldPrompt) {
+          console.debug('[wakeword-prompt] abort: conditions not met to prompt')
+          return
+        }
+        const t = toast({
+          title: 'Hands-Free Wake Word',
+          description: (
+            <div className="space-y-2">
+              <p className="text-sm">
+                Enable the "Hey Jacq" wake phrase for hands-free activation.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    try {
+                      console.debug('[wakeword-prompt] Enable Now clicked')
+                      acceptConsent(true) // also enables
+                      localStorage.setItem(PROMPT_KEY, 'true')
+                    } catch {
+                      /* noop */
+                    }
+                    // On mobile, immediately request mic permission so wake listener can auto-start
+                    if (isMobile) {
+                      setTimeout(() => {
+                        primeMicPermission()
+                      }, 50)
+                    }
+                    t.dismiss()
+                  }}
+                  className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
+                >
+                  Enable Now
+                </button>
+                <button
+                  onClick={() => {
+                    console.debug(
+                      '[wakeword-prompt] Dismiss clicked, setting prompt key',
+                    )
+                    localStorage.setItem(PROMPT_KEY, 'true')
+                    t.dismiss()
+                  }}
+                  className="px-3 py-1.5 rounded border border-border text-xs hover:bg-muted/50"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ),
+        })
+        console.debug('[wakeword-prompt] toast shown, marking key')
+        localStorage.setItem(PROMPT_KEY, 'true')
+      } catch {
+        /* noop */
+      }
+    }, 350) // small delay to avoid appearing before layout settles
+    return () => clearTimeout(timer)
+  }, [
+    projectId,
+    project,
+    isProjectLoading,
+    acceptConsent,
+    isMobile,
+    primeMicPermission,
+  ])
 
   // Handle document status updates for real-time feedback
   const handleDocumentStatusUpdate = useCallback(
@@ -162,6 +410,51 @@ const ProjectDetails = () => {
     localStorage.removeItem(PROJECT_CACHE_KEY)
     localStorage.removeItem(DOCUMENTS_CACHE_KEY)
   }, [PROJECT_CACHE_KEY, DOCUMENTS_CACHE_KEY])
+
+  // Listen for document deletion events (emitted from viewer) to prune list immediately
+  useEffect(() => {
+    const unsubscribe = documentDeletionEvents.subscribe(evt => {
+      if (evt.projectId !== project?.id) return
+      setProjectDocuments(prev => prev.filter(d => d.id !== evt.documentId))
+      try {
+        // Invalidate cached documents for this project
+        localStorage.removeItem(DOCUMENTS_CACHE_KEY)
+      } catch (e) {
+        /* ignore */
+      }
+      // Immediate authoritative refetch for strongest consistency
+      if (project?.id) {
+        ;(async () => {
+          try {
+            const docs = await documentService.getDocumentsByProject(project.id)
+            const transformed: Document[] = (docs || []).map(doc => ({
+              id: doc.id,
+              name: doc.name || 'Untitled Document',
+              type: doc.type || 'unknown',
+              size:
+                typeof doc.size === 'number'
+                  ? doc.size
+                  : parseInt(String(doc.size)) || 0,
+              status: doc.status || 'processing',
+              url: doc.url,
+              thumbnailUrl: doc.thumbnailUrl,
+              projectId: doc.projectId,
+              content: doc.content,
+              createdAt: doc.createdAt,
+              updatedAt: doc.updatedAt,
+            }))
+            setProjectDocuments(transformed)
+            setCachedDocumentsData(transformed)
+          } catch (e) {
+            // silent refetch failure – rely on polling
+          }
+        })()
+      }
+    })
+    return () => {
+      unsubscribe()
+    }
+  }, [project?.id, DOCUMENTS_CACHE_KEY, setCachedDocumentsData])
 
   // Load cached data immediately on mount
   useEffect(() => {
@@ -282,7 +575,6 @@ const ProjectDetails = () => {
   }, [
     projectId,
     companyId,
-    toast,
     getCachedProject,
     getCachedDocuments,
     setCachedProjectData,
@@ -494,6 +786,10 @@ const ProjectDetails = () => {
 
     try {
       setIsDeleteLoading(true)
+      // Close dialog so fullscreen overlay is clearly visible
+      setIsDeleteDialogOpen(false)
+      const start = performance.now()
+
       await projectService.deleteProject(companyId!, project.id)
 
       toast({
@@ -501,7 +797,13 @@ const ProjectDetails = () => {
         description: 'Your project has been deleted successfully.',
       })
 
-      navigate(routes.company.projects.list(companyId || ''))
+      // Ensure overlay is perceivable even on very fast deletes
+      const MIN_VISIBLE_MS = 600
+      const elapsed = performance.now() - start
+      const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed)
+      setTimeout(() => {
+        navigate(routes.company.projects.list(companyId || ''))
+      }, remaining)
     } catch (error) {
       console.error('Error deleting project:', error)
       toast({
@@ -668,13 +970,34 @@ const ProjectDetails = () => {
 
       await documentService.deleteDocument(companyId, project.id, documentId)
 
-      // Update the local state to remove the document
-      const updatedDocuments =
-        projectDocuments?.filter(doc => doc.id !== documentId) || []
-      setProjectDocuments(updatedDocuments)
-
-      // Immediately update the cache to reflect the deletion
-      setCachedDocumentsData(updatedDocuments)
+      // Attempt authoritative refetch for immediate consistency
+      try {
+        const docs = await documentService.getDocumentsByProject(project.id)
+        const transformed: Document[] = (docs || []).map(doc => ({
+          id: doc.id,
+          name: doc.name || 'Untitled Document',
+          type: doc.type || 'unknown',
+          size:
+            typeof doc.size === 'number'
+              ? doc.size
+              : parseInt(String(doc.size)) || 0,
+          status: doc.status || 'processing',
+          url: doc.url,
+          thumbnailUrl: doc.thumbnailUrl,
+          projectId: doc.projectId,
+          content: doc.content,
+          createdAt: doc.createdAt,
+          updatedAt: doc.updatedAt,
+        }))
+        setProjectDocuments(transformed)
+        setCachedDocumentsData(transformed)
+      } catch (e) {
+        // Fallback to optimistic removal if refetch fails
+        const updatedDocuments =
+          projectDocuments?.filter(doc => doc.id !== documentId) || []
+        setProjectDocuments(updatedDocuments)
+        setCachedDocumentsData(updatedDocuments)
+      }
 
       toast({
         title: 'Document deleted',
@@ -779,6 +1102,38 @@ const ProjectDetails = () => {
 
       <Layout>
         <div className="space-y-4 md:space-y-6">
+          {/* Mobile-only: hands-free permission priming banner when enabled but not yet granted */}
+          {isMobile &&
+            enabled &&
+            consent === 'true' &&
+            !wakePermissionGranted && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-100 p-3 flex items-center justify-between">
+                <div className="text-sm">
+                  Enable hands-free voice by allowing microphone access.
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={primeMicPermission}
+                  className="ml-3"
+                >
+                  Allow Microphone
+                </Button>
+              </div>
+            )}
+          {isDeleteLoading && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm text-white gap-4">
+              <div className="flex flex-col items-center gap-3">
+                <span className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-lg font-semibold tracking-wide">
+                  Deleting project…
+                </p>
+                <p className="text-xs text-white/60">
+                  Removing project and associated documents
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -938,6 +1293,8 @@ const ProjectDetails = () => {
             </div>
           )}
 
+          {/* Passive wake word listener active (no indicator; managed in Settings) */}
+
           {isMobile && (
             <>
               <Dialog
@@ -1049,7 +1406,7 @@ const ProjectDetails = () => {
                       setIsUploadDialogOpen(false)
                       if (summary.success > 0) {
                         toast({
-                          title: 'Batch upload complete',
+                          title: 'File upload complete',
                           description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
                         })
                       } else if (summary.failed) {

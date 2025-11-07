@@ -1,3 +1,6 @@
-export * from './AutoplayFallbackButton'
-// Voice Components (guard: only export if file exists in repo)
+// Voice Components
+export { VoiceInput } from './VoiceInput'
 export { VoiceShazamButton } from './VoiceShazamButton'
+// Removed legacy exports (VoiceInputFixed, SafariAudioButton*) which are no longer present
+// WakeWordIndicator intentionally not exported (deprecated)
+export * from './AutoplayFallbackButton'

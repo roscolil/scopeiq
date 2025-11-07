@@ -200,7 +200,7 @@ export const contactService = {
           second: '2-digit',
         }),
         body: `
-NEW CONTACT FORM SUBMISSION - Jacq of All Trades
+NEW CONTACT FORM SUBMISSION - Jack of All Trades
 =====================================
 
 👤 Name: ${submission.name}

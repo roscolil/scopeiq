@@ -1,39 +1,50 @@
 /**
- * Hook for handling Safari audio restrictions
- * Provides utilities to check and enable audio playback on Safari/iOS
+ * Hook for handling mobile audio restrictions
+ * Provides utilities to check and enable audio playback on Safari/iOS and Android Chrome
  */
 
 import { useState, useEffect } from 'react'
 import { novaSonic } from '@/services/api/nova-sonic'
 
-export interface SafariAudioStatus {
+export interface MobileAudioStatus {
   isAvailable: boolean
   needsInteraction: boolean
   message: string
-  isSafari: boolean
+  isMobileBrowser: boolean
+  platform: 'safari' | 'android-chrome' | 'other'
 }
 
 export function useSafariAudio() {
-  const [status, setStatus] = useState<SafariAudioStatus>({
+  const [status, setStatus] = useState<MobileAudioStatus>({
     isAvailable: false,
     needsInteraction: false,
     message: 'Checking audio availability...',
-    isSafari: false,
+    isMobileBrowser: false,
+    platform: 'other',
   })
 
-  // Check if we're on Safari
+  // Check browser type
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const isAndroid = /Android/i.test(navigator.userAgent)
+  const isChrome = /Chrome/i.test(navigator.userAgent)
+  const isAndroidChrome = isAndroid && isChrome
 
   // Update status when component mounts or novaSonic state changes
   useEffect(() => {
     const updateStatus = () => {
       const audioStatus = novaSonic.getAudioStatus()
+
+      let platform: 'safari' | 'android-chrome' | 'other' = 'other'
+      if (isSafari || isIOS) platform = 'safari'
+      else if (isAndroidChrome) platform = 'android-chrome'
+
       setStatus({
-        isAvailable: audioStatus.available, // Map 'available' to 'isAvailable'
+        isAvailable: audioStatus.available,
         needsInteraction: audioStatus.needsInteraction,
         message: audioStatus.message,
-        isSafari: isSafari || isIOS,
+        isMobileBrowser: isSafari || isIOS || isAndroidChrome,
+        platform,
       })
     }
 
@@ -43,7 +54,7 @@ export function useSafariAudio() {
     const interval = setInterval(updateStatus, 1000)
 
     return () => clearInterval(interval)
-  }, [isSafari, isIOS])
+  }, [isSafari, isIOS, isAndroidChrome])
 
   /**
    * Enable audio for Safari by triggering user interaction
@@ -68,11 +79,17 @@ export function useSafariAudio() {
 
       // Update status after attempting to enable
       const audioStatus = novaSonic.getAudioStatus()
+
+      let platform: 'safari' | 'android-chrome' | 'other' = 'other'
+      if (isSafari || isIOS) platform = 'safari'
+      else if (isAndroidChrome) platform = 'android-chrome'
+
       setStatus({
-        isAvailable: audioStatus.available, // Map 'available' to 'isAvailable'
+        isAvailable: audioStatus.available,
         needsInteraction: audioStatus.needsInteraction,
         message: audioStatus.message,
-        isSafari: isSafari || isIOS,
+        isMobileBrowser: isSafari || isIOS || isAndroidChrome,
+        platform,
       })
 
       return success
@@ -83,13 +100,18 @@ export function useSafariAudio() {
   }
 
   /**
-   * Speak text with automatic Safari handling
+   * Speak text with automatic mobile browser handling
    */
   const speak = async (text: string): Promise<boolean> => {
     try {
-      // If Safari needs interaction, show warning but still attempt
+      // If mobile browser needs interaction, show warning but still attempt
       if (status.needsInteraction) {
-        console.warn('🍎 Safari: Audio requires user interaction first')
+        const platformEmoji = status.platform === 'android-chrome' ? '🤖' : '🍎'
+        const platformName =
+          status.platform === 'android-chrome' ? 'Android Chrome' : 'Safari'
+        console.warn(
+          `${platformEmoji} ${platformName}: Audio requires user interaction first`,
+        )
       }
 
       return await novaSonic.speak(text)
@@ -103,12 +125,14 @@ export function useSafariAudio() {
    * Get a user-friendly message for audio status
    */
   const getStatusMessage = (): string => {
-    if (!status.isSafari) {
+    if (!status.isMobileBrowser) {
       return status.isAvailable ? 'Audio ready' : 'Audio not available'
     }
 
     if (status.needsInteraction) {
-      return 'Click any button to enable audio on Safari'
+      const platformName =
+        status.platform === 'android-chrome' ? 'Android Chrome' : 'Safari'
+      return `Click any button to enable audio on ${platformName}`
     }
 
     return status.isAvailable ? 'Audio enabled' : 'Audio not available'
@@ -119,7 +143,8 @@ export function useSafariAudio() {
     enableAudio,
     speak,
     getStatusMessage,
-    isSafari: status.isSafari,
+    isMobileBrowser: status.isMobileBrowser,
+    platform: status.platform,
     needsUserInteraction: status.needsInteraction,
     isAudioAvailable: status.isAvailable,
   }

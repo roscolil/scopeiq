@@ -78,9 +78,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Quick initial auth check to reduce perceived loading time
   useEffect(() => {
     const quickAuthCheck = async () => {
+      const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+
       // Quick cache check first (sessionStorage)
       const cachedAuthState = sessionStorage.getItem('authState')
       const cachedTimestamp = sessionStorage.getItem('authTimestamp')
+
+      if (isMobile) {
+        console.log('📱 Mobile auth check:', {
+          hasCachedAuth: !!cachedAuthState,
+          cachedTimestamp,
+          userAgent: navigator.userAgent,
+        })
+      }
 
       if (cachedAuthState && cachedTimestamp) {
         const age = Date.now() - parseInt(cachedTimestamp)
@@ -151,7 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name:
             attrs.given_name || attrs.name || attrs.email?.split('@')[0] || '',
           role: 'User', // Default role
-          companyId: 'default', // Will be updated
+          companyId: attrs['custom:companyId'] || 'default', // Use Cognito value or default
           ...attrs,
         }
 

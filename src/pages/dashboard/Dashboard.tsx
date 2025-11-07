@@ -654,7 +654,10 @@ const Dashboard = () => {
           {/* Stats Overview */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Active Projects Card */}
-            <Card className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20">
+            <Card
+              className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
+              onClick={() => navigate(routes.company.projects.list(companyId))}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                 <CardTitle className="text-xs sm:text-sm font-medium">
                   Active Projects
@@ -703,19 +706,19 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Team Members Card - Static for now */}
-            <Card className="bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200/20">
+            {/* Team Members Card - Inactive */}
+            <Card className="bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-950/20 dark:to-gray-900/10 border-gray-200/20 pointer-events-none">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">
                   Team Members
                 </CardTitle>
-                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
               </CardHeader>
               <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                <div className="text-lg sm:text-2xl font-bold text-purple-700 dark:text-purple-300">
+                <div className="text-lg sm:text-2xl font-bold text-gray-400">
                   8
                 </div>
-                <p className="text-[10px] sm:text-xs text-purple-600/70 dark:text-purple-400/70">
+                <p className="text-[10px] sm:text-xs text-gray-400">
                   +1 from last month
                 </p>
               </CardContent>
@@ -882,12 +885,14 @@ const Dashboard = () => {
                   </CardFooter>
                 </Card>
 
-                {/* User Activity */}
-                <Card className="md:col-span-3">
+                {/* User Activity - Inactive */}
+                <Card className="md:col-span-3 pointer-events-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-primary" />
-                      <CardTitle>Team Activity</CardTitle>
+                      <Activity className="h-5 w-5 text-gray-400" />
+                      <CardTitle className="text-gray-400">
+                        Team Activity
+                      </CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 max-h-80 overflow-y-auto">
@@ -910,12 +915,10 @@ const Dashboard = () => {
                       userActivities.map(activity => (
                         <div
                           key={activity.id}
-                          className="flex items-start space-x-3 p-2 rounded-lg hover:bg-slate-50/50 transition-colors"
+                          className="flex items-start space-x-3 p-2 rounded-lg transition-colors"
                         >
                           <div className="flex-shrink-0">
-                            <div
-                              className={`w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm ${userActivityService.getActivityColor(activity.action)}`}
-                            >
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-400">
                               {userActivityService.getActivityIcon(
                                 activity.action,
                               )}
@@ -924,19 +927,19 @@ const Dashboard = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="font-medium text-sm text-slate-800 line-clamp-1">
+                                <div className="font-medium text-sm text-gray-400 line-clamp-1">
                                   {activity.userName}
                                 </div>
-                                <div className="text-xs text-slate-600 line-clamp-2">
+                                <div className="text-xs text-gray-400 line-clamp-2">
                                   {activity.description}
                                 </div>
                                 {activity.metadata?.projectName && (
-                                  <div className="text-xs text-blue-600 mt-1">
+                                  <div className="text-xs text-gray-400 mt-1">
                                     📁 {activity.metadata.projectName}
                                   </div>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400 ml-2 flex-shrink-0">
+                              <div className="text-xs text-gray-400 ml-2 flex-shrink-0">
                                 {userActivityService.formatRelativeTime(
                                   activity.timestamp,
                                 )}
@@ -955,7 +958,10 @@ const Dashboard = () => {
                     )}
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">
+                    <Button
+                      variant="outline"
+                      className="w-full text-gray-400 border-gray-300"
+                    >
                       <Activity className="h-4 w-4 mr-2" />
                       View All Activity
                     </Button>

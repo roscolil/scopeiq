@@ -4,7 +4,7 @@ Adds a UI control to manually start TTS playback when iOS/Safari blocks autoplay
 
 ## How It Works
 
-1. `novaSonic` attempts Web Audio playback first (Option 2). If blocked (NotAllowedError) or user interaction missing, it records a pending element and emits an internal autoplay-blocked signal.
+1. `novaSonic` attempts Web Audio playback first (Option 2). If blocked (NotAllowedError) or user interaction missing, it records a pending element and emits an internal autoplay-blocked signal. Mobile browsers (especially iOS Safari) require a user gesture (tap, keypress) before allowing programmatic audio.
 2. `AutoplayFallbackButton` subscribes to `novaSonic.onAutoplayBlocked` and appears only if there is pending playback.
 3. User taps the button -> calls `resumePendingAudio()`, clearing the blocked flag and hiding the button if successful.
 
@@ -46,3 +46,10 @@ The button uses `variant="secondary" size="sm"` (shadcn/ui). Override via wrappe
 - If button never appears: ensure `NotAllowedError` occurs (check console). Confirm `onAutoplayBlocked` triggers.
 - If tap does nothing: verify `pendingAudio` exists in `novaSonic` (check `window._novaDebug = novaSonic`).
 - If frequent blocks persist, consider combining Options 1 & 2 (already implemented) with a small user education tooltip.
+
+## User Gesture Requirement Explained
+
+Most mobile browsers block autoplaying audio until the user interacts with the page. Our UI handles this in two ways:
+
+- We listen for the first `pointerdown`, `touchstart`, or `keydown` and proactively call `enableAudioForSafari()` and `forceUnlockAudio()` where available.
+- If TTS is triggered before a gesture, we queue the speech and show a lightweight toast prompting a single tap to enable audio. Once unlocked, the queued response plays automatically.

@@ -1,5 +1,6 @@
 import { useParams, Outlet } from 'react-router-dom'
 import { useEffect, useState, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import NotFound from '@/pages/core/NotFound'
 import { projectService } from '@/services/data/hybrid'
 import IQPageLoader from '@/components/shared/IQPageLoader'
@@ -44,6 +45,7 @@ export const ProjectGuard = () => {
   const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
   const [fastPath, setFastPath] = useState(false)
   const revalidatedRef = useRef(false)
+  const location = useLocation()
 
   useEffect(() => {
     let cancelled = false
@@ -127,6 +129,10 @@ export const ProjectGuard = () => {
   // }
 
   if (state === 'invalid') return <NotFound />
+  if (state === 'checking') {
+    // Avoid flashing loader; keep route blank until resolved (near-instant in fast paths)
+    return null
+  }
   return <Outlet />
 }
 
