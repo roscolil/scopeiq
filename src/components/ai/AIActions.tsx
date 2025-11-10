@@ -68,7 +68,6 @@ interface AIActionsProps {
   projectName?: string
   companyId?: string
 }
-
 export const AIActions = ({
   documentId,
   projectId,
@@ -85,6 +84,7 @@ export const AIActions = ({
   const [queryScope, setQueryScope] = useState<'document' | 'project'>(
     documentId ? 'document' : 'project', // Default to project scope if no documentId
   )
+  console.log('projectId :>> ', projectId);
   const [isLoading, setIsLoading] = useState(false)
   const [document, setDocument] = useState<Document | null>(null)
   const [isLoadingStatus, setIsLoadingStatus] = useState(false)
