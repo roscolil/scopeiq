@@ -68,7 +68,6 @@ interface AIActionsProps {
   projectName?: string
   companyId?: string
 }
-
 export const AIActions = ({
   documentId,
   projectId,
