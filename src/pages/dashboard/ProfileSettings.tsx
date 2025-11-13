@@ -678,7 +678,9 @@ const ProfileSettings = () => {
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Profile Settings
             </h1>
-            <p className="text-slate-400 mt-2 font-medium">Manage your account settings</p>
+            <p className="text-slate-400 mt-2 font-medium">
+              Manage your account settings
+            </p>
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
@@ -721,7 +723,7 @@ const ProfileSettings = () => {
 
             {/* Desktop-only original styling */}
             <div className="hidden sm:block">
-              <TabsList>
+              <TabsList className="gap-1">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
                 {/* Voice tab visible but disabled */}

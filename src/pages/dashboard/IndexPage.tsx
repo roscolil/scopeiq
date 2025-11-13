@@ -132,7 +132,7 @@ const Index = () => {
                   {/* Subheadline */}
                   <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-2xl animate-fade-in">
                     Ask your project documents questions. Get answers in
-                    seconds, not hours. Built for contractors who work smarter.
+                    seconds. Built for contractors who work smarter.
                   </p>
 
                   {/* CTA Section */}
@@ -154,7 +154,7 @@ const Index = () => {
                           onClick={() => navigate('/auth/signin')}
                           className="text-sm text-foreground/60 hover:text-foreground transition-colors underline-offset-4 hover:underline"
                         >
-                          Already using ScopeIQ? Sign in →
+                          Already using Jack? Sign in →
                         </button>
                       </div>
                     </div>
@@ -357,14 +357,180 @@ const Index = () => {
             </div>
           </div>
 
+          {/* Testimonials Section */}
+          <div className="px-4 sm:px-6">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-16">
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+                  Trusted by builders nationwide
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                  See how teams are transforming their document workflows with
+                  Jack of All Trades
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                {/* Testimonial 1 */}
+                <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 hover:border-primary/40 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className="w-4 h-4 text-primary fill-current"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-foreground/90 mb-6 leading-relaxed">
+                      "ScopeIQ cut our spec review time by 80%. Instead of
+                      spending days manually reviewing documents, we get instant
+                      insights. It's been a complete game-changer for our
+                      bidding process."
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-bold text-primary">
+                          MJ
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">
+                          Mike Johnson
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          General Contractor, Austin
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Testimonial 2 */}
+                <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 hover:border-primary/40 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className="w-4 h-4 text-primary fill-current"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-foreground/90 mb-6 leading-relaxed">
+                      "The AI analysis is incredible. It catches details in
+                      blueprints and specs that would take our team hours to
+                      find. We've already prevented costly mistakes on multiple
+                      projects."
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-bold text-primary">
+                          SC
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">
+                          Sarah Chen
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Project Manager, Denver
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Testimonial 3 */}
+                <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20 hover:border-primary/40 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <svg
+                          key={i}
+                          className="w-4 h-4 text-primary fill-current"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-foreground/90 mb-6 leading-relaxed">
+                      "We manage 50+ projects at once. ScopeIQ helps us stay
+                      organized and find critical information instantly. The
+                      search capabilities alone are worth the investment."
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-bold text-primary">
+                          RP
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-foreground">
+                          Robert Patel
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Operations Director, Phoenix
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Stats bar */}
+              <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8 p-8 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20">
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">
+                    80%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Faster reviews
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">
+                    500+
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Projects analyzed
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">
+                    10k+
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Documents processed
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl sm:text-4xl font-bold text-primary mb-2">
+                    98%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Accuracy rate
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Social Proof Section */}
-          <div className="px-4 sm:px-6 pb-12">
+          {/* <div className="px-4 sm:px-6 pb-12">
             <div className="max-w-4xl mx-auto text-center">
               <p className="text-sm font-medium text-muted-foreground mb-6">
                 TRUSTED BY BUILDERS NATIONWIDE
               </p>
               <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60">
-                {/* Placeholder for customer logos - replace with actual logos */}
+                {/* Placeholder for customer logos - replace with actual logos 
                 <div className="h-12 w-32 bg-muted-foreground/20 rounded flex items-center justify-center text-xs font-medium text-muted-foreground">
                   Customer Logo
                 </div>
@@ -376,7 +542,7 @@ const Index = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </Layout>
     </>
