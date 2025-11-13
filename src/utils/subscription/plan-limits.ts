@@ -179,7 +179,7 @@ export function getLimitMessage(check: LimitCheckResult): string {
     case 'ai-features':
       return 'This AI feature requires a Professional or Enterprise plan. Upgrade to unlock advanced AI capabilities.'
     default:
-      return 'You've reached your plan limit. Please upgrade to continue.'
+      return 'You\'ve reached your plan limit. Please upgrade to continue.'
   }
 }
 

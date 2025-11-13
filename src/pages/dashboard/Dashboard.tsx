@@ -2,8 +2,11 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
-import { OnboardingModal } from '@/components/shared/OnboardingModal'
-import { EmptyState } from '@/components/shared/EmptyState'
+import {
+  OnboardingModal,
+  EmptyState,
+  UsageMeterCard,
+} from '@/components/shared'
 import {
   PageHeaderSkeleton,
   ProjectListSkeleton,
@@ -35,6 +38,7 @@ import {
   Eye,
   Loader2,
   Activity,
+  HardDrive,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
@@ -58,6 +62,10 @@ import {
   UserActivity,
 } from '@/services/auth/user-activity'
 import { usePrefetch } from '@/utils/performance'
+import {
+  getUserSubscriptionTier,
+  getPlanLimits,
+} from '@/utils/subscription/plan-limits'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -67,6 +75,10 @@ const Dashboard = () => {
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
+
+  // Get subscription tier and limits
+  const subscriptionTier = getUserSubscriptionTier(user)
+  const planLimits = getPlanLimits(subscriptionTier)
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
@@ -642,12 +654,18 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-10 w-10 p-0 rounded-full hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
-                        onClick={() =>
+                        size="icon"
+                        className="h-12 w-12 rounded-full border-2 border-primary bg-primary/10 hover:border-primary hover:bg-primary/30 transition-all shadow-xl"
+                        onClick={() => {
+                          console.log('Settings clicked! CompanyId:', companyId)
+                          console.log(
+                            'Navigating to:',
+                            routes.company.settings(companyId),
+                          )
                           navigate(routes.company.settings(companyId))
-                        }
+                        }}
                       >
-                        <Settings className="h-7 w-7" />
+                        <Settings className="h-7 w-7 text-primary" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -666,13 +684,20 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
-                        onClick={() =>
+                        className="h-12 px-4 border-2 border-primary bg-primary/20 hover:border-primary rounded-lg hover:bg-primary/30 transition-all active:bg-primary/40 touch-manipulation shadow-xl"
+                        onClick={() => {
+                          console.log('Settings clicked! CompanyId:', companyId)
+                          console.log(
+                            'Navigating to:',
+                            routes.company.settings(companyId),
+                          )
                           navigate(routes.company.settings(companyId))
-                        }
+                        }}
                       >
-                        <Settings className="h-5 w-5 mr-2" />
-                        <span className="text-sm font-medium">Settings</span>
+                        <Settings className="h-5 w-5 mr-2 text-primary" />
+                        <span className="text-sm font-medium text-primary">
+                          Settings
+                        </span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
