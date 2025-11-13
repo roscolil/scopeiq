@@ -6,7 +6,16 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 
-const faqData = [
+interface FaqItem {
+  question: string
+  answer: string
+}
+
+interface FaqAccordionProps {
+  faqs?: FaqItem[]
+}
+
+const defaultFaqData = [
   {
     question: 'What types of documents can I analyze with Jack?',
     answer:
@@ -39,7 +48,9 @@ const faqData = [
   },
 ]
 
-export const FaqAccordion = () => {
+export const FaqAccordion = ({ faqs }: FaqAccordionProps) => {
+  const faqData = faqs || defaultFaqData
+
   return (
     <div className="w-full">
       <Accordion type="single" collapsible className="w-full">
@@ -52,7 +63,7 @@ export const FaqAccordion = () => {
             <AccordionTrigger className="text-left font-medium text-foreground hover:text-primary transition-colors">
               {faq.question}
             </AccordionTrigger>
-            <AccordionContent className="text-foreground/80 leading-relaxed">
+            <AccordionContent className="text-foreground/70 leading-relaxed">
               {faq.answer}
             </AccordionContent>
           </AccordionItem>

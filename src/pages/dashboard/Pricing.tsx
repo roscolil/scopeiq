@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/shared/Badge'
-import { FaqAccordion } from '@/components/shared/FaqAccordion'
+import { FeatureComparison, FaqAccordion } from '@/components/shared'
 import { Check, Star, Building2, HardHat, Users } from 'lucide-react'
 
 const pricingFaqs = [
@@ -181,7 +181,7 @@ const Pricing = () => {
             {pricingPlans.map(plan => (
               <Card
                 key={plan.name}
-                className={`relative ${
+                className={`relative flex flex-col ${
                   plan.popular
                     ? 'border-primary shadow-lg ring-2 ring-primary/20'
                     : 'border-border'
@@ -216,7 +216,7 @@ const Pricing = () => {
                   </div>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="flex-grow">
                   <ul className="space-y-3">
                     {plan.features.map(feature => (
                       <li key={feature} className="flex items-start">
@@ -229,7 +229,7 @@ const Pricing = () => {
                   </ul>
                 </CardContent>
 
-                <CardFooter className="pt-6">
+                <CardFooter className="pt-6 mt-auto">
                   <Button
                     className="w-full"
                     variant={plan.popular ? 'default' : 'outline'}
@@ -262,6 +262,11 @@ const Pricing = () => {
                 <span className="font-semibold">1,000+ Users</span>
               </div>
             </div>
+          </div>
+
+          {/* Feature Comparison Table */}
+          <div className="mb-20">
+            <FeatureComparison />
           </div>
 
           {/* FAQ Section */}
