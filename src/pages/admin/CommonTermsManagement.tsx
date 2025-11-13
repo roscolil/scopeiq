@@ -49,7 +49,7 @@ const CommonTermsManagement = () => {
             </Button>
 
             <div className="flex-1">
-              <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+              <h1 className="text-4xl font-bold tracking-tight text-foreground">
                 Common Terms Management
               </h1>
               <p className="text-slate-200 mt-2">

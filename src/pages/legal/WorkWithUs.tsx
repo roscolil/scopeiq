@@ -127,7 +127,9 @@ const WorkWithUs = () => {
       <div className="container mx-auto px-4 py-12">
         {/* Header Section */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold mb-4 text-white">Work With Us</h1>
+          <h1 className="text-4xl font-bold mb-4 text-foreground">
+            Work With Us
+          </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Join our mission to transform the construction industry with AI.
             We're looking for passionate individuals who want to make a real

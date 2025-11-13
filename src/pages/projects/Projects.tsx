@@ -256,10 +256,9 @@ const Projects = () => {
       <Layout>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-              Projects for {companyId && `(${companyId})`}
-            </h1>
-
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Projects
+            </h1>{' '}
             <div className="flex gap-2">
               {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />

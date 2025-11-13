@@ -583,7 +583,7 @@ const Dashboard = () => {
                   <PageHeaderSkeleton />
                 ) : (
                   <>
-                    <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                    <h1 className="text-4xl font-bold tracking-tight capitalize text-foreground">
                       {company?.id || 'Your Company'} Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
@@ -591,7 +591,7 @@ const Dashboard = () => {
                         </span>
                       )} */}
                     </h1>
-                    <p className="text-gray-400 mt-2">
+                    <p className="text-foreground/60 mt-2">
                       Welcome back
                       {user?.given_name && typeof user.given_name === 'string'
                         ? `, ${user.given_name.split(' ')[0]}`
@@ -752,7 +752,7 @@ const Dashboard = () => {
 
           {/* Main Content */}
           <Tabs defaultValue="overview">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 gap-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>

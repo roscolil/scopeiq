@@ -1693,8 +1693,8 @@ export const AIActions = ({
           <div className="space-y-4">
             <div className="flex items-center mb-3 mt-8">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 blur-sm rounded-lg"></div>
-                <div className="relative p-1.5 bg-primary/10 rounded-lg mr-3">
+                <div className="absolute inset-0 rounded-lg"></div>
+                <div className="relative p-1.5 bg-primary/20 rounded-lg mr-3">
                   <Brain className="h-4 w-4 text-primary" />
                 </div>
               </div>

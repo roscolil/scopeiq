@@ -121,7 +121,7 @@ const Contact = () => {
             </Button>
 
             <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
                 Contact Us
               </h1>
               <p className="text-slate-300 text-lg max-w-2xl mx-auto">

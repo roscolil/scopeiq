@@ -41,9 +41,7 @@ const NotFound = () => {
 
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-6xl font-bold mb-4 text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text">
-            404
-          </h1>
+          <h1 className="text-6xl font-bold mb-4 text-foreground">404</h1>
           <p className="text-xl text-gray-300 mb-8">Oops! Page not found</p>
           <a
             href="/"
