@@ -64,6 +64,10 @@ interface FileUploaderProps {
       }>
     },
   ) => void
+  /**
+   * Optional callback invoked when user tries to upload but has reached plan limits
+   */
+  onLimitReached?: (limitType: 'documents' | 'storage') => void
 }
 
 interface FileUploadItem {
@@ -89,7 +93,13 @@ interface RejectedFileInfo {
 }
 
 export const FileUploader = (props: FileUploaderProps) => {
-  const { projectId, companyId, onUploadComplete, onBatchComplete } = props
+  const {
+    projectId,
+    companyId,
+    onUploadComplete,
+    onBatchComplete,
+    onLimitReached,
+  } = props
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)

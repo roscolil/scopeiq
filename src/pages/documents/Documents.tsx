@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
 import { FileUploader } from '@/components/upload/FileUploader'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { PaywallModal } from '@/components/shared/PaywallModal'
 import {
   DocumentListSkeleton,
   PageHeaderSkeleton,
@@ -24,17 +25,28 @@ import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { useAuth } from '@/hooks/aws-auth'
+import {
+  getUserSubscriptionTier,
+  canUploadDocument,
+  getLimitMessage,
+} from '@/utils/subscription/plan-limits'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
     projectId?: string
   }>()
+  const { user } = useAuth()
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
 
   const [documents, setDocuments] = React.useState<Document[]>([])
+  const [showPaywall, setShowPaywall] = React.useState(false)
+  const [paywallVariant, setPaywallVariant] = React.useState<
+    'documents' | 'storage'
+  >('documents')
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
     Array<{
       id: string
@@ -58,6 +70,15 @@ const Documents = () => {
   } | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
+
+  // Handle plan limit reached
+  const handleLimitReached = useCallback(
+    (limitType: 'documents' | 'storage') => {
+      setPaywallVariant(limitType)
+      setShowPaywall(true)
+    },
+    [],
+  )
 
   // Caching utilities for documents
   const getCachedDocuments = useCallback(() => {
@@ -486,6 +507,7 @@ const Documents = () => {
                         })
                       }
                     }}
+                    onLimitReached={handleLimitReached}
                   />
                 </DialogContent>
               </Dialog>
@@ -674,6 +696,7 @@ const Documents = () => {
                       window.location.reload()
                     }, 1000)
                   }}
+                  onLimitReached={handleLimitReached}
                 />
               ) : (
                 <EmptyState
@@ -692,6 +715,13 @@ const Documents = () => {
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Paywall Modal */}
+        <PaywallModal
+          open={showPaywall}
+          onOpenChange={setShowPaywall}
+          variant={paywallVariant}
+        />
       </Layout>
     </>
   )
