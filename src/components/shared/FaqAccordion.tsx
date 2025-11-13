@@ -47,12 +47,12 @@ export const FaqAccordion = () => {
           <AccordionItem
             key={index}
             value={`item-${index}`}
-            className="border-white/10"
+            className="border-border"
           >
-            <AccordionTrigger className="text-left font-medium text-white hover:text-emerald-300 transition-colors">
+            <AccordionTrigger className="text-left font-medium text-foreground hover:text-primary transition-colors">
               {faq.question}
             </AccordionTrigger>
-            <AccordionContent className="text-gray-300 leading-relaxed">
+            <AccordionContent className="text-foreground/80 leading-relaxed">
               {faq.answer}
             </AccordionContent>
           </AccordionItem>

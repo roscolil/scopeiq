@@ -286,13 +286,13 @@ const SignIn = () => {
           <div className="flex justify-between text-sm">
             {/* <Link
               to="/auth/verify-email"
-              className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
+              className="text-primary hover:text-primary/80 hover:underline font-bold transition-colors"
             >
               Verify email
             </Link> */}
             <Link
               to="/forgot-password"
-              className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
+              className="text-primary hover:text-primary/80 hover:underline font-bold transition-colors"
             >
               Forgot your password?
             </Link>
@@ -339,12 +339,12 @@ const SignIn = () => {
       </Form>
 
       <div className="mt-4 text-center text-sm">
-        <span className="text-gray-100 dark:text-gray-100 font-medium">
+        <span className="text-foreground/70 font-medium">
           Don't have an account?
         </span>{' '}
         <Link
           to="/auth/signup"
-          className="text-blue-400 hover:text-blue-300 hover:underline font-bold text-base transition-colors"
+          className="text-primary hover:text-primary/80 hover:underline font-bold text-base transition-colors"
         >
           Sign up
         </Link>

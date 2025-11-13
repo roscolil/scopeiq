@@ -51,71 +51,71 @@
 
 @layer base {
   :root {
-    /* Modern cool color palette inspired by Stripe */
-    --background: 0 0% 100%;
-    --foreground: 215 25% 15%;
+    /* Construction-calibrated warm palette */
+    --background: 40 8% 97%;      /* #F8F7F5 Warm off-white */
+    --foreground: 220 18% 20%;    /* #2D3748 Dark gray text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card: 0 0% 100%;            /* #FFFFFF Pure white cards */
+    --card-foreground: 220 18% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 220 18% 20%;
 
-    /* Cool blue-purple primary */
-    --primary: 232 78% 51%;
+    /* Warm Construction Orange - Primary Brand Color */
+    --primary: 27 82% 58%;        /* #E67E22 Construction orange */
     --primary-foreground: 0 0% 100%;
 
-    /* Subtle cool grays */
-    --secondary: 215 25% 97%;
-    --secondary-foreground: 215 25% 25%;
+    /* Calm Neutrals */
+    --secondary: 40 8% 92%;       /* #EEEDEB Light gray */
+    --secondary-foreground: 220 18% 25%;
 
-    --muted: 215 25% 96%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 40 8% 92%;           /* #EEEDEB Muted backgrounds */
+    --muted-foreground: 220 14% 46%; /* #64748B Medium gray */
 
-    /* Cool cyan accent */
-    --accent: 195 85% 55%;
+    /* Sky Blue Accent (Use sparingly - links/info only) */
+    --accent: 199 89% 48%;        /* #0EA5E9 Sky blue */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 51%;     /* #DC2626 Red */
     --destructive-foreground: 0 0% 100%;
 
-    /* Crisp borders */
-    --border: 215 25% 90%;
-    --input: 215 25% 90%;
-    --ring: 232 78% 51%;
+    /* Accessible Borders */
+    --border: 220 13% 91%;        /* #E2E8F0 Subtle borders */
+    --input: 220 13% 91%;
+    --ring: 27 82% 58%;           /* Orange focus ring */
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;             /* 8px - More conservative */
   }
 
   .dark {
-    /* Dark mode with cool undertones */
-    --background: 215 28% 7%;
-    --foreground: 213 31% 91%;
+    /* Dark mode - deep slate with warm accents */
+    --background: 220 20% 12%;    /* #1A202C Deep slate */
+    --foreground: 0 0% 95%;       /* #F2F2F2 Light text */
 
-    --card: 215 28% 9%;
-    --card-foreground: 213 31% 91%;
+    --card: 220 18% 16%;          /* #232D3F Elevated cards */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 215 28% 9%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 220 18% 16%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 232 78% 61%;
-    --primary-foreground: 215 28% 7%;
+    --primary: 27 82% 58%;        /* Same orange (works in dark) */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 28% 12%;
-    --secondary-foreground: 213 31% 91%;
+    --secondary: 220 18% 18%;     /* Darker secondary */
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 215 28% 12%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 18% 18%;
+    --muted-foreground: 220 14% 65%;
 
-    --accent: 195 85% 65%;
-    --accent-foreground: 215 28% 7%;
+    --accent: 199 89% 58%;        /* Brighter blue for dark mode */
+    --accent-foreground: 220 20% 12%;
 
     --destructive: 0 72% 61%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 28% 15%;
-    --input: 215 28% 15%;
-    --ring: 232 78% 61%;
+    --border: 220 18% 22%;        /* #2D3748 Subtle dark borders */
+    --input: 220 18% 22%;
+    --ring: 27 82% 58%;
   }
 }
 
@@ -125,29 +125,12 @@
   }
 
   html {
-    /* Darker blue gradient background to prevent white flash */
-    background: linear-gradient(
-      135deg,
-      rgb(8, 12, 25) 0%,
-      rgb(20, 40, 90) 25%,
-      rgb(25, 70, 180) 50%,
-      rgb(20, 40, 90) 75%,
-      rgb(8, 12, 25) 100%
-    );
+    background: hsl(var(--background));
     min-height: 100vh;
   }
 
   body {
-    @apply text-foreground antialiased;
-    /* Darker blue gradient background to prevent white flash */
-    background: linear-gradient(
-      135deg,
-      rgb(8, 12, 25) 0%,
-      rgb(20, 40, 90) 25%,
-      rgb(25, 70, 180) 50%,
-      rgb(20, 40, 90) 75%,
-      rgb(8, 12, 25) 100%
-    );
+    @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -182,7 +165,7 @@
 
   /* Better text selection */
   ::selection {
-    @apply bg-primary/20 text-primary-foreground;
+    @apply bg-primary/10;
   }
 }
 

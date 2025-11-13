@@ -112,19 +112,19 @@ const VerifyEmail = () => {
 
           <div className="flex justify-between items-center text-sm">
             <Button
-              type="button"
               variant="link"
-              className="px-0 text-blue-400 hover:text-blue-300 font-bold"
-              onClick={handleResend}
+              onClick={handleResendCode}
               disabled={isResending}
+              className="px-0 text-primary hover:text-primary/80 font-bold"
             >
-              {isResending ? 'Resending...' : 'Resend code'}
+              {isResending ? 'Sending...' : 'Resend code'}
             </Button>
+            {' or '}
             <Link
               to="/auth/signin"
-              className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
+              className="text-primary hover:text-primary/80 hover:underline font-bold transition-colors"
             >
-              Back to sign in
+              Back to Sign in
             </Link>
           </div>
 
