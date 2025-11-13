@@ -68,7 +68,6 @@ interface AIActionsProps {
   projectName?: string
   companyId?: string
 }
-
 export const AIActions = ({
   documentId,
   projectId,
@@ -1925,7 +1924,7 @@ export const AIActions = ({
                           }`}
                         >
                           <div className="text-xs opacity-70 mb-1 flex items-center gap-1">
-                            {message.type === 'user' ? <>👤 You</> : <>🤖 AI</>}
+                            {message.type === 'user' ? <>👤 You</> : <>🤖 Jack</>}
                             <span>•</span>
                             <span>
                               {message.timestamp.toLocaleTimeString()}
