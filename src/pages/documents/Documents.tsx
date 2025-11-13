@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
 import { FileUploader } from '@/components/upload/FileUploader'
+import { EmptyState } from '@/components/shared/EmptyState'
 import {
   DocumentListSkeleton,
   PageHeaderSkeleton,
@@ -509,14 +510,13 @@ const Documents = () => {
               }}
             />
           ) : (
-            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-              <p className="text-gray-400 mb-4">
-                No documents in this project yet
-              </p>
-              <Button onClick={() => setIsUploadDialogOpen(true)}>
-                Upload Document
-              </Button>
-            </div>
+            <EmptyState
+              variant="documents"
+              action={{
+                label: 'Upload Document',
+                onClick: () => setIsUploadDialogOpen(true),
+              }}
+            />
           )}
         </div>
       </Layout>
@@ -630,11 +630,11 @@ const Documents = () => {
                           }}
                         />
                       ) : (
-                        <div className="text-center p-4 border rounded bg-secondary/10">
-                          <p className="text-sm text-gray-400">
-                            No documents in this project yet
-                          </p>
-                        </div>
+                        <EmptyState
+                          variant="documents"
+                          title="No documents in this project"
+                          description="Upload documents to get started with AI-powered analysis"
+                        />
                       )}
                     </div>
                   ))}
@@ -676,20 +676,18 @@ const Documents = () => {
                   }}
                 />
               ) : (
-                <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-gray-400 mb-4">No documents found</p>
-                  <Button
-                    onClick={() =>
+                <EmptyState
+                  variant="documents"
+                  action={{
+                    label: 'Create a Project',
+                    onClick: () =>
                       navigate(
                         routes.company.projects.list(
                           companyId || 'default-company',
                         ),
-                      )
-                    }
-                  >
-                    Create a Project and Upload Documents
-                  </Button>
-                </div>
+                      ),
+                  }}
+                />
               )}
             </TabsContent>
           </Tabs>

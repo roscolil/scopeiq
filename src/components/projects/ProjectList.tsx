@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Folder } from 'lucide-react'
 import { routes } from '@/utils/ui/navigation'
 import { PrefetchProjectLink } from '@/components/shared/PrefetchLinks'
+import { EmptyState } from '@/components/shared/EmptyState'
 
 interface ProjectListProps {
   projects: Project[]
@@ -28,37 +29,17 @@ export const ProjectList = ({
 
   if (projects.length === 0) {
     return (
-      <div className="relative text-center py-24 px-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Animated icon with gradient background */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 blur-2xl rounded-full"></div>
-            <div className="relative p-8 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl inline-block">
-              <Folder className="h-16 w-16 text-emerald-400 mx-auto" />
-            </div>
-          </div>
-
-          {/* Gradient heading */}
-          <h3 className="text-4xl font-bold mb-4 text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-            No projects yet
-          </h3>
-
-          <p className="text-lg text-gray-400 mb-12 leading-relaxed max-w-lg mx-auto">
-            Create your first project to start organizing and analyzing your
-            documents with AI-powered insights.
-          </p>
-
-          {onCreateProject && (
-            <Button
-              onClick={onCreateProject}
-              size="lg"
-              className="px-12 py-6 text-lg font-semibold rounded-2xl bg-gradient-to-r from-emerald-600 via-cyan-600 to-blue-600 hover:shadow-2xl hover:shadow-emerald-500/25 transition-all duration-500 hover:scale-105 border-0"
-            >
-              <span className="text-white">Create Your First Project</span>
-            </Button>
-          )}
-        </div>
-      </div>
+      <EmptyState
+        variant="projects"
+        action={
+          onCreateProject
+            ? {
+                label: 'Create Your First Project',
+                onClick: onCreateProject,
+              }
+            : undefined
+        }
+      />
     )
   }
 

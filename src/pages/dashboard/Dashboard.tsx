@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
+import { OnboardingModal } from '@/components/shared/OnboardingModal'
+import { EmptyState } from '@/components/shared/EmptyState'
 import {
   PageHeaderSkeleton,
   ProjectListSkeleton,
@@ -239,6 +241,7 @@ const Dashboard = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true) // Start with true for initial load
   const [isLoadingActivities, setIsLoadingActivities] = useState(true) // Start with true for initial load
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Cached stats state
   const [cachedStats, setCachedStats] = useState({
@@ -255,6 +258,36 @@ const Dashboard = () => {
         setExpectedProjectCount(parseInt(cached, 10))
       }
     }
+  }, [companyId])
+
+  // Check if this is user's first visit to show onboarding (only if no projects exist)
+  useEffect(() => {
+    if (
+      !isLoadingCompany &&
+      !isLoadingProjects &&
+      user &&
+      companyId &&
+      companyId !== 'default'
+    ) {
+      const hasSeenOnboarding = localStorage.getItem(
+        `onboarding_seen_${companyId}`,
+      )
+      // Only show onboarding if user hasn't seen it AND there are no projects
+      if (!hasSeenOnboarding && projects.length === 0) {
+        // Small delay to let the page load first
+        const timer = setTimeout(() => {
+          setShowOnboarding(true)
+        }, 1000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [isLoadingCompany, isLoadingProjects, user, companyId, projects.length])
+
+  const handleOnboardingComplete = useCallback(() => {
+    if (companyId) {
+      localStorage.setItem(`onboarding_seen_${companyId}`, 'true')
+    }
+    setShowOnboarding(false)
   }, [companyId])
 
   // Load cached stats immediately on mount
@@ -1116,24 +1149,19 @@ const Dashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p className="text-lg font-medium mb-2">
-                        No projects yet
-                      </p>
-                      <p className="text-gray-400 mb-4">
-                        Create your first project to get started.
-                      </p>
-                      <Button
-                        onClick={() =>
-                          navigate(
-                            `${routes.company.projects.list(companyId)}?new=true`,
-                          )
-                        }
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Project
-                      </Button>
+                    <div className="text-center py-12">
+                      <EmptyState
+                        variant="projects"
+                        title="No projects yet"
+                        description="Create your first project to get started"
+                        action={{
+                          label: 'Create Project',
+                          onClick: () =>
+                            navigate(
+                              `${routes.company.projects.list(companyId)}?new=true`,
+                            ),
+                        }}
+                      />
                     </div>
                   )}
                 </CardContent>
@@ -1264,22 +1292,17 @@ const Dashboard = () => {
                       })}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p className="text-lg font-medium mb-2">
-                        No documents yet
-                      </p>
-                      <p className="text-gray-400 mb-4">
-                        Upload documents to your projects to see them here.
-                      </p>
-                      <Button
-                        onClick={() =>
-                          navigate(routes.company.projects.list(companyId))
-                        }
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Go to Projects
-                      </Button>
+                    <div className="text-center py-12">
+                      <EmptyState
+                        variant="documents"
+                        title="No documents yet"
+                        description="Upload documents to your projects to see them here"
+                        action={{
+                          label: 'Go to Projects',
+                          onClick: () =>
+                            navigate(routes.company.projects.list(companyId)),
+                        }}
+                      />
                     </div>
                   )}
                 </CardContent>
@@ -1288,6 +1311,13 @@ const Dashboard = () => {
           </Tabs>
         </div>
       </Layout>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onComplete={handleOnboardingComplete}
+      />
     </>
   )
 }
