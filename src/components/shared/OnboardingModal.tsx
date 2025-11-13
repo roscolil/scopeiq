@@ -162,7 +162,7 @@ export const OnboardingModal = ({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader className="space-y-4">
           <div className="space-y-2">
-            <DialogTitle className="text-2xl">Welcome to ScopeIQ!</DialogTitle>
+            <DialogTitle className="text-2xl">Welcome to Jack of All Trades!</DialogTitle>
             <DialogDescription>
               Let's get you set up in just 3 quick steps
             </DialogDescription>

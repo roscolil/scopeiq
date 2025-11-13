@@ -20,7 +20,7 @@ import {
   SearchX,
   Shield,
 } from 'lucide-react'
-import { FaqAccordion } from '@/components/shared/FaqAccordion'
+import { FaqAccordion, ProductDemo } from '@/components/shared'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/aws-auth'
 
@@ -218,7 +218,7 @@ const Index = () => {
                           Mike Johnson
                         </div>
                         <div className="text-muted-foreground">
-                          General Contractor, Austin
+                          General Contractor, Melbourne
                         </div>
                       </div>
                     </div>
@@ -230,6 +230,11 @@ const Index = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Product Demo Section */}
+          <div className="px-4 sm:px-6 py-20 bg-gradient-to-br from-background to-muted/30">
+            <ProductDemo />
           </div>
 
           {/* Features Grid */}
@@ -349,7 +354,7 @@ const Index = () => {
                     Frequently Asked Questions
                   </h2>
                   <p className="text-lg text-muted-foreground">
-                    Everything you need to know about ScopeIQ
+                    Everything you need to know about Jack of All Trades
                   </p>
                 </div>
                 <FaqAccordion />
@@ -386,8 +391,8 @@ const Index = () => {
                       ))}
                     </div>
                     <p className="text-foreground/90 mb-6 leading-relaxed">
-                      "ScopeIQ cut our spec review time by 80%. Instead of
-                      spending days manually reviewing documents, we get instant
+                      "Jack cut our spec review time by 80%. Instead of spending
+                      days manually reviewing documents, we get instant
                       insights. It's been a complete game-changer for our
                       bidding process."
                     </p>
@@ -402,7 +407,7 @@ const Index = () => {
                           Mike Johnson
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          General Contractor, Austin
+                          General Contractor, Melbourne
                         </div>
                       </div>
                     </div>
@@ -440,7 +445,7 @@ const Index = () => {
                           Sarah Chen
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Project Manager, Denver
+                          Project Manager, Sydney
                         </div>
                       </div>
                     </div>
@@ -462,7 +467,7 @@ const Index = () => {
                       ))}
                     </div>
                     <p className="text-foreground/90 mb-6 leading-relaxed">
-                      "We manage 50+ projects at once. ScopeIQ helps us stay
+                      "We manage 50+ projects at once. Jack helps us stay
                       organized and find critical information instantly. The
                       search capabilities alone are worth the investment."
                     </p>
@@ -477,7 +482,7 @@ const Index = () => {
                           Robert Patel
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Operations Director, Phoenix
+                          Operations Director, Adelaide
                         </div>
                       </div>
                     </div>
