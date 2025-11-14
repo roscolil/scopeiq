@@ -131,7 +131,9 @@ const OurTeam = () => {
 
         {/* Company Values */}
         <div className="text-center">
-          <h2 className="text-3xl font-semibold mb-8 text-white">Our Values</h2>
+          <h2 className="text-3xl font-semibold mb-8 text-foreground">
+            Our Values
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-6">
               <h3 className="text-xl font-semibold mb-3 text-blue-600">

@@ -184,7 +184,7 @@ const WorkWithUs = () => {
 
         {/* Benefits Section */}
         <div className="mb-16">
-          <h2 className="text-3xl font-semibold text-center mb-8 text-white">
+          <h2 className="text-3xl font-semibold text-center mb-8 text-foreground">
             Benefits & Perks
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -204,7 +204,7 @@ const WorkWithUs = () => {
 
         {/* Open Positions */}
         <div className="mb-16">
-          <h2 className="text-3xl font-semibold text-center mb-8 text-white">
+          <h2 className="text-3xl font-semibold text-center mb-8 text-foreground">
             Open Positions
           </h2>
           <div className="space-y-6">
@@ -258,7 +258,7 @@ const WorkWithUs = () => {
 
         {/* Contact Section */}
         <div className="text-center bg-muted/50 rounded-lg p-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">
+          <h2 className="text-2xl font-semibold mb-4 text-foreground">
             Don't See Your Role?
           </h2>
           <p className="text-muted-foreground mb-6">
