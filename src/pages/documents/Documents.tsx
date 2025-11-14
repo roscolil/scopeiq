@@ -471,11 +471,11 @@ const Documents = () => {
                       })
                     }}
                     onBatchComplete={(docs, summary) => {
-                      setIsUploadDialogOpen(false)
+                      // Don't close immediately - show processing status
                       if (summary.success > 0) {
                         toast({
-                          title: 'File upload complete',
-                          description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
+                          title: 'Upload initiated',
+                          description: `${summary.success} file${summary.success > 1 ? 's are' : ' is'} being processed${summary.failed ? `. ${summary.failed} failed.` : '.'}`,
                         })
                       } else if (summary.failed) {
                         toast({
@@ -483,7 +483,15 @@ const Documents = () => {
                           description: 'All uploads failed. Please try again.',
                           variant: 'destructive',
                         })
+                        setIsUploadDialogOpen(false)
                       }
+                    }}
+                    onAllProcessingComplete={() => {
+                      setIsUploadDialogOpen(false)
+                      toast({
+                        title: 'Processing complete',
+                        description: 'All documents have been processed.',
+                      })
                     }}
                   />
                 </DialogContent>

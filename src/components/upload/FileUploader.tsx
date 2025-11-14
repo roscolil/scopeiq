@@ -64,6 +64,11 @@ interface FileUploaderProps {
       }>
     },
   ) => void
+  /**
+   * Optional callback invoked when all files have finished processing (completed or failed)
+   * after a batch upload. Use this to auto-close the upload modal.
+   */
+  onAllProcessingComplete?: () => void
 }
 
 interface FileUploadItem {
@@ -89,7 +94,13 @@ interface RejectedFileInfo {
 }
 
 export const FileUploader = (props: FileUploaderProps) => {
-  const { projectId, companyId, onUploadComplete, onBatchComplete } = props
+  const {
+    projectId,
+    companyId,
+    onUploadComplete,
+    onBatchComplete,
+    onAllProcessingComplete,
+  } = props
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileUploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
@@ -352,6 +363,29 @@ export const FileUploader = (props: FileUploaderProps) => {
       }
     }
   }, [selectedFiles, currentBackend])
+
+  // Monitor when all files are done processing and notify parent
+  React.useEffect(() => {
+    // Only check if we have files that were part of an upload batch
+    if (selectedFiles.length === 0) return
+
+    // Check if there was an upload batch initiated (at least one file is not pending)
+    const hadUploadBatch = selectedFiles.some(f => f.status !== 'pending')
+    if (!hadUploadBatch) return
+
+    // Check if all files are in a terminal state (completed or failed)
+    const allDone = selectedFiles.every(
+      f => f.status === 'completed' || f.status === 'failed',
+    )
+
+    if (allDone && onAllProcessingComplete) {
+      // Small delay to let user see final status before auto-close
+      const timer = setTimeout(() => {
+        onAllProcessingComplete()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [selectedFiles, onAllProcessingComplete])
 
   const validateFile = (file: File): { valid: boolean; error?: string } => {
     const allowedMimeTypes = [

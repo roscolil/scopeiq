@@ -1402,12 +1402,13 @@ const ProjectDetails = () => {
                     companyId={companyId || 'default-company'}
                     onUploadComplete={handleUploadDocument}
                     onBatchComplete={(docs, summary) => {
-                      // Close dialog after batch completes
-                      setIsUploadDialogOpen(false)
+                      // Don't close dialog immediately - let user see processing status
+                      // The dialog will auto-close after all files complete processing
+                      // or user can manually close it
                       if (summary.success > 0) {
                         toast({
-                          title: 'File upload complete',
-                          description: `${summary.success} succeeded${summary.failed ? `, ${summary.failed} failed` : ''}.`,
+                          title: 'Upload initiated',
+                          description: `${summary.success} file${summary.success > 1 ? 's are' : ' is'} being processed${summary.failed ? `. ${summary.failed} failed to upload.` : '.'}`,
                         })
                       } else if (summary.failed) {
                         toast({
@@ -1415,7 +1416,17 @@ const ProjectDetails = () => {
                           description: 'All uploads failed. Please try again.',
                           variant: 'destructive',
                         })
+                        // Only close on complete failure
+                        setIsUploadDialogOpen(false)
                       }
+                    }}
+                    onAllProcessingComplete={() => {
+                      // Auto-close modal when all processing is complete
+                      setIsUploadDialogOpen(false)
+                      toast({
+                        title: 'Processing complete',
+                        description: 'All documents have been processed.',
+                      })
                     }}
                   />
                 </DialogContent>
