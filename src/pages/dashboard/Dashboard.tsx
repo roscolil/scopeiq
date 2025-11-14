@@ -655,7 +655,7 @@ const Dashboard = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-12 w-12 rounded-full border-2 border-primary bg-primary/10 hover:border-primary hover:bg-primary/30 transition-all shadow-xl"
+                        className="h-10 w-10 rounded-full hover:bg-primary/30 transition-all"
                         onClick={() => {
                           console.log('Settings clicked! CompanyId:', companyId)
                           console.log(
@@ -684,7 +684,7 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-12 px-4 border-2 border-primary bg-primary/20 hover:border-primary rounded-lg hover:bg-primary/30 transition-all active:bg-primary/40 touch-manipulation shadow-xl"
+                        className="h-12 px-4 rounded-lg hover:bg-primary/30 transition-all active:bg-primary/40 touch-manipulation"
                         onClick={() => {
                           console.log('Settings clicked! CompanyId:', companyId)
                           console.log(
