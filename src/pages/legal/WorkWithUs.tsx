@@ -127,7 +127,9 @@ const WorkWithUs = () => {
       <div className="container mx-auto px-4 py-12">
         {/* Header Section */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold mb-4 text-white">Work With Us</h1>
+          <h1 className="text-4xl font-bold mb-4 text-foreground">
+            Work With Us
+          </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Join our mission to transform the construction industry with AI.
             We're looking for passionate individuals who want to make a real
@@ -137,7 +139,7 @@ const WorkWithUs = () => {
 
         {/* Company Culture */}
         <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg p-8 mb-16">
-          <h2 className="text-2xl font-semibold mb-4 text-center text-white">
+          <h2 className="text-2xl font-semibold mb-4 text-center text-foreground">
             Why Jack?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -182,7 +184,7 @@ const WorkWithUs = () => {
 
         {/* Benefits Section */}
         <div className="mb-16">
-          <h2 className="text-3xl font-semibold text-center mb-8 text-white">
+          <h2 className="text-3xl font-semibold text-center mb-8 text-foreground">
             Benefits & Perks
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -202,7 +204,7 @@ const WorkWithUs = () => {
 
         {/* Open Positions */}
         <div className="mb-16">
-          <h2 className="text-3xl font-semibold text-center mb-8 text-white">
+          <h2 className="text-3xl font-semibold text-center mb-8 text-foreground">
             Open Positions
           </h2>
           <div className="space-y-6">
@@ -256,7 +258,7 @@ const WorkWithUs = () => {
 
         {/* Contact Section */}
         <div className="text-center bg-muted/50 rounded-lg p-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">
+          <h2 className="text-2xl font-semibold mb-4 text-foreground">
             Don't See Your Role?
           </h2>
           <p className="text-muted-foreground mb-6">

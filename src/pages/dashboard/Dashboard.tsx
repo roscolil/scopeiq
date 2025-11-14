@@ -3,6 +3,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/layout/Layout'
 import { Button } from '@/components/ui/button'
 import {
+  OnboardingModal,
+  EmptyState,
+  UsageMeterCard,
+} from '@/components/shared'
+import {
   PageHeaderSkeleton,
   ProjectListSkeleton,
   ProjectRowsSkeleton,
@@ -33,6 +38,7 @@ import {
   Eye,
   Loader2,
   Activity,
+  HardDrive,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
@@ -56,6 +62,10 @@ import {
   UserActivity,
 } from '@/services/auth/user-activity'
 import { usePrefetch } from '@/utils/performance'
+import {
+  getUserSubscriptionTier,
+  getPlanLimits,
+} from '@/utils/subscription/plan-limits'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -65,6 +75,10 @@ const Dashboard = () => {
 
   // Get company ID from authenticated user
   const companyId = user?.companyId || 'default'
+
+  // Get subscription tier and limits
+  const subscriptionTier = getUserSubscriptionTier(user)
+  const planLimits = getPlanLimits(subscriptionTier)
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
@@ -239,6 +253,7 @@ const Dashboard = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true) // Start with true for initial load
   const [isLoadingActivities, setIsLoadingActivities] = useState(true) // Start with true for initial load
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Cached stats state
   const [cachedStats, setCachedStats] = useState({
@@ -255,6 +270,36 @@ const Dashboard = () => {
         setExpectedProjectCount(parseInt(cached, 10))
       }
     }
+  }, [companyId])
+
+  // Check if this is user's first visit to show onboarding (only if no projects exist)
+  useEffect(() => {
+    if (
+      !isLoadingCompany &&
+      !isLoadingProjects &&
+      user &&
+      companyId &&
+      companyId !== 'default'
+    ) {
+      const hasSeenOnboarding = localStorage.getItem(
+        `onboarding_seen_${companyId}`,
+      )
+      // Only show onboarding if user hasn't seen it AND there are no projects
+      if (!hasSeenOnboarding && projects.length === 0) {
+        // Small delay to let the page load first
+        const timer = setTimeout(() => {
+          setShowOnboarding(true)
+        }, 1000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [isLoadingCompany, isLoadingProjects, user, companyId, projects.length])
+
+  const handleOnboardingComplete = useCallback(() => {
+    if (companyId) {
+      localStorage.setItem(`onboarding_seen_${companyId}`, 'true')
+    }
+    setShowOnboarding(false)
   }, [companyId])
 
   // Load cached stats immediately on mount
@@ -583,7 +628,7 @@ const Dashboard = () => {
                   <PageHeaderSkeleton />
                 ) : (
                   <>
-                    <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                    <h1 className="text-4xl font-bold tracking-tight capitalize text-foreground">
                       {company?.id || 'Your Company'} Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
@@ -591,7 +636,7 @@ const Dashboard = () => {
                         </span>
                       )} */}
                     </h1>
-                    <p className="text-gray-400 mt-2">
+                    <p className="text-foreground/60 mt-2">
                       Welcome back
                       {user?.given_name && typeof user.given_name === 'string'
                         ? `, ${user.given_name.split(' ')[0]}`
@@ -609,12 +654,18 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-10 w-10 p-0 rounded-full hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
-                        onClick={() =>
+                        size="icon"
+                        className="h-10 w-10 rounded-full hover:bg-primary/30 transition-all"
+                        onClick={() => {
+                          console.log('Settings clicked! CompanyId:', companyId)
+                          console.log(
+                            'Navigating to:',
+                            routes.company.settings(companyId),
+                          )
                           navigate(routes.company.settings(companyId))
-                        }
+                        }}
                       >
-                        <Settings className="h-7 w-7" />
+                        <Settings className="h-7 w-7 text-primary" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -633,13 +684,20 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
-                        onClick={() =>
+                        className="h-12 px-4 rounded-lg hover:bg-primary/30 transition-all active:bg-primary/40 touch-manipulation"
+                        onClick={() => {
+                          console.log('Settings clicked! CompanyId:', companyId)
+                          console.log(
+                            'Navigating to:',
+                            routes.company.settings(companyId),
+                          )
                           navigate(routes.company.settings(companyId))
-                        }
+                        }}
                       >
-                        <Settings className="h-5 w-5 mr-2" />
-                        <span className="text-sm font-medium">Settings</span>
+                        <Settings className="h-5 w-5 mr-2 text-primary" />
+                        <span className="text-sm font-medium text-primary">
+                          Settings
+                        </span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -752,7 +810,7 @@ const Dashboard = () => {
 
           {/* Main Content */}
           <Tabs defaultValue="overview">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 gap-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -1116,24 +1174,19 @@ const Dashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p className="text-lg font-medium mb-2">
-                        No projects yet
-                      </p>
-                      <p className="text-gray-400 mb-4">
-                        Create your first project to get started.
-                      </p>
-                      <Button
-                        onClick={() =>
-                          navigate(
-                            `${routes.company.projects.list(companyId)}?new=true`,
-                          )
-                        }
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Project
-                      </Button>
+                    <div className="text-center py-12">
+                      <EmptyState
+                        variant="projects"
+                        title="No projects yet"
+                        description="Create your first project to get started"
+                        action={{
+                          label: 'Create Project',
+                          onClick: () =>
+                            navigate(
+                              `${routes.company.projects.list(companyId)}?new=true`,
+                            ),
+                        }}
+                      />
                     </div>
                   )}
                 </CardContent>
@@ -1264,22 +1317,17 @@ const Dashboard = () => {
                       })}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <p className="text-lg font-medium mb-2">
-                        No documents yet
-                      </p>
-                      <p className="text-gray-400 mb-4">
-                        Upload documents to your projects to see them here.
-                      </p>
-                      <Button
-                        onClick={() =>
-                          navigate(routes.company.projects.list(companyId))
-                        }
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Go to Projects
-                      </Button>
+                    <div className="text-center py-12">
+                      <EmptyState
+                        variant="documents"
+                        title="No documents yet"
+                        description="Upload documents to your projects to see them here"
+                        action={{
+                          label: 'Go to Projects',
+                          onClick: () =>
+                            navigate(routes.company.projects.list(companyId)),
+                        }}
+                      />
                     </div>
                   )}
                 </CardContent>
@@ -1288,6 +1336,13 @@ const Dashboard = () => {
           </Tabs>
         </div>
       </Layout>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onComplete={handleOnboardingComplete}
+      />
     </>
   )
 }

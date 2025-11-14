@@ -8,19 +8,8 @@ const Terms = () => {
 
   return (
     <>
-      {/* Full viewport gradient background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
-
-        {/* Floating gradient orbs */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
-      </div>
+      {/* Clean neutral background */}
+      <div className="fixed inset-0 -z-10 bg-background"></div>
 
       <Layout>
         <div className="max-w-4xl mx-auto space-y-8">
@@ -37,19 +26,19 @@ const Terms = () => {
             </Button>
 
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-4">
                 Terms of Service
               </h1>
-              <p className="text-slate-300 text-lg">
+              <p className="text-foreground/70 text-lg">
                 Last updated: August 9, 2025
               </p>
             </div>
           </div>
 
           {/* Content */}
-          <div className="space-y-8 text-slate-200">
+          <div className="space-y-8 text-foreground/80">
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 1. Acceptance of Terms
               </h2>
               <p>
@@ -61,7 +50,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 2. Description of Service
               </h2>
               <p>
@@ -74,7 +63,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 3. User Accounts and Registration
               </h2>
               <div className="space-y-3">
@@ -98,7 +87,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 4. Acceptable Use
               </h2>
               <div className="space-y-3">
@@ -124,7 +113,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 5. Content and Data
               </h2>
               <div className="space-y-3">
@@ -150,7 +139,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 6. Privacy and Data Protection
               </h2>
               <p>
@@ -162,7 +151,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 7. Service Availability
               </h2>
               <div className="space-y-3">
@@ -182,7 +171,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 8. Limitation of Liability
               </h2>
               <p>
@@ -196,7 +185,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 9. Termination
               </h2>
               <div className="space-y-3">
@@ -216,7 +205,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 10. Changes to Terms
               </h2>
               <p>
@@ -228,7 +217,7 @@ const Terms = () => {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-foreground">
                 11. Contact Information
               </h2>
               <p>

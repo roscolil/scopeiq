@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { DocumentList } from '@/components/documents/DocumentList'
 import { FileUploader } from '@/components/upload/FileUploader'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PaywallModal } from '@/components/shared/PaywallModal'
 import {
   DocumentListSkeleton,
   PageHeaderSkeleton,
@@ -23,17 +25,28 @@ import { useToast } from '@/hooks/use-toast'
 import { routes } from '@/utils/ui/navigation'
 import { documentService, projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { useAuth } from '@/hooks/aws-auth'
+import {
+  getUserSubscriptionTier,
+  canUploadDocument,
+  getLimitMessage,
+} from '@/utils/subscription/plan-limits'
 
 const Documents = () => {
   const { companyId, projectId } = useParams<{
     companyId: string
     projectId?: string
   }>()
+  const { user } = useAuth()
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
 
   const [documents, setDocuments] = React.useState<Document[]>([])
+  const [showPaywall, setShowPaywall] = React.useState(false)
+  const [paywallVariant, setPaywallVariant] = React.useState<
+    'documents' | 'storage'
+  >('documents')
   const [projectsWithDocuments, setProjectsWithDocuments] = React.useState<
     Array<{
       id: string
@@ -57,6 +70,15 @@ const Documents = () => {
   } | null>(null)
   const { toast } = useToast()
   const navigate = useNavigate()
+
+  // Handle plan limit reached
+  const handleLimitReached = useCallback(
+    (limitType: 'documents' | 'storage') => {
+      setPaywallVariant(limitType)
+      setShowPaywall(true)
+    },
+    [],
+  )
 
   // Caching utilities for documents
   const getCachedDocuments = useCallback(() => {
@@ -485,6 +507,7 @@ const Documents = () => {
                         })
                       }
                     }}
+                    onLimitReached={handleLimitReached}
                   />
                 </DialogContent>
               </Dialog>
@@ -509,14 +532,13 @@ const Documents = () => {
               }}
             />
           ) : (
-            <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-              <p className="text-gray-400 mb-4">
-                No documents in this project yet
-              </p>
-              <Button onClick={() => setIsUploadDialogOpen(true)}>
-                Upload Document
-              </Button>
-            </div>
+            <EmptyState
+              variant="documents"
+              action={{
+                label: 'Upload Document',
+                onClick: () => setIsUploadDialogOpen(true),
+              }}
+            />
           )}
         </div>
       </Layout>
@@ -562,7 +584,7 @@ const Documents = () => {
           </div>
 
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
               All Documents
             </h1>
           </div>
@@ -630,11 +652,11 @@ const Documents = () => {
                           }}
                         />
                       ) : (
-                        <div className="text-center p-4 border rounded bg-secondary/10">
-                          <p className="text-sm text-gray-400">
-                            No documents in this project yet
-                          </p>
-                        </div>
+                        <EmptyState
+                          variant="documents"
+                          title="No documents in this project"
+                          description="Upload documents to get started with AI-powered analysis"
+                        />
                       )}
                     </div>
                   ))}
@@ -674,26 +696,32 @@ const Documents = () => {
                       window.location.reload()
                     }, 1000)
                   }}
+                  onLimitReached={handleLimitReached}
                 />
               ) : (
-                <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-gray-400 mb-4">No documents found</p>
-                  <Button
-                    onClick={() =>
+                <EmptyState
+                  variant="documents"
+                  action={{
+                    label: 'Create a Project',
+                    onClick: () =>
                       navigate(
                         routes.company.projects.list(
                           companyId || 'default-company',
                         ),
-                      )
-                    }
-                  >
-                    Create a Project and Upload Documents
-                  </Button>
-                </div>
+                      ),
+                  }}
+                />
               )}
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Paywall Modal */}
+        <PaywallModal
+          open={showPaywall}
+          onOpenChange={setShowPaywall}
+          variant={paywallVariant}
+        />
       </Layout>
     </>
   )

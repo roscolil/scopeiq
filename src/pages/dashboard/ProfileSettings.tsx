@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { UsageMeterCard } from '@/components/shared'
 import {
   Form,
   FormControl,
@@ -53,10 +54,25 @@ import { UserForm } from '@/components/admin/UserForm'
 import { UserTable } from '@/components/admin/UserTable'
 import { UserStats } from '@/components/admin/UserStats'
 import { Project } from '@/types'
-import { Plus, UserPlus, Mail, Mic, Activity } from 'lucide-react'
+import {
+  Plus,
+  UserPlus,
+  Mail,
+  Mic,
+  Activity,
+  Folders,
+  FileText,
+  HardDrive,
+} from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import useWakeWordPreference from '@/hooks/useWakeWordPreference'
 import { projectService } from '@/services/data/hybrid'
+import {
+  getUserSubscriptionTier,
+  getPlanLimits,
+} from '@/utils/subscription/plan-limits'
+import { useNavigate } from 'react-router-dom'
+import { routes } from '@/utils/ui/navigation'
 
 // Inline component for wake word settings to keep changes localized
 const WakeWordSettingsPanel = () => {
@@ -394,8 +410,15 @@ const BiometricSecuritySettings = () => {
 
 const ProfileSettings = () => {
   const { user, isAuthenticated, updateProfile, signOut } = useAuth()
+  const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
+  const [stats, setStats] = useState({ projectCount: 0, documentCount: 0 })
+
+  // Get subscription tier and limits
+  const subscriptionTier = getUserSubscriptionTier(user)
+  const planLimits = getPlanLimits(subscriptionTier)
+  const companyId = user?.companyId || 'default'
 
   // Load projects on component mount
   useEffect(() => {
@@ -404,6 +427,14 @@ const ProfileSettings = () => {
         setProjectsLoading(true)
         const projectsData = await projectService.getProjects()
         setProjects(projectsData)
+
+        // Calculate stats
+        const projectCount = projectsData.length
+        const documentCount = projectsData.reduce(
+          (sum, p) => sum + (p.documents?.length || 0),
+          0,
+        )
+        setStats({ projectCount, documentCount })
       } catch (error) {
         console.error('Failed to load projects:', error)
         setProjects([])
@@ -426,7 +457,6 @@ const ProfileSettings = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
   // User management state
-  const companyId = 'company-1' // In real app, get from user context
   const userManagement = useUserManagement(companyId)
   const currentUserRole: ServiceUserRole = 'Admin' // In real app, get from user context
 
@@ -645,10 +675,12 @@ const ProfileSettings = () => {
       <Layout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Profile Settings
             </h1>
-            <p className="text-slate-200 mt-2">Manage your account settings</p>
+            <p className="text-slate-400 mt-2 font-medium">
+              Manage your account settings
+            </p>
           </div>
 
           <Tabs defaultValue="profile" className="w-full">
@@ -691,7 +723,7 @@ const ProfileSettings = () => {
 
             {/* Desktop-only original styling */}
             <div className="hidden sm:block">
-              <TabsList>
+              <TabsList className="gap-1">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
                 <TabsTrigger value="security">Security</TabsTrigger>
                 {/* Voice tab visible but disabled */}
@@ -714,6 +746,35 @@ const ProfileSettings = () => {
 
             <TabsContent value="profile">
               <div className="grid gap-6">
+                {/* Plan Usage Card */}
+                <UsageMeterCard
+                  title="Plan Usage"
+                  meters={[
+                    {
+                      label: 'Projects',
+                      current: stats.projectCount,
+                      limit: planLimits.projects,
+                      unit: 'projects',
+                      icon: <Folders className="h-4 w-4" />,
+                    },
+                    {
+                      label: 'Documents',
+                      current: stats.documentCount,
+                      limit: planLimits.documentsPerProject,
+                      unit: 'documents',
+                      icon: <FileText className="h-4 w-4" />,
+                    },
+                    {
+                      label: 'Storage',
+                      current: 0.15,
+                      limit: planLimits.storage,
+                      unit: 'GB',
+                      icon: <HardDrive className="h-4 w-4" />,
+                    },
+                  ]}
+                  onUpgrade={() => navigate(routes.company.pricing(companyId))}
+                />
+
                 <Card>
                   <CardHeader>
                     <CardTitle>Profile Information</CardTitle>

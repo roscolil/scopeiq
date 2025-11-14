@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { ProjectList } from '@/components/projects/ProjectList'
+import { PaywallModal } from '@/components/shared/PaywallModal'
 import {
   PageHeaderSkeleton,
   ProjectListSkeleton,
@@ -20,6 +21,12 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { useAuth } from '@/hooks/aws-auth'
+import {
+  getUserSubscriptionTier,
+  canCreateProject,
+  getLimitMessage,
+} from '@/utils/subscription/plan-limits'
 
 const Projects = () => {
   const navigate = useNavigate()
@@ -27,11 +34,13 @@ const Projects = () => {
   const { companyId } = useParams<{
     companyId: string
   }>()
+  const { user } = useAuth()
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [expectedProjectCount, setExpectedProjectCount] = useState(3) // Default to 3
@@ -106,11 +115,24 @@ const Projects = () => {
   // Check if we should auto-open the new project dialog
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
-      setIsDialogOpen(true)
+      handleNewProjectClick()
       // Clear the URL parameter
       setSearchParams({})
     }
   }, [searchParams, setSearchParams])
+
+  // Check plan limits before opening new project dialog
+  const handleNewProjectClick = () => {
+    const tier = getUserSubscriptionTier(user)
+    const limitCheck = canCreateProject(tier, projects.length)
+
+    if (!limitCheck.allowed) {
+      setShowPaywall(true)
+    } else {
+      setIsDialogOpen(true)
+    }
+  }
+
   // Load projects data (fresh or background refresh)
   useEffect(() => {
     const loadProjects = async () => {
@@ -256,10 +278,9 @@ const Projects = () => {
       <Layout>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
-              Projects for {companyId && `(${companyId})`}
-            </h1>
-
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Projects
+            </h1>{' '}
             <div className="flex gap-2">
               {/* <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-1" />
@@ -269,7 +290,7 @@ const Projects = () => {
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 {projects.length > 0 && (
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" onClick={handleNewProjectClick}>
                       <Plus className="h-4 w-4 mr-1" />
                       New Project
                     </Button>
@@ -291,10 +312,17 @@ const Projects = () => {
             <ProjectList
               projects={projects}
               companyId={(companyId || 'default-company').toLowerCase()}
-              onCreateProject={() => setIsDialogOpen(true)}
+              onCreateProject={handleNewProjectClick}
             />
           )}
         </div>
+
+        {/* Paywall Modal */}
+        <PaywallModal
+          open={showPaywall}
+          onOpenChange={setShowPaywall}
+          variant="projects"
+        />
       </Layout>
     </>
   )

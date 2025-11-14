@@ -487,8 +487,8 @@ const Migration: React.FC = () => {
       <Layout>
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
-              Data Management Dashboard
+            <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
+              Database Migration Tool
             </h1>
             <p className="text-slate-200">
               Monitor and manage your S3 storage and database records

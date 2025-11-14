@@ -461,10 +461,10 @@ const Viewer = () => {
           {/* Improve the document header with more details */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold truncate max-w-lg text-white">
+              <h1 className="text-2xl font-bold truncate max-w-lg text-foreground">
                 {document?.name || 'Document'}
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-foreground/60">
                 {companyName && projectName ? (
                   <>
                     <span className="font-medium">{companyName}</span> /{' '}
@@ -475,7 +475,7 @@ const Viewer = () => {
                 )}
               </p>
               {document?.size && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-foreground/50 mt-1">
                   Size:{' '}
                   {typeof document.size === 'number'
                     ? `${Math.round(document.size / 1024)} KB`

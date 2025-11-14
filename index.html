@@ -1,61 +1,59 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jack of All Trades</title>
 
-    <!-- Preload critical resources -->
-    <link rel="preload" href="/src/main.tsx" as="script" />
-    <link rel="preload" href="/src/App.tsx" as="script" />
-    <link rel="modulepreload" href="/src/hooks/aws-auth.tsx" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jack of All Trades</title>
 
-    <!-- DNS prefetch for external resources -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" />
 
-    <!-- Modern fonts with display=swap for better performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
+  <!-- Preload critical resources -->
+  <link rel="preload" href="/src/main.tsx" as="script" />
+  <link rel="preload" href="/src/App.tsx" as="script" />
+  <link rel="modulepreload" href="/src/hooks/aws-auth.tsx" />
 
-    <!-- Preload PDF worker for when needed -->
-    <link rel="prefetch" href="/pdf.worker.min.mjs" />
+  <!-- DNS prefetch for external resources -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
-    <!-- Meta tags for better SEO and social sharing -->
-    <meta
-      name="description"
-      content="Jack of All Trades - AI-powered construction document management and analysis platform"
-    />
-    <meta name="author" content="Jack of All Trades" />
+  <!-- Modern fonts with display=swap for better performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet" />
 
-    <!-- Open Graph tags -->
-    <meta
-      property="og:title"
-      content="Jack of All Trades - Construction Document Management"
-    />
-    <meta
-      property="og:description"
-      content="AI-powered construction document management and analysis platform"
-    />
-    <meta property="og:type" content="website" />
+  <!-- Preload PDF worker for when needed -->
+  <link rel="prefetch" href="/pdf.worker.min.mjs" />
 
-    <!-- Performance optimizations -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="format-detection" content="telephone=no" />
-  </head>
+  <!-- Meta tags for better SEO and social sharing -->
+  <meta name="description"
+    content="Jack of All Trades - AI-powered construction document management and analysis platform" />
+  <meta name="author" content="Jack of All Trades" />
 
-  <body>
-    <div id="root"></div>
-    <!-- Performance monitoring script (add if needed) -->
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if (typeof global === 'undefined') {
-        var global = globalThis
-      }
-    </script>
-  </body>
+  <!-- Open Graph tags -->
+  <meta property="og:title" content="Jack of All Trades - Construction Document Management" />
+  <meta property="og:description"
+    content="AI-powered construction document management and analysis platform" />
+  <meta property="og:type" content="website" />
+
+  <!-- Performance optimizations -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="format-detection" content="telephone=no" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <!-- Performance monitoring script (add if needed) -->
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if (typeof global === 'undefined') {
+      var global = globalThis
+    }
+  </script>
+</body>
+
 </html>

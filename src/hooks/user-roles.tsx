@@ -80,7 +80,8 @@ export async function getCurrentUserRoles(): Promise<string[]> {
     // Extract groups from JWT token
     const groups = (idToken.payload['cognito:groups'] as string[]) || []
     return groups
-  } catch {
+  } catch (error) {
+    // Silently return empty array for unauthenticated users
     return []
   }
 }
@@ -124,7 +125,14 @@ export async function getCurrentUserContext(): Promise<UserContext | null> {
       permissions: ROLE_PERMISSIONS[role],
     }
   } catch (error) {
-    console.error('Error getting user context:', error)
+    // Only log if it's not an authentication error (expected when not logged in)
+    if (
+      error instanceof Error &&
+      !error.name?.includes('UserUnAuthenticatedException') &&
+      !error.message?.includes('authenticated')
+    ) {
+      console.error('Error getting user context:', error)
+    }
     return null
   }
 }

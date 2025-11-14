@@ -13,33 +13,92 @@
 
 ## 🚀 **What is Jack of All Trades?**
 
-Jack of All Trades revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
+Jack of All Trades (formerly ScopeIQ) revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries, voice commands, or biometric authentication.
 
 ### ✨ **Key Features**
 
-🤖 **AI-Powered Search**
+🤖 **AI-Powered Search & Analysis**
 
 - Semantic search across all documents using natural language
-- Voice-to-text search functionality
+- Voice-to-text search functionality with AWS Polly integration
 - Contextual understanding of construction terminology
+- AI-powered document insights and summarization
+- Advanced hybrid search (vector + keyword)
 
 📂 **Smart Document Management**
 
 - Automatic text extraction from PDFs, Word docs, and images
 - Project-based organization and access control
 - Real-time document processing and indexing
+- Intelligent taxonomy with categories and abbreviations
+- Admin console for managing construction terminology
 
-🏢 **Multi-Company Support**
+🏢 **Multi-Company & User Management**
 
 - Company-specific workspaces and permissions
 - Project collaboration and sharing
-- Role-based access management
+- Role-based access control (RBAC): Admin, Owner, User roles
+- User invitation system with permission management
+- Comprehensive user analytics and statistics
 
-⚡ **Modern Architecture**
+🔐 **Advanced Security & Authentication**
+
+- Biometric authentication (Touch ID, Face ID, fingerprint)
+- WebAuthn-based device-native security
+- Email/password authentication with Amplify
+- Secure credential encryption per device
+- Session management and auth tokens
+
+🎤 **Voice Integration**
+
+- AWS Polly text-to-speech (TTS) with natural neural voices
+- Voice-guided AI workflows
+- Platform-specific optimizations (Safari, Chrome, Android)
+- Intelligent voice prompts and announcements
+- Multiple voice options (Joanna, Ruth, Matthew, etc.)
+
+⚡ **Modern Architecture & UX**
 
 - Real-time document processing
-- Cloud-native infrastructure
-- Mobile-responsive design
+- Cloud-native infrastructure (AWS Amplify Gen 2)
+- Mobile-responsive design with bottom navigation
+- Onboarding flow for new users
+- Empty states and contextual guidance
+- Soft paywall modals with free trial offers
+
+---
+
+## 🆕 **Recent Updates**
+
+### **November 2024 - Phase 2 UX/UI Improvements**
+
+- **Product Demo Section** - Interactive video demo on homepage with feature timeline
+- **Onboarding Modal** - 3-step guided onboarding for new users
+- **Empty States** - Contextual guidance for projects, documents, and search results
+- **Soft Paywall Modals** - Empathetic upgrade prompts with free trial offers
+- **Mobile Bottom Navigation** - Thumb-friendly navigation for mobile users
+- **Pricing Page Redesign** - Clean, conversion-focused pricing with FAQ accordion
+
+### **October 2024 - Voice & Authentication**
+
+- **AWS Polly Integration** - Natural neural voice synthesis with 12+ voices
+- **Voice Workflows** - AI-guided voice prompts during document analysis
+- **Biometric Authentication** - Touch ID, Face ID, and fingerprint login
+- **WebAuthn Support** - Secure device-native authentication
+
+### **September 2024 - RBAC & Admin Features**
+
+- **Role-Based Access Control** - Admin, Owner, and User roles with granular permissions
+- **User Management** - Complete user CRUD with invitation system
+- **Admin Console** - Taxonomy management for categories and abbreviations
+- **User Statistics** - Analytics dashboard for user activity and roles
+
+### **August 2024 - Search & Backend**
+
+- **Hybrid Search** - Combined vector + keyword search algorithms
+- **Python Backend** - FastAPI backend for advanced AI features
+- **Enhanced AI Analysis** - Improved document insights and summarization
+- **Performance Optimizations** - Faster document processing and search
 
 ---
 
@@ -57,22 +116,37 @@ Jack of All Trades revolutionizes construction project management by combining t
 ### **Frontend**
 
 - **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- **Radix UI** components
-- **Vite** for blazing-fast development
+- **Vite** for blazing-fast development (port 8080)
+- **Tailwind CSS** for styling with construction orange theme
+- **shadcn/ui** & **Radix UI** components
+- **Lucide React** icons
+- **pnpm** package manager
 
-### **Backend & AI**
+### **Backend & Infrastructure**
 
-- **AWS Amplify** for authentication & database
-- **OpenAI GPT** for embeddings generation
-- **Pinecone** vector database for semantic search
-- **AWS S3** for document storage
+- **AWS Amplify Gen 2** for authentication & database
+- **AWS Lambda** for serverless functions
+- **AWS S3** for document storage with presigned URLs
+- **AWS Polly** for neural text-to-speech
+- **AWS SES** for email notifications
+- **DynamoDB** for NoSQL data storage
 
-### **Key Integrations**
+### **AI & Machine Learning**
 
-- **PDF.js** for document text extraction
-- **Google Places API** for project locations
-- **Speech-to-Text** for voice queries
+- **OpenAI GPT-4** for embeddings generation and AI chat
+- **Pinecone Vector Database** for semantic search
+- **AWS Bedrock** for AI model integration
+- **Hybrid Search** combining vector + keyword algorithms
+
+### **Key Libraries & Tools**
+
+- **PDF.js** (v5.4.54) for document text extraction
+- **Mammoth** for Word document processing
+- **Tesseract.js** for OCR (Optical Character Recognition)
+- **React Hook Form** with Zod validation
+- **React Query** for server state management
+- **React Router v6** for navigation
+- **WebAuthn API** for biometric authentication
 
 ---
 
@@ -82,7 +156,7 @@ Jack of All Trades revolutionizes construction project management by combining t
 
 ```bash
 node >= 18.0.0
-npm >= 8.0.0
+pnpm >= 8.0.0  # Required - project uses pnpm
 ```
 
 ### **Installation**
@@ -97,16 +171,12 @@ cd scopeiq
 2. **Install dependencies**
 
 ```bash
-npm install
+pnpm install
 ```
 
 3. **Environment setup**
 
-```bash
-cp .env.example .env
-```
-
-4. **Configure your environment variables**
+Create a `.env` file in the root directory with the following variables:
 
 ```env
 # OpenAI Configuration
@@ -114,6 +184,8 @@ VITE_OPENAI_API_KEY=your_openai_api_key
 
 # Pinecone Configuration
 VITE_PINECONE_API_KEY=your_pinecone_api_key
+VITE_PINECONE_INDEX_NAME=your_index_name
+VITE_PINECONE_ENVIRONMENT=your_environment
 
 # AWS Configuration
 VITE_AWS_REGION=your_aws_region
@@ -121,14 +193,17 @@ VITE_AWS_ACCESS_KEY_ID=your_access_key
 VITE_AWS_SECRET_ACCESS_KEY=your_secret_key
 VITE_AWS_S3_BUCKET=your_s3_bucket
 
+# Python Backend (for advanced features)
+VITE_PYTHON_AI_BACKEND_URL=http://localhost:8000
+
 # Google Places (Optional)
 VITE_GOOGLE_PLACES_API_KEY=your_google_places_key
 ```
 
-5. **Start development server**
+4. **Start development server**
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Visit `http://localhost:8080` to see your application! 🎉
@@ -139,10 +214,23 @@ Visit `http://localhost:8080` to see your application! 🎉
 
 ### **Core Documentation**
 
-- [**User Management & Authentication**](USER_MANAGEMENT.md) - Complete guide to our hybrid auth system
-- [**Deployment Checklist**](DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment verification
-- [**Data Structure Guide**](DATA_STRUCTURE.md) - Database schema and relationships
-- [**Security Guide**](SECURITY.md) - Security best practices and compliance
+- [**User Management & RBAC**](src/docs/USER_MANAGEMENT.md) - Role-based access control system
+- [**Admin Console**](src/docs/ADMIN_CONSOLE.md) - Managing categories and abbreviations
+- [**Biometric Authentication**](src/docs/BIOMETRIC_AUTH_GUIDE.md) - Touch ID, Face ID setup
+- [**Voice Integration**](src/docs/VOICE_INTEGRATION_GUIDE.md) - AWS Polly voice workflows
+- [**AWS Nova Sonic**](src/docs/AWS_NOVA_SONIC.md) - Text-to-speech implementation
+- [**Deployment Checklist**](src/docs/DEPLOYMENT_CHECKLIST.md) - Production deployment guide
+- [**Security Architecture**](src/docs/SECURITY_ARCHITECTURE.md) - Security best practices
+- [**Data Structure Guide**](src/docs/DATA_STRUCTURE.md) - Database schema and relationships
+- [**Phase 2 Implementation**](docs/PHASE_2_IMPLEMENTATION.md) - Latest UX/UI improvements
+
+### **API & Integration Docs**
+
+- [**API Endpoints**](src/docs/API_ENDPOINTS.md) - Complete API reference
+- [**Python Backend**](src/docs/PYTHON_BACKEND_INTEGRATION.md) - Backend integration guide
+- [**Hybrid Search**](src/docs/HYBRID_SEARCH_INTEGRATION_COMPLETE.md) - Vector + keyword search
+- [**Pinecone Setup**](src/docs/PINECONE_SETUP.md) - Vector database configuration
+- [**DynamoDB Schema**](src/docs/DYNAMODB_SCHEMA.md) - Database design
 
 ### **Usage Guide**
 
@@ -214,11 +302,12 @@ graph TD
 ### **Available Scripts**
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-npm run format       # Format code with Prettier
+pnpm dev          # Start development server on port 8080
+pnpm build        # Build for production
+pnpm build:dev    # Build in development mode
+pnpm preview      # Preview production build
+pnpm lint         # Run ESLint
+pnpm format       # Format code with Prettier
 ```
 
 ### **Project Structure**
@@ -227,20 +316,34 @@ npm run format       # Format code with Prettier
 src/
 ├── components/          # Reusable UI components
 │   ├── ui/             # Base UI components (shadcn/ui)
-│   ├── FileUploader.tsx
-│   ├── AIActions.tsx
-│   └── ...
-├── pages/              # Application pages
-│   ├── Projects.tsx
-│   ├── ProjectDetails.tsx
-│   └── ...
-├── services/           # Business logic & API calls
-│   ├── embedding.ts
-│   ├── pinecone.ts
-│   └── ...
+│   ├── ai/             # AI-related components (AIActions, chat)
+│   ├── auth/           # Authentication components
+│   ├── documents/      # Document processing components
+│   ├── layout/         # Layout and navigation
+│   ├── projects/       # Project management
+│   ├── shared/         # Shared utilities (OnboardingModal, EmptyState, etc.)
+│   ├── upload/         # File upload functionality
+│   └── voice/          # Voice recognition components
 ├── hooks/              # Custom React hooks
+│   ├── aws-auth.tsx    # AWS authentication
+│   ├── use-user-management.tsx  # RBAC user management
+│   └── use-toast.ts    # Toast notifications
+├── lib/                # Utility libraries and configurations
+├── pages/              # Application pages
+│   ├── dashboard/      # Dashboard pages (IndexPage, Pricing)
+│   ├── legal/          # Legal pages (Contact, Privacy, Terms)
+│   └── ProfileSettings.tsx  # User settings & management
+├── services/           # API and external service integrations
+│   ├── api/            # API services (nova-sonic, admin-taxonomy)
+│   ├── ai/             # AI services (ai-workflow-voice)
+│   ├── embedding.ts    # OpenAI embeddings
+│   ├── pinecone.ts     # Vector search
+│   └── user-management.ts  # User CRUD operations
 ├── types/              # TypeScript type definitions
-└── utils/              # Utility functions
+│   ├── entities.d.ts   # User, Role, Project types
+│   └── index.ts        # Type exports
+└── utils/              # Helper functions
+    └── aws/            # AWS configuration utilities
 ```
 
 ### **Adding New Features**
@@ -279,36 +382,56 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ### **Development Guidelines**
 
-- Use TypeScript for all new code
-- Follow existing component patterns
-- Add proper error handling
-- Write descriptive commit messages
-- Test your changes thoroughly
+- Use TypeScript for all new code with strict typing
+- Follow existing component patterns (functional components with hooks)
+- Use pnpm for package management (`pnpm add`, `pnpm install`, etc.)
+- Add proper error handling and user feedback
+- Write descriptive commit messages following conventional commits
+- Test your changes thoroughly across browsers
+- Follow the project's code conventions (see `.github/copilot-instructions.md`)
+- Use shadcn/ui components for consistency
+- Implement mobile-first responsive design
+- Ensure WCAG AA accessibility compliance
 
 ---
 
 ## 📈 **Roadmap**
 
-### **🎯 Current (Q4 2024)**
+### **✅ Completed (2024)**
 
-- ✅ Core document management
-- ✅ AI-powered semantic search
-- ✅ Voice search functionality
-- ✅ Multi-company support
+- ✅ Core document management and storage
+- ✅ AI-powered semantic search with Pinecone
+- ✅ Voice search and TTS with AWS Polly
+- ✅ Multi-company and project support
+- ✅ Role-based access control (Admin, Owner, User)
+- ✅ Biometric authentication (Touch ID, Face ID)
+- ✅ Admin console for taxonomy management
+- ✅ Mobile-responsive UI with bottom navigation
+- ✅ Onboarding flow and empty states
+- ✅ User invitation system
+- ✅ Hybrid search (vector + keyword)
+- ✅ Python backend integration
+- ✅ AWS Amplify Gen 2 migration
 
-### **🚀 Next Quarter (Q1 2025)**
+### **🚀 In Progress (Q1 2025)**
 
-- 📱 Mobile app development
-- 🔄 Real-time collaboration
+- 📱 Enhanced mobile experience and PWA support
+- 🔄 Real-time collaboration features
 - 📊 Advanced analytics dashboard
-- 🤖 AI document summarization
+- 🤖 AI document summarization and insights
+- 🎨 Enhanced UI/UX improvements
+- 📧 Chat export and email integration
 
-### **🌟 Future Features**
+### **🌟 Planned (Q2-Q3 2025)**
 
-- 🏗️ 3D model integration
+- 🏗️ 3D model integration for BIM
 - 📋 Automated compliance checking
-- 🔗 Third-party integrations (Procore, PlanGrid)
-- 🌐 Offline functionality
+- 🔗 Third-party integrations (Procore, PlanGrid, Autodesk)
+- 🌐 Offline functionality and sync
+- 🎯 Advanced project templates
+- 📈 Predictive analytics and reporting
+- 🔍 Computer vision for blueprint analysis
+- 🗣️ Multi-language support
 
 ---
 
@@ -322,20 +445,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Need help? We're here for you!
 
-- 📧 **Email**: support@scopeiq.com
-- 💬 **Discord**: [Join our community](https://discord.gg/scopeiq)
-- 📖 **Documentation**: [docs.scopeiq.com](https://docs.scopeiq.com)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/roscolil/scopeiq/issues)
+- 📧 **Email**: support@joat.com
+- 💬 **GitHub Issues**: [Report a bug or request a feature](https://github.com/roscolil/scopeiq/issues)
+- 📖 **Documentation**: Comprehensive guides in `/src/docs/` and `/docs/`
+- 🐛 **Bug Reports**: Use GitHub Issues with detailed reproduction steps
 
 ---
 
 ## 🏆 **Why Jack of All Trades?**
 
 > _"Before Jack of All Trades, finding the right specification took hours. Now it takes seconds."_  
-> — **Sarah Chen**, Project Manager at BuildTech Solutions
+> — **Sarah Chen**, Project Manager, Sydney
 
-> _"The voice search feature is a game-changer when you're on-site with dirty hands."_  
-> — **Mike Rodriguez**, Site Supervisor at Metro Construction
+> _"The voice search and biometric login are game-changers when you're on-site."_  
+> — **Mike Johnson**, General Contractor, Melbourne
+
+> _"The RBAC system gives us perfect control over who sees what. Essential for multi-project firms."_  
+> — **Robert Patel**, Operations Director, Adelaide
 
 ---
 
@@ -343,8 +469,12 @@ Need help? We're here for you!
 
 ### **Ready to revolutionize your construction document management?**
 
-[🚀 **Get Started**](https://scopeiq.com) • [📖 **Documentation**](https://docs.scopeiq.com) • [💬 **Contact Us**](mailto:hello@scopeiq.com)
+Built with ❤️ by the Jack of All Trades team in Australia 🇦🇺
+
+[🚀 **Get Started**](https://github.com/roscolil/scopeiq) • [📖 **Documentation**](src/docs/) • [💬 **Contact Us**](mailto:hello@joat.com)
 
 ---
+
+**Jack of All Trades** - _Where Construction Meets AI_
 
 </div>
