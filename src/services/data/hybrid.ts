@@ -166,10 +166,16 @@ export const hybridDocumentService = {
                 .updateDocument(doc.id, { s3Url })
                 .catch(console.error)
             } catch (error) {
-              console.warn(`Failed to generate S3 URL for ${doc.s3Key}:`, error)
+              // Silently ignore S3 URL generation errors
+              if (import.meta.env.DEV) {
+                console.debug(
+                  `Failed to generate S3 URL for ${doc.s3Key}:`,
+                  error,
+                )
+              }
             }
-          } else {
-            console.warn(
+          } else if (import.meta.env.DEV) {
+            console.debug(
               `Document ${doc.id} has no S3 key, cannot generate pre-signed URL`,
             )
           }
@@ -235,8 +241,8 @@ export const hybridDocumentService = {
           )
           // Keep the existing URL as fallback (though it might not work)
         }
-      } else {
-        console.warn(
+      } else if (import.meta.env.DEV) {
+        console.debug(
           `Document ${documentId} has no S3 key, cannot generate pre-signed URL`,
         )
       }
@@ -291,7 +297,11 @@ export const hybridDocumentService = {
       }
 
       if (!dbDocument.s3Key) {
-        console.warn(`Document ${documentId} has no S3 key, cannot refresh URL`)
+        if (import.meta.env.DEV) {
+          console.debug(
+            `Document ${documentId} has no S3 key, cannot refresh URL`,
+          )
+        }
         return null
       }
 
