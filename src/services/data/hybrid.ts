@@ -383,8 +383,11 @@ export const hybridDocumentService = {
           s3DocumentData,
         )
       } catch (error) {
-        console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
-        // Don't throw - S3 is backup, database is primary
+        // Silently ignore S3 errors - S3 is backup, database is primary
+        // Only log in development for debugging
+        if (import.meta.env.DEV) {
+          console.debug('Hybrid: S3 write skipped (non-critical):', error)
+        }
       }
 
       const result = {
@@ -447,8 +450,11 @@ export const hybridDocumentService = {
           s3Updates,
         )
       } catch (error) {
-        console.warn('Hybrid: Failed to update S3 (non-critical):', error)
-        // Don't throw - S3 is backup, database is primary
+        // Silently ignore S3 errors - S3 is backup, database is primary
+        // Only log in development for debugging
+        if (import.meta.env.DEV) {
+          console.debug('Hybrid: S3 update skipped (non-critical):', error)
+        }
       }
 
       return {
@@ -488,15 +494,15 @@ export const hybridDocumentService = {
       // Delete S3 metadata file for backward compatibility
       try {
         await s3DocumentService.deleteDocument(companyId, projectId, documentId)
-        console.log(
-          'Hybrid: S3 metadata deleted successfully for document:',
-          documentId,
-        )
       } catch (error) {
-        console.warn(
-          'Hybrid: Failed to delete S3 metadata (non-critical):',
-          error,
-        )
+        // Silently ignore S3 errors - S3 is backup, database is primary
+        // Only log in development for debugging
+        if (import.meta.env.DEV) {
+          console.debug(
+            'Hybrid: S3 metadata deletion skipped (non-critical):',
+            error,
+          )
+        }
       }
 
       // Delete the actual S3 file if we have the S3 key
@@ -504,10 +510,14 @@ export const hybridDocumentService = {
         try {
           await deleteS3File(dbDocument.s3Key)
         } catch (error) {
-          console.warn(
-            'Hybrid: Failed to delete S3 file (non-critical):',
-            error,
-          )
+          // Silently ignore S3 errors - S3 is backup, database is primary
+          // Only log in development for debugging
+          if (import.meta.env.DEV) {
+            console.debug(
+              'Hybrid: S3 file deletion skipped (non-critical):',
+              error,
+            )
+          }
         }
       } else {
         console.warn(
@@ -520,10 +530,14 @@ export const hybridDocumentService = {
         try {
           await deleteS3File(dbDocument.thumbnailS3Key)
         } catch (error) {
-          console.warn(
-            'Hybrid: Failed to delete S3 thumbnail (non-critical):',
-            error,
-          )
+          // Silently ignore S3 errors - S3 is backup, database is primary
+          // Only log in development for debugging
+          if (import.meta.env.DEV) {
+            console.debug(
+              'Hybrid: S3 thumbnail deletion skipped (non-critical):',
+              error,
+            )
+          }
         }
       }
 
@@ -642,7 +656,14 @@ export const hybridProjectService = {
       // Also write to S3 for backward compatibility (async, don't wait)
       const s3ProjectData = convertDbProjectToS3(dbProject)
       s3ProjectService.createProject(companyId, s3ProjectData).catch(error => {
-        console.warn('Hybrid: Failed to write to S3 (non-critical):', error)
+        // Silently ignore S3 errors - S3 is backup, database is primary
+        // Only log in development for debugging
+        if (import.meta.env.DEV) {
+          console.debug(
+            'Hybrid: S3 project write skipped (non-critical):',
+            error,
+          )
+        }
       })
 
       return {
@@ -682,7 +703,14 @@ export const hybridProjectService = {
       s3ProjectService
         .updateProject(companyId, projectId, s3Updates)
         .catch(error => {
-          console.warn('Hybrid: Failed to update S3 (non-critical):', error)
+          // Silently ignore S3 errors - S3 is backup, database is primary
+          // Only log in development for debugging
+          if (import.meta.env.DEV) {
+            console.debug(
+              'Hybrid: S3 project update skipped (non-critical):',
+              error,
+            )
+          }
         })
 
       return {
@@ -707,7 +735,14 @@ export const hybridProjectService = {
 
       // Also delete from S3 for backward compatibility (async, don't wait)
       s3ProjectService.deleteProject(companyId, projectId).catch(error => {
-        console.warn('Hybrid: Failed to delete from S3 (non-critical):', error)
+        // Silently ignore S3 errors - S3 is backup, database is primary
+        // Only log in development for debugging
+        if (import.meta.env.DEV) {
+          console.debug(
+            'Hybrid: S3 project deletion skipped (non-critical):',
+            error,
+          )
+        }
       })
     } catch (error) {
       console.error('Hybrid: Error deleting project:', error)
