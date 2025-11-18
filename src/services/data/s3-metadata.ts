@@ -94,7 +94,10 @@ const listS3Objects = async (prefix: string): Promise<string[]> => {
       .map(obj => obj.Key!)
       .filter(key => key.endsWith('.json'))
   } catch (error) {
-    console.error(`Error listing S3 objects with prefix ${prefix}:`, error)
+    // S3 is backup system - silently ignore errors
+    if (import.meta.env.DEV) {
+      console.debug(`S3 listObjects error for prefix ${prefix}:`, error)
+    }
     return []
   }
 }
@@ -130,17 +133,19 @@ export const s3DocumentService = {
             const doc = JSON.parse(content) as S3Document
             documents.push(doc)
           } catch (parseError) {
-            console.error(`Error parsing document metadata ${key}:`, parseError)
+            if (import.meta.env.DEV) {
+              console.debug(
+                `Error parsing document metadata ${key}:`,
+                parseError,
+              )
+            }
           }
         }
       }
 
-      console.log(`Found ${documents.length} documents for project`)
       return documents
     } catch (error) {
-      console.error('Error fetching documents from S3:', error)
-
-      // Check if it's a "no documents exist" scenario
+      // S3 is backup system - check if it's a normal "no documents" case
       const errorMessage =
         error instanceof Error ? error.message : String(error)
 
@@ -148,14 +153,13 @@ export const s3DocumentService = {
         errorMessage.includes('NoSuchKey') ||
         errorMessage.includes('The specified key does not exist')
       ) {
-        // This is normal for projects with no documents yet
-        console.log(
-          `No documents found for project ${companyId}/${projectId} - returning empty array`,
-        )
         return []
       }
 
-      // Re-throw other errors
+      // Other errors - silently ignore in production
+      if (import.meta.env.DEV) {
+        console.debug('S3 getDocumentsByProject error:', error)
+      }
       throw error
     }
   },
@@ -167,10 +171,6 @@ export const s3DocumentService = {
     documentId: string,
   ): Promise<S3Document | null> {
     try {
-      console.log(
-        `Fetching document: ${companyId}/${projectId}/documents/${documentId}.json`,
-      )
-
       const key = `${companyId}/${projectId}/documents/${documentId}.json`
       const content = await getS3Object(key)
 
@@ -179,7 +179,10 @@ export const s3DocumentService = {
       }
       return null
     } catch (error) {
-      console.error('Error fetching document from S3:', error)
+      // S3 is backup system - silently ignore errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 getDocument error:', error)
+      }
       throw error
     }
   },
@@ -203,15 +206,15 @@ export const s3DocumentService = {
         createdAt: new Date().toISOString(),
       }
 
-      console.log('Creating document in S3:', document)
-
       const key = `${companyId}/${projectId}/documents/${document.id}.json`
       await putS3Object(key, JSON.stringify(document, null, 2))
 
-      console.log(`Document created successfully: ${key}`)
       return document
     } catch (error) {
-      console.error('Error creating document in S3:', error)
+      // S3 is backup system - silently ignore errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 createDocument error:', error)
+      }
       throw error
     }
   },
@@ -242,7 +245,10 @@ export const s3DocumentService = {
 
       return updated
     } catch (error) {
-      console.error('Error updating document in S3:', error)
+      // S3 is backup system - silently ignore errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 updateDocument error:', error)
+      }
       throw error
     }
   },
@@ -257,7 +263,10 @@ export const s3DocumentService = {
       const key = `${companyId}/${projectId}/documents/${documentId}.json`
       await deleteS3Object(key)
     } catch (error) {
-      console.error('Error deleting document from S3:', error)
+      // S3 is backup system - silently ignore errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 deleteDocument error:', error)
+      }
       throw error
     }
   },
@@ -265,48 +274,34 @@ export const s3DocumentService = {
   // Get all documents across all projects for a company
   async getAllDocuments(companyId: string): Promise<S3Document[]> {
     try {
-      console.log(`Fetching all documents for company: ${companyId}`)
-
       const prefix = `${companyId}/`
-      console.log(`Using S3 prefix: ${prefix}`)
       const keys = await listS3Objects(prefix)
-
-      console.log(
-        `Found ${keys.length} total S3 objects with prefix ${prefix}:`,
-        keys,
-      )
 
       const documentKeys = keys.filter(
         key => key.includes('/documents/') && key.endsWith('.json'),
-      )
-      console.log(
-        `Filtered to ${documentKeys.length} document metadata files:`,
-        documentKeys,
       )
 
       const documents: S3Document[] = []
 
       for (const key of documentKeys) {
-        console.log(`Processing document metadata file: ${key}`)
         const content = await getS3Object(key)
         if (content) {
           try {
             const doc = JSON.parse(content) as S3Document
-            console.log(`Successfully parsed document:`, doc)
             documents.push(doc)
           } catch (parseError) {
-            console.error(`Error parsing document metadata ${key}:`, parseError)
+            if (import.meta.env.DEV) {
+              console.debug(
+                `Error parsing document metadata ${key}:`,
+                parseError,
+              )
+            }
           }
-        } else {
-          console.warn(`No content found for key: ${key}`)
         }
       }
 
-      console.log(`Found ${documents.length} total documents for company`)
       return documents
     } catch (error) {
-      console.error('Error fetching all documents from S3:', error)
-
       // Check if it's a "no documents exist" scenario
       const errorMessage =
         error instanceof Error ? error.message : String(error)
@@ -315,14 +310,13 @@ export const s3DocumentService = {
         errorMessage.includes('NoSuchKey') ||
         errorMessage.includes('The specified key does not exist')
       ) {
-        // This is normal for companies with no documents yet
-        console.log(
-          `No documents found for company ${companyId} - returning empty array`,
-        )
         return []
       }
 
-      // Re-throw other errors
+      // S3 is backup system - silently ignore other errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 getAllDocuments error:', error)
+      }
       throw error
     }
   },
@@ -358,7 +352,9 @@ export const s3ProjectService = {
       console.log(`Found ${companies.length} companies in S3:`, companies)
       return companies
     } catch (error) {
-      console.error('Error scanning for companies in S3:', error)
+      if (import.meta.env.DEV) {
+        console.debug('S3 getAllCompanies error:', error)
+      }
       return []
     }
   },
@@ -366,8 +362,6 @@ export const s3ProjectService = {
   // Get all projects for a company
   async getProjects(companyId: string): Promise<S3Project[]> {
     try {
-      console.log(`Fetching projects for company: ${companyId}`)
-
       const prefix = `${companyId}/projects/`
       const keys = await listS3Objects(prefix)
 
@@ -380,16 +374,18 @@ export const s3ProjectService = {
             const project = JSON.parse(content) as S3Project
             projects.push(project)
           } catch (parseError) {
-            console.error(`Error parsing project metadata ${key}:`, parseError)
+            if (import.meta.env.DEV) {
+              console.debug(
+                `Error parsing project metadata ${key}:`,
+                parseError,
+              )
+            }
           }
         }
       }
 
-      console.log(`Found ${projects.length} projects for company`)
       return projects
     } catch (error) {
-      console.error('Error fetching projects from S3:', error)
-
       // Check if it's a "no projects exist" scenario
       const errorMessage =
         error instanceof Error ? error.message : String(error)
@@ -398,14 +394,12 @@ export const s3ProjectService = {
         errorMessage.includes('NoSuchKey') ||
         errorMessage.includes('The specified key does not exist')
       ) {
-        // This is normal for new companies with no projects yet
-        console.log(
-          `No projects found for company ${companyId} - returning empty array`,
-        )
         return []
       }
 
-      // Re-throw other errors
+      if (import.meta.env.DEV) {
+        console.debug('S3 getProjects error:', error)
+      }
       throw error
     }
   },
@@ -416,8 +410,6 @@ export const s3ProjectService = {
     projectId: string,
   ): Promise<S3Project | null> {
     try {
-      console.log(`Fetching project: ${companyId}/projects/${projectId}.json`)
-
       const key = `${companyId}/projects/${projectId}.json`
       const content = await getS3Object(key)
 
@@ -426,7 +418,9 @@ export const s3ProjectService = {
       }
       return null
     } catch (error) {
-      console.error('Error fetching project from S3:', error)
+      if (import.meta.env.DEV) {
+        console.debug('S3 getProject error:', error)
+      }
       throw error
     }
   },
@@ -450,7 +444,9 @@ export const s3ProjectService = {
 
       return project
     } catch (error) {
-      console.error('❌ S3 createProject: Error creating project in S3:', error)
+      if (import.meta.env.DEV) {
+        console.debug('S3 createProject error:', error)
+      }
       throw error
     }
   },
@@ -481,7 +477,9 @@ export const s3ProjectService = {
 
       return updated
     } catch (error) {
-      console.error('Error updating project in S3:', error)
+      if (import.meta.env.DEV) {
+        console.debug('S3 updateProject error:', error)
+      }
       throw error
     }
   },
@@ -502,10 +500,10 @@ export const s3ProjectService = {
       // Then delete the project metadata
       const key = `${companyId}/projects/${projectId}.json`
       await deleteS3Object(key)
-
-      console.log(`Project and all its documents deleted: ${key}`)
     } catch (error) {
-      console.error('Error deleting project from S3:', error)
+      if (import.meta.env.DEV) {
+        console.debug('S3 deleteProject error:', error)
+      }
       throw error
     }
   },

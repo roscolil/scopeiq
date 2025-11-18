@@ -17,7 +17,7 @@ import {
 // Eagerly load critical components
 // HomePage now wrapped by RootRoute for conditional dashboard redirect
 // (Still imported inside RootRoute component.)
-import RootRoute from '@/components/routing/RootRoute'
+import HomePage from './pages/dashboard/IndexPage'
 import SignIn from './pages/auth/SignIn'
 import SignUp from './pages/auth/SignUp'
 import AuthenticatedLayout from './pages/core/AuthenticatedLayout'
@@ -68,6 +68,7 @@ const EnhancedSuspense = ({
 )
 
 // RootRedirect decides whether to show the marketing HomePage or redirect an authenticated user to their dashboard
+// This component MUST be defined outside App so it's rendered within the Router context
 const RootRedirect = () => {
   const { isAuthenticated, isLoading, user } = useAuth()
 
@@ -134,8 +135,6 @@ const App = () => {
           <BrowserRouter>
             <Routes>
               {/* Public root route with conditional redirect to dashboard when authenticated */}
-              <Route path="/" element={<RootRoute />} />
-              {/* Public routes - eagerly loaded */}
               <Route
                 path="/"
                 element={
