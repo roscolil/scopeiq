@@ -13,7 +13,13 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/shared/Badge'
 import { FeatureComparison, FaqAccordion } from '@/components/shared'
-import { Check, Star, Building2, HardHat, Users } from 'lucide-react'
+import { Check, Star, Building2, HardHat, Users, Loader2 } from 'lucide-react'
+import {
+  redirectToCheckout,
+  getPriceId,
+} from '@/services/subscription/stripe-service'
+import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 
 const pricingFaqs = [
   {
@@ -98,17 +104,56 @@ const pricingPlans = [
 
 const Pricing = () => {
   const navigate = useNavigate()
+  const { user, userDetails } = useAuth()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>(
     'monthly',
   )
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
-  const handleGetStarted = (planName: string) => {
+  const handleGetStarted = async (planName: string) => {
     if (planName === 'Enterprise') {
       // Handle enterprise contact
       window.location.href = 'mailto:sales@scopeiq.com'
-    } else {
-      // Navigate to signup with plan parameter
+      return
+    }
+
+    // If not logged in, redirect to signup
+    if (!user || !userDetails) {
       navigate(routes.auth.signup() + `?plan=${planName.toLowerCase()}`)
+      return
+    }
+
+    // Check if user has a company
+    if (!userDetails.companyId) {
+      toast.error('Please complete your company setup first')
+      return
+    }
+
+    try {
+      setLoadingPlan(planName)
+
+      // Get the price ID for the selected plan and billing cycle
+      const tier = planName.toLowerCase() as 'starter' | 'professional'
+      const priceId = getPriceId(tier, billingCycle)
+
+      if (!priceId) {
+        toast.error('Unable to process subscription. Please try again.')
+        return
+      }
+
+      // Redirect to Stripe checkout
+      await redirectToCheckout({
+        companyId: userDetails.companyId,
+        priceId,
+        email: user.signInDetails?.loginId || userDetails.email || '',
+        successUrl: `${window.location.origin}/dashboard?subscription=success`,
+        cancelUrl: `${window.location.origin}/pricing?canceled=true`,
+      })
+    } catch (error) {
+      console.error('Error starting checkout:', error)
+      toast.error('Failed to start checkout. Please try again.')
+    } finally {
+      setLoadingPlan(null)
     }
   }
 
@@ -235,8 +280,16 @@ const Pricing = () => {
                     variant={plan.popular ? 'default' : 'outline'}
                     size="lg"
                     onClick={() => handleGetStarted(plan.name)}
+                    disabled={loadingPlan === plan.name}
                   >
-                    {plan.buttonText}
+                    {loadingPlan === plan.name ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      plan.buttonText
+                    )}
                   </Button>
                 </CardFooter>
               </Card>

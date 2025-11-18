@@ -11,6 +11,9 @@ import { preTokenGeneration } from './functions/pre-token-generation/resource'
 import { sendContactEmail } from './functions/send-contact-email/resource'
 import { sendInvitationEmail } from './functions/send-invitation-email/resource'
 import { pineconeSearch } from './functions/pinecone-search/resource'
+import { createCheckoutSession } from './functions/create-checkout-session/resource'
+import { stripeWebhookHandler } from './functions/stripe-webhook-handler/resource'
+import { manageSubscription } from './functions/manage-subscription/resource'
 
 // Get the current directory in ES module
 const __filename = fileURLToPath(import.meta.url)
@@ -31,6 +34,9 @@ export const backend = defineBackend({
   sendContactEmail,
   sendInvitationEmail,
   pineconeSearch,
+  createCheckoutSession,
+  stripeWebhookHandler,
+  manageSubscription,
 })
 
 // Configure the contact email function
@@ -75,3 +81,30 @@ const apiKeyForLambda = pineconeApiKey || 'PLACEHOLDER_FOR_BUILD'
 
 backend.pineconeSearch.addEnvironment('PINECONE_API_KEY', apiKeyForLambda)
 backend.pineconeSearch.addEnvironment('PINECONE_INDEX_NAME', pineconeIndexName)
+
+// Configure Stripe Lambda functions
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'PLACEHOLDER_FOR_BUILD'
+const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || 'PLACEHOLDER_FOR_BUILD'
+
+backend.createCheckoutSession.addEnvironment('STRIPE_SECRET_KEY', stripeSecretKey)
+backend.stripeWebhookHandler.addEnvironment('STRIPE_SECRET_KEY', stripeSecretKey)
+backend.stripeWebhookHandler.addEnvironment('STRIPE_WEBHOOK_SECRET', stripeWebhookSecret)
+backend.manageSubscription.addEnvironment('STRIPE_SECRET_KEY', stripeSecretKey)
+
+// Add price ID environment variables for webhook handler
+backend.stripeWebhookHandler.addEnvironment(
+  'VITE_STRIPE_PRICE_STARTER_MONTHLY',
+  process.env.VITE_STRIPE_PRICE_STARTER_MONTHLY || '',
+)
+backend.stripeWebhookHandler.addEnvironment(
+  'VITE_STRIPE_PRICE_STARTER_YEARLY',
+  process.env.VITE_STRIPE_PRICE_STARTER_YEARLY || '',
+)
+backend.stripeWebhookHandler.addEnvironment(
+  'VITE_STRIPE_PRICE_PROFESSIONAL_MONTHLY',
+  process.env.VITE_STRIPE_PRICE_PROFESSIONAL_MONTHLY || '',
+)
+backend.stripeWebhookHandler.addEnvironment(
+  'VITE_STRIPE_PRICE_PROFESSIONAL_YEARLY',
+  process.env.VITE_STRIPE_PRICE_PROFESSIONAL_YEARLY || '',
+)

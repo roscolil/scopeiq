@@ -263,6 +263,95 @@ const schema = a.schema({
         .queryField('documentsByPrimaryCategory'),
     ]),
 
+  // Subscription model for billing management
+  Subscription: a
+    .model({
+      companyId: a.id().required(),
+      stripeCustomerId: a.string(),
+      stripeSubscriptionId: a.string(),
+      stripePriceId: a.string(),
+      tier: a.enum(['starter', 'professional', 'enterprise']),
+      status: a.enum(['active', 'trialing', 'past_due', 'canceled', 'unpaid']),
+      billingCycle: a.enum(['monthly', 'yearly']),
+      currentPeriodStart: a.datetime(),
+      currentPeriodEnd: a.datetime(),
+      trialStart: a.datetime(),
+      trialEnd: a.datetime(),
+      cancelAtPeriodEnd: a.boolean().default(false),
+      canceledAt: a.datetime(),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+      // Relations
+      company: a.belongsTo('Company', 'companyId'),
+      payments: a.hasMany('Payment', 'subscriptionId'),
+    })
+    .authorization(allow => [
+      allow.authenticated('userPools').to(['read']),
+      allow.groups(['Admin', 'Owner'], 'userPools').to(['read', 'update']),
+    ])
+    .secondaryIndexes(index => [
+      index('companyId')
+        .sortKeys(['createdAt'])
+        .queryField('subscriptionsByCompany'),
+      index('stripeCustomerId').queryField('subscriptionsByStripeCustomer'),
+      index('status').queryField('subscriptionsByStatus'),
+    ]),
+
+  // Payment history for invoices and transactions
+  Payment: a
+    .model({
+      companyId: a.id().required(),
+      subscriptionId: a.id().required(),
+      stripeInvoiceId: a.string(),
+      stripePaymentIntentId: a.string(),
+      amount: a.integer().required(),
+      currency: a.string().default('usd'),
+      status: a.enum(['succeeded', 'pending', 'failed']),
+      description: a.string(),
+      invoiceUrl: a.string(),
+      receiptUrl: a.string(),
+      createdAt: a.datetime(),
+      paidAt: a.datetime(),
+      // Relations
+      company: a.belongsTo('Company', 'companyId'),
+      subscription: a.belongsTo('Subscription', 'subscriptionId'),
+    })
+    .authorization(allow => [
+      allow.authenticated('userPools').to(['read']),
+      allow.groups(['Admin', 'Owner'], 'userPools').to(['read']),
+    ])
+    .secondaryIndexes(index => [
+      index('companyId')
+        .sortKeys(['createdAt'])
+        .queryField('paymentsByCompany'),
+      index('subscriptionId')
+        .sortKeys(['createdAt'])
+        .queryField('paymentsBySubscription'),
+    ]),
+
+  // Usage tracking for plan limit enforcement
+  UsageMetrics: a
+    .model({
+      companyId: a.id().required(),
+      month: a.string().required(), // YYYY-MM format
+      projectCount: a.integer().default(0),
+      documentCount: a.integer().default(0),
+      storageUsedBytes: a.integer().default(0),
+      aiQueriesCount: a.integer().default(0),
+      updatedAt: a.datetime(),
+      // Relations
+      company: a.belongsTo('Company', 'companyId'),
+    })
+    .authorization(allow => [
+      allow.authenticated('userPools').to(['read']),
+      allow.groups(['Admin', 'Owner'], 'userPools').to(['read', 'update']),
+    ])
+    .secondaryIndexes(index => [
+      index('companyId')
+        .sortKeys(['month'])
+        .queryField('usageByCompanyAndMonth'),
+    ]),
+
   // Contact form submissions - Public access only
   ContactSubmission: a
     .model({
