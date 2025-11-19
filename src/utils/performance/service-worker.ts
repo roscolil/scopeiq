@@ -5,9 +5,13 @@ export const registerServiceWorker = async () => {
     try {
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
+        updateViaCache: 'none', // Always fetch fresh service worker
       })
 
       console.log('Service Worker registered successfully:', registration)
+
+      // Check for updates immediately
+      registration.update()
 
       // Handle updates
       registration.addEventListener('updatefound', () => {
@@ -18,13 +22,18 @@ export const registerServiceWorker = async () => {
               newWorker.state === 'installed' &&
               navigator.serviceWorker.controller
             ) {
-              // New service worker is available, prompt user to refresh
-              console.log('New service worker available, consider refreshing')
-              // You could show a toast notification here
+              // New service worker available - reload to activate
+              console.log('New version available, reloading...')
+              window.location.reload()
             }
           })
         }
       })
+
+      // Check for updates every 60 seconds
+      setInterval(() => {
+        registration.update()
+      }, 60000)
 
       return registration
     } catch (error) {
@@ -55,10 +64,13 @@ export const unregisterServiceWorker = async () => {
 
 // Initialize service worker on app load
 export const initializeServiceWorker = () => {
-  // Only register in production
+  // Register in production and staging environments
   if (import.meta.env.MODE === 'production') {
     window.addEventListener('load', () => {
       registerServiceWorker()
     })
+  } else {
+    // In development, ensure no service worker is active
+    unregisterServiceWorker()
   }
 }
