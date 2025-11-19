@@ -1055,8 +1055,9 @@ export const FileUploader = (props: FileUploaderProps) => {
                 Drag & drop your documents here
               </p>
               <p className="text-[11px] sm:text-xs text-muted-foreground">
-                Support for PDF, DOCX, TXT (max 50MB each) • Multiple files
-                supported
+                Support for PDF, DOCX, TXT (max 30MB each)
+                {/* • Multiple files
+                supported */}
               </p>
             </div>
 
