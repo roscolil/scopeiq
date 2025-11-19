@@ -1,14 +1,14 @@
 // Service Worker for ScopeIQ - Performance Optimization
-const CACHE_NAME = 'scopeiq-v1'
-const STATIC_CACHE_NAME = 'scopeiq-static-v1'
+// Use timestamp-based versioning to force cache updates on each deployment
+const VERSION = '2024-11-18-001'
+const CACHE_NAME = `scopeiq-dynamic-${VERSION}`
+const STATIC_CACHE_NAME = `scopeiq-static-${VERSION}`
 
-// Resources to cache immediately
+// Only cache truly static resources that don't change between builds
 const STATIC_RESOURCES = [
-  '/',
-  '/src/main.tsx',
-  '/src/App.tsx',
   '/pdf.worker.min.mjs',
-  // Add other critical resources
+  '/robots.txt',
+  // Don't cache / or bundled JS/CSS - they need fresh versions
 ]
 
 // Resources to cache on demand
@@ -24,7 +24,10 @@ self.addEventListener('install', event => {
       .open(STATIC_CACHE_NAME)
       .then(cache => {
         console.log('Service Worker: Caching static resources')
-        return cache.addAll(STATIC_RESOURCES)
+        return cache.addAll(STATIC_RESOURCES).catch(err => {
+          console.warn('Some resources failed to cache:', err)
+          // Don't fail installation if some resources can't be cached
+        })
       })
       .catch(error => {
         console.error('Service Worker: Failed to cache static resources', error)
@@ -66,12 +69,16 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // Skip API calls and dynamic content
+  // Skip API calls, dynamic content, and HTML pages
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.includes('amplify') ||
-    url.hostname.includes('amazonaws.com')
+    url.hostname.includes('amazonaws.com') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html') ||
+    request.headers.get('accept')?.includes('text/html')
   ) {
+    // Always fetch HTML fresh to get latest app version
     return
   }
 
