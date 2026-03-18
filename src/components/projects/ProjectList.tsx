@@ -43,7 +43,7 @@ export const ProjectList = ({
             No projects yet
           </h3>
 
-          <p className="text-lg text-gray-400 mb-12 leading-relaxed max-w-lg mx-auto">
+          <p className="text-lg text-gray-200 mb-12 leading-relaxed max-w-lg mx-auto">
             Create your first project to start organizing and analyzing your
             documents with AI-powered insights.
           </p>

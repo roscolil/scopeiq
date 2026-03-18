@@ -1438,7 +1438,7 @@ const ProjectDetails = () => {
             />
           ) : (
             <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-              <p className="text-gray-400 mb-4">
+              <p className="text-gray-200 mb-4">
                 No documents in this project yet
               </p>
               <Button onClick={() => setIsUploadDialogOpen(true)}>

@@ -20,7 +20,7 @@ export const Footer = () => {
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 font-medium">
+              <span className="text-xs text-gray-300 font-medium">
                 © {currentYear}
               </span>
             </div>

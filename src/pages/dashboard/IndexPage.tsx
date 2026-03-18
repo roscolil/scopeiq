@@ -93,7 +93,7 @@ const Index = () => {
           <div className="text-center sm:py-12 md:py-18 px-6">
             {/* Show subtle loading indicator when checking auth */}
             {isLoading && (
-              <div className="my-8 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
+              <div className="my-8 flex items-center justify-center gap-3 text-gray-200 animate-fade-in">
                 <div className="w-2 h-2 bg-brand-blue-light rounded-full animate-pulse"></div>
                 <div className="w-2 h-2 bg-brand-blue rounded-full animate-pulse delay-100"></div>
                 <div className="w-2 h-2 bg-brand-yellow rounded-full animate-pulse delay-200"></div>
@@ -195,7 +195,7 @@ const Index = () => {
                           <CardTitle className="text-2xl font-bold text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text transition-all duration-300">
                             Document Processing
                           </CardTitle>
-                          <CardDescription className="text-base text-gray-400 mt-2">
+                          <CardDescription className="text-base text-gray-200 mt-2">
                             Extract text and structure from various formats
                           </CardDescription>
                         </div>
@@ -226,7 +226,7 @@ const Index = () => {
                           <CardTitle className="text-2xl font-bold text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text transition-all duration-300">
                             AI-Powered Insights
                           </CardTitle>
-                          <CardDescription className="text-base text-gray-400 mt-2">
+                          <CardDescription className="text-base text-gray-200 mt-2">
                             Generate summaries and extract key information
                           </CardDescription>
                         </div>
@@ -257,7 +257,7 @@ const Index = () => {
                           <CardTitle className="text-2xl font-bold text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text transition-all duration-300">
                             Semantic Search
                           </CardTitle>
-                          <CardDescription className="text-base text-gray-400 mt-2">
+                          <CardDescription className="text-base text-gray-200 mt-2">
                             Find information based on meaning, not keywords
                           </CardDescription>
                         </div>
@@ -288,7 +288,7 @@ const Index = () => {
                           <CardTitle className="text-2xl font-bold text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text transition-all duration-300">
                             Secure Storage
                           </CardTitle>
-                          <CardDescription className="text-base text-gray-400 mt-2">
+                          <CardDescription className="text-base text-gray-200 mt-2">
                             Enterprise-grade security and compliance
                           </CardDescription>
                         </div>

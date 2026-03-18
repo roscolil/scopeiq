@@ -366,7 +366,7 @@ export const DocumentList = ({
         {visibleDocuments.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="pt-6 text-center">
-              <p className="text-gray-400">No documents found</p>
+              <p className="text-gray-200">No documents found</p>
             </CardContent>
           </Card>
         ) : (
@@ -581,7 +581,7 @@ export const DocumentList = ({
 
       {paginationEnabled && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
-          <div className="text-gray-400">
+          <div className="text-gray-200">
             Showing {startIndex + 1}–{Math.min(endIndex, documents.length)} of{' '}
             {documents.length}
           </div>

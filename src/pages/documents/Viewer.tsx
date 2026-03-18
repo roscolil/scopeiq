@@ -175,7 +175,7 @@ const Viewer = () => {
       <Layout>
         <div className="text-center">
           <p>Document not found - Missing parameters</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-200">
             Company: {companyName || companyId || 'missing'}, Project:{' '}
             {projectName || projectId || 'missing'}, Document:{' '}
             {document?.name || documentId || 'missing'}
@@ -460,7 +460,7 @@ const Viewer = () => {
               <h1 className="text-2xl font-bold truncate max-w-lg text-white">
                 {document?.name || 'Document'}
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-200">
                 {companyName && projectName ? (
                   <>
                     <span className="font-medium">{companyName}</span> /{' '}
@@ -471,7 +471,7 @@ const Viewer = () => {
                 )}
               </p>
               {document?.size && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-200 mt-1">
                   Size:{' '}
                   {typeof document.size === 'number'
                     ? `${Math.round(document.size / 1024)} KB`

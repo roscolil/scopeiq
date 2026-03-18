@@ -279,7 +279,7 @@ export const Navbar = () => {
               Sign out
             </DialogTitle>
           </DialogHeader>
-          <p className="text-gray-400">
+          <p className="text-gray-200">
             Are you sure you want to sign out of your account?
           </p>
           <DialogFooter className="gap-2 sm:gap-0">

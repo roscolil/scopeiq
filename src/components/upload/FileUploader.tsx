@@ -1045,7 +1045,7 @@ export const FileUploader = (props: FileUploaderProps) => {
                 </span>
               </div>
             ) : (
-              <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
+              <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-gray-200" />
             )}
           </div>
 

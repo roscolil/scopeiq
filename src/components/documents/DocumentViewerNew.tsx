@@ -67,7 +67,7 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
   if (isLoading) {
     return (
       <div className="bg-muted p-4 rounded-md max-h-[600px] overflow-auto text-sm">
-        <div className="text-gray-400 italic">Loading text content...</div>
+        <div className="text-gray-200 italic">Loading text content...</div>
       </div>
     )
   }
@@ -85,7 +85,7 @@ const TextFileViewer = ({ document }: { document: DocumentType }) => {
       {textContent ? (
         <div className="whitespace-pre-wrap">{textContent}</div>
       ) : (
-        <div className="text-gray-400 italic">
+        <div className="text-gray-200 italic">
           This text file appears to be empty.
         </div>
       )}
@@ -386,7 +386,7 @@ export const DocumentViewer = ({
         <p className="text-lg font-medium mb-2 text-red-600">
           Error Loading Document
         </p>
-        <p className="text-gray-400">{error}</p>
+        <p className="text-gray-200">{error}</p>
       </div>
     )
   }
@@ -394,9 +394,9 @@ export const DocumentViewer = ({
   if (!document) {
     return (
       <div className="text-center p-8">
-        <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+        <FileText className="h-16 w-16 mx-auto mb-4 text-gray-200" />
         <p className="text-lg font-medium mb-2">Document Not Found</p>
-        <p className="text-gray-400">
+        <p className="text-gray-200">
           The requested document could not be found.
         </p>
       </div>

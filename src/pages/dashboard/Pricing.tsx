@@ -117,7 +117,7 @@ const Pricing = () => {
                 className={
                   billingCycle === 'monthly'
                     ? 'font-medium text-white'
-                    : 'text-gray-400'
+                    : 'text-gray-200'
                 }
               >
                 Monthly
@@ -144,7 +144,7 @@ const Pricing = () => {
                 className={
                   billingCycle === 'yearly'
                     ? 'font-medium text-white'
-                    : 'text-gray-400'
+                    : 'text-gray-200'
                 }
               >
                 Yearly
@@ -182,7 +182,7 @@ const Pricing = () => {
                   <CardTitle className="text-2xl text-white">
                     {plan.name}
                   </CardTitle>
-                  <CardDescription className="mt-2 text-gray-400">
+                  <CardDescription className="mt-2 text-gray-200">
                     {plan.description}
                   </CardDescription>
                   <div className="mt-4">
@@ -191,7 +191,7 @@ const Pricing = () => {
                         ? `$${Math.round(parseInt(plan.price.replace('$', '')) * 0.8)}`
                         : plan.price}
                     </span>
-                    <span className="text-gray-400">
+                    <span className="text-gray-200">
                       {plan.period &&
                         (billingCycle === 'yearly' ? '/year' : plan.period)}
                     </span>

@@ -1027,7 +1027,7 @@ const Migration: React.FC = () => {
                             <h4 className="font-semibold text-white">
                               Database
                             </h4>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-gray-200">
                               DynamoDB + GraphQL
                             </p>
                           </div>
@@ -1060,7 +1060,7 @@ const Migration: React.FC = () => {
                             <h4 className="font-semibold text-white">
                               S3 Storage
                             </h4>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-gray-200">
                               Current metadata
                             </p>
                           </div>
@@ -1176,7 +1176,7 @@ const Migration: React.FC = () => {
                       <span className="text-white font-medium">Use S3</span>
                     </Button>
                   </div>
-                  <p className="text-center text-sm text-gray-400 mt-2">
+                  <p className="text-center text-sm text-gray-200 mt-2">
                     This affects how your Projects page loads and saves data
                   </p>
                 </CardContent>

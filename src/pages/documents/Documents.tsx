@@ -510,7 +510,7 @@ const Documents = () => {
             />
           ) : (
             <div className="text-center p-4 md:p-8 border rounded-lg bg-secondary/20">
-              <p className="text-gray-400 mb-4">
+              <p className="text-gray-200 mb-4">
                 No documents in this project yet
               </p>
               <Button onClick={() => setIsUploadDialogOpen(true)}>
@@ -585,11 +585,11 @@ const Documents = () => {
                             {project.name}
                           </h3>
                           {project.description && (
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-gray-200">
                               {project.description}
                             </p>
                           )}
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-gray-200">
                             {project.documents.length} document
                             {project.documents.length !== 1 ? 's' : ''}
                           </p>
@@ -627,7 +627,7 @@ const Documents = () => {
                         />
                       ) : (
                         <div className="text-center p-4 border rounded bg-secondary/10">
-                          <p className="text-sm text-gray-400">
+                          <p className="text-sm text-gray-200">
                             No documents in this project yet
                           </p>
                         </div>
@@ -637,7 +637,7 @@ const Documents = () => {
                 </div>
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-gray-400 mb-4">No projects found</p>
+                  <p className="text-gray-200 mb-4">No projects found</p>
                   <Button
                     onClick={() =>
                       navigate(
@@ -673,7 +673,7 @@ const Documents = () => {
                 />
               ) : (
                 <div className="text-center p-8 border rounded-lg bg-secondary/20">
-                  <p className="text-gray-400 mb-4">No documents found</p>
+                  <p className="text-gray-200 mb-4">No documents found</p>
                   <Button
                     onClick={() =>
                       navigate(

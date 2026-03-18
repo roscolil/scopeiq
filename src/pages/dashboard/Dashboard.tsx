@@ -701,16 +701,16 @@ const Dashboard = () => {
             {/* Team Members Card - Inactive */}
             <Card className="bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-950/20 dark:to-gray-900/10 border-gray-200/20 pointer-events-none">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-200">
                   Team Members
                 </CardTitle>
-                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-200" />
               </CardHeader>
               <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                <div className="text-lg sm:text-2xl font-bold text-gray-400">
+                <div className="text-lg sm:text-2xl font-bold text-gray-200">
                   8
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-400">
+                <p className="text-[10px] sm:text-xs text-gray-200">
                   +1 from last month
                 </p>
               </CardContent>
@@ -857,8 +857,8 @@ const Dashboard = () => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Folders className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-400">No projects yet</p>
+                        <Folders className="h-8 w-8 mx-auto mb-2 text-gray-200" />
+                        <p className="text-sm text-gray-200">No projects yet</p>
                       </div>
                     )}
                   </CardContent>
@@ -881,8 +881,8 @@ const Dashboard = () => {
                 <Card className="md:col-span-3 pointer-events-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-gray-400" />
-                      <CardTitle className="text-gray-400">
+                      <Activity className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-foreground">
                         Team Activity
                       </CardTitle>
                     </div>
@@ -895,10 +895,10 @@ const Dashboard = () => {
                             key={i}
                             className="flex items-start space-x-3 animate-pulse"
                           >
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
+                            <div className="w-8 h-8 bg-muted rounded-full flex-shrink-0"></div>
                             <div className="flex-1 space-y-2">
-                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                              <div className="h-4 bg-muted rounded w-3/4"></div>
+                              <div className="h-3 bg-muted rounded w-1/2"></div>
                             </div>
                           </div>
                         ))}
@@ -907,10 +907,10 @@ const Dashboard = () => {
                       userActivities.map(activity => (
                         <div
                           key={activity.id}
-                          className="flex items-start space-x-3 p-2 rounded-lg transition-colors"
+                          className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex-shrink-0">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-400">
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm text-foreground">
                               {userActivityService.getActivityIcon(
                                 activity.action,
                               )}
@@ -919,19 +919,19 @@ const Dashboard = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="font-medium text-sm text-gray-400 line-clamp-1">
+                                <div className="font-medium text-sm text-foreground line-clamp-1">
                                   {activity.userName}
                                 </div>
-                                <div className="text-xs text-gray-400 line-clamp-2">
+                                <div className="text-xs text-muted-foreground line-clamp-2">
                                   {activity.description}
                                 </div>
                                 {activity.metadata?.projectName && (
-                                  <div className="text-xs text-gray-400 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     📁 {activity.metadata.projectName}
                                   </div>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                              <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                                 {userActivityService.formatRelativeTime(
                                   activity.timestamp,
                                 )}
@@ -942,8 +942,8 @@ const Dashboard = () => {
                       ))
                     ) : (
                       <div className="text-center py-8">
-                        <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-400">
+                        <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
                           No recent activity
                         </p>
                       </div>
@@ -952,7 +952,7 @@ const Dashboard = () => {
                   <CardFooter>
                     <Button
                       variant="outline"
-                      className="w-full text-gray-400 border-gray-300"
+                      className="w-full text-muted-foreground border-border"
                     >
                       <Activity className="h-4 w-4 mr-2" />
                       View All Activity
@@ -1109,11 +1109,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-200" />
                       <p className="text-lg font-medium mb-2">
                         No projects yet
                       </p>
-                      <p className="text-gray-400 mb-4">
+                      <p className="text-gray-200 mb-4">
                         Create your first project to get started.
                       </p>
                       <Button
@@ -1257,11 +1257,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-200" />
                       <p className="text-lg font-medium mb-2">
                         No documents yet
                       </p>
-                      <p className="text-gray-400 mb-4">
+                      <p className="text-gray-200 mb-4">
                         Upload documents to your projects to see them here.
                       </p>
                       <Button

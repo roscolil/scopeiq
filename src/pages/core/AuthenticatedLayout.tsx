@@ -42,7 +42,7 @@ class AuthErrorBoundary extends Component<
               Reconnecting to authentication...
             </p>
             {process.env.NODE_ENV === 'development' && (
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-2 text-sm text-gray-200">
                 Development: Page will reload automatically
               </p>
             )}

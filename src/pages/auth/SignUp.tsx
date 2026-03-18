@@ -216,9 +216,9 @@ const SignUp = () => {
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-200" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-200" />
                       )}
                       <span className="sr-only">
                         {showPassword ? 'Hide password' : 'Show password'}
@@ -254,9 +254,9 @@ const SignUp = () => {
                       }
                     >
                       {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-200" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-200" />
                       )}
                       <span className="sr-only">
                         {showConfirmPassword
