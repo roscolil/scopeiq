@@ -113,7 +113,7 @@ export const Navbar = () => {
           >
             <div className="relative">
               <img
-                src="/hammer-green.svg"
+                src="/images/jack_cropped.png"
                 alt="Jack of All Trades"
                 className="h-10 w-10"
                 draggable={false}

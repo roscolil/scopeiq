@@ -13,7 +13,7 @@ export const Footer = () => {
           <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
               <img
-                src="/hammer-green.svg"
+                src="/images/jack_cropped.png"
                 alt="Jack of All Trades"
                 className="h-8 w-8"
                 draggable={false}
