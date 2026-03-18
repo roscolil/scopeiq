@@ -25,11 +25,11 @@ export const Spinner = ({
     xl: 'text-xl',
   }
 
-  const iqTextSizes = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-lg',
-    xl: 'text-xl',
+  const imageSizes = {
+    sm: 'w-4 h-4',
+    md: 'w-8 h-8',
+    lg: 'w-12 h-12',
+    xl: 'w-16 h-16',
   }
 
   const innerPadding = {
@@ -74,12 +74,14 @@ export const Spinner = ({
           style={{ animationDuration: '1.5s' }}
         ></div>
 
-        {/* Brand "IQ" text — Exelion gradient */}
-        <span
-          className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-brand-blue-light to-brand-yellow bg-clip-text text-transparent font-bold ${iqTextSizes[size]} tracking-wider drop-shadow-lg`}
-        >
-          IQ
-        </span>
+        {/* Brand "J" logo image */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img
+            src="/images/jack_cropped.png"
+            alt="JACK"
+            className={`object-contain drop-shadow-lg ${imageSizes[size]}`}
+          />
+        </div>
       </div>
       {text && (
         <p

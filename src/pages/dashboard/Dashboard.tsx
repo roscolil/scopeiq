@@ -667,7 +667,7 @@ const Dashboard = () => {
                     {cachedStats.projectCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-brand-blue/70 dark:text-brand-blue-light/70">
+                <p className="text-[10px] sm:text-xs text-brand-blue dark:text-brand-blue-light">
                   Total projects
                 </p>
               </CardContent>
@@ -692,7 +692,7 @@ const Dashboard = () => {
                     {cachedStats.documentCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-green-600/70 dark:text-green-400/70">
+                <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400">
                   Total documents
                 </p>
               </CardContent>
@@ -735,7 +735,7 @@ const Dashboard = () => {
                     {cachedStats.recentDocumentCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-yellow-600/70 dark:text-yellow-400/70">
+                <p className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400">
                   This week
                 </p>
               </CardContent>
