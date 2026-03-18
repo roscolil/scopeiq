@@ -13,7 +13,7 @@ export const Footer = () => {
           <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
               <img
-                src="/images/New Jack Logo clear background and no tag line white text -Mar 26- using Logo Creator.png"
+                src="/images/jack_cropped.png"
                 alt="JACK by Exelion"
                 className="h-8 w-auto max-w-[100px]"
                 draggable={false}
@@ -21,7 +21,7 @@ export const Footer = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 font-medium">
-                © {currentYear}
+                JACK by Exelion © {currentYear}
               </span>
             </div>
           </div>

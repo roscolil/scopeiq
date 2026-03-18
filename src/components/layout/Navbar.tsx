@@ -111,17 +111,16 @@ export const Navbar = () => {
                 : 'text-white hover:text-brand-yellow'
             }`}
           >
-            <div className="relative">
+            <div className="inline-flex items-end gap-3">
               <img
-                src={
-                  scrolled
-                    ? '/images/New Jack Logo clear background black writing -Mar 26- using Logo Creator.png'
-                    : '/images/New Jack Logo clear background and no tag line white text -Mar 26- using Logo Creator.png'
-                }
+                src="/images/jack_cropped.png"
                 alt="JACK by Exelion"
                 className="h-10 w-auto max-w-[120px]"
                 draggable={false}
               />
+              {/* <span className="text-[15px] font-semibold text-gray-300">
+                JACK by Exelion
+              </span> */}
             </div>
           </Link>
           {/* Show menu items on desktop if authenticated */}

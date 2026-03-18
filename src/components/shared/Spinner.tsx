@@ -79,7 +79,7 @@ export const Spinner = ({
           <img
             src="/images/jack_cropped.png"
             alt="JACK"
-            className={`object-contain drop-shadow-lg ${imageSizes[size]}`}
+            className={`object-contain drop-shadow-lg p-1.5 ${imageSizes[size]}`}
           />
         </div>
       </div>
