@@ -383,7 +383,7 @@ const AITrainingConsole = () => {
                       </h3>
                       <p className="text-slate-200 mb-4">
                         A comprehensive AI Training & Knowledge Management
-                        Console for Jack of All Trades that follows
+                        Console for JACK by Exelion that follows
                         industry-standard approaches.
                       </p>
                     </div>

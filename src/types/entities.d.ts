@@ -1,5 +1,5 @@
 /**
- * Core entity type definitions for Jack of All Trades
+ * Core entity type definitions for JACK by Exelion
  * Defines the main data structures used throughout the application
  */
 

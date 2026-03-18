@@ -42,14 +42,14 @@ export const AuthLayout = ({
               <div className="relative">
                 <img
                   src="/images/jack_cropped.png"
-                  alt="Jack of All Trades"
+                  alt="JACK by Exelion"
                   className="h-10 w-10"
                   draggable={false}
                 />
                 {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
               </div>
               <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                Jack of All Trades
+                JACK by Exelion
               </span>
             </Link>
             <h2 className="mt-6 text-3xl font-bold text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">

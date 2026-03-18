@@ -114,14 +114,14 @@ export const Navbar = () => {
             <div className="relative">
               <img
                 src="/images/jack_cropped.png"
-                alt="Jack of All Trades"
+                alt="JACK by Exelion"
                 className="h-10 w-10"
                 draggable={false}
               />
               {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
             <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent text-2xl">
-              Jack of All Trades
+              JACK by Exelion
             </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}

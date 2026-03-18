@@ -1,4 +1,4 @@
-# 🏗️ Jack of All Trades
+# 🏗️ JACK by Exelion
 
 > **AI-Powered Construction Document Management Platform**  
 > Intelligent document organization, semantic search, and project collaboration for the construction industry.
@@ -11,9 +11,9 @@
 
 ---
 
-## 🚀 **What is Jack of All Trades?**
+## 🚀 **What is JACK by Exelion?**
 
-Jack of All Trades revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
+JACK by Exelion revolutionizes construction project management by combining traditional document storage with cutting-edge AI technology. Upload blueprints, contracts, specifications, and reports - then find exactly what you need using natural language queries or voice commands.
 
 ### ✨ **Key Features**
 
@@ -329,9 +329,9 @@ Need help? We're here for you!
 
 ---
 
-## 🏆 **Why Jack of All Trades?**
+## 🏆 **Why JACK by Exelion?**
 
-> _"Before Jack of All Trades, finding the right specification took hours. Now it takes seconds."_  
+> _"Before JACK by Exelion, finding the right specification took hours. Now it takes seconds."_  
 > — **Sarah Chen**, Project Manager at BuildTech Solutions
 
 > _"The voice search feature is a game-changer when you're on-site with dirty hands."_  

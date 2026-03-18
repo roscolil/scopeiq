@@ -9,7 +9,7 @@
 
 ## Project Overview
 
-Jack of All Trades is a React + TypeScript application with AWS Amplify backend for document analysis and AI-powered insights. The app features voice recognition, document processing, and intelligent search capabilities.
+JACK by Exelion is a React + TypeScript application with AWS Amplify backend for document analysis and AI-powered insights. The app features voice recognition, document processing, and intelligent search capabilities.
 
 ## Tech Stack
 

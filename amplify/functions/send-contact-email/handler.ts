@@ -40,7 +40,7 @@ export const handler: AppSyncResolverHandler<
     const toEmail = process.env.SES_TO_EMAIL || 'ross@exelion.ai'
 
     // Create email content
-    const subject = `[Jack of All Trades Contact Form] Message from ${name}`
+    const subject = `[JACK by Exelion Contact Form] Message from ${name}`
     const htmlBody = `
       <!DOCTYPE html>
       <html lang="en">
@@ -107,7 +107,7 @@ export const handler: AppSyncResolverHandler<
       <body>
         <div class="header">
           <h1>🚀 New Contact Form Submission</h1>
-          <p>Jack of All Trades Contact Form</p>
+          <p>JACK by Exelion Contact Form</p>
         </div>
         
         <div class="content">
@@ -159,14 +159,14 @@ export const handler: AppSyncResolverHandler<
         <div class="footer">
           <p><strong>Reply to this inquiry:</strong> Simply reply to this email to respond to ${escapeHtml(name)}</p>
           <p><strong>Submission ID:</strong> <span class="submission-id">${submissionId}</span></p>
-          <p>This email was automatically generated from the Jack of All Tradescontact form.</p>
+          <p>This email was automatically generated from the JACK by Exelion contact form.</p>
         </div>
       </body>
       </html>
     `
 
     const textBody = `
-New Contact Form Submission - Jack of All Trades
+New Contact Form Submission - JACK by Exelion
 
 Name: ${name}
 Email: ${email}
@@ -225,14 +225,14 @@ Reply to this email to respond to the inquiry.
     const notificationResult = await sesClient.send(emailCommand)
 
     // Send confirmation email to the form submitter
-    const confirmationSubject = `Thank you for contacting Jack of All Trades - We'll be in touch soon!`
+    const confirmationSubject = `Thank you for contacting JACK by Exelion - We'll be in touch soon!`
     const confirmationHtmlBody = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Thank You - Jack of All Trades</title>
+        <title>Thank You - JACK by Exelion</title>
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -283,14 +283,14 @@ Reply to this email to respond to the inquiry.
       </head>
       <body>
         <div class="header">
-          <h1>✅ Thank You for Contacting Jack of All Trades!</h1>
+          <h1>✅ Thank You for Contacting JACK by Exelion!</h1>
           <p>We've received your message and will get back to you soon</p>
         </div>
         
         <div class="content">
           <p>Hi ${escapeHtml(name)},</p>
 
-          <p>Thank you for reaching out to Jack of All Trades! We've successfully received your message and our team will review it shortly.</p>
+          <p>Thank you for reaching out to JACK by Exelion! We've successfully received your message and our team will review it shortly.</p>
 
           <div class="message-summary">
             <h3>📝 Your Message Summary:</h3>
@@ -319,17 +319,17 @@ Reply to this email to respond to the inquiry.
           <p>In the meantime, feel free to explore our platform or check out our latest resources:</p>
           
           <div style="text-align: center;">
-            <a href="https://scopeiq.ai" class="cta-button">Visit Jack of All Trades Platform</a>
+            <a href="https://scopeiq.ai" class="cta-button">Visit JACK by Exelion Platform</a>
           </div>
           
           <p>If you have any urgent questions or need immediate assistance, please don't hesitate to reply to this email.</p>
           
           <p>Best regards,<br>
-          The Jack of All Trades Team</p>
+          The JACK by Exelion Team</p>
         </div>
         
         <div class="footer">
-          <p><strong>Jack of All Trades</strong> - AI-Powered Document Intelligence</p>
+          <p><strong>JACK by Exelion</strong> - AI-Powered Document Intelligence</p>
           <p>This email was sent in response to your contact form submission.</p>
           <p>Reference ID: <span style="font-family: monospace; font-size: 12px;">${submissionId}</span></p>
         </div>
@@ -338,11 +338,11 @@ Reply to this email to respond to the inquiry.
     `
 
     const confirmationTextBody = `
-Thank You for Contacting Jack of All Trades!
+Thank You for Contacting JACK by Exelion!
 
 Hi ${name},
 
-Thank you for reaching out to Jack of All Trades! We've successfully received your message and our team will review it shortly.
+Thank you for reaching out to JACK by Exelion! We've successfully received your message and our team will review it shortly.
 
 Your Message Summary:
 Submitted: ${new Date(submittedAt).toLocaleString('en-AU', {
@@ -359,10 +359,10 @@ What Happens Next?
 If you have any urgent questions, please reply to this email.
 
 Best regards,
-The Jack of All Trades Team
+The JACK by Exelion Team
 
 ---
-Jack of All Trades - AI-Powered Document Intelligence
+JACK by Exelion - AI-Powered Document Intelligence
 Reference ID: ${submissionId}
     `.trim()
 

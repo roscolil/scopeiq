@@ -14,7 +14,7 @@ export const Footer = () => {
             <div className="relative">
               <img
                 src="/images/jack_cropped.png"
-                alt="Jack of All Trades"
+                alt="JACK by Exelion"
                 className="h-8 w-8"
                 draggable={false}
               />
@@ -22,7 +22,7 @@ export const Footer = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                Jack of All Trades
+                JACK by Exelion
               </span>
               <span className="text-xs text-gray-400 font-medium">
                 © {currentYear}
