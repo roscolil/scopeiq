@@ -40,7 +40,7 @@ export const AuthLayout = ({
                 <img
                   src="/images/New Jack Logo clear background and no tag line white text -Mar 26- using Logo Creator.png"
                   alt="JACK by Exelion"
-                  className="h-12 w-auto max-w-[140px]"
+                  className="h-20 w-auto max-w-[220px]"
                   draggable={false}
                 />
               </div>
