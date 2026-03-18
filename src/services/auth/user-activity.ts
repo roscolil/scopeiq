@@ -194,13 +194,13 @@ class UserActivityService {
       case 'user_invited':
         return 'text-blue-600'
       case 'invitation_accepted':
-        return 'text-emerald-600'
+        return 'text-brand-blue'
       case 'project_created':
         return 'text-purple-600'
       case 'document_uploaded':
         return 'text-orange-600'
       case 'document_viewed':
-        return 'text-cyan-600'
+        return 'text-brand-blue-light'
       default:
         return 'text-gray-600'
     }

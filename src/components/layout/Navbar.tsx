@@ -107,22 +107,22 @@ export const Navbar = () => {
             to="/"
             className={`font-bold text-xl flex items-center gap-3 transition-colors ${
               scrolled
-                ? 'text-gray-900 hover:text-emerald-600'
-                : 'text-white hover:text-emerald-400'
+                ? 'text-gray-900 hover:text-brand-blue'
+                : 'text-white hover:text-brand-yellow'
             }`}
           >
             <div className="relative">
               <img
-                src="/images/jack_cropped.png"
+                src={
+                  scrolled
+                    ? '/images/New Jack Logo clear background black writing -Mar 26- using Logo Creator.png'
+                    : '/images/New Jack Logo clear background and no tag line white text -Mar 26- using Logo Creator.png'
+                }
                 alt="JACK by Exelion"
-                className="h-10 w-10"
+                className="h-10 w-auto max-w-[120px]"
                 draggable={false}
               />
-              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
-            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent text-2xl">
-              JACK by Exelion
-            </span>
           </Link>
           {/* Show menu items on desktop if authenticated */}
           <nav className="hidden md:flex items-center gap-1">
@@ -135,10 +135,10 @@ export const Navbar = () => {
                   className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive(item.path)
                       ? scrolled
-                        ? 'text-emerald-600 bg-emerald-50 shadow-soft backdrop-blur-sm'
-                        : 'text-emerald-400 bg-white/20 shadow-soft backdrop-blur-sm'
+                        ? 'text-brand-blue bg-brand-blue/10 shadow-soft backdrop-blur-sm'
+                        : 'text-brand-yellow bg-white/20 shadow-soft backdrop-blur-sm'
                       : scrolled
-                        ? 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'text-gray-700 hover:text-brand-blue hover:bg-gray-100'
                         : 'text-gray-200 hover:text-white hover:bg-white/10'
                   }`}
                 >
@@ -157,8 +157,8 @@ export const Navbar = () => {
                 size="icon"
                 className={`md:hidden h-12 w-12 touch-manipulation transition-colors ${
                   scrolled
-                    ? 'text-gray-700 hover:text-emerald-600 hover:bg-gray-100 active:bg-gray-200'
-                    : 'text-white hover:text-emerald-400 hover:bg-white/10 active:bg-white/20'
+                    ? 'text-gray-700 hover:text-brand-blue hover:bg-gray-100 active:bg-gray-200'
+                    : 'text-white hover:text-brand-yellow hover:bg-white/10 active:bg-white/20'
                 }`}
               >
                 <Menu className="h-6 w-6" />
@@ -167,7 +167,7 @@ export const Navbar = () => {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-[280px] sm:w-[320px] bg-black/90 backdrop-blur-md border-white/20"
+              className="w-[280px] sm:w-[320px] bg-brand-navy/95 backdrop-blur-md border-brand-blue/20"
             >
               <nav className="flex flex-col gap-2 mt-8">
                 {isAuthenticated &&
@@ -178,8 +178,8 @@ export const Navbar = () => {
                       to={item.path}
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(item.path)
-                          ? 'bg-emerald-500 text-white shadow-medium'
-                          : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
+                          ? 'bg-brand-blue text-white shadow-medium'
+                          : 'text-gray-200 hover:text-brand-yellow hover:bg-brand-blue/20'
                       }`}
                     >
                       {item.icon}
@@ -198,8 +198,8 @@ export const Navbar = () => {
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive(`/${companyId?.toLowerCase()}/settings`) ||
                         isActive('/settings')
-                          ? 'bg-emerald-500/20 text-emerald-300 shadow-soft backdrop-blur-sm'
-                          : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
+                          ? 'bg-brand-blue/20 text-brand-yellow shadow-soft backdrop-blur-sm'
+                          : 'text-gray-200 hover:text-brand-yellow hover:bg-brand-blue/20'
                       }`}
                     >
                       <Settings className="w-5 h-5 mr-3" />
@@ -219,8 +219,8 @@ export const Navbar = () => {
                     to="/auth/signin"
                     className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive('/auth/signin')
-                        ? 'bg-emerald-500 text-white shadow-medium'
-                        : 'text-gray-200 hover:text-emerald-300 hover:bg-emerald-500/20'
+                        ? 'bg-brand-blue text-white shadow-medium'
+                        : 'text-gray-200 hover:text-brand-yellow hover:bg-brand-blue/20'
                     }`}
                   >
                     <LogIn className="w-5 h-5 mr-3" />
@@ -241,8 +241,8 @@ export const Navbar = () => {
                       size="icon"
                       className={`h-10 w-10 rounded-full transition-colors ${
                         scrolled
-                          ? 'hover:bg-gray-100 text-gray-700 hover:text-emerald-600'
-                          : 'hover:bg-white/20 text-white hover:text-emerald-400'
+                          ? 'hover:bg-gray-100 text-gray-700 hover:text-brand-blue'
+                          : 'hover:bg-white/20 text-white hover:text-brand-yellow'
                       }`}
                       onClick={() => setShowLogoutModal(true)}
                     >
@@ -260,7 +260,7 @@ export const Navbar = () => {
             <Button
               variant="default"
               size="sm"
-              className="hidden md:flex font-medium bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white border-0 shadow-soft"
+              className="hidden md:flex font-medium bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border-0 shadow-brand"
               asChild
             >
               <Link to="/auth/signin">

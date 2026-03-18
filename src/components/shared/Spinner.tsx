@@ -74,9 +74,9 @@ export const Spinner = ({
           style={{ animationDuration: '1.5s' }}
         ></div>
 
-        {/* Brand "IQ" text - emerald gradient to match header */}
+        {/* Brand "IQ" text — Exelion gradient */}
         <span
-          className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent font-bold ${iqTextSizes[size]} tracking-wider drop-shadow-lg`}
+          className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-brand-blue-light to-brand-yellow bg-clip-text text-transparent font-bold ${iqTextSizes[size]} tracking-wider drop-shadow-lg`}
         >
           IQ
         </span>

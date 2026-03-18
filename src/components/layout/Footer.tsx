@@ -6,24 +6,20 @@ export const Footer = () => {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-white/20 py-8 md:py-12 bg-transparent backdrop-blur-sm">
+    <footer className="border-t border-brand-blue/20 py-8 md:py-12 footer-bg backdrop-blur-sm">
       <div className="container-2xl">
         <div className="flex flex-col items-center justify-between gap-6 md:gap-0 lg:flex-row">
           {/* Brand */}
           <div className="flex items-center gap-3 order-2 md:order-1">
             <div className="relative">
               <img
-                src="/images/jack_cropped.png"
+                src="/images/New Jack Logo clear background and no tag line white text -Mar 26- using Logo Creator.png"
                 alt="JACK by Exelion"
-                className="h-8 w-8"
+                className="h-8 w-auto max-w-[100px]"
                 draggable={false}
               />
-              {/* <div className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full opacity-80" /> */}
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                JACK by Exelion
-              </span>
               <span className="text-xs text-gray-400 font-medium">
                 © {currentYear}
               </span>

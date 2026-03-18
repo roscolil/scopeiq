@@ -74,20 +74,17 @@ const Index = () => {
     <>
       {/* Dark gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Base dark gradient layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-gray-950 to-black"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-gray-950 via-slate-950 to-black"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/8 via-transparent to-cyan-500/3"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-violet-500/6 via-transparent to-blue-500/4"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-500/3 via-transparent to-transparent"></div>
+        {/* Exelion brand gradient layers */}
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
-        {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/12 to-cyan-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/10 to-blue-500/6 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/6 to-emerald-500/4 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/8 to-slate-500/6 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-slate-500/4 to-violet-500/6 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-emerald-500/6 to-cyan-500/4 rounded-full blur-xl"></div>
+        {/* Floating gradient orbs */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/12 to-brand-yellow/8 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/10 to-brand-blue/6 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/6 to-brand-blue-light/4 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-brand-blue/8 to-brand-navy/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
@@ -97,17 +94,17 @@ const Index = () => {
             {/* Show subtle loading indicator when checking auth */}
             {isLoading && (
               <div className="my-8 flex items-center justify-center gap-3 text-gray-400 animate-fade-in">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-100"></div>
-                <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse delay-200"></div>
+                <div className="w-2 h-2 bg-brand-blue-light rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-brand-blue rounded-full animate-pulse delay-100"></div>
+                <div className="w-2 h-2 bg-brand-yellow rounded-full animate-pulse delay-200"></div>
                 <span className="ml-3 text-sm">Checking authentication...</span>
               </div>
             )}
 
             {/* Show redirection message only when redirecting after sign-in */}
             {hasShownWelcome && (
-              <div className="my-8 flex items-center justify-center gap-3 text-emerald-400 animate-fade-in">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>
+              <div className="my-8 flex items-center justify-center gap-3 text-brand-blue-light animate-fade-in">
+                <div className="w-2 h-2 bg-brand-blue-light rounded-full animate-bounce"></div>
                 <span className="text-sm">
                   Redirecting to your dashboard...
                 </span>
@@ -115,9 +112,9 @@ const Index = () => {
             )}
             <div className="max-w-6xl mt-14 mx-auto">
               {/* Enhanced badge */}
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-semibold mb-12 shadow-xl animate-fade-in">
-                <div className="p-1.5 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-full">
-                  <Brain className="h-4 w-4 text-emerald-400" />
+              <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-semibold mb-12 shadow-brand animate-fade-in">
+                <div className="p-1.5 bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/20 rounded-full">
+                  <Brain className="h-4 w-4 text-brand-yellow" />
                 </div>
                 <span className="text-gray-200">
                   AI-Powered Document Intelligence
@@ -126,11 +123,11 @@ const Index = () => {
 
               {/* Dramatic gradient heading */}
               <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-in">
-                <span className="text-transparent bg-gradient-to-br from-emerald-400 from-30% via-blue-400 via-60% to-violet-400 bg-clip-text leading-tight">
+                <span className="text-transparent bg-gradient-to-br from-white from-30% via-brand-yellow/90 via-60% to-white bg-clip-text leading-tight">
                   Document Intelligence
                 </span>
                 <br />
-                <span className="text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text">
+                <span className="text-transparent bg-gradient-to-r from-brand-yellow via-white to-brand-yellow bg-clip-text">
                   Platform
                 </span>
               </h1>
@@ -145,7 +142,7 @@ const Index = () => {
                 <div className="mt-16 flex flex-col sm:flex-row gap-8 justify-center items-center animate-fade-in">
                   <Button
                     size="lg"
-                    className="group relative px-12 py-6 h-16 text-lg font-bold overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-blue-600 to-accent hover:shadow-2xl hover:shadow-primary/25 transition-all duration-500 transform hover:scale-105 active:scale-95 border-0"
+                    className="group relative px-12 py-6 h-16 text-lg font-bold overflow-hidden rounded-2xl bg-gradient-to-r from-brand-blue via-brand-blue-light to-brand-blue hover:shadow-brand-xl transition-all duration-500 transform hover:scale-105 active:scale-95 border-0"
                     onClick={() => navigate('/auth/signin')}
                   >
                     <div className="absolute inset-0 w-0 bg-white/20 transition-all duration-500 ease-out group-hover:w-full"></div>
@@ -171,7 +168,7 @@ const Index = () => {
           <div className="px-6">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text">
+                <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
                   Powerful Features
                 </h2>
                 <p className="text-xl text-gray-300 max-w-3xl mx-auto">
@@ -181,17 +178,17 @@ const Index = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-black/50 border-0 bg-black/40 backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-950/50 to-gray-900/40 group-hover:from-black/65 group-hover:via-slate-950/55 group-hover:to-gray-900/45 transition-all duration-300"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-cyan-500/15 rounded-full blur-2xl group-hover:from-emerald-500/12 group-hover:to-cyan-500/18 transition-all duration-300"></div>
+                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-brand-navy/50 border-0 bg-brand-navy/40 backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand-navy/60 via-brand-blue-dark/50 to-brand-navy/40 group-hover:from-brand-navy/65 group-hover:via-brand-blue-dark/55 group-hover:to-brand-navy/45 transition-all duration-300"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-blue/10 to-brand-blue-light/15 rounded-full blur-2xl group-hover:from-brand-blue/12 group-hover:to-brand-blue-light/18 transition-all duration-300"></div>
 
                   <div className="relative z-10">
                     <CardHeader className="space-y-6 pb-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 blur-lg rounded-xl"></div>
-                          <div className="relative p-4 bg-gradient-to-br from-emerald-500/10 via-black/20 to-cyan-500/10 rounded-xl border border-white/10">
-                            <Scan className="h-8 w-8 text-emerald-400" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/20 blur-lg rounded-xl"></div>
+                          <div className="relative p-4 bg-gradient-to-br from-brand-blue/10 via-brand-navy/20 to-brand-blue-light/10 rounded-xl border border-white/10">
+                            <Scan className="h-8 w-8 text-brand-yellow" />
                           </div>
                         </div>
                         <div>
@@ -212,17 +209,17 @@ const Index = () => {
                   </div>
                 </Card>
 
-                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-black/50 border-0 bg-black/40 backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-950/50 to-gray-900/40 group-hover:from-black/65 group-hover:via-slate-950/55 group-hover:to-gray-900/45 transition-all duration-300"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-blue-500/15 rounded-full blur-2xl group-hover:from-violet-500/12 group-hover:to-blue-500/18 transition-all duration-300"></div>
+                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-brand-navy/50 border-0 bg-brand-navy/40 backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand-navy/60 via-brand-blue-dark/50 to-brand-navy/40 group-hover:from-brand-navy/65 group-hover:via-brand-blue-dark/55 group-hover:to-brand-navy/45 transition-all duration-300"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-blue-light/10 to-brand-yellow/15 rounded-full blur-2xl group-hover:from-brand-blue-light/12 group-hover:to-brand-yellow/18 transition-all duration-300"></div>
 
                   <div className="relative z-10">
                     <CardHeader className="space-y-6 pb-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-blue-500/20 blur-lg rounded-xl"></div>
-                          <div className="relative p-4 bg-gradient-to-br from-violet-500/10 via-black/20 to-blue-500/10 rounded-xl border border-white/10">
-                            <Sparkles className="h-8 w-8 text-violet-400" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-brand-blue-light/20 to-brand-yellow/20 blur-lg rounded-xl"></div>
+                          <div className="relative p-4 bg-gradient-to-br from-brand-blue-light/10 via-brand-navy/20 to-brand-yellow/10 rounded-xl border border-white/10">
+                            <Sparkles className="h-8 w-8 text-brand-yellow" />
                           </div>
                         </div>
                         <div>
@@ -243,17 +240,17 @@ const Index = () => {
                   </div>
                 </Card>
 
-                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-black/50 border-0 bg-black/40 backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-950/50 to-gray-900/40 group-hover:from-black/65 group-hover:via-slate-950/55 group-hover:to-gray-900/45 transition-all duration-300"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-blue-500/15 rounded-full blur-2xl group-hover:from-cyan-500/12 group-hover:to-blue-500/18 transition-all duration-300"></div>
+                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-brand-navy/50 border-0 bg-brand-navy/40 backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand-navy/60 via-brand-blue-dark/50 to-brand-navy/40 group-hover:from-brand-navy/65 group-hover:via-brand-blue-dark/55 group-hover:to-brand-navy/45 transition-all duration-300"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-blue/10 to-brand-blue-light/15 rounded-full blur-2xl group-hover:from-brand-blue/12 group-hover:to-brand-blue-light/18 transition-all duration-300"></div>
 
                   <div className="relative z-10">
                     <CardHeader className="space-y-6 pb-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 blur-lg rounded-xl"></div>
-                          <div className="relative p-4 bg-gradient-to-br from-cyan-500/10 via-black/20 to-blue-500/10 rounded-xl border border-white/10">
-                            <SearchX className="h-8 w-8 text-cyan-400" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/20 blur-lg rounded-xl"></div>
+                          <div className="relative p-4 bg-gradient-to-br from-brand-blue/10 via-brand-navy/20 to-brand-blue-light/10 rounded-xl border border-white/10">
+                            <SearchX className="h-8 w-8 text-brand-blue-light" />
                           </div>
                         </div>
                         <div>
@@ -274,17 +271,17 @@ const Index = () => {
                   </div>
                 </Card>
 
-                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-black/50 border-0 bg-black/40 backdrop-blur-sm">
-                  <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-950/50 to-gray-900/40 group-hover:from-black/65 group-hover:via-slate-950/55 group-hover:to-gray-900/45 transition-all duration-300"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-cyan-500/15 rounded-full blur-2xl group-hover:from-emerald-500/12 group-hover:to-cyan-500/18 transition-all duration-300"></div>
+                <Card className="group relative overflow-hidden transition-all duration-300 hover:bg-brand-navy/50 border-0 bg-brand-navy/40 backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-br from-brand-navy/60 via-brand-blue-dark/50 to-brand-navy/40 group-hover:from-brand-navy/65 group-hover:via-brand-blue-dark/55 group-hover:to-brand-navy/45 transition-all duration-300"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-brand-blue/10 to-brand-yellow/15 rounded-full blur-2xl group-hover:from-brand-blue/12 group-hover:to-brand-yellow/18 transition-all duration-300"></div>
 
                   <div className="relative z-10">
                     <CardHeader className="space-y-6 pb-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 blur-lg rounded-xl"></div>
-                          <div className="relative p-4 bg-gradient-to-br from-emerald-500/10 via-black/20 to-cyan-500/10 rounded-xl border border-white/10">
-                            <Shield className="h-8 w-8 text-emerald-400" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-yellow/20 blur-lg rounded-xl"></div>
+                          <div className="relative p-4 bg-gradient-to-br from-brand-blue/10 via-brand-navy/20 to-brand-yellow/10 rounded-xl border border-white/10">
+                            <Shield className="h-8 w-8 text-brand-yellow" />
                           </div>
                         </div>
                         <div>
@@ -312,14 +309,14 @@ const Index = () => {
           <div className="px-6">
             <div className="relative max-w-6xl mx-auto">
               {/* FAQ background with glass effect */}
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-2xl"></div>
-              <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-slate-950/40 to-gray-900/30 rounded-3xl"></div>
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-cyan-500/15 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-violet-500/10 to-blue-500/15 rounded-full blur-3xl"></div>
+              <div className="absolute inset-0 bg-brand-navy/40 backdrop-blur-sm rounded-3xl border border-white/10 shadow-brand-lg"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/30 rounded-3xl"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-brand-blue/10 to-brand-blue-light/15 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-brand-blue-dark/10 to-brand-yellow/15 rounded-full blur-3xl"></div>
 
               <div className="relative z-10 py-20 px-8">
                 <div className="text-center mb-16">
-                  <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-gray-200 to-gray-300 bg-clip-text">
+                  <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
                     Frequently Asked Questions
                   </h2>
                   <p className="text-xl text-gray-300 max-w-3xl mx-auto">

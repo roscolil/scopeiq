@@ -468,26 +468,22 @@ const Migration: React.FC = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced darker and more vivid gradient background layers with more variation */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
+        {/* Exelion brand gradient background layers */}
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
-        {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-slate-500/8 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-slate-500/6 to-violet-500/8 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-emerald-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
+        {/* Floating gradient orbs */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/8 to-brand-blue-light/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
+            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text mb-4">
               Data Management Dashboard
             </h1>
             <p className="text-slate-200">
@@ -498,7 +494,7 @@ const Migration: React.FC = () => {
           {/* System Status Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* S3 Storage Status Card */}
-            <Card className="bg-slate-900/50 border-slate-700/50">
+            <Card className="bg-brand-navy/50 border-brand-blue/30">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-white flex items-center gap-2">
                   <Cloud className="h-4 w-4 text-blue-400" />
@@ -537,10 +533,10 @@ const Migration: React.FC = () => {
             </Card>
 
             {/* Database Status Card */}
-            <Card className="bg-slate-900/50 border-slate-700/50">
+            <Card className="bg-brand-navy/50 border-brand-blue/30">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-white flex items-center gap-2">
-                  <Database className="h-4 w-4 text-emerald-400" />
+                  <Database className="h-4 w-4 text-brand-yellow" />
                   Database Status
                 </CardTitle>
               </CardHeader>
@@ -559,7 +555,7 @@ const Migration: React.FC = () => {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-2xl font-bold text-emerald-400">
+                      <div className="text-2xl font-bold text-brand-yellow">
                         {storageMetrics?.database.totalRecords || 0}
                       </div>
                       <p className="text-xs text-slate-400">Total Records</p>
@@ -576,7 +572,7 @@ const Migration: React.FC = () => {
             </Card>
 
             {/* Sync Status Card */}
-            <Card className="bg-slate-900/50 border-slate-700/50">
+            <Card className="bg-brand-navy/50 border-brand-blue/30">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-white flex items-center gap-2">
                   <Activity className="h-4 w-4 text-purple-400" />
@@ -662,7 +658,7 @@ const Migration: React.FC = () => {
             <TabsContent value="s3" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* S3 Buckets */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <FolderOpen className="h-5 w-5" />
@@ -717,7 +713,7 @@ const Migration: React.FC = () => {
                 </Card>
 
                 {/* Recent Files */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <FileText className="h-5 w-5" />
@@ -759,7 +755,7 @@ const Migration: React.FC = () => {
                               </div>
                             </div>
                             <div className="text-right ml-4">
-                              <div className="text-sm font-medium text-cyan-400">
+                              <div className="text-sm font-medium text-brand-blue-light">
                                 {file.size}
                               </div>
                               <div className="text-xs text-slate-400">
@@ -776,7 +772,7 @@ const Migration: React.FC = () => {
             <TabsContent value="database" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Database Tables */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <Server className="h-5 w-5" />
@@ -818,7 +814,7 @@ const Migration: React.FC = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-medium text-emerald-400">
+                              <div className="font-medium text-brand-yellow">
                                 {table.size}
                               </div>
                               <div className="text-xs text-slate-400">
@@ -831,7 +827,7 @@ const Migration: React.FC = () => {
                 </Card>
 
                 {/* Performance Metrics */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
@@ -930,7 +926,7 @@ const Migration: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="activity" className="space-y-4">
-              <Card className="bg-slate-900/50 border-slate-700/50">
+              <Card className="bg-brand-navy/50 border-brand-blue/30">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Clock className="h-5 w-5" />
@@ -1000,7 +996,7 @@ const Migration: React.FC = () => {
 
             <TabsContent value="settings" className="space-y-4">
               {/* Connectivity Status */}
-              <Card className="bg-slate-900/50 border-slate-700/50">
+              <Card className="bg-brand-navy/50 border-brand-blue/30">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Settings className="h-5 w-5" />
@@ -1140,7 +1136,7 @@ const Migration: React.FC = () => {
               </Card>
 
               {/* Service Mode Controls */}
-              <Card className="bg-slate-900/50 border-slate-700/50">
+              <Card className="bg-brand-navy/50 border-brand-blue/30">
                 <CardHeader>
                   <CardTitle className="text-white">Service Mode</CardTitle>
                   <CardDescription className="text-slate-400">
@@ -1187,7 +1183,7 @@ const Migration: React.FC = () => {
               </Card>
 
               {/* Data Management Actions */}
-              <Card className="bg-slate-900/50 border-slate-700/50">
+              <Card className="bg-brand-navy/50 border-brand-blue/30">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Shield className="h-5 w-5" />

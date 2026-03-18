@@ -320,10 +320,12 @@ const AITrainingConsole = () => {
       <TooltipProvider>
         {/* Background */}
         <div className="fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-blue-950/95 to-indigo-900"></div>
-          <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-blue-950/80 to-violet-950/80"></div>
-          <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-indigo-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
+          <div className="absolute inset-0 hero-bg"></div>
+          <div className="absolute inset-0 hero-glow"></div>
+          <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
+          <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
         </div>
 
         <Layout>
@@ -341,7 +343,7 @@ const AITrainingConsole = () => {
               </Button>
 
               <div className="flex-1">
-                <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
                   AI Training Console
                 </h1>
                 <p className="text-slate-200 mt-2">
@@ -359,7 +361,7 @@ const AITrainingConsole = () => {
               <CollapsibleTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-between bg-slate-900/50 border-slate-600 text-white hover:bg-slate-800/50"
+                  className="w-full justify-between bg-brand-navy/50 border-brand-blue/30 text-white hover:bg-brand-navy/70"
                 >
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4" />
@@ -373,11 +375,11 @@ const AITrainingConsole = () => {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 mt-4">
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardContent className="p-6 space-y-6">
                     {/* Quick Start */}
                     <div>
-                      <h3 className="text-xl font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                      <h3 className="text-xl font-bold text-brand-yellow mb-3 flex items-center gap-2">
                         <Zap className="h-5 w-5" />✅ AI Training Console
                         Successfully Implemented
                       </h3>
@@ -391,12 +393,12 @@ const AITrainingConsole = () => {
                     {/* Industry Standards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-3">
-                        <h4 className="text-lg font-semibold text-cyan-400 flex items-center gap-2">
+                        <h4 className="text-lg font-semibold text-brand-blue-light flex items-center gap-2">
                           🤖 Industry Standard Approaches
                         </h4>
                         <div className="space-y-3">
-                          <div className="p-3 bg-emerald-950/30 border border-emerald-700/50 rounded-lg">
-                            <h5 className="font-semibold text-emerald-300 mb-2">
+                          <div className="p-3 bg-brand-blue-dark/30 border border-brand-blue/50 rounded-lg">
+                            <h5 className="font-semibold text-brand-blue-light mb-2">
                               1. RAG (Recommended) ✅
                             </h5>
                             <p className="text-sm text-slate-200 mb-2">
@@ -446,7 +448,7 @@ const AITrainingConsole = () => {
                               key={index}
                               className="flex items-center gap-2 text-sm text-slate-200 p-2 bg-slate-800/30 rounded"
                             >
-                              <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-gradient-to-r from-brand-blue to-brand-blue-light rounded-full"></div>
                               {category}
                             </div>
                           ))}
@@ -496,8 +498,8 @@ const AITrainingConsole = () => {
                         📈 Performance Benefits
                       </h4>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-gradient-to-br from-emerald-900/20 to-emerald-800/20 rounded-lg border border-emerald-700/30">
-                          <div className="text-2xl font-bold text-emerald-400">
+                        <div className="text-center p-3 bg-gradient-to-br from-brand-blue-dark/20 to-brand-blue/20 rounded-lg border border-brand-blue/30">
+                          <div className="text-2xl font-bold text-brand-yellow">
                             30-50%
                           </div>
                           <div className="text-xs text-slate-300">
@@ -520,8 +522,8 @@ const AITrainingConsole = () => {
                             Accuracy Target
                           </div>
                         </div>
-                        <div className="text-center p-3 bg-gradient-to-br from-cyan-900/20 to-cyan-800/20 rounded-lg border border-cyan-700/30">
-                          <div className="text-2xl font-bold text-cyan-400">
+                        <div className="text-center p-3 bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/20 rounded-lg border border-brand-blue-light/30">
+                          <div className="text-2xl font-bold text-brand-blue-light">
                             Real-time
                           </div>
                           <div className="text-xs text-slate-300">
@@ -569,7 +571,7 @@ const AITrainingConsole = () => {
               <TabsContent value="overview" className="space-y-6">
                 {/* Performance Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-white">
                         Total Examples
@@ -589,20 +591,20 @@ const AITrainingConsole = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-white">
                         Model Accuracy
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-emerald-400">
+                      <div className="text-2xl font-bold text-brand-yellow">
                         {metrics.modelPerformance?.accuracy?.toFixed(1)}%
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <Badge
                           variant="outline"
-                          className="border-emerald-600 text-emerald-400"
+                          className="border-brand-blue text-brand-yellow"
                         >
                           <CheckCircle className="h-3 w-3 mr-1" />
                           {metrics.modelPerformance?.accuracy >= 90
@@ -632,7 +634,7 @@ const AITrainingConsole = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-white">
                         Response Time
@@ -663,7 +665,7 @@ const AITrainingConsole = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium text-white">
                         User Satisfaction
@@ -703,7 +705,7 @@ const AITrainingConsole = () => {
                 </div>
 
                 {/* Category Coverage */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-white">
                       <BarChart3 className="h-5 w-5" />
@@ -728,7 +730,7 @@ const AITrainingConsole = () => {
                             </div>
                             <div className="w-full bg-slate-700 rounded-full h-2">
                               <div
-                                className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full"
+                                className="bg-gradient-to-r from-brand-blue to-brand-blue-light h-2 rounded-full"
                                 style={{
                                   width: `${(count / Math.max(...Object.values(metrics.categoryCoverage))) * 100}%`,
                                 }}
@@ -743,7 +745,7 @@ const AITrainingConsole = () => {
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
                         <FileText className="h-5 w-5" />
@@ -761,7 +763,7 @@ const AITrainingConsole = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
                         <Brain className="h-5 w-5" />
@@ -789,7 +791,7 @@ const AITrainingConsole = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-slate-900/50 border-slate-700/50">
+                  <Card className="bg-brand-navy/50 border-brand-blue/30">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-white">
                         <Download className="h-5 w-5" />
@@ -818,7 +820,7 @@ const AITrainingConsole = () => {
                 />
 
                 {/* Manual Training Example Entry */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white">
                       Manual Training Example
@@ -901,7 +903,7 @@ const AITrainingConsole = () => {
                 </Card>
 
                 {/* Training Data List */}
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white">
                       Training Examples ({trainingData.length})
@@ -940,7 +942,7 @@ const AITrainingConsole = () => {
                           </div>
                           <div className="space-y-2">
                             <div>
-                              <span className="text-xs font-medium text-emerald-400">
+                              <span className="text-xs font-medium text-brand-yellow">
                                 Input:
                               </span>
                               <p className="text-sm text-white">
@@ -974,7 +976,7 @@ const AITrainingConsole = () => {
                   </AlertDescription>
                 </Alert>
 
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="text-white">
                       Model Training Options
@@ -985,8 +987,8 @@ const AITrainingConsole = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="p-4 border border-emerald-600/50 rounded-lg bg-emerald-950/20">
-                        <h3 className="font-semibold text-emerald-400 mb-2">
+                      <div className="p-4 border border-brand-blue/50 rounded-lg bg-brand-blue-dark/20">
+                        <h3 className="font-semibold text-brand-yellow mb-2">
                           RAG (Recommended)
                         </h3>
                         <ul className="text-sm text-white space-y-1">
@@ -1014,7 +1016,7 @@ const AITrainingConsole = () => {
 
               {/* Evaluation Tab */}
               <TabsContent value="evaluation" className="space-y-6">
-                <Card className="bg-slate-900/50 border-slate-700/50">
+                <Card className="bg-brand-navy/50 border-brand-blue/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-white">
                       <MessageSquare className="h-5 w-5" />
@@ -1058,7 +1060,7 @@ const AITrainingConsole = () => {
                 {isDeploymentDataLoaded && (
                   <>
                     {/* Model Performance Details */}
-                    <Card className="bg-slate-900/50 border-slate-700/50">
+                    <Card className="bg-brand-navy/50 border-brand-blue/30">
                       <CardHeader>
                         <CardTitle className="text-white">
                           Live Model Performance
@@ -1247,7 +1249,7 @@ const AITrainingConsole = () => {
                     </Card>
 
                     {/* API and System Health */}
-                    <Card className="bg-slate-900/50 border-slate-700/50">
+                    <Card className="bg-brand-navy/50 border-brand-blue/30">
                       <CardHeader>
                         <CardTitle className="text-white">
                           System Health & API Status
@@ -1259,7 +1261,7 @@ const AITrainingConsole = () => {
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                            <CheckCircle className="h-5 w-5 text-emerald-400" />
+                            <CheckCircle className="h-5 w-5 text-brand-yellow" />
                             <div className="flex-1">
                               <div className="flex items-center gap-1">
                                 <div className="text-sm font-medium text-white">
@@ -1286,7 +1288,7 @@ const AITrainingConsole = () => {
                           </div>
 
                           <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                            <CheckCircle className="h-5 w-5 text-emerald-400" />
+                            <CheckCircle className="h-5 w-5 text-brand-yellow" />
                             <div className="flex-1">
                               <div className="flex items-center gap-1">
                                 <div className="text-sm font-medium text-white">
@@ -1313,7 +1315,7 @@ const AITrainingConsole = () => {
                           </div>
 
                           <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                            <CheckCircle className="h-5 w-5 text-emerald-400" />
+                            <CheckCircle className="h-5 w-5 text-brand-yellow" />
                             <div className="flex-1">
                               <div className="flex items-center gap-1">
                                 <div className="text-sm font-medium text-white">
@@ -1340,7 +1342,7 @@ const AITrainingConsole = () => {
                           </div>
 
                           <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                            <CheckCircle className="h-5 w-5 text-emerald-400" />
+                            <CheckCircle className="h-5 w-5 text-brand-yellow" />
                             <div className="flex-1">
                               <div className="flex items-center gap-1">
                                 <div className="text-sm font-medium text-white">
@@ -1371,7 +1373,7 @@ const AITrainingConsole = () => {
                     </Card>
 
                     {/* Deployment Information */}
-                    <Card className="bg-slate-900/50 border-slate-700/50">
+                    <Card className="bg-brand-navy/50 border-brand-blue/30">
                       <CardHeader>
                         <CardTitle className="text-white">
                           Deployment Details
@@ -1514,7 +1516,7 @@ const AITrainingConsole = () => {
                     </Card>
 
                     {/* Real-time Activity Monitor */}
-                    <Card className="bg-slate-900/50 border-slate-700/50">
+                    <Card className="bg-brand-navy/50 border-brand-blue/30">
                       <CardHeader>
                         <CardTitle className="text-white">
                           Live Activity Monitor

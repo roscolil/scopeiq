@@ -949,7 +949,7 @@ export const VoiceShazamButton = ({
                   showProcessing
                     ? 'bg-orange-600 hover:bg-orange-600 !opacity-100'
                     : showListeningVisual
-                      ? 'bg-emerald-500 hover:bg-emerald-600 !opacity-100'
+                      ? 'bg-brand-blue hover:bg-brand-blue-dark !opacity-100'
                       : 'bg-primary hover:bg-primary',
                   // Remove animate-pulse to avoid opacity animation in listening state
                   pulseAnimation && showListeningVisual && 'shadow-2xl',

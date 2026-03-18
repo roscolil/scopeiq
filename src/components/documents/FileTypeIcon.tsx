@@ -81,7 +81,7 @@ export const FileTypeIcon: React.FC<FileTypeIconProps> = ({
   if (isExcel(mimeType, e)) {
     return (
       <FileSpreadsheet
-        className={cn('text-emerald-600', className, common)}
+        className={cn('text-brand-blue', className, common)}
         style={{ width: size, height: size }}
       />
     )

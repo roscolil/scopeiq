@@ -245,7 +245,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
   return (
     <div className="space-y-6">
       {/* Configuration */}
-      <Card className="bg-slate-900/50 border-slate-700/50">
+      <Card className="bg-brand-navy/50 border-brand-blue/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Brain className="h-5 w-5" />
@@ -336,7 +336,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
       </Card>
 
       {/* Upload Area */}
-      <Card className="bg-slate-900/50 border-slate-700/50">
+      <Card className="bg-brand-navy/50 border-brand-blue/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Upload className="h-5 w-5" />
@@ -477,7 +477,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
 
       {/* Results */}
       {results && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card className="bg-brand-navy/50 border-brand-blue/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <CheckCircle className="h-5 w-5 text-green-400" />
@@ -487,7 +487,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-3 bg-slate-800/30 rounded-lg text-center">
-                <div className="text-lg font-bold text-emerald-400">
+                <div className="text-lg font-bold text-brand-yellow">
                   {results.examples.length}
                 </div>
                 <div className="text-xs text-slate-300">Training Examples</div>
@@ -505,7 +505,7 @@ export const AITrainingUploader: React.FC<AITrainingUploaderProps> = ({
                 <div className="text-xs text-slate-300">Embeddings</div>
               </div>
               <div className="p-3 bg-slate-800/30 rounded-lg text-center">
-                <div className="text-lg font-bold text-cyan-400">
+                <div className="text-lg font-bold text-brand-blue-light">
                   {results.namespace}
                 </div>
                 <div className="text-xs text-slate-300">Namespace</div>

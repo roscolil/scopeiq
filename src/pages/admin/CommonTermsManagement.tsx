@@ -18,20 +18,16 @@ const CommonTermsManagement = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced darker and more vivid blue gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-blue-950/95 to-indigo-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-blue-950/80 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-blue-950/60 via-indigo-950/80 to-blue-950/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/15 to-indigo-400/25"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-blue-600/20"></div>
+        {/* Exelion brand gradient background layers */}
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
-        {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-indigo-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-blue-500/6 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-indigo-500/8 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-indigo-500/6 to-blue-500/8 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-blue-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
+        {/* Floating gradient orbs */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/8 to-brand-blue-light/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
@@ -49,7 +45,7 @@ const CommonTermsManagement = () => {
             </Button>
 
             <div className="flex-1">
-              <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+              <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
                 Common Terms Management
               </h1>
               <p className="text-slate-200 mt-2">
@@ -61,9 +57,9 @@ const CommonTermsManagement = () => {
 
           {/* Benefits Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+            <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-emerald-400">
+                <CardTitle className="flex items-center gap-2 text-brand-yellow">
                   <Zap className="h-5 w-5" />
                   Performance
                 </CardTitle>
@@ -76,9 +72,9 @@ const CommonTermsManagement = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+            <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-blue-400">
+                <CardTitle className="flex items-center gap-2 text-brand-blue-light">
                   <Search className="h-5 w-5" />
                   Accuracy
                 </CardTitle>
@@ -91,9 +87,9 @@ const CommonTermsManagement = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+            <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-purple-400">
+                <CardTitle className="flex items-center gap-2 text-brand-blue">
                   <Database className="h-5 w-5" />
                   Efficiency
                 </CardTitle>
@@ -138,7 +134,7 @@ const CommonTermsManagement = () => {
                   </h4>
                   <ul className="space-y-2 text-sm text-slate-300">
                     <li className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400 mt-2 flex-shrink-0" />
+                      <div className="w-2 h-2 rounded-full bg-brand-yellow mt-2 flex-shrink-0" />
                       <span>
                         <strong>Smart routing:</strong> Automatically detects
                         query type

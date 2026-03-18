@@ -1683,7 +1683,7 @@ export const AIActions = ({
                 </div>
               )}
               {document.status === 'processed' && (
-                <div className="text-xs text-emerald-600 mt-2 font-medium">
+                <div className="text-xs text-brand-blue mt-2 font-medium">
                   ✓ Document is ready for AI analysis and search
                 </div>
               )}
@@ -1924,7 +1924,11 @@ export const AIActions = ({
                           }`}
                         >
                           <div className="text-xs opacity-70 mb-1 flex items-center gap-1">
-                            {message.type === 'user' ? <>👤 You</> : <>🤖 Jack</>}
+                            {message.type === 'user' ? (
+                              <>👤 You</>
+                            ) : (
+                              <>🤖 Jack</>
+                            )}
                             <span>•</span>
                             <span>
                               {message.timestamp.toLocaleTimeString()}

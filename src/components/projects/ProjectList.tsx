@@ -32,14 +32,14 @@ export const ProjectList = ({
         <div className="max-w-2xl mx-auto">
           {/* Animated icon with gradient background */}
           <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-cyan-400/20 blur-2xl rounded-full"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/20 to-brand-yellow/20 blur-2xl rounded-full"></div>
             <div className="relative p-8 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl inline-block">
-              <Folder className="h-16 w-16 text-emerald-400 mx-auto" />
+              <Folder className="h-16 w-16 text-brand-yellow mx-auto" />
             </div>
           </div>
 
           {/* Gradient heading */}
-          <h3 className="text-4xl font-bold mb-4 text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+          <h3 className="text-4xl font-bold mb-4 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
             No projects yet
           </h3>
 
@@ -52,7 +52,7 @@ export const ProjectList = ({
             <Button
               onClick={onCreateProject}
               size="lg"
-              className="px-12 py-6 text-lg font-semibold rounded-2xl bg-gradient-to-r from-emerald-600 via-cyan-600 to-blue-600 hover:shadow-2xl hover:shadow-emerald-500/25 transition-all duration-500 hover:scale-105 border-0"
+              className="px-12 py-6 text-lg font-semibold rounded-2xl bg-gradient-to-r from-brand-blue via-brand-blue-light to-brand-blue hover:shadow-2xl hover:shadow-brand-blue/25 transition-all duration-500 hover:scale-105 border-0"
             >
               <span className="text-white">Create Your First Project</span>
             </Button>
@@ -80,8 +80,8 @@ export const ProjectList = ({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-500/20 rounded-lg">
-                    <Folder className="h-5 w-5 text-emerald-600" />
+                  <div className="p-2 bg-brand-blue/20 rounded-lg">
+                    <Folder className="h-5 w-5 text-brand-blue" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">{project.name}</CardTitle>
@@ -103,7 +103,7 @@ export const ProjectList = ({
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-cyan-600" />
+                  <FileText className="h-4 w-4 text-brand-blue-light" />
                   <span className="text-sm text-slate-700">
                     {project.documents?.length || 0} documents
                   </span>
