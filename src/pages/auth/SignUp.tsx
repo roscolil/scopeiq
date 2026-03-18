@@ -273,7 +273,8 @@ const SignUp = () => {
 
           <Button
             type="submit"
-            className="w-full"
+            size="lg"
+            className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border border-white/30 shadow-brand font-semibold"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? 'Creating account...' : 'Sign up'}
@@ -287,7 +288,7 @@ const SignUp = () => {
         </span>{' '}
         <Link
           to="/auth/signin"
-          className="text-blue-400 hover:text-blue-300 hover:underline font-bold text-base transition-colors"
+          className="text-blue-200 hover:text-white hover:underline font-bold text-base transition-colors"
         >
           Sign in
         </Link>

@@ -55,7 +55,9 @@ export const AuthLayout = ({
             <div className="absolute inset-0 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-brand-lg"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/3 to-transparent rounded-xl"></div>
 
-            <div className="relative z-10 p-6 sm:p-8">{children}</div>
+            <div className="relative z-10 p-6 sm:p-8 [&_input]:font-medium md:[&_input]:text-base [&_input::placeholder]:font-medium">
+              {children}
+            </div>
           </div>
         </div>
       </div>

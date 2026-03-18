@@ -114,7 +114,7 @@ const VerifyEmail = () => {
             <Button
               type="button"
               variant="link"
-              className="px-0 text-blue-400 hover:text-blue-300 font-bold"
+              className="px-0 text-blue-200 hover:text-white font-bold"
               onClick={handleResend}
               disabled={isResending}
             >
@@ -122,7 +122,7 @@ const VerifyEmail = () => {
             </Button>
             <Link
               to="/auth/signin"
-              className="text-blue-400 hover:text-blue-300 hover:underline font-bold transition-colors"
+              className="text-blue-200 hover:text-white hover:underline font-bold transition-colors"
             >
               Back to sign in
             </Link>
@@ -130,7 +130,8 @@ const VerifyEmail = () => {
 
           <Button
             type="submit"
-            className="w-full"
+            size="lg"
+            className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border border-white/30 shadow-brand font-semibold"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? 'Verifying...' : 'Verify Email'}
