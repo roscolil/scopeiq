@@ -252,7 +252,7 @@ const Projects = () => {
       <Layout>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
               Projects for {companyId && `(${companyId})`}
             </h1>
 

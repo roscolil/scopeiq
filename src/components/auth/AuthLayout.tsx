@@ -45,7 +45,7 @@ export const AuthLayout = ({
                 />
               </div>
             </Link>
-            <h2 className="mt-6 text-3xl font-bold text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h2 className="mt-6 text-3xl font-bold text-gradient-yellow">
               {title}
             </h2>
             {description && <p className="mt-2 text-gray-300">{description}</p>}

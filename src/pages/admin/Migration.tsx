@@ -483,7 +483,7 @@ const Migration: React.FC = () => {
       <Layout>
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text mb-4">
+            <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow mb-4">
               Data Management Dashboard
             </h1>
             <p className="text-slate-200">

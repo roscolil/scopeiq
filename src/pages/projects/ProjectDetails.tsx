@@ -1144,7 +1144,7 @@ const ProjectDetails = () => {
 
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gradient-yellow">
                 {project.name}
               </h1>
               <p className="text-slate-200 mt-2 text-sm md:text-base">

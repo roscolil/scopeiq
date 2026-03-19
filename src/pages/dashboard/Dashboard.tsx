@@ -575,7 +575,7 @@ const Dashboard = () => {
                   <PageHeaderSkeleton />
                 ) : (
                   <>
-                    <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+                    <h1 className="text-4xl font-bold tracking-tight capitalize text-gradient-yellow">
                       {company?.id || 'Your Company'} Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">

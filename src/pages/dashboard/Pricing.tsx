@@ -103,7 +103,7 @@ const Pricing = () => {
         <div className="container mx-auto px-4 py-16">
           {/* Header */}
           <div className="text-center mb-16">
-            <h1 className="text-4xl font-bold tracking-tight mb-4 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight mb-4 text-gradient-yellow">
               Simple, transparent pricing
             </h1>
             <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
@@ -186,7 +186,7 @@ const Pricing = () => {
                     {plan.description}
                   </CardDescription>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold text-transparent bg-gradient-to-r from-brand-yellow via-white to-brand-yellow bg-clip-text">
+                    <span className="text-4xl font-bold text-gradient-yellow">
                       {billingCycle === 'yearly' && plan.price !== 'Custom'
                         ? `$${Math.round(parseInt(plan.price.replace('$', '')) * 0.8)}`
                         : plan.price}
@@ -228,7 +228,7 @@ const Pricing = () => {
 
           {/* FAQ Section */}
           <div className="mt-20 text-center">
-            <h2 className="text-3xl font-bold mb-8 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h2 className="text-3xl font-bold mb-8 text-gradient-yellow">
               Frequently Asked Questions
             </h2>
             <div className="max-w-3xl mx-auto text-left space-y-6">

@@ -276,6 +276,12 @@ export default {
         '.contact-panel-bg': {
           background: `linear-gradient(140deg, ${brand.blueDark} 0%, ${brand.blue} 100%)`,
         },
+        '.text-gradient-yellow': {
+          backgroundImage: `linear-gradient(to bottom right, ${brand.yellow} 0%, #fff5c0 40%, ${brand.yellow} 100%)`,
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+        },
         '.footer-bg': {
           background:
             'linear-gradient(135deg, #06101c 0%, #001e3a 30%, #002c55 55%, #001e3a 80%, #06101c 100%)',

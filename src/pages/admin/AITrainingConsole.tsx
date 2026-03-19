@@ -343,7 +343,7 @@ const AITrainingConsole = () => {
               </Button>
 
               <div className="flex-1">
-                <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+                <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
                   AI Training Console
                 </h1>
                 <p className="text-slate-200 mt-2">

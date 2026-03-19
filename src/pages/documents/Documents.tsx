@@ -558,7 +558,7 @@ const Documents = () => {
           </div>
 
           <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
               All Documents
             </h1>
           </div>

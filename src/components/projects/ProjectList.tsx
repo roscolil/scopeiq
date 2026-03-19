@@ -39,7 +39,7 @@ export const ProjectList = ({
           </div>
 
           {/* Gradient heading */}
-          <h3 className="text-4xl font-bold mb-4 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+          <h3 className="text-4xl font-bold mb-4 text-gradient-yellow">
             No projects yet
           </h3>
 

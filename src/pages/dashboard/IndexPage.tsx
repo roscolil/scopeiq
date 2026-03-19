@@ -123,13 +123,11 @@ const Index = () => {
 
               {/* Dramatic gradient heading */}
               <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-in">
-                <span className="text-transparent bg-gradient-to-br from-white from-30% via-brand-yellow/90 via-60% to-white bg-clip-text leading-tight">
+                <span className="text-gradient-yellow leading-tight">
                   Document Intelligence
                 </span>
                 <br />
-                <span className="text-transparent bg-gradient-to-r from-brand-yellow via-white to-brand-yellow bg-clip-text">
-                  Platform
-                </span>
+                <span className="text-gradient-yellow">Platform</span>
               </h1>
 
               <p className="text-xl sm:text-2xl text-gray-300 mt-8 max-w-4xl mx-auto leading-relaxed animate-fade-in">
@@ -168,7 +166,7 @@ const Index = () => {
           <div className="px-6">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+                <h2 className="text-4xl font-bold mb-6 text-gradient-yellow">
                   Powerful Features
                 </h2>
                 <p className="text-xl text-gray-300 max-w-3xl mx-auto">
@@ -316,7 +314,7 @@ const Index = () => {
 
               <div className="relative z-10 py-20 px-8">
                 <div className="text-center mb-16">
-                  <h2 className="text-4xl font-bold mb-6 text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+                  <h2 className="text-4xl font-bold mb-6 text-gradient-yellow">
                     Frequently Asked Questions
                   </h2>
                   <p className="text-xl text-gray-300 max-w-3xl mx-auto">

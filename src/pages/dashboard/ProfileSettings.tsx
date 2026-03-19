@@ -641,7 +641,7 @@ const ProfileSettings = () => {
       <Layout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-brand-yellow/80 to-white bg-clip-text">
+            <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
               Profile Settings
             </h1>
             <p className="text-slate-200 mt-2">Manage your account settings</p>
