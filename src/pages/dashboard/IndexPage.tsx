@@ -21,6 +21,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { FaqAccordion } from '@/components/shared/FaqAccordion'
+import { HowItWorks } from './sections/HowItWorks'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/aws-auth'
 
@@ -111,23 +112,21 @@ const Index = () => {
               </div>
             )}
             <div className="max-w-6xl mt-14 mx-auto">
-              {/* Enhanced badge */}
-              <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-sm font-semibold mb-12 shadow-brand animate-fade-in">
-                <div className="p-1.5 bg-gradient-to-br from-brand-blue/20 to-brand-blue-light/20 rounded-full">
-                  <Brain className="h-4 w-4 text-brand-yellow" />
-                </div>
-                <span className="text-gray-200">
-                  AI-Powered Document Intelligence
+              {/* Badge */}
+              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 backdrop-blur-sm">
+                <span className="text-sm">⚡</span>
+                <span className="text-sm  text-gray-300 text-foreground">
+                  Built for Construction Teams
                 </span>
               </div>
 
               {/* Dramatic gradient heading */}
               <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-8 animate-fade-in">
                 <span className="text-gradient-yellow leading-tight">
-                  Document Intelligence
+                  Stop Searching.
                 </span>
                 <br />
-                <span className="text-gradient-yellow">Platform</span>
+                <span className="text-gradient-yellow">Start Knowing.</span>
               </h1>
 
               <p className="text-xl sm:text-2xl text-gray-300 mt-8 max-w-4xl mx-auto leading-relaxed animate-fade-in">
@@ -302,6 +301,8 @@ const Index = () => {
               </div>
             </div>
           </div>
+
+          <HowItWorks />
 
           {/* FAQ Section */}
           <div className="px-6">
