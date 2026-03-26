@@ -33,7 +33,7 @@ const classMap: Record<string, string> = {
   ol: 'list-decimal ml-6 my-3 space-y-1 text-black',
   li: 'leading-snug text-black',
   blockquote:
-    'border-l-4 border-cyan-500/60 pl-4 italic my-4 text-black bg-cyan-50/60 rounded-sm py-1',
+    'border-l-4 border-brand-blue/60 pl-4 italic my-4 text-black bg-brand-blue/10 rounded-sm py-1',
   table: 'w-full border-collapse my-4 text-black text-sm',
   thead: 'bg-gray-100',
   th: 'border px-2 py-1 text-left font-medium bg-gray-50 text-black',

@@ -208,12 +208,12 @@ export const SearchProducts = () => {
           </form>
 
           {userLocation ? (
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+            <p className="text-xs text-gray-200 mt-2 flex items-center gap-1">
               <MapPin className="h-3 w-3" /> Location available - search will
               show distances
             </p>
           ) : (
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+            <p className="text-xs text-gray-200 mt-2 flex items-center gap-1">
               <MapPin className="h-3 w-3" /> Enable location for distance
               information
             </p>
@@ -237,12 +237,12 @@ export const SearchProducts = () => {
                         <Building2 className="h-4 w-4 text-primary" />{' '}
                         {supplier.name}
                       </h3>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-gray-200">
                         {supplier.address}
                       </p>
                     </div>
                     {supplier.distance !== undefined && (
-                      <div className="bg-muted text-gray-400 px-2 py-1 rounded-md text-sm flex items-center">
+                      <div className="bg-muted text-gray-200 px-2 py-1 rounded-md text-sm flex items-center">
                         <MapPin className="h-3 w-3 mr-1" /> {supplier.distance}{' '}
                         km
                       </div>

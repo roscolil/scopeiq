@@ -1114,7 +1114,7 @@ const AdminConsole: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-300 tracking-tight">
             Admin Console
           </h1>
-          <p className="text-sm  text-gray-400 mt-1">
+          <p className="text-sm  text-gray-200 mt-1">
             Manage taxonomy resources that power improved search,
             disambiguation, and AI context building.
           </p>

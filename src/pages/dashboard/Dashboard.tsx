@@ -553,24 +553,16 @@ const Dashboard = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        {/* Enhanced darker and more vivid blue gradient background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-blue-950/95 to-indigo-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-blue-950/80 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-blue-950/60 via-indigo-950/80 to-blue-950/70"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/15 to-indigo-400/25"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-400/20 via-transparent to-blue-600/20"></div>
+        {/* Exelion brand gradient background layers */}
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
-        {/* Multiple floating gradient orbs for dramatic effect */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-blue-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-indigo-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-blue-500/6 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-bl from-blue-500/10 to-indigo-500/8 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-1/4 left-1/4 w-56 h-56 bg-gradient-to-tr from-indigo-500/6 to-blue-500/8 rounded-full blur-xl"></div>
-        <div className="absolute top-3/4 right-10 w-48 h-48 bg-gradient-to-l from-blue-500/8 to-cyan-500/6 rounded-full blur-xl"></div>
-
-        {/* Extra floating orbs */}
-        <div className="absolute top-1/3 left-1/5 w-32 h-32 bg-gradient-to-tr from-blue-500/10 to-cyan-500/12 rounded-full blur-lg opacity-70"></div>
-        <div className="absolute bottom-1/3 right-1/5 w-40 h-40 bg-gradient-to-bl from-cyan-500/12 to-blue-500/15 rounded-full blur-lg opacity-60"></div>
+        {/* Floating gradient orbs */}
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/8 to-brand-blue-light/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
@@ -583,7 +575,7 @@ const Dashboard = () => {
                   <PageHeaderSkeleton />
                 ) : (
                   <>
-                    <h1 className="text-4xl font-bold tracking-tight capitalize text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text">
+                    <h1 className="text-4xl font-bold tracking-tight capitalize text-gradient-yellow">
                       {company?.id || 'Your Company'} Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
@@ -591,7 +583,7 @@ const Dashboard = () => {
                         </span>
                       )} */}
                     </h1>
-                    <p className="text-gray-400 mt-2">
+                    <p className="text-gray-200 mt-2">
                       Welcome back
                       {user?.given_name && typeof user.given_name === 'string'
                         ? `, ${user.given_name.split(' ')[0]}`
@@ -609,7 +601,7 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-10 w-10 p-0 rounded-full hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20"
+                        className="h-10 w-10 p-0 rounded-full hover:bg-white/10 transition-all text-white hover:text-brand-yellow active:bg-white/20"
                         onClick={() =>
                           navigate(routes.company.settings(companyId))
                         }
@@ -633,7 +625,7 @@ const Dashboard = () => {
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-emerald-400 active:bg-white/20 touch-manipulation"
+                        className="h-12 px-4 border border-white/20 hover:border-white/40 rounded-lg hover:bg-white/10 transition-all text-white hover:text-brand-yellow active:bg-white/20 touch-manipulation"
                         onClick={() =>
                           navigate(routes.company.settings(companyId))
                         }
@@ -655,14 +647,14 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Active Projects Card */}
             <Card
-              className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/20 cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
+              className="bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-brand-blue-dark/20 dark:to-brand-blue/10 border-brand-blue/20 cursor-pointer hover:shadow-brand transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
               onClick={() => navigate(routes.company.projects.list(companyId))}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                 <CardTitle className="text-xs sm:text-sm font-medium">
                   Active Projects
                 </CardTitle>
-                <Folders className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
+                <Folders className="h-3 w-3 sm:h-4 sm:w-4 text-brand-blue" />
               </CardHeader>
               <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                 {isLoadingStats ? (
@@ -671,11 +663,11 @@ const Dashboard = () => {
                     color="bg-blue-200 dark:bg-blue-800"
                   />
                 ) : (
-                  <div className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-300">
+                  <div className="text-lg sm:text-2xl font-bold text-brand-blue dark:text-brand-blue-light">
                     {cachedStats.projectCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-blue-600/70 dark:text-blue-400/70">
+                <p className="text-[10px] sm:text-xs text-brand-blue dark:text-brand-blue-light">
                   Total projects
                 </p>
               </CardContent>
@@ -700,7 +692,7 @@ const Dashboard = () => {
                     {cachedStats.documentCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-green-600/70 dark:text-green-400/70">
+                <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400">
                   Total documents
                 </p>
               </CardContent>
@@ -709,16 +701,16 @@ const Dashboard = () => {
             {/* Team Members Card - Inactive */}
             <Card className="bg-gradient-to-br from-gray-50/50 to-gray-100/30 dark:from-gray-950/20 dark:to-gray-900/10 border-gray-200/20 pointer-events-none">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium text-gray-400">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-200">
                   Team Members
                 </CardTitle>
-                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-200" />
               </CardHeader>
               <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                <div className="text-lg sm:text-2xl font-bold text-gray-400">
+                <div className="text-lg sm:text-2xl font-bold text-gray-200">
                   8
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-400">
+                <p className="text-[10px] sm:text-xs text-gray-200">
                   +1 from last month
                 </p>
               </CardContent>
@@ -743,7 +735,7 @@ const Dashboard = () => {
                     {cachedStats.recentDocumentCount}
                   </div>
                 )}
-                <p className="text-[10px] sm:text-xs text-yellow-600/70 dark:text-yellow-400/70">
+                <p className="text-[10px] sm:text-xs text-yellow-600 dark:text-yellow-400">
                   This week
                 </p>
               </CardContent>
@@ -865,8 +857,8 @@ const Dashboard = () => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Folders className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-400">No projects yet</p>
+                        <Folders className="h-8 w-8 mx-auto mb-2 text-gray-200" />
+                        <p className="text-sm text-gray-200">No projects yet</p>
                       </div>
                     )}
                   </CardContent>
@@ -889,8 +881,8 @@ const Dashboard = () => {
                 <Card className="md:col-span-3 pointer-events-none">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-gray-400" />
-                      <CardTitle className="text-gray-400">
+                      <Activity className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-foreground">
                         Team Activity
                       </CardTitle>
                     </div>
@@ -903,10 +895,10 @@ const Dashboard = () => {
                             key={i}
                             className="flex items-start space-x-3 animate-pulse"
                           >
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0"></div>
+                            <div className="w-8 h-8 bg-muted rounded-full flex-shrink-0"></div>
                             <div className="flex-1 space-y-2">
-                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                              <div className="h-4 bg-muted rounded w-3/4"></div>
+                              <div className="h-3 bg-muted rounded w-1/2"></div>
                             </div>
                           </div>
                         ))}
@@ -915,10 +907,10 @@ const Dashboard = () => {
                       userActivities.map(activity => (
                         <div
                           key={activity.id}
-                          className="flex items-start space-x-3 p-2 rounded-lg transition-colors"
+                          className="flex items-start space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex-shrink-0">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm text-gray-400">
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm text-foreground">
                               {userActivityService.getActivityIcon(
                                 activity.action,
                               )}
@@ -927,19 +919,19 @@ const Dashboard = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <div className="font-medium text-sm text-gray-400 line-clamp-1">
+                                <div className="font-medium text-sm text-foreground line-clamp-1">
                                   {activity.userName}
                                 </div>
-                                <div className="text-xs text-gray-400 line-clamp-2">
+                                <div className="text-xs text-muted-foreground line-clamp-2">
                                   {activity.description}
                                 </div>
                                 {activity.metadata?.projectName && (
-                                  <div className="text-xs text-gray-400 mt-1">
+                                  <div className="text-xs text-muted-foreground mt-1">
                                     📁 {activity.metadata.projectName}
                                   </div>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                              <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                                 {userActivityService.formatRelativeTime(
                                   activity.timestamp,
                                 )}
@@ -950,8 +942,8 @@ const Dashboard = () => {
                       ))
                     ) : (
                       <div className="text-center py-8">
-                        <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-400">
+                        <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
                           No recent activity
                         </p>
                       </div>
@@ -960,7 +952,7 @@ const Dashboard = () => {
                   <CardFooter>
                     <Button
                       variant="outline"
-                      className="w-full text-gray-400 border-gray-300"
+                      className="w-full text-muted-foreground border-border"
                     >
                       <Activity className="h-4 w-4 mr-2" />
                       View All Activity
@@ -1045,16 +1037,16 @@ const Dashboard = () => {
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                  <Folders className="h-5 w-5 text-emerald-600" />
+                                <div className="p-2 bg-brand-blue/20 rounded-lg">
+                                  <Folders className="h-5 w-5 text-brand-blue" />
                                 </div>
                                 <div>
                                   <CardTitle className="text-lg">
                                     {project.name}
                                   </CardTitle>
                                   {/* <div className="flex items-center gap-2 mt-1">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                    <span className="text-xs text-emerald-600">
+                                    <div className="w-2 h-2 rounded-full bg-brand-blue"></div>
+                                    <span className="text-xs text-brand-blue">
                                       Active
                                     </span>
                                   </div> */}
@@ -1070,7 +1062,7 @@ const Dashboard = () => {
                             )}
                             <div className="space-y-3">
                               <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-cyan-600" />
+                                <FileText className="h-4 w-4 text-brand-blue-light" />
                                 <span className="text-sm text-slate-700">
                                   {project.documents?.length || 0} documents
                                 </span>
@@ -1117,11 +1109,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <Folders className="h-12 w-12 mx-auto mb-4 text-gray-200" />
                       <p className="text-lg font-medium mb-2">
                         No projects yet
                       </p>
-                      <p className="text-gray-400 mb-4">
+                      <p className="text-gray-200 mb-4">
                         Create your first project to get started.
                       </p>
                       <Button
@@ -1265,11 +1257,11 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-gray-200" />
                       <p className="text-lg font-medium mb-2">
                         No documents yet
                       </p>
-                      <p className="text-gray-400 mb-4">
+                      <p className="text-gray-200 mb-4">
                         Upload documents to your projects to see them here.
                       </p>
                       <Button

@@ -1,4 +1,4 @@
-// Advanced Route Prefetching Strategy for Jack of All Trades
+// Advanced Route Prefetching Strategy for JACK by Exelion
 import { ComponentType, ReactElement } from 'react'
 
 // Define prefetch strategies

@@ -61,7 +61,7 @@ function ConsentBanner({
 // Small pulsing dot indicator
 function StatusDot({ state }: { state: WakeWordState }) {
   let color = 'bg-muted'
-  if (state === 'listening') color = 'bg-emerald-500 animate-pulse'
+  if (state === 'listening') color = 'bg-brand-blue-light animate-pulse'
   else if (state === 'cooldown') color = 'bg-amber-500 animate-pulse'
   else if (state === 'suspended') color = 'bg-gray-400'
   else if (state === 'error') color = 'bg-red-500'

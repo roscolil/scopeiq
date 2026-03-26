@@ -49,10 +49,10 @@ export const FaqAccordion = () => {
             value={`item-${index}`}
             className="border-white/10"
           >
-            <AccordionTrigger className="text-left font-medium text-white hover:text-emerald-300 transition-colors">
+            <AccordionTrigger className="text-left font-medium text-[20px] text-white hover:text-brand-yellow transition-colors">
               {faq.question}
             </AccordionTrigger>
-            <AccordionContent className="text-gray-300 leading-relaxed">
+            <AccordionContent className="text-gray-200 text-[16px] leading-relaxed">
               {faq.answer}
             </AccordionContent>
           </AccordionItem>

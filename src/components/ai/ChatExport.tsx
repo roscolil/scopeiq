@@ -132,7 +132,7 @@ export const ChatExport: React.FC<ChatExportProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 md:h-7 text-xs gap-2 px-8 md:px-3 min-w-[140px] md:min-w-0 bg-gradient-to-r from-indigo-700 to-blue-700 hover:from-indigo-800 hover:to-blue-800 border-indigo-700 text-indigo-50 hover:text-blue-50 shadow-sm hover:shadow transition-all duration-200"
+              className="h-9 md:h-7 text-xs gap-2 px-8 md:px-3 min-w-[140px] md:min-w-0 bg-gradient-to-r from-brand-blue-dark to-brand-blue hover:from-brand-navy hover:to-brand-blue-dark border-brand-blue-dark text-white hover:text-white shadow-sm hover:shadow transition-all duration-200"
             >
               <Share2 className="h-4 w-4 md:h-3 md:w-3" />
               Export Chat

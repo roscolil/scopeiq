@@ -25,7 +25,7 @@ export const UniversalViewer: React.FC<UniversalViewerProps> = ({
 }) => {
   if (!document) {
     return (
-      <div className="p-6 text-sm text-gray-400 flex items-center gap-2">
+      <div className="p-6 text-sm text-gray-200 flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading document…
       </div>
     )
@@ -49,7 +49,7 @@ export const UniversalViewer: React.FC<UniversalViewerProps> = ({
   if (mime.includes('pdf')) {
     if (!primaryUrl) {
       return (
-        <div className="p-4 text-sm text-gray-400">PDF not available yet.</div>
+        <div className="p-4 text-sm text-gray-200">PDF not available yet.</div>
       )
     }
     return <PdfJsViewer url={primaryUrl} />
@@ -296,7 +296,7 @@ const RemoteTextBlock: React.FC<{ url: string; name: string }> = ({
   }, [url])
 
   if (loading)
-    return <div className="p-4 text-xs text-gray-400 italic">Loading text…</div>
+    return <div className="p-4 text-xs text-gray-200 italic">Loading text…</div>
   if (error) return <div className="p-4 text-xs text-red-500">{error}</div>
   return (
     <pre className="p-4 bg-muted rounded max-h-[70vh] overflow-auto text-xs whitespace-pre-wrap font-mono">
