@@ -45,6 +45,10 @@ export const auth = defineAuth({
       dataType: 'String',
       mutable: true,
     },
+    'custom:companyName': {
+      dataType: 'String',
+      mutable: true,
+    },
   },
 
   // Lambda triggers for enhanced security and user management
