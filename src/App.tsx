@@ -8,6 +8,7 @@ import DocumentGuard from '@/components/routing/DocumentGuard'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { PageLoader } from '@/components/shared/PageLoader'
 import { AuthProvider, useAuth } from './hooks/aws-auth'
+import { getCompanySlug } from '@/utils/ui/navigation'
 import MobileAuthCTA from '@/components/auth/MobileAuthCTA'
 import {
   prefetchOnIdle,
@@ -76,26 +77,21 @@ const RootRedirect = () => {
   if (isLoading) return <HomePage />
 
   if (isAuthenticated && user?.companyId) {
-    const companySegment = (user.companyId || 'default').toLowerCase()
-
-    // Ensure companySegment is valid for URL routing
-    const validCompanySegment =
-      companySegment.replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '') ||
-      'default'
+    const companySegment = getCompanySlug(user)
 
     // Add debug logging for mobile browsers
     const isMobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
     if (isMobile) {
       console.log('🔄 Mobile redirect:', {
         originalCompanyId: user.companyId,
+        companyName: user.companyName,
         companySegment,
-        validCompanySegment,
-        targetPath: `/${validCompanySegment}`,
+        targetPath: `/${companySegment}`,
         userAgent: navigator.userAgent,
       })
     }
 
-    return <Navigate to={`/${validCompanySegment}`} replace />
+    return <Navigate to={`/${companySegment}`} replace />
   }
 
   // For unauthenticated users or users still syncing (companyId === 'default'), show homepage

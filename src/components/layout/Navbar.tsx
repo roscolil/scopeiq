@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/aws-auth'
 import { useAuthorization } from '@/hooks/auth-utils'
+import { getCompanySlug } from '@/utils/ui/navigation'
 import { PrefetchCompanyLink } from '@/components/shared/PrefetchLinks'
 
 export const Navbar = () => {
@@ -51,8 +52,11 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Extract company ID from user object
+  // Extract company slug from user object (uses company name if available, falls back to ID)
   const companyId = user?.companyId
+  const companySlug = user
+    ? getCompanySlug(user)
+    : (companyId?.toLowerCase() ?? '')
 
   const handleSignOut = async () => {
     setShowLogoutModal(false)
@@ -63,17 +67,17 @@ export const Navbar = () => {
   const menuItems = [
     {
       name: 'Dashboard',
-      path: companyId ? `/${companyId.toLowerCase()}` : '/',
+      path: companySlug ? `/${companySlug}` : '/',
       icon: <Home className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Projects',
-      path: companyId ? `/${companyId.toLowerCase()}/projects` : '/',
+      path: companySlug ? `/${companySlug}/projects` : '/',
       icon: <Folders className="w-5 h-5 mr-2" />,
     },
     {
       name: 'Documents',
-      path: companyId ? `/${companyId.toLowerCase()}/documents` : '/',
+      path: companySlug ? `/${companySlug}/documents` : '/',
       icon: <FolderOpen className="w-5 h-5 mr-2" />,
     },
     // Admin route hidden for now
@@ -190,12 +194,10 @@ export const Navbar = () => {
                   <div className="mt-4 pt-4 border-t border-gray-600">
                     <Link
                       to={
-                        companyId
-                          ? `/${companyId.toLowerCase()}/settings`
-                          : '/settings'
+                        companySlug ? `/${companySlug}/settings` : '/settings'
                       }
                       className={`flex items-center py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 ${
-                        isActive(`/${companyId?.toLowerCase()}/settings`) ||
+                        isActive(`/${companySlug}/settings`) ||
                         isActive('/settings')
                           ? 'bg-brand-blue/20 text-brand-yellow shadow-soft backdrop-blur-sm'
                           : 'text-gray-200 hover:text-brand-yellow hover:bg-brand-blue/20'

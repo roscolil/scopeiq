@@ -18,6 +18,7 @@ import {
   updateUserAttributes,
 } from 'aws-amplify/auth'
 import { userService } from '@/services/auth/user'
+import { companyService } from '@/services/api/company'
 import { prefetchForAuthenticatedUser } from '@/utils/performance/route-prefetch'
 import { prefetchUserData } from '@/utils/data/data-prefetch'
 
@@ -27,6 +28,7 @@ interface User {
   name?: string
   role?: 'Admin' | 'Owner' | 'User'
   companyId: string
+  companyName?: string
   [key: string]: unknown
 }
 
@@ -162,6 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             attrs.given_name || attrs.name || attrs.email?.split('@')[0] || '',
           role: 'User', // Default role
           companyId: attrs['custom:companyId'] || 'default', // Use Cognito value or default
+          companyName:
+            (attrs['custom:companyName'] as string | undefined) || '',
           ...attrs,
         }
 
@@ -217,6 +221,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     quickAuthCheck()
   }, [])
 
+  // Fetch company name from DynamoDB when it is missing from the user object.
+  // This handles cached users and users whose Cognito attributes don't have custom:companyName.
+  useEffect(() => {
+    if (
+      !user ||
+      !user.companyId ||
+      user.companyId === 'default' ||
+      user.companyName
+    )
+      return
+    let cancelled = false
+    companyService
+      .getCompanyById(user.companyId)
+      .then(company => {
+        if (!cancelled && company?.name) {
+          const updated: User = { ...user, companyName: company.name }
+          setUser(updated)
+          // Persist so subsequent loads already have the name
+          try {
+            const json = JSON.stringify(updated)
+            const ts = Date.now().toString()
+            sessionStorage.setItem('authState', json)
+            sessionStorage.setItem('authTimestamp', ts)
+            localStorage.setItem('authState', json)
+            localStorage.setItem('authTimestamp', ts)
+          } catch {
+            /* ignore quota errors */
+          }
+        }
+      })
+      .catch(() => {
+        /* non-critical */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.companyId, user?.companyName])
+
   // Add safety guard for development hot reloads
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -271,6 +313,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: attrs.given_name || attrs.name || email.split('@')[0],
           role: dbUser.role,
           companyId: dbUser.companyId,
+          companyName:
+            (attrs['custom:companyName'] as string | undefined) || '',
           ...attrs,
         }
 
