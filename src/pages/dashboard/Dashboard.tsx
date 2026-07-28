@@ -304,11 +304,13 @@ const Dashboard = () => {
 
   // Load company data
   useEffect(() => {
+    const authCompanyName = (user?.['custom:companyName'] as string | undefined) || 'Your Company'
+
     const loadCompany = async () => {
       if (!companyId || companyId === 'default') {
         const defaultCompany = {
           id: companyId,
-          name: user?.name?.split("'s")[0] || 'Your Company',
+          name: authCompanyName,
           description: 'Default company',
         }
         setCompany(defaultCompany)
@@ -332,10 +334,10 @@ const Dashboard = () => {
           setCompany(companyData)
           setCachedCompanyData(companyData) // Cache the fresh data
         } else {
-          // Fallback to derived name if company not found
+          // Fallback to company name from auth context
           const fallbackCompany = {
             id: companyId,
-            name: user?.name?.split("'s")[0] || 'Your Company',
+            name: authCompanyName,
             description: 'Company details not found',
           }
           setCompany(fallbackCompany)
@@ -343,10 +345,10 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error('Error loading company:', error)
-        // Fallback to derived name on error
+        // Fallback to company name from auth context
         const errorCompany = {
           id: companyId,
-          name: user?.name?.split("'s")[0] || 'Your Company',
+          name: authCompanyName,
           description: 'Error loading company details',
         }
         setCompany(errorCompany)
@@ -357,7 +359,7 @@ const Dashboard = () => {
     }
 
     loadCompany()
-  }, [companyId, user?.name, getCachedCompany, setCachedCompanyData])
+  }, [companyId, user, getCachedCompany, setCachedCompanyData])
 
   // Load projects and documents
   useEffect(() => {
@@ -575,8 +577,8 @@ const Dashboard = () => {
                   <PageHeaderSkeleton />
                 ) : (
                   <>
-                    <h1 className="text-4xl font-bold tracking-tight capitalize text-gradient-yellow">
-                      {company?.name || 'Your Company'} Dashboard
+                    <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
+                      {(user?.['custom:companyName'] as string | undefined) || company?.name || 'Your Company'} Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
                           ({company.id.slice(0, 8)}...)

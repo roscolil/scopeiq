@@ -20,6 +20,7 @@ import {
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { projectService } from '@/services/data/hybrid'
 import { usePrefetch } from '@/utils/performance'
+import { useAuth } from '@/hooks/aws-auth'
 
 const Projects = () => {
   const navigate = useNavigate()
@@ -27,6 +28,8 @@ const Projects = () => {
   const { companyId } = useParams<{
     companyId: string
   }>()
+  const { user } = useAuth()
+  const companyName = (user?.['custom:companyName'] as string | undefined) || companyId
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)
@@ -253,7 +256,7 @@ const Projects = () => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
-              Projects for {companyId && `(${companyId})`}
+              Projects for {companyName}
             </h1>
 
             <div className="flex gap-2">

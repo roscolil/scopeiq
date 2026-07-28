@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ArrowLeft, Download, Share2, Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { useAuth } from '@/hooks/aws-auth'
 import { routes, createSlug } from '@/utils/ui/navigation'
 import { Document as DocumentType } from '@/types'
 import { documentService, projectService } from '@/services/data/hybrid'
@@ -35,6 +36,7 @@ const Viewer = () => {
 
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // Removed viewMode / AI Analysis – only showing document body
   const [document, setDocument] = useState<DocumentType | null>(null)
@@ -145,8 +147,9 @@ const Viewer = () => {
 
         if (!isMounted) return
 
-        // Use companyId as company name for now (can be enhanced with actual company data later)
-        setCompanyName(companyId || 'Your Company')
+        // Use company name from auth context if available, otherwise fall back gracefully
+        const authCompanyName = user?.['custom:companyName'] as string | undefined
+        setCompanyName(authCompanyName || 'Your Company')
       } catch (error) {
         console.error('Error fetching data:', error)
         toast({

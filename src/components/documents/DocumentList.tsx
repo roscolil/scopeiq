@@ -419,7 +419,7 @@ export const DocumentList = ({
                             className={cn(
                               'text-base font-medium',
                               doc.status === 'processing'
-                                ? 'text-white'
+                                ? 'text-black'
                                 : 'text-black',
                             )}
                           >
