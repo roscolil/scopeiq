@@ -228,7 +228,7 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
   // Guard states (after hooks to keep hook order stable)
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-sm text-gray-400">
+      <div className="flex flex-col items-center justify-center p-8 text-sm text-gray-200">
         <Loader2 className="h-5 w-5 animate-spin mb-2" /> Loading PDF…
       </div>
     )
@@ -462,7 +462,7 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
                           draggable={false}
                         />
                       ) : (
-                        <div className="flex items-center justify-center w-full h-full text-[8px] text-gray-400">
+                        <div className="flex items-center justify-center w-full h-full text-[8px] text-gray-200">
                           {generatingThumbs ? '…' : '—'}
                         </div>
                       )}
@@ -474,7 +474,7 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
                 )
               })}
               {generatingThumbs && (
-                <span className="italic text-gray-400 ml-2 flex items-center">
+                <span className="italic text-gray-200 ml-2 flex items-center">
                   Loading…
                 </span>
               )}
@@ -490,7 +490,7 @@ export const PdfJsViewer: React.FC<PdfJsViewerProps> = ({
         <div className="relative shadow border rounded bg-white">
           {rendering && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/60">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              <Loader2 className="h-5 w-5 animate-spin text-gray-200" />
             </div>
           )}
           <canvas ref={canvasRef} className="block" />

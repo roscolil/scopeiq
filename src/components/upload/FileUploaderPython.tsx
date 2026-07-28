@@ -371,7 +371,7 @@ export const FileUploaderPython = (props: FileUploaderPythonProps) => {
           handleFileSelect(e.dataTransfer.files)
         }}
       >
-        <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <Upload className="h-12 w-12 mx-auto text-gray-200 mb-4" />
         <p className="text-lg font-medium mb-2">
           Drop files here or click to browse
         </p>

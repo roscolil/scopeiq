@@ -51,71 +51,71 @@
 
 @layer base {
   :root {
-    /* Modern cool color palette inspired by Stripe */
+    /* Exelion brand palette */
     --background: 0 0% 100%;
-    --foreground: 215 25% 15%;
+    --foreground: 210 30% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 210 30% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 210 30% 10%;
 
-    /* Cool blue-purple primary */
-    --primary: 232 78% 51%;
+    /* Exelion blue primary (#0067B3) */
+    --primary: 204 100% 35%;
     --primary-foreground: 0 0% 100%;
 
-    /* Subtle cool grays */
-    --secondary: 215 25% 97%;
-    --secondary-foreground: 215 25% 25%;
+    /* Neutral grays */
+    --secondary: 210 20% 97%;
+    --secondary-foreground: 210 20% 20%;
 
-    --muted: 215 25% 96%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 210 10% 45%;
 
-    /* Cool cyan accent */
-    --accent: 195 85% 55%;
-    --accent-foreground: 0 0% 100%;
+    /* Exelion yellow accent (#FFD230) */
+    --accent: 46 100% 60%;
+    --accent-foreground: 210 30% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Crisp borders */
-    --border: 215 25% 90%;
-    --input: 215 25% 90%;
-    --ring: 232 78% 51%;
+    /* Clean borders */
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 204 100% 35%;
 
     --radius: 0.75rem;
   }
 
   .dark {
-    /* Dark mode with cool undertones */
-    --background: 215 28% 7%;
-    --foreground: 213 31% 91%;
+    /* Dark mode — Exelion navy base */
+    --background: 214 55% 7%;
+    --foreground: 210 25% 92%;
 
-    --card: 215 28% 9%;
-    --card-foreground: 213 31% 91%;
+    --card: 214 55% 9%;
+    --card-foreground: 210 25% 92%;
 
-    --popover: 215 28% 9%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 214 55% 9%;
+    --popover-foreground: 210 25% 92%;
 
-    --primary: 232 78% 61%;
-    --primary-foreground: 215 28% 7%;
+    --primary: 204 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 28% 12%;
-    --secondary-foreground: 213 31% 91%;
+    --secondary: 214 40% 13%;
+    --secondary-foreground: 210 25% 92%;
 
-    --muted: 215 28% 12%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 214 40% 13%;
+    --muted-foreground: 210 15% 65%;
 
-    --accent: 195 85% 65%;
-    --accent-foreground: 215 28% 7%;
+    --accent: 46 100% 65%;
+    --accent-foreground: 214 55% 7%;
 
     --destructive: 0 72% 61%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 28% 15%;
-    --input: 215 28% 15%;
-    --ring: 232 78% 61%;
+    --border: 214 40% 16%;
+    --input: 214 40% 16%;
+    --ring: 204 100% 45%;
   }
 }
 
@@ -125,33 +125,32 @@
   }
 
   html {
-    /* Darker blue gradient background to prevent white flash */
+    /* Exelion brand gradient background */
     background: linear-gradient(
       135deg,
-      rgb(8, 12, 25) 0%,
-      rgb(20, 40, 90) 25%,
-      rgb(25, 70, 180) 50%,
-      rgb(20, 40, 90) 75%,
-      rgb(8, 12, 25) 100%
+      #0A1628 0%,
+      #003d6b 30%,
+      #0067B3 55%,
+      #003d6b 80%,
+      #0A1628 100%
     );
     min-height: 100vh;
   }
 
   body {
     @apply text-foreground antialiased;
-    /* Darker blue gradient background to prevent white flash */
+    /* Exelion brand gradient background */
     background: linear-gradient(
       135deg,
-      rgb(8, 12, 25) 0%,
-      rgb(20, 40, 90) 25%,
-      rgb(25, 70, 180) 50%,
-      rgb(20, 40, 90) 75%,
-      rgb(8, 12, 25) 100%
+      #0A1628 0%,
+      #003d6b 30%,
+      #0067B3 55%,
+      #003d6b 80%,
+      #0A1628 100%
     );
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-weight: 300;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-variation-settings: normal;
     min-height: 100vh;
     text-rendering: optimizeLegibility;
   }
@@ -180,7 +179,7 @@
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
-  /* Better text selection */
+  /* Better text selection — brand blue */
   ::selection {
     @apply bg-primary/20 text-primary-foreground;
   }
@@ -215,12 +214,13 @@
     @apply max-w-md mx-auto px-4 w-full sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl;
   }
 
-  /* Modern gradients */
+  /* Exelion brand gradient */
   .gradient-primary {
     background: linear-gradient(
       135deg,
-      hsl(var(--primary)) 0%,
-      hsl(var(--accent)) 100%
+      #003d6b 0%,
+      #0067B3 55%,
+      #0085e0 100%
     );
   }
 
@@ -262,7 +262,7 @@
   }
 
   .status-success {
-    @apply bg-emerald-500;
+    @apply bg-brand-blue;
   }
 
   .status-warning {

@@ -17,6 +17,34 @@ export const createSlug = (name: string): string => {
 }
 
 /**
+ * Get the URL slug for a company.
+ * Priority: custom:companyName Cognito attr → companyName field → companyId fallback.
+ * The `custom:companyName` key is spread onto the user object by fetchUserAttributes()
+ * and is set directly from the signup form's "Company" field.
+ */
+export const getCompanySlug = (user: {
+  companyId: string
+  companyName?: string
+  [key: string]: unknown
+}): string => {
+  // Highest priority: the Cognito attribute written by the signup form
+  const cognitoName = (user['custom:companyName'] as string | undefined)?.trim()
+  if (cognitoName) return createSlug(cognitoName)
+
+  // Second priority: explicitly stored company name (from DynamoDB fetch)
+  const storedName = user.companyName?.trim()
+  if (storedName) return createSlug(storedName)
+
+  // Fallback: normalize the companyId
+  return (
+    user.companyId
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'company'
+  )
+}
+
+/**
  * Generate route paths based on parameters
  * Now supports both ID-based and name-based routing
  */

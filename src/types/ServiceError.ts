@@ -1,5 +1,5 @@
 /**
- * ServiceError class for Jack of All Trades services
+ * ServiceError class for JACK by Exelion services
  * This needs to be in a separate .ts file since classes can't be declared in .d.ts files
  */
 

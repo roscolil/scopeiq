@@ -216,9 +216,9 @@ const SignUp = () => {
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-200" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-200" />
                       )}
                       <span className="sr-only">
                         {showPassword ? 'Hide password' : 'Show password'}
@@ -254,9 +254,9 @@ const SignUp = () => {
                       }
                     >
                       {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-gray-400" />
+                        <EyeOff className="h-4 w-4 text-gray-200" />
                       ) : (
-                        <Eye className="h-4 w-4 text-gray-400" />
+                        <Eye className="h-4 w-4 text-gray-200" />
                       )}
                       <span className="sr-only">
                         {showConfirmPassword
@@ -273,7 +273,8 @@ const SignUp = () => {
 
           <Button
             type="submit"
-            className="w-full"
+            size="lg"
+            className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border border-white/30 shadow-brand font-semibold"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? 'Creating account...' : 'Sign up'}
@@ -287,7 +288,7 @@ const SignUp = () => {
         </span>{' '}
         <Link
           to="/auth/signin"
-          className="text-blue-400 hover:text-blue-300 hover:underline font-bold text-base transition-colors"
+          className="text-blue-200 hover:text-white hover:underline font-bold text-base transition-colors"
         >
           Sign in
         </Link>

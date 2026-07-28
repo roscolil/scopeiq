@@ -1,61 +1,50 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jack of All Trades</title>
 
-    <!-- Preload critical resources -->
-    <link rel="preload" href="/src/main.tsx" as="script" />
-    <link rel="preload" href="/src/App.tsx" as="script" />
-    <link rel="modulepreload" href="/src/hooks/aws-auth.tsx" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JACK by Exelion</title>
 
-    <!-- DNS prefetch for external resources -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+  <!-- DNS prefetch for external resources -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
-    <!-- Modern fonts with display=swap for better performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
+  <!-- Modern fonts with display=swap for better performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet" />
 
-    <!-- Preload PDF worker for when needed -->
-    <link rel="prefetch" href="/pdf.worker.min.mjs" />
+  <!-- Preload PDF worker for when needed -->
+  <link rel="prefetch" href="/pdf.worker.min.mjs" />
 
-    <!-- Meta tags for better SEO and social sharing -->
-    <meta
-      name="description"
-      content="Jack of All Trades - AI-powered construction document management and analysis platform"
-    />
-    <meta name="author" content="Jack of All Trades" />
+  <!-- Meta tags for better SEO and social sharing -->
+  <meta name="description"
+    content="JACK by Exelion - AI-powered construction document management and analysis platform" />
+  <meta name="author" content="JACK by Exelion" />
 
-    <!-- Open Graph tags -->
-    <meta
-      property="og:title"
-      content="Jack of All Trades - Construction Document Management"
-    />
-    <meta
-      property="og:description"
-      content="AI-powered construction document management and analysis platform"
-    />
-    <meta property="og:type" content="website" />
+  <!-- Open Graph tags -->
+  <meta property="og:title" content="JACK by Exelion - Construction Document Management" />
+  <meta property="og:description"
+    content="AI-powered construction document management and analysis platform" />
+  <meta property="og:type" content="website" />
 
-    <!-- Performance optimizations -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="format-detection" content="telephone=no" />
-  </head>
+  <!-- Performance optimizations -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="format-detection" content="telephone=no" />
+</head>
 
-  <body>
-    <div id="root"></div>
-    <!-- Performance monitoring script (add if needed) -->
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if (typeof global === 'undefined') {
-        var global = globalThis
-      }
-    </script>
-  </body>
+<body>
+  <div id="root"></div>
+  <!-- Performance monitoring script (add if needed) -->
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if (typeof global === 'undefined') {
+      var global = globalThis
+    }
+  </script>
+</body>
+
 </html>

@@ -10,16 +10,15 @@ const Terms = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
         {/* Floating gradient orbs */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/8 to-brand-blue-light/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
@@ -37,7 +36,7 @@ const Terms = () => {
             </Button>
 
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gradient-yellow mb-4">
                 Terms of Service
               </h1>
               <p className="text-slate-300 text-lg">
@@ -53,7 +52,7 @@ const Terms = () => {
                 1. Acceptance of Terms
               </h2>
               <p>
-                By accessing and using Jack of All Trades ("the Service"), you
+                By accessing and using JACK by Exelion ("the Service"), you
                 accept and agree to be bound by the terms and provision of this
                 agreement. If you do not agree to abide by the above, please do
                 not use this service.
@@ -65,11 +64,11 @@ const Terms = () => {
                 2. Description of Service
               </h2>
               <p>
-                Jack of All Trades is a document management and AI-powered
-                analysis platform that allows users to upload, organize, and
-                query documents using artificial intelligence. The Service
-                includes features for document storage, processing, and
-                intelligent search capabilities.
+                JACK by Exelion is a document management and AI-powered analysis
+                platform that allows users to upload, organize, and query
+                documents using artificial intelligence. The Service includes
+                features for document storage, processing, and intelligent
+                search capabilities.
               </p>
             </section>
 
@@ -133,9 +132,9 @@ const Terms = () => {
                   Service.
                 </p>
                 <p>
-                  5.2. By uploading content, you grant Jack of All Trades a
-                  limited license to process, store, and analyze your content to
-                  provide the Service.
+                  5.2. By uploading content, you grant JACK by Exelion a limited
+                  license to process, store, and analyze your content to provide
+                  the Service.
                 </p>
                 <p>
                   5.3. You are solely responsible for the content you upload and
@@ -186,7 +185,7 @@ const Terms = () => {
                 8. Limitation of Liability
               </h2>
               <p>
-                To the maximum extent permitted by law, Jack of All Trades shall
+                To the maximum extent permitted by law, JACK by Exelion shall
                 not be liable for any indirect, incidental, special,
                 consequential, or punitive damages, or any loss of profits or
                 revenues, whether incurred directly or indirectly, or any loss

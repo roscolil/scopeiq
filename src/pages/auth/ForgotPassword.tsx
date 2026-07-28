@@ -114,7 +114,8 @@ const ForgotPassword = () => {
             />
             <Button
               type="submit"
-              className="w-full"
+              size="lg"
+              className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border border-white/30 shadow-brand font-semibold"
               disabled={emailForm.formState.isSubmitting}
             >
               {emailForm.formState.isSubmitting
@@ -124,7 +125,7 @@ const ForgotPassword = () => {
             <div className="text-center">
               <Link
                 to="/auth/signin"
-                className="text-blue-500 hover:text-blue-400 hover:underline font-bold transition-colors"
+                className="text-blue-200 hover:text-white hover:underline font-bold transition-colors"
               >
                 Back to sign in
               </Link>
@@ -184,7 +185,8 @@ const ForgotPassword = () => {
             />
             <Button
               type="submit"
-              className="w-full"
+              size="lg"
+              className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border border-white/30 shadow-brand font-semibold"
               disabled={resetForm.formState.isSubmitting}
             >
               {resetForm.formState.isSubmitting
@@ -195,7 +197,7 @@ const ForgotPassword = () => {
               <Button
                 type="button"
                 variant="link"
-                className="text-blue-500 hover:text-blue-400 font-bold px-0 transition-colors"
+                className="text-blue-200 hover:text-white font-bold px-0 transition-colors"
                 onClick={() => setStep('request')}
               >
                 Back to email entry

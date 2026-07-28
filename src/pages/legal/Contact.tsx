@@ -94,16 +94,15 @@ const Contact = () => {
     <>
       {/* Full viewport gradient background */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950/95 to-gray-900"></div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/70 via-cyan-950/60 to-violet-950/80"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-slate-950/50 via-blue-950/70 to-indigo-950/60"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-400/25 via-blue-950/10 to-purple-400/20"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-400/20 via-transparent to-blue-500/15"></div>
+        <div className="absolute inset-0 hero-bg"></div>
+        <div className="absolute inset-0 hero-glow"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-brand-navy/60 via-brand-blue-dark/40 to-brand-navy/70"></div>
 
         {/* Floating gradient orbs */}
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-emerald-500/15 to-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-violet-500/12 to-blue-500/8 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-cyan-500/8 to-emerald-500/6 rounded-full blur-2xl"></div>
+        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-brand-blue-light/15 to-brand-yellow/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-brand-blue-dark/12 to-brand-blue/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-brand-blue/8 to-brand-blue-light/6 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 right-0 hero-yellow-orb w-full h-full"></div>
       </div>
 
       <Layout>
@@ -121,7 +120,7 @@ const Contact = () => {
             </Button>
 
             <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-transparent bg-gradient-to-br from-white via-cyan-200 to-violet-200 bg-clip-text mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gradient-yellow mb-4">
                 Contact Us
               </h1>
               <p className="text-slate-300 text-lg max-w-2xl mx-auto">
@@ -134,10 +133,10 @@ const Contact = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Contact Information */}
             <div className="space-y-6">
-              <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+              <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-emerald-400" />
+                    <MapPin className="h-5 w-5 text-brand-yellow" />
                     Our Location
                   </CardTitle>
                 </CardHeader>
@@ -149,10 +148,10 @@ const Contact = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+              <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Phone className="h-5 w-5 text-emerald-400" />
+                    <Phone className="h-5 w-5 text-brand-yellow" />
                     Phone
                   </CardTitle>
                 </CardHeader>
@@ -164,10 +163,10 @@ const Contact = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+              <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-emerald-400" />
+                    <Mail className="h-5 w-5 text-brand-yellow" />
                     Email
                   </CardTitle>
                 </CardHeader>
@@ -180,10 +179,10 @@ const Contact = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+              <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-emerald-400" />
+                    <Clock className="h-5 w-5 text-brand-yellow" />
                     Business Hours
                   </CardTitle>
                 </CardHeader>
@@ -201,10 +200,10 @@ const Contact = () => {
             </div>
 
             {/* Contact Form */}
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+            <Card className="bg-brand-navy/50 border-brand-blue/30 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <Send className="h-5 w-5 text-emerald-400" />
+                  <Send className="h-5 w-5 text-brand-yellow" />
                   Send us a Message
                 </CardTitle>
               </CardHeader>
@@ -214,12 +213,12 @@ const Contact = () => {
                   <div
                     className={`mb-6 p-4 rounded-lg border flex items-center gap-3 ${
                       submitStatus.type === 'success'
-                        ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                        ? 'bg-brand-blue-dark/30 border-brand-blue/30 text-brand-blue-light'
                         : 'bg-red-950/30 border-red-500/30 text-red-200'
                     }`}
                   >
                     {submitStatus.type === 'success' ? (
-                      <CheckCircle className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-brand-yellow flex-shrink-0" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
                     )}
@@ -296,7 +295,7 @@ const Contact = () => {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white border-0 h-12 text-base font-medium"
+                    className="w-full bg-gradient-to-r from-brand-blue to-brand-blue-light hover:from-brand-blue-dark hover:to-brand-blue text-white border-0 h-12 text-base font-medium"
                   >
                     {isSubmitting ? (
                       <>
@@ -325,14 +324,14 @@ const Contact = () => {
               directly at{' '}
               <a
                 href="tel:+61291234567"
-                className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                className="text-brand-yellow hover:text-brand-yellow/80 transition-colors"
               >
                 +61 2 9123 4567
               </a>{' '}
               or email{' '}
               <a
                 href="mailto:support@scopeiq.com"
-                className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                className="text-brand-yellow hover:text-brand-yellow/80 transition-colors"
               >
                 support@scopeiq.com
               </a>

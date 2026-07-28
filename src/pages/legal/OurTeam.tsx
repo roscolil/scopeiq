@@ -56,14 +56,14 @@ const OurTeam = () => {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold mb-4 text-white">Our Team</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Meet the passionate individuals behind Jack of All Trades who are
+            Meet the passionate individuals behind JACK by Exelion who are
             dedicated to revolutionizing how construction professionals work
             with documents and data.
           </p>
         </div>
 
         {/* Mission Statement */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-8 mb-16">
+        <div className="bg-gradient-to-r from-brand-blue/10 to-brand-blue-dark/10 dark:from-brand-blue-dark/20 dark:to-brand-navy/20 rounded-lg p-8 mb-16">
           <h2 className="text-2xl font-semibold mb-4 text-center">
             Our Mission
           </h2>
@@ -84,7 +84,7 @@ const OurTeam = () => {
               className="overflow-hidden hover:shadow-lg transition-shadow"
             >
               <CardHeader className="text-center">
-                <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white text-2xl font-bold">
+                <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-gradient-to-r from-brand-blue to-brand-blue-light flex items-center justify-center text-white text-2xl font-bold">
                   {member.name
                     .split(' ')
                     .map(n => n[0])

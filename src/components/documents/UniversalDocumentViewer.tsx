@@ -249,7 +249,7 @@ function UniversalDocumentViewer({
             <div className="relative border rounded-md overflow-hidden bg-white">
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-                  <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                  <RefreshCw className="h-6 w-6 animate-spin text-gray-200" />
                 </div>
               )}
               <Document
@@ -258,7 +258,7 @@ function UniversalDocumentViewer({
                 onLoadError={onDocumentLoadError}
                 loading={
                   <div className="flex justify-center p-4">
-                    <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-gray-200" />
                   </div>
                 }
                 error={
@@ -287,7 +287,7 @@ function UniversalDocumentViewer({
           <div className="docx-viewer">
             {isLoading ? (
               <div className="flex justify-center p-4">
-                <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+                <RefreshCw className="h-6 w-6 animate-spin text-gray-200" />
               </div>
             ) : error ? (
               <Alert variant="destructive" className="mt-2">
@@ -338,7 +338,7 @@ function UniversalDocumentViewer({
       default:
         return (
           <div className="flex flex-col items-center justify-center p-6 border rounded-md bg-gray-50">
-            <File className="h-12 w-12 text-gray-400 mb-2" />
+            <File className="h-12 w-12 text-gray-200 mb-2" />
             <p className="text-gray-500 mb-4">
               This file type cannot be previewed
             </p>

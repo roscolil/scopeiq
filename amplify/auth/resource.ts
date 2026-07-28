@@ -6,9 +6,9 @@ export const auth = defineAuth({
   loginWith: {
     email: {
       verificationEmailStyle: 'CODE',
-      verificationEmailSubject: 'Welcome to Jack of All Trades - Verify Your Account',
+      verificationEmailSubject: 'Welcome to JACK by Exelion - Verify Your Account',
       verificationEmailBody: createCode =>
-        `Welcome to Jack of All Trades! Use this verification code to complete your account setup: ${createCode()}`,
+        `Welcome to JACK by Exelion! Use this verification code to complete your account setup: ${createCode()}`,
     },
   },
   // Cognito Groups for role-based access control
@@ -42,6 +42,10 @@ export const auth = defineAuth({
       mutable: true,
     },
     'custom:lastLoginAt': {
+      dataType: 'String',
+      mutable: true,
+    },
+    'custom:companyName': {
       dataType: 'String',
       mutable: true,
     },

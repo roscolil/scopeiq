@@ -1633,14 +1633,14 @@ export const AIActions = ({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400 truncate max-w-[200px] font-medium">
+                <span className="text-xs text-gray-200 truncate max-w-[200px] font-medium">
                   {document.name}
                 </span>
                 {getStatusBadge(document.status)}
               </div>
               {document.status === 'processing' && (
                 <div className="space-y-3 mt-3">
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-gray-200">
                     Document is being processed for AI analysis. This usually
                     takes 1-2 minutes.
                   </div>
@@ -1683,7 +1683,7 @@ export const AIActions = ({
                 </div>
               )}
               {document.status === 'processed' && (
-                <div className="text-xs text-emerald-600 mt-2 font-medium">
+                <div className="text-xs text-brand-blue mt-2 font-medium">
                   ✓ Document is ready for AI analysis and search
                 </div>
               )}
@@ -1710,7 +1710,7 @@ export const AIActions = ({
               </div>
             </div>
 
-            <div className="text-xs text-gray-400 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50 hidden md:block">
+            <div className="text-xs text-gray-200 mb-4 bg-gradient-to-r from-muted/40 to-muted/20 p-3 rounded-lg border border-muted/50 hidden md:block">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <span className="text-sm">🚀</span>
@@ -1924,7 +1924,11 @@ export const AIActions = ({
                           }`}
                         >
                           <div className="text-xs opacity-70 mb-1 flex items-center gap-1">
-                            {message.type === 'user' ? <>👤 You</> : <>🤖 Jack</>}
+                            {message.type === 'user' ? (
+                              <>👤 You</>
+                            ) : (
+                              <>🤖 Jack</>
+                            )}
                             <span>•</span>
                             <span>
                               {message.timestamp.toLocaleTimeString()}

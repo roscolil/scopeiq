@@ -1,8 +1,9 @@
-import { useParams, Outlet } from 'react-router-dom'
+import { useParams, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/aws-auth'
 import NotFound from '@/pages/core/NotFound'
 import { measureGuardPerformance } from '@/utils/performance'
+import { createSlug } from '@/utils/ui/navigation'
 
 // CompanyGuard now supports literal (URL-encoded) company names with spaces & punctuation.
 // It only blocks obviously unsafe control characters. A derived slug is available if needed.
@@ -11,6 +12,8 @@ export const CompanyGuard = () => {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const [state, setState] = useState<'checking' | 'ok' | 'invalid'>('checking')
   const [decoded, setDecoded] = useState('')
+  const navigate = useNavigate()
+  const location = useLocation()
 
   // Decode & validate only once per companyId change
   useEffect(() => {
@@ -61,12 +64,22 @@ export const CompanyGuard = () => {
 
       const paramNormalized = normalize(localDecoded)
       const userNormalized = normalize(user.companyId || '')
+      // Accept slug from both Cognito attr (highest priority) and stored companyName
+      const cognitoNameSlug = (user['custom:companyName'] as string | undefined)
+        ? createSlug((user['custom:companyName'] as string).trim())
+        : ''
+      const storedNameSlug = user.companyName
+        ? createSlug(user.companyName)
+        : ''
 
-      if (
-        paramNormalized !== userNormalized &&
-        user.companyId !== localDecoded
-      ) {
-        // Neither normalized nor raw matches; treat as invalid (prevents access to other companies)
+      const isValid =
+        paramNormalized === userNormalized ||
+        user.companyId === localDecoded ||
+        (cognitoNameSlug !== '' && paramNormalized === cognitoNameSlug) ||
+        (storedNameSlug !== '' && paramNormalized === storedNameSlug)
+
+      if (!isValid) {
+        // No match; treat as invalid (prevents access to other companies)
         setState('invalid')
         return
       }
@@ -102,6 +115,39 @@ export const CompanyGuard = () => {
         .replace(/^-+|-+$/g, '') || 'company',
     [decoded],
   )
+
+  // Once the guard approves the route AND the company name is available,
+  // upgrade from the raw company-ID segment to the human-readable name slug.
+  useEffect(() => {
+    if (state !== 'ok' || !decoded) return
+
+    // Use same priority as getCompanySlug: Cognito attr → stored companyName
+    const resolvedName =
+      (user?.['custom:companyName'] as string | undefined)?.trim() ||
+      user?.companyName?.trim()
+
+    if (!resolvedName) return
+
+    const normalize = (v: string) =>
+      v
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+
+    const nameSlug = createSlug(resolvedName)
+    const currentNormalized = normalize(decoded)
+    const idNormalized = normalize(user?.companyId || '')
+
+    // Only redirect when the URL segment matches the company ID, not already the name
+    if (currentNormalized === idNormalized && currentNormalized !== nameSlug) {
+      const pathAfterCompany = location.pathname.replace(/^\/[^/]+/, '')
+      navigate(
+        `/${nameSlug}${pathAfterCompany}${location.search}${location.hash}`,
+        { replace: true },
+      )
+    }
+  }, [state, user?.['custom:companyName'], user?.companyName, decoded])
 
   if (state === 'invalid') return <NotFound />
   if (state === 'checking') {

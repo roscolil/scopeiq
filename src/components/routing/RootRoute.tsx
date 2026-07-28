@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/aws-auth'
+import { getCompanySlug } from '@/utils/ui/navigation'
 import HomePage from '@/pages/dashboard/IndexPage'
 
 /**
@@ -17,7 +18,7 @@ const RootRoute = () => {
   }
 
   if (isAuthenticated && user) {
-    const companySegment = user.companyId?.toLowerCase?.() || 'default'
+    const companySegment = getCompanySlug(user)
     return <Navigate to={`/${encodeURIComponent(companySegment)}`} replace />
   }
 
