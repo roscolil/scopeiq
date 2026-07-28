@@ -29,7 +29,8 @@ const Projects = () => {
     companyId: string
   }>()
   const { user } = useAuth()
-  const companyName = (user?.['custom:companyName'] as string | undefined) || companyId
+  const companyName =
+    (user?.['custom:companyName'] as string | undefined) || companyId
 
   // Enable prefetching for likely navigation paths
   usePrefetch(true)

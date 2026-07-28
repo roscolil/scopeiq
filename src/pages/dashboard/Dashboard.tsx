@@ -304,7 +304,8 @@ const Dashboard = () => {
 
   // Load company data
   useEffect(() => {
-    const authCompanyName = (user?.['custom:companyName'] as string | undefined) || 'Your Company'
+    const authCompanyName =
+      (user?.['custom:companyName'] as string | undefined) || 'Your Company'
 
     const loadCompany = async () => {
       if (!companyId || companyId === 'default') {
@@ -578,7 +579,10 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <h1 className="text-4xl font-bold tracking-tight text-gradient-yellow">
-                      {(user?.['custom:companyName'] as string | undefined) || company?.name || 'Your Company'} Dashboard
+                      {(user?.['custom:companyName'] as string | undefined) ||
+                        company?.name ||
+                        'Your Company'}{' '}
+                      Dashboard
                       {/* {company?.id && company.id !== 'default' && (
                         <span className="ml-3 text-lg font-normal text-cyan-400/80 font-mono">
                           ({company.id.slice(0, 8)}...)

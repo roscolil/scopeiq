@@ -148,7 +148,9 @@ const Viewer = () => {
         if (!isMounted) return
 
         // Use company name from auth context if available, otherwise fall back gracefully
-        const authCompanyName = user?.['custom:companyName'] as string | undefined
+        const authCompanyName = user?.['custom:companyName'] as
+          | string
+          | undefined
         setCompanyName(authCompanyName || 'Your Company')
       } catch (error) {
         console.error('Error fetching data:', error)
